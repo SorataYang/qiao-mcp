@@ -1,0 +1,19 @@
+[project]
+name = "bridge-mcp"
+version = "0.1.0"
+description = "MCP server for intelligent bridge structural design and analysis (桥梁智能设计 MCP 服务器)"
+readme = "README.md"
+authors = [
+    { name = "Sorata", email = "194564851+SorataYang@users.noreply.github.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "mcp[cli]>=1.0.0",
+]
+
+[project.scripts]
+bridge-mcp = "bridge_mcp.server:main"
+
+[build-system]
+requires = ["uv_build>=0.9.28,<0.10.0"]
+build-backend = "uv_build"
