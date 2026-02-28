@@ -27,7 +27,6 @@ class QtModelProvider(BridgeProvider):
     def __init__(self):
         self._mdb = None
         self._odb = None
-        self._cdb = None
         self._available = False
         self._unavailable_reason = ""
         self._try_import()
@@ -39,7 +38,6 @@ class QtModelProvider(BridgeProvider):
             # Accessing mdb/odb/cdb will raise if the software is not running
             self._mdb = qtmodel.mdb
             self._odb = qtmodel.odb
-            self._cdb = qtmodel.cdb
             self._available = True
         except ImportError:
             self._available = False
@@ -353,28 +351,21 @@ class QtModelProvider(BridgeProvider):
         self, name: str, standard: int, kind: int, **kwargs
     ) -> None:
         self._require_available()
-        self._cdb.add_check_load_combine(
-            name=name, standard=standard, kind=kind, **kwargs
-        )
+        raise NotImplementedError("Structural checking (CDB) is not yet supported in this qtmodel version.")
 
     def solve_concrete_check(self, name: str) -> None:
         self._require_available()
-        self._cdb.solve_concrete_check(name=name)
+        raise NotImplementedError("Structural checking (CDB) is not yet supported in this qtmodel version.")
 
     def add_concrete_check_case(
         self, name: str, standard: int, structure_type: int, group_name: str
     ) -> None:
         self._require_available()
-        self._cdb.add_concrete_check_case(
-            name=name,
-            standard=standard,
-            structure_type=structure_type,
-            group_name=group_name,
-        )
+        raise NotImplementedError("Structural checking (CDB) is not yet supported in this qtmodel version.")
 
     def add_parameter_reinforcement(self, sec_id: int, **kwargs) -> None:
         self._require_available()
-        self._cdb.add_parameter_reinforcement(sec_id=sec_id, **kwargs)
+        raise NotImplementedError("Structural checking (CDB) is not yet supported in this qtmodel version.")
 
     # ── Group Management ───────────────────────────────────────────────
 
