@@ -18,7 +18,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
     @mcp.tool()
     def create_nodes(
-        node_data: list[list[float]],
+        node_data: list[Any],
         intersected: bool = True,
         is_merged: bool = True,
     ) -> str:
