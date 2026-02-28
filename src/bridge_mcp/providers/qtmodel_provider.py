@@ -29,18 +29,32 @@ class QtModelProvider(BridgeProvider):
         self._odb = None
         self._cdb = None
         self._available = False
+        self._unavailable_reason = ""
         self._try_import()
 
     def _try_import(self):
-        """Attempt to import qtmodel and cache the module references."""
+        """Attempt to import qtmodel and connect to QiaoTong software."""
         try:
             import qtmodel
+            # Accessing mdb/odb/cdb will raise if the software is not running
             self._mdb = qtmodel.mdb
             self._odb = qtmodel.odb
             self._cdb = qtmodel.cdb
             self._available = True
         except ImportError:
             self._available = False
+            self._unavailable_reason = (
+                "qtmodel package not found. Run: uv add qtmodel "
+                "(qtmodel 包未安装，请运行: uv add qtmodel)"
+            )
+        except Exception as e:
+            # qtmodel is installed but QiaoTong software is likely not running
+            self._available = False
+            self._unavailable_reason = (
+                f"qtmodel imported but connection failed ({type(e).__name__}: {e}). "
+                "Please ensure QiaoTong software is running. "
+                "(qtmodel 已安装，但连接失败，请确保桥通软件已启动)"
+            )
 
     @property
     def name(self) -> str:
@@ -61,9 +75,7 @@ class QtModelProvider(BridgeProvider):
         """Raise error if provider is not available."""
         if not self._available:
             raise RuntimeError(
-                "qtmodel is not available. Please install qtmodel "
-                "(pip install qtmodel) and ensure QiaoTong software is running. "
-                "qtmodel 不可用，请安装 qtmodel 并确保桥通软件正在运行。"
+                f"qtmodel provider unavailable: {self._unavailable_reason}"
             )
 
     # ── Model Information ──────────────────────────────────────────────

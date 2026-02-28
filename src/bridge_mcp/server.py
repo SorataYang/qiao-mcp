@@ -69,9 +69,7 @@ if provider.is_available():
     logger.info("✅ QTModel provider loaded successfully (桥通后端加载成功)")
 else:
     logger.warning(
-        "⚠️  QTModel provider not available — qtmodel not installed or "
-        "QiaoTong software not running. Tools will return error messages. "
-        "(qtmodel 不可用，工具调用将返回错误信息)"
+        f"⚠️  QTModel provider not available — {provider._unavailable_reason}"
     )
 
 # ── Register Phase 1 Tools, Resources, Prompts ────────────────────────
