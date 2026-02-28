@@ -243,8 +243,6 @@ class BridgeProvider(ABC):
         """
         ...
 
-    # ── Structural Checking ────────────────────────────────────────────
-
     @abstractmethod
     def add_check_load_combine(self, name: str, standard: int, kind: int, **kwargs) -> None:
         """Add check load combination. 添加检算荷载组合"""
@@ -253,4 +251,96 @@ class BridgeProvider(ABC):
     @abstractmethod
     def solve_concrete_check(self, name: str) -> None:
         """Run concrete structural check. 运行混凝土检算"""
+        ...
+
+    @abstractmethod
+    def add_concrete_check_case(self, name: str, standard: int, structure_type: int, group_name: str) -> None:
+        """Create concrete check case. 创建混凝土检算工况"""
+        ...
+
+    @abstractmethod
+    def add_parameter_reinforcement(self, sec_id: int, **kwargs) -> None:
+        """Add parametric reinforcement. 添加参数化配筋"""
+        ...
+
+    # ── Group Management ───────────────────────────────────────────────
+
+    @abstractmethod
+    def add_structure_group(self, name: str) -> None:
+        """Create a structure group. 创建结构组"""
+        ...
+
+    @abstractmethod
+    def add_elements_to_structure_group(self, name: str, element_ids: Any) -> None:
+        """Add elements to a structure group. 向结构组添加单元"""
+        ...
+
+    @abstractmethod
+    def get_structure_group_elements(self, name: str) -> list:
+        """Get element IDs in a structure group. 获取结构组中的单元"""
+        ...
+
+    @abstractmethod
+    def add_boundary_group(self, name: str) -> None:
+        """Create a boundary group. 创建边界组"""
+        ...
+
+    @abstractmethod
+    def add_load_group(self, name: str) -> None:
+        """Create a load group. 创建荷载组"""
+        ...
+
+    # ── Advanced Boundary ──────────────────────────────────────────────
+
+    @abstractmethod
+    def add_master_slave_link(self, master_id: int, slave_ids: Any, **kwargs) -> None:
+        """Add master-slave constraint. 添加主从约束"""
+        ...
+
+    @abstractmethod
+    def add_elastic_support(self, node_id: Any, spring_values: list, **kwargs) -> None:
+        """Add elastic spring support. 添加弹性支承"""
+        ...
+
+    # ── Moving Loads ───────────────────────────────────────────────────
+
+    @abstractmethod
+    def add_standard_vehicle(self, name: str, vehicle_type: int, standard: int) -> None:
+        """Add standard vehicle load. 添加标准车辆"""
+        ...
+
+    @abstractmethod
+    def add_lane(self, name: str, **kwargs) -> None:
+        """Define a traffic lane. 定义行车道"""
+        ...
+
+    @abstractmethod
+    def add_live_load_case(self, name: str, **kwargs) -> None:
+        """Create a live load case. 创建移动荷载工况"""
+        ...
+
+    @abstractmethod
+    def get_live_load_results(self, case_name: str, result_type: str, ids: Any) -> Any:
+        """Get live load analysis results. 获取移动荷载结果"""
+        ...
+
+    # ── Self-weight ────────────────────────────────────────────────────
+
+    @abstractmethod
+    def add_self_weight(self, case_name: str, **kwargs) -> None:
+        """Add self-weight load. 添加自重荷载"""
+        ...
+
+    # ── Tendon Data ────────────────────────────────────────────────────
+
+    @abstractmethod
+    def get_tendon_data(self) -> list[dict]:
+        """Get all tendon information. 获取所有钢束信息"""
+        ...
+
+    # ── Visualization Control ──────────────────────────────────────────
+
+    @abstractmethod
+    def set_view_angle(self, horizontal: float, vertical: float) -> None:
+        """Set 3D view camera angle. 设置三维视角"""
         ...

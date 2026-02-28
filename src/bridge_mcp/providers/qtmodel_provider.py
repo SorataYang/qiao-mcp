@@ -348,3 +348,95 @@ class QtModelProvider(BridgeProvider):
     def solve_concrete_check(self, name: str) -> None:
         self._require_available()
         self._cdb.solve_concrete_check(name=name)
+
+    def add_concrete_check_case(
+        self, name: str, standard: int, structure_type: int, group_name: str
+    ) -> None:
+        self._require_available()
+        self._cdb.add_concrete_check_case(
+            name=name,
+            standard=standard,
+            structure_type=structure_type,
+            group_name=group_name,
+        )
+
+    def add_parameter_reinforcement(self, sec_id: int, **kwargs) -> None:
+        self._require_available()
+        self._cdb.add_parameter_reinforcement(sec_id=sec_id, **kwargs)
+
+    # ── Group Management ───────────────────────────────────────────────
+
+    def add_structure_group(self, name: str) -> None:
+        self._require_available()
+        self._mdb.add_structure_group(name=name)
+
+    def add_elements_to_structure_group(self, name: str, element_ids: Any) -> None:
+        self._require_available()
+        self._mdb.add_elements_to_structure_group(name=name, element_ids=element_ids)
+
+    def get_structure_group_elements(self, name: str) -> list:
+        self._require_available()
+        return self._odb.get_structure_group_elements(name=name) or []
+
+    def add_boundary_group(self, name: str) -> None:
+        self._require_available()
+        self._mdb.add_boundary_group(name=name)
+
+    def add_load_group(self, name: str) -> None:
+        self._require_available()
+        self._mdb.add_load_group(name=name)
+
+    # ── Advanced Boundary ──────────────────────────────────────────────
+
+    def add_master_slave_link(self, master_id: int, slave_ids: Any, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_master_slave_link(
+            master_id=master_id, slave_ids=slave_ids, **kwargs
+        )
+
+    def add_elastic_support(self, node_id: Any, spring_values: list, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_elastic_support(
+            node_id=node_id, spring_values=spring_values, **kwargs
+        )
+
+    # ── Moving Loads ───────────────────────────────────────────────────
+
+    def add_standard_vehicle(self, name: str, vehicle_type: int, standard: int) -> None:
+        self._require_available()
+        self._mdb.add_standard_vehicle(
+            name=name, vehicle_type=vehicle_type, standard=standard
+        )
+
+    def add_lane(self, name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_lane(name=name, **kwargs)
+
+    def add_live_load_case(self, name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_live_load_case(name=name, **kwargs)
+
+    def get_live_load_results(self, case_name: str, result_type: str, ids: Any) -> Any:
+        self._require_available()
+        return self._odb.get_live_load_results(
+            case_name=case_name, result_type=result_type, ids=ids
+        )
+
+    # ── Self-weight ────────────────────────────────────────────────────
+
+    def add_self_weight(self, case_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_self_weight(case_name=case_name, **kwargs)
+
+    # ── Tendon Data ────────────────────────────────────────────────────
+
+    def get_tendon_data(self) -> list[dict]:
+        self._require_available()
+        return self._odb.get_tendon_data() or []
+
+    # ── Visualization Control ──────────────────────────────────────────
+
+    def set_view_angle(self, horizontal: float, vertical: float) -> None:
+        self._require_available()
+        self._odb.set_view_camera(horizontal=horizontal, vertical=vertical)
+
