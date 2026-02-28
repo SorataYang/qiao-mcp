@@ -7,7 +7,16 @@ Model Context Protocol (MCP), enabling LLMs to interact with bridge
 structural analysis tools.
 """
 
+import sys
 import logging
+
+# Ensure stdout/stderr use UTF-8 to prevent Mojibake in Node.js (MCP Inspector) under Windows
+if sys.platform == "win32":
+    import codecs
+    if sys.stdout.encoding.lower() != 'utf-8':
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    if sys.stderr.encoding.lower() != 'utf-8':
+        sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
 from mcp.server.fastmcp import FastMCP
 
