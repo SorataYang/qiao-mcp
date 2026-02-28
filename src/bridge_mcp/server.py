@@ -12,9 +12,20 @@ import logging
 from mcp.server.fastmcp import FastMCP
 
 from bridge_mcp.providers.qtmodel_provider import QtModelProvider
+
+# Phase 1 modules
 from bridge_mcp.tools import register_modeling_tools
 from bridge_mcp.resources import register_resources
 from bridge_mcp.prompts import register_prompts
+
+# Phase 2 modules
+from bridge_mcp.tools.group_management import register_group_tools
+from bridge_mcp.tools.tendon import register_tendon_tools
+from bridge_mcp.tools.advanced_boundary import register_advanced_boundary_tools
+from bridge_mcp.tools.visualization import register_visualization_tools
+from bridge_mcp.tools.moving_load import register_moving_load_tools
+from bridge_mcp.tools.checking import register_checking_tools
+from bridge_mcp.tools.workflows import register_workflow_tools
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -30,13 +41,22 @@ mcp = FastMCP(
         "run structural analysis, and review results through the QiaoTong (桥通) "
         "bridge analysis software.\n\n"
         "桥梁智能设计 MCP 服务器，通过桥通软件进行桥梁结构建模、分析和检算。\n\n"
-        "Available tool categories:\n"
-        "• Modeling (建模): create_nodes, create_elements, create_material, create_section\n"
-        "• Boundary (边界): set_support\n"
-        "• Loading (荷载): apply_nodal_force, apply_beam_distributed_load\n"
-        "• Construction (施工): add_construction_stage\n"
-        "• Analysis (分析): configure_analysis, validate_model\n"
-        "• Results (结果): get_model_info, get_analysis_results\n\n"
+        "Phase 1 tools — Core modeling (核心建模):\n"
+        "  create_nodes, create_elements, create_material, create_section,\n"
+        "  set_support, apply_nodal_force, apply_beam_distributed_load,\n"
+        "  add_construction_stage, configure_analysis, validate_model,\n"
+        "  get_model_info, get_analysis_results\n\n"
+        "Phase 2 tools — Advanced features (高级功能):\n"
+        "  Groups: create_structure_group, create_boundary_group, create_load_group,\n"
+        "          list_group_members, add_elements_to_group, merge_operation_stage\n"
+        "  Tendon: create_tendon_property, create_tendon_2d, apply_prestress, get_tendon_info\n"
+        "  Boundary: add_elastic_link, add_master_slave_link, add_elastic_support\n"
+        "  Viz: save_model_screenshot, plot_analysis_result, set_view_angle\n"
+        "  Loads: add_standard_vehicle, add_traffic_lane, create_live_load_case,\n"
+        "         get_live_load_results\n"
+        "  Check: setup_concrete_check, add_check_load_combination,\n"
+        "         run_concrete_check, add_parametric_reinforcement\n"
+        "  Workflow: create_simple_beam_bridge, create_continuous_beam_bridge\n\n"
         "Use workflow prompts to get guided design assistance."
     ),
 )
@@ -54,11 +74,21 @@ else:
         "(qtmodel 不可用，工具调用将返回错误信息)"
     )
 
-# ── Register Tools, Resources, Prompts ────────────────────────────────
+# ── Register Phase 1 Tools, Resources, Prompts ────────────────────────
 
 register_modeling_tools(mcp, provider)
 register_resources(mcp, provider)
 register_prompts(mcp)
+
+# ── Register Phase 2 Tools ────────────────────────────────────────────
+
+register_group_tools(mcp, provider)
+register_tendon_tools(mcp, provider)
+register_advanced_boundary_tools(mcp, provider)
+register_visualization_tools(mcp, provider)
+register_moving_load_tools(mcp, provider)
+register_checking_tools(mcp, provider)
+register_workflow_tools(mcp, provider)
 
 logger.info("🌉 Bridge-MCP server initialized (桥梁MCP服务器已初始化)")
 
