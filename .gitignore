@@ -208,3 +208,7 @@ __marimo__/
 
 # Reference documents
 reference-docs/
+
+# Local qtmodel example scripts exported from QiaoTong — not committed to repo
+examples/*
+!examples/.gitkeep
