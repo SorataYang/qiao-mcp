@@ -35,6 +35,9 @@ from bridge_mcp.tools.moving_load import register_moving_load_tools
 from bridge_mcp.tools.checking import register_checking_tools
 from bridge_mcp.tools.workflows import register_workflow_tools
 
+# Phase 3 — read-only query tools
+from bridge_mcp.tools.queries import register_query_tools
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("bridge-mcp")
@@ -95,6 +98,10 @@ register_visualization_tools(mcp, provider)
 register_moving_load_tools(mcp, provider)
 register_checking_tools(mcp, provider)
 register_workflow_tools(mcp, provider)
+
+# ── Register Phase 3 Query Tools ──────────────────────────────────────
+
+register_query_tools(mcp, provider)
 
 logger.info("🌉 Bridge-MCP server initialized (桥梁MCP服务器已初始化)")
 
