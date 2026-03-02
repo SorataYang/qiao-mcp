@@ -78,26 +78,31 @@ class QtModelProvider(BridgeProvider):
 
     # ── Model Information ──────────────────────────────────────────────
 
+    def _safe_get(self, fn_name: str, *args, **kwargs):
+        """Call an odb method by name, returning None on any error."""
+        fn = getattr(self._odb, fn_name, None)
+        if fn is None:
+            return None
+        try:
+            return fn(*args, **kwargs)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _count(result) -> int:
+        return len(result) if isinstance(result, list) else 0
+
     def get_model_summary(self) -> dict[str, Any]:
         self._require_available()
-        nodes = self._odb.get_node_data()
-        elements = self._odb.get_element_data()
-        materials = self._odb.get_material_data()
-        sections = self.get_section_names()
-        stages = self.get_stage_names()
-        load_cases = self.get_load_case_names()
-        groups = self._odb.get_structure_group_names()
-        boundaries = self._odb.get_boundary_group_names()
-
         return {
-            "node_count": len(nodes) if isinstance(nodes, list) else 0,
-            "element_count": len(elements) if isinstance(elements, list) else 0,
-            "material_count": len(materials) if isinstance(materials, list) else 0,
-            "section_count": len(sections) if isinstance(sections, list) else 0,
-            "stage_count": len(stages) if isinstance(stages, list) else 0,
-            "load_case_count": len(load_cases) if isinstance(load_cases, list) else 0,
-            "structure_group_count": len(groups) if isinstance(groups, list) else 0,
-            "boundary_group_count": len(boundaries) if isinstance(boundaries, list) else 0,
+            "node_count":            self._count(self._safe_get("get_node_data")),
+            "element_count":         self._count(self._safe_get("get_element_data")),
+            "material_count":        self._count(self._safe_get("get_material_data")),
+            "section_count":         self._count(self.get_section_names()),
+            "stage_count":           self._count(self.get_stage_names()),
+            "load_case_count":       self._count(self.get_load_case_names()),
+            "structure_group_count": self._count(self._safe_get("get_structure_group_names")),
+            "boundary_group_count":  self._count(self._safe_get("get_boundary_group_names")),
         }
 
     def get_node_data(self, ids: Any = None) -> list[dict]:
@@ -129,11 +134,14 @@ class QtModelProvider(BridgeProvider):
         return self._odb.get_section_data(sec_id, position=position) or {}
 
     def get_section_names(self) -> list[int]:
-        """Return section ID list via get_all_section_data (works across versions)."""
+        """Return section ID list, tries multiple APIs for version compatibility."""
         self._require_available()
-        data = self._odb.get_all_section_data()
-        if isinstance(data, list):
-            return [d.get("id", i + 1) for i, d in enumerate(data)]
+        for method in ("get_section_ids", "get_all_section_data"):
+            result = self._safe_get(method)
+            if isinstance(result, list) and result:
+                if isinstance(result[0], dict):
+                    return [d.get("id", i + 1) for i, d in enumerate(result)]
+                return result
         return []
 
     def get_boundary_data(self) -> dict[str, list[dict]]:
@@ -149,12 +157,14 @@ class QtModelProvider(BridgeProvider):
     def get_load_case_names(self) -> list[str]:
         """Return load case names. API: odb.get_case_names()"""
         self._require_available()
-        return self._odb.get_case_names() or []
+        result = self._safe_get("get_case_names")
+        return result if isinstance(result, list) else []
 
     def get_stage_names(self) -> list[str]:
         """Return construction stage names. API: odb.get_stage_name()"""
         self._require_available()
-        return self._odb.get_stage_name() or []
+        result = self._safe_get("get_stage_name")
+        return result if isinstance(result, list) else []
 
     def get_structure_group_names(self) -> list[str]:
         self._require_available()
