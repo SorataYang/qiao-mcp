@@ -83,9 +83,9 @@ class QtModelProvider(BridgeProvider):
         nodes = self._odb.get_node_data()
         elements = self._odb.get_element_data()
         materials = self._odb.get_material_data()
-        sections = self._odb.get_section_names()
-        stages = self._odb.get_stage_names()
-        load_cases = self._odb.get_load_case_names()
+        sections = self.get_section_names()
+        stages = self.get_stage_names()
+        load_cases = self.get_load_case_names()
         groups = self._odb.get_structure_group_names()
         boundaries = self._odb.get_boundary_group_names()
 
@@ -129,8 +129,27 @@ class QtModelProvider(BridgeProvider):
         return self._odb.get_section_data(sec_id, position=position) or {}
 
     def get_section_names(self) -> list[int]:
+        """Return section IDs; compatible with multiple qtmodel versions."""
         self._require_available()
-        return self._odb.get_section_names() or []
+        # Try newer API first, fall back to extracting from section data
+        for method in ("get_section_ids", "get_section_names"):
+            fn = getattr(self._odb, method, None)
+            if fn is None:
+                continue
+            try:
+                result = fn()
+                if isinstance(result, list):
+                    return result
+            except Exception:
+                pass
+        # Last resort: extract IDs from full section data
+        try:
+            data = self._odb.get_all_section_data()
+            if isinstance(data, list):
+                return [d.get("id", i + 1) for i, d in enumerate(data)]
+        except Exception:
+            pass
+        return []
 
     def get_boundary_data(self) -> dict[str, list[dict]]:
         self._require_available()
@@ -143,12 +162,34 @@ class QtModelProvider(BridgeProvider):
         }
 
     def get_load_case_names(self) -> list[str]:
+        """Return load case names; compatible with multiple qtmodel versions."""
         self._require_available()
-        return self._odb.get_load_case_names() or []
+        for method in ("get_case_names", "get_load_case_names"):
+            fn = getattr(self._odb, method, None)
+            if fn is None:
+                continue
+            try:
+                result = fn()
+                if isinstance(result, list):
+                    return result
+            except Exception:
+                pass
+        return []
 
     def get_stage_names(self) -> list[str]:
+        """Return construction stage names; compatible with multiple qtmodel versions."""
         self._require_available()
-        return self._odb.get_stage_names() or []
+        for method in ("get_stage_name", "get_stage_names"):
+            fn = getattr(self._odb, method, None)
+            if fn is None:
+                continue
+            try:
+                result = fn()
+                if isinstance(result, list):
+                    return result
+            except Exception:
+                pass
+        return []
 
     def get_structure_group_names(self) -> list[str]:
         self._require_available()
