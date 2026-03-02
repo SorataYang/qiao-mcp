@@ -187,7 +187,62 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_section(name=name, sec_type=sec_type, **kwargs)
         self._mdb.update_model()
 
-    # ── Boundary Operations ────────────────────────────────────────────
+    # ── Modify Operations ──────────────────────────────────────────────
+
+    def update_node(self, node_id: int, **kwargs) -> None:
+        self._require_available()
+        self._mdb.update_node(node_id=node_id, **kwargs)
+
+    def move_nodes(self, ids: Any, offset_x: float = 0, offset_y: float = 0, offset_z: float = 0) -> None:
+        self._require_available()
+        self._mdb.move_nodes(ids=ids, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
+
+    def update_element(self, old_id: int, **kwargs) -> None:
+        self._require_available()
+        self._mdb.update_element(old_id=old_id, **kwargs)
+
+    def update_element_material(self, ids: Any, mat_id: int) -> None:
+        self._require_available()
+        self._mdb.update_element_material(ids=ids, mat_id=mat_id)
+
+    def update_frame_section(self, ids: Any, sec_id: int) -> None:
+        self._require_available()
+        self._mdb.update_frame_section(ids=ids, sec_id=sec_id)
+
+    def update_element_beta(self, ids: Any, beta: float) -> None:
+        self._require_available()
+        self._mdb.update_element_beta(ids=ids, beta=beta)
+
+    def update_element_node(self, element_id: int, node_ids: list) -> None:
+        self._require_available()
+        self._mdb.update_element_node(element_id, node_ids)
+
+    def remove_structure_from_group(self, name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.remove_structure_from_group(name=name, **kwargs)
+
+    def remove_nodes(self, ids: Any = None) -> None:
+        self._require_available()
+        if ids is not None:
+            self._mdb.remove_nodes(ids=ids)
+        else:
+            self._mdb.remove_nodes()
+
+    def remove_elements(self, ids: Any = None, remove_free: bool = False) -> None:
+        self._require_available()
+        if ids is not None:
+            self._mdb.remove_elements(ids=ids, remove_free=remove_free)
+        else:
+            self._mdb.remove_elements(remove_free=remove_free)
+
+    def merge_nodes(self, ids: Any = None, tolerance: float = 1e-4) -> None:
+        self._require_available()
+        if ids is not None:
+            self._mdb.merge_nodes(ids=ids, tolerance=tolerance)
+        else:
+            self._mdb.merge_nodes(tolerance=tolerance)
+
+
 
     def add_general_support(
         self, node_id: Any, boundary_info: list, **kwargs
