@@ -8,6 +8,7 @@ the BridgeProvider interface.
 """
 
 from typing import Any
+import json
 
 from bridge_mcp.providers import BridgeProvider
 
@@ -78,13 +79,23 @@ class QtModelProvider(BridgeProvider):
 
     # ── Model Information ──────────────────────────────────────────────
 
-    def _safe_get(self, fn_name: str, *args, **kwargs):
-        """Call an odb method by name, returning None on any error."""
+    @staticmethod
+    def _parse(result: Any) -> Any:
+        """Parse JSON string result from qtmodel API into Python object."""
+        if isinstance(result, str):
+            try:
+                return json.loads(result)
+            except (json.JSONDecodeError, ValueError):
+                return result
+        return result
+
+    def _safe_get(self, fn_name: str, *args, **kwargs) -> Any:
+        """Call an odb method by name, auto-parse JSON, return None on error."""
         fn = getattr(self._odb, fn_name, None)
         if fn is None:
             return None
         try:
-            return fn(*args, **kwargs)
+            return self._parse(fn(*args, **kwargs))
         except Exception:
             return None
 
@@ -107,31 +118,31 @@ class QtModelProvider(BridgeProvider):
 
     def get_node_data(self, ids: Any = None) -> list[dict]:
         self._require_available()
-        if ids is not None:
-            result = self._odb.get_node_data(ids=ids)
-        else:
-            result = self._odb.get_node_data()
+        result = self._parse(
+            self._odb.get_node_data(ids=ids) if ids is not None else self._odb.get_node_data()
+        )
         if isinstance(result, dict):
             return [result]
         return result if isinstance(result, list) else []
 
     def get_element_data(self, ids: Any = None) -> list[dict]:
         self._require_available()
-        if ids is not None:
-            result = self._odb.get_element_data(ids=ids)
-        else:
-            result = self._odb.get_element_data()
+        result = self._parse(
+            self._odb.get_element_data(ids=ids) if ids is not None else self._odb.get_element_data()
+        )
         if isinstance(result, dict):
             return [result]
         return result if isinstance(result, list) else []
 
     def get_material_data(self) -> list[dict]:
         self._require_available()
-        return self._odb.get_material_data() or []
+        result = self._parse(self._odb.get_material_data())
+        return result if isinstance(result, list) else []
 
     def get_section_data(self, sec_id: int, position: int = 0) -> dict:
         self._require_available()
-        return self._odb.get_section_data(sec_id, position=position) or {}
+        result = self._parse(self._odb.get_section_data(sec_id, position=position))
+        return result if isinstance(result, dict) else {}
 
     def get_section_names(self) -> list[int]:
         """Return section ID list, tries multiple APIs for version compatibility."""
@@ -147,11 +158,11 @@ class QtModelProvider(BridgeProvider):
     def get_boundary_data(self) -> dict[str, list[dict]]:
         self._require_available()
         return {
-            "general_supports": self._odb.get_general_support_data() or [],
-            "elastic_links": self._odb.get_elastic_link_data() or [],
-            "elastic_supports": self._odb.get_elastic_support_data() or [],
-            "master_slave_links": self._odb.get_master_slave_link_data() or [],
-            "beam_constraints": self._odb.get_beam_constraint_data() or [],
+            "general_supports": self._safe_get("get_general_support_data") or [],
+            "elastic_links":    self._safe_get("get_elastic_link_data") or [],
+            "elastic_supports": self._safe_get("get_elastic_support_data") or [],
+            "master_slave_links": self._safe_get("get_master_slave_link_data") or [],
+            "beam_constraints": self._safe_get("get_beam_constraint_data") or [],
         }
 
     def get_load_case_names(self) -> list[str]:
@@ -168,7 +179,8 @@ class QtModelProvider(BridgeProvider):
 
     def get_structure_group_names(self) -> list[str]:
         self._require_available()
-        return self._odb.get_structure_group_names() or []
+        result = self._safe_get("get_structure_group_names")
+        return result if isinstance(result, list) else []
 
     # ── Modeling Operations ────────────────────────────────────────────
 
