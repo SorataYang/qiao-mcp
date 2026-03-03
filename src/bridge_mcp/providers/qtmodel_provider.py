@@ -101,7 +101,9 @@ class QtModelProvider(BridgeProvider):
 
     @staticmethod
     def _count(result) -> int:
-        return len(result) if isinstance(result, list) else 0
+        if isinstance(result, (list, dict)):
+            return len(result)
+        return 0
 
     def get_model_summary(self) -> dict[str, Any]:
         self._require_available()
@@ -144,16 +146,23 @@ class QtModelProvider(BridgeProvider):
         result = self._parse(self._odb.get_section_data(sec_id, position=position))
         return result if isinstance(result, dict) else {}
 
-    def get_section_names(self) -> list[int]:
-        """Return section ID list, tries multiple APIs for version compatibility."""
+    def get_section_names(self) -> dict[str, str] | list:
+        """Return section info (dict of id->name, or list of IDs/dicts depending on API version)."""
         self._require_available()
+        
+        # New API returns JSON dict {"3": "上横梁", "4": "下横梁", ...}
+        result = self._safe_get("get_section_names")
+        if isinstance(result, dict):
+            return result
+            
+        # Fallbacks for older/different versions
         for method in ("get_section_ids", "get_all_section_data"):
             result = self._safe_get(method)
             if isinstance(result, list) and result:
                 if isinstance(result[0], dict):
-                    return [d.get("id", i + 1) for i, d in enumerate(result)]
+                    return {str(d.get("id", i + 1)): d.get("name", f"Section {i + 1}") for i, d in enumerate(result)}
                 return result
-        return []
+        return {}
 
     def get_boundary_data(self) -> dict[str, list[dict]]:
         self._require_available()

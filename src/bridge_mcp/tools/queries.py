@@ -109,8 +109,8 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Get all section names/IDs defined in the model (获取所有截面列表).
 
         Returns:
-            List of section IDs or names.
-            (截面编号或名称列表)
+            Dictionary mapping section IDs to names, or a list of section IDs.
+            (截面编号与名称的映射字典，或截面编号列表)
 
         Use this before create_elements to get valid section IDs.
         (创建单元前调用此工具以获取有效的截面编号)
