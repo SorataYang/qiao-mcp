@@ -84,26 +84,40 @@ class QtModelProvider(BridgeProvider):
     def _parse(result: Any) -> Any:
         """Parse string result from qtmodel API into Python object."""
         if isinstance(result, str):
+            cleaned = result.strip()
+            if not cleaned:
+                return cleaned
+                
+            # Fallback to standard JSON parsing first (handles true/false/null)
+            try:
+                return json.loads(cleaned)
+            except Exception:
+                pass
+
             # QtModel sometimes returns Python string representations (e.g., single quotes for strings)
             # which json.loads fails to parse. ast.literal_eval handles these robustly.
             try:
-                parsed = ast.literal_eval(result)
+                parsed = ast.literal_eval(cleaned)
                 return parsed
-            except (SyntaxError, ValueError):
+            except Exception:
                 pass
-            
-            # Fallback to standard JSON parsing just in case
-            try:
-                return json.loads(result)
-            except (json.JSONDecodeError, ValueError):
-                return result
+                
         return result
 
     def _safe_get(self, fn_name: str, *args, **kwargs) -> Any:
         """Call an odb method by name, auto-parse JSON, return None on error."""
         fn = getattr(self._odb, fn_name, None)
         if fn is None:
-            return None
+            # Fallback: if this python version of qtmodel wrapper is missing the method, 
+            # attempt to send it directly as a REST command header to the running QT Server.
+            try:
+                from qtmodel.core.qt_server import QtServer
+                header = fn_name.replace("_", "-").upper()
+                raw_result = QtServer.send_dict(header=header)
+                return self._parse(raw_result)
+            except Exception:
+                return None
+                
         try:
             return self._parse(fn(*args, **kwargs))
         except Exception:
@@ -163,8 +177,10 @@ class QtModelProvider(BridgeProvider):
         # New API returns JSON dict {"3": "上横梁", "4": "下横梁", ...}
         for method in ("get_section_names", "get_section_ids", "get_all_section_data"):
             result = self._safe_get(method)
+            # dict output: {"3": "SectionName"}
             if isinstance(result, dict):
-                return result
+                return {str(k): str(v) for k, v in result.items()}
+            # list output: [{"id": 3, "name": "SectionName"}] or [3, 4]
             if isinstance(result, list) and result:
                 if isinstance(result[0], dict):
                     return {str(d.get("id", i + 1)): d.get("name", f"Section {i + 1}") for i, d in enumerate(result)}
@@ -184,6 +200,7 @@ class QtModelProvider(BridgeProvider):
     def get_load_case_names(self) -> list[str]:
         """Return load case names."""
         self._require_available()
+        # Older version uses get_load_case_names, newer uses get_case_names
         for method in ("get_load_case_names", "get_case_names"):
             result = self._safe_get(method)
             if isinstance(result, list):
