@@ -9,6 +9,7 @@ the BridgeProvider interface.
 
 from typing import Any
 import json
+import ast
 
 from bridge_mcp.providers import BridgeProvider
 
@@ -81,8 +82,17 @@ class QtModelProvider(BridgeProvider):
 
     @staticmethod
     def _parse(result: Any) -> Any:
-        """Parse JSON string result from qtmodel API into Python object."""
+        """Parse string result from qtmodel API into Python object."""
         if isinstance(result, str):
+            # QtModel sometimes returns Python string representations (e.g., single quotes for strings)
+            # which json.loads fails to parse. ast.literal_eval handles these robustly.
+            try:
+                parsed = ast.literal_eval(result)
+                return parsed
+            except (SyntaxError, ValueError):
+                pass
+            
+            # Fallback to standard JSON parsing just in case
             try:
                 return json.loads(result)
             except (json.JSONDecodeError, ValueError):
@@ -151,13 +161,10 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         
         # New API returns JSON dict {"3": "上横梁", "4": "下横梁", ...}
-        result = self._safe_get("get_section_names")
-        if isinstance(result, dict):
-            return result
-            
-        # Fallbacks for older/different versions
-        for method in ("get_section_ids", "get_all_section_data"):
+        for method in ("get_section_names", "get_section_ids", "get_all_section_data"):
             result = self._safe_get(method)
+            if isinstance(result, dict):
+                return result
             if isinstance(result, list) and result:
                 if isinstance(result[0], dict):
                     return {str(d.get("id", i + 1)): d.get("name", f"Section {i + 1}") for i, d in enumerate(result)}
@@ -175,16 +182,22 @@ class QtModelProvider(BridgeProvider):
         }
 
     def get_load_case_names(self) -> list[str]:
-        """Return load case names. API: odb.get_case_names()"""
+        """Return load case names."""
         self._require_available()
-        result = self._safe_get("get_case_names")
-        return result if isinstance(result, list) else []
+        for method in ("get_load_case_names", "get_case_names"):
+            result = self._safe_get(method)
+            if isinstance(result, list):
+                return result
+        return []
 
     def get_stage_names(self) -> list[str]:
-        """Return construction stage names. API: odb.get_stage_name()"""
+        """Return construction stage names."""
         self._require_available()
-        result = self._safe_get("get_stage_name")
-        return result if isinstance(result, list) else []
+        for method in ("get_stage_names", "get_stage_name"):
+            result = self._safe_get(method)
+            if isinstance(result, list):
+                return result
+        return []
 
     def get_structure_group_names(self) -> list[str]:
         self._require_available()
