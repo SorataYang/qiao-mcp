@@ -16,7 +16,33 @@ from bridge_mcp.providers import BridgeProvider
 def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     """Register all modify-type MCP tools."""
 
-    # ── 1. Node modifications ─────────────────────────────────────────
+    # ── 1. General model operations ───────────────────────────────────
+
+    @mcp.tool()
+    def initialize_model(confirm: bool = False) -> str:
+        """
+        Initialize a new empty model (初始化全新模型).
+        
+        WARNING: This will CLEAR the current model data in the active bridge software!
+        (警告：此操作将清空桥通软件中的当前模型！)
+        
+        Use this ONLY when starting a brand new project, NOT when modifying an existing one.
+        (仅在从零开始新建桥梁时使用，修改现有模型时绝对不要调用此工具)
+        
+        Args:
+            confirm: Must be set to true to execute (必须设为true以确认操作)
+        """
+        if not confirm:
+            return "Initialization aborted. You must set confirm=True to clear the model. (初始化已取消，必须设置 confirm=True)"
+            
+        try:
+            provider.initialize_model()
+            provider.update_model()
+            return "New model successfully initialized. The software is now ready for a new project. (新模型初始化成功，当前模型已清空)"
+        except Exception as e:
+            return f"Error initializing model (初始化模型失败): {e}"
+
+    # ── 2. Node modifications ─────────────────────────────────────────
 
     @mcp.tool()
     def update_node(

@@ -223,6 +223,10 @@ class QtModelProvider(BridgeProvider):
 
     # ── Modeling Operations ────────────────────────────────────────────
 
+    def initialize_model(self) -> None:
+        self._require_available()
+        self._mdb.initial()
+
     def add_nodes(self, node_data: list[list[float]], **kwargs) -> None:
         self._require_available()
         self._mdb.add_nodes(node_data=node_data, **kwargs)

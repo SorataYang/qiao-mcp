@@ -94,6 +94,11 @@ class BridgeProvider(ABC):
     # ── Modeling Operations ────────────────────────────────────────────
 
     @abstractmethod
+    def initialize_model(self) -> None:
+        """Initialize a new empty model. 初始化全新模型"""
+        ...
+
+    @abstractmethod
     def add_nodes(self, node_data: list[list[float]], **kwargs) -> None:
         """Add nodes to the model. 添加节点"""
         ...
