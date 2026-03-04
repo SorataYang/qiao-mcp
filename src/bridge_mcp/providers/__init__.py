@@ -38,6 +38,11 @@ class BridgeProvider(ABC):
     # ── Model Information ──────────────────────────────────────────────
 
     @abstractmethod
+    def update_model(self) -> None:
+        """Refresh the model view in the software. 刷新模型界面"""
+        ...
+
+    @abstractmethod
     def get_model_summary(self) -> dict[str, Any]:
         """
         Get a summary of the current model.

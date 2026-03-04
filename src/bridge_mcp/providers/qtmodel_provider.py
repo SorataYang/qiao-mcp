@@ -227,6 +227,11 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         self._mdb.initial()
 
+    def update_model(self) -> None:
+        """Refresh the model display in QiaoTong software."""
+        self._require_available()
+        self._mdb.update_model()
+
     def add_nodes(self, node_data: list[list[float]], **kwargs) -> None:
         self._require_available()
         self._mdb.add_nodes(node_data=node_data, **kwargs)
