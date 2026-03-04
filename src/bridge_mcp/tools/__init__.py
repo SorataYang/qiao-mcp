@@ -268,31 +268,22 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         case_type: str = "施工阶段荷载",
     ) -> str:
         """
-        Create a static load case (创建荷载工况).
+        Create a load case (创建荷载工况).
 
-        ⚠️ CRITICAL LLM INSTRUCTION — QiaoTong self-weight handling:
-        In QiaoTong, self-weight is handled AUTOMATICALLY by the solver.
-        ▶ Simply create a load case (e.g. name="自重", case_type="施工阶段荷载")
-        ▶ The software will automatically apply self-weight — NO manual distributed/nodal loads needed.
-        ▶ Do NOT try to manually calculate self-weight (e.g. 37.5 kN/m) and add it as a beam load.
-          That is WRONG for QiaoTong.
-        (大模型请注意：桥通软件在建立荷载工况后会自动处理结构自重，无需也不应该手动计算并施加均布荷载！)
+        A load case must exist before loads can be applied to it.
+        In QiaoTong, creating a load case named "自重" is sufficient for self-weight —
+        the software applies it automatically (see server instructions for details).
 
         Args:
-            name: Name of the load case (工况名称, e.g. "自重", "SW", "恒荷")
-            case_type: Type of load case (荷载工况类型), valid options:
-                "施工阶段荷载" (default, most common 阶段工况),
-                "恒荷" (permanent/dead load),
-                "活荷" (live load),
-                "预应力" (prestress),
-                "车辆荷载" (vehicle load)
+            name: Load case name (工况名称, e.g. "自重", "SW", "恒荷")
+            case_type: Load case type (荷载工况类型):
+                "施工阶段荷载" (default), "恒荷", "活荷", "预应力", "车辆荷载"
         """
         try:
             provider.add_load_case(name=name, case_type=case_type)
             return (
                 f"Successfully created load case '{name}' (type='{case_type}'). "
-                f"QiaoTong will automatically apply self-weight for this case — NO manual element loads needed. "
-                f"(成功创建荷载工况 '{name}'，程序将自动施加结构自重)"
+                f"(成功创建荷载工况 '{name}')"
             )
         except Exception as e:
             return f"Error creating load case '{name}' (创建工况失败): {e}"

@@ -71,6 +71,38 @@ class QtModelProvider(BridgeProvider):
     def is_available(self) -> bool:
         return self._available
 
+    def get_software_name(self) -> str:
+        return "QiaoTong (桥通)"
+
+    def get_llm_instructions(self) -> str:
+        return """
+        ### Self-Weight (自重) — QiaoTong (桥通) handles this AUTOMATICALLY
+        QiaoTong computes and applies self-weight internally once a load case exists.
+
+        CORRECT workflow (2 steps, then done):
+        1. create_load_group(name="默认荷载组")
+        2. create_load_case(name="自重", case_type="施工阶段荷载")
+        → Self-weight is now included. NO element loads needed.
+
+        DO NOT do this (WRONG for QiaoTong):
+        ✗ Calculate area × density × g manually
+        ✗ Call apply_beam_distributed_load with self-weight kN/m values
+
+        ### Node & Element creation — use batch tools to keep AI calls concise
+        ✓ create_nodes_linear(count=101, start_x=0, spacing_x=1.0)   # 101 nodes in 1 call
+        ✓ create_beam_elements_linear(node_id_start=1, count=100, mat_id=1, sec_id=1)
+        ✗ Do not pass a raw list of 101 coordinate pairs to create_nodes
+
+        ### Initialization — 危险操作
+        • Only call initialize_model(confirm=True) when the user explicitly says "新建模型"
+        • Never call it to fix your own mistakes — ask the user
+        • remove_nodes / remove_elements require confirm_delete_all=True when deleting all
+
+        ### Load case types (case_type must be a Chinese string):
+        "施工阶段荷载" | "恒荷" | "活荷" | "预应力" | "车辆荷载"
+        """
+
+
     def _require_available(self):
         """Raise error if provider is not available."""
         if not self._available:

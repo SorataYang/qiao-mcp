@@ -35,6 +35,22 @@ class BridgeProvider(ABC):
         """Check if the backend software is available and properly configured."""
         ...
 
+    @abstractmethod
+    def get_software_name(self) -> str:
+        """Return a human-readable name for the backend software (e.g., 'QiaoTong (桥通)')."""
+        ...
+
+    @abstractmethod
+    def get_llm_instructions(self) -> str:
+        """Return software-specific behavioral rules for the LLM system prompt.
+
+        This text is injected into the FastMCP server instructions at startup.
+        Each provider documents its own conventions so LLMs behave correctly
+        regardless of which bridge software is active.
+        """
+        ...
+
+
     # ── Model Information ──────────────────────────────────────────────
 
     @abstractmethod

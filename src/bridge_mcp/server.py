@@ -45,46 +45,37 @@ from bridge_mcp.tools.modifications import register_modification_tools
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("bridge-mcp")
 
-# ── Initialize MCP Server ─────────────────────────────────────────────
-
-mcp = FastMCP(
-    "bridge-mcp",
-    instructions=(
-        "Bridge-MCP is an MCP server for intelligent bridge structural design "
-        "and analysis. It provides tools to create bridge models, apply loads, "
-        "run structural analysis, and review results through the QiaoTong (桥通) "
-        "bridge analysis software.\n\n"
-        "桥梁智能设计 MCP 服务器，通过桥通软件进行桥梁结构建模、分析和检算。\n\n"
-        "Phase 1 tools — Core modeling (核心建模):\n"
-        "  create_nodes, create_elements, create_material, create_section,\n"
-        "  set_support, apply_nodal_force, apply_beam_distributed_load,\n"
-        "  add_construction_stage, configure_analysis, validate_model,\n"
-        "  get_model_info, get_analysis_results\n\n"
-        "Phase 2 tools — Advanced features (高级功能):\n"
-        "  Groups: create_structure_group, create_boundary_group, create_load_group,\n"
-        "          list_group_members, add_elements_to_group, merge_operation_stage\n"
-        "  Tendon: create_tendon_property, create_tendon_2d, apply_prestress, get_tendon_info\n"
-        "  Boundary: add_elastic_link, add_master_slave_link, add_elastic_support\n"
-        "  Viz: save_model_screenshot, plot_analysis_result, set_view_angle\n"
-        "  Loads: add_standard_vehicle, add_traffic_lane, create_live_load_case,\n"
-        "         get_live_load_results\n"
-        "  Check: setup_concrete_check, add_check_load_combination,\n"
-        "         run_concrete_check, add_parametric_reinforcement\n"
-        "  Workflow: create_simple_beam_bridge, create_continuous_beam_bridge\n\n"
-        "Use workflow prompts to get guided design assistance."
-    ),
-)
-
-# ── Initialize Provider ───────────────────────────────────────────────
+# ── Initialize Provider first (needed to build dynamic instructions) ──
 
 provider = QtModelProvider()
 
 if provider.is_available():
-    logger.info("✅ QTModel provider loaded successfully (桥通后端加载成功)")
+    logger.info(f"✅ {provider.get_software_name()} provider loaded successfully")
 else:
     logger.warning(
-        f"⚠️  QTModel provider not available — {provider._unavailable_reason}"
+        f"⚠️  {provider.get_software_name()} provider not available — {provider._unavailable_reason}"
     )
+
+# ── Build MCP instructions dynamically from the active provider ───────
+
+_SERVER_INSTRUCTIONS = (
+    f"You are an AI assistant for bridge structural design "
+    f"connected to {provider.get_software_name()} via Bridge-MCP.\n\n"
+    "## Software-Specific Rules — Read Before Using Any Tool\n"
+    + provider.get_llm_instructions()
+    + "\n## Available Tool Groups\n"
+    "Core:     create_nodes_linear, create_beam_elements_linear, create_material, create_section\n"
+    "Loads:    create_load_group, create_load_case, apply_beam_distributed_load, apply_nodal_force\n"
+    "Boundary: set_support, add_elastic_link, add_master_slave_link, add_elastic_support\n"
+    "Groups:   create_structure_group, create_boundary_group, add_to_group\n"
+    "Stages:   add_construction_stage, configure_analysis, get_analysis_results\n"
+    "Workflow: create_simple_beam_bridge, create_continuous_beam_bridge\n"
+    "Queries:  get_model_summary, get_node_data, get_element_data, get_materials, get_section_list\n"
+)
+
+# ── Initialize MCP Server ─────────────────────────────────────────────
+
+mcp = FastMCP("bridge-mcp", instructions=_SERVER_INSTRUCTIONS)
 
 # ── Register Phase 1 Tools, Resources, Prompts ────────────────────────
 
@@ -110,7 +101,7 @@ register_query_tools(mcp, provider)
 
 register_modification_tools(mcp, provider)
 
-logger.info("🌉 Bridge-MCP server initialized (桥梁MCP服务器已初始化)")
+logger.info(f"🌉 Bridge-MCP server initialized with {provider.get_software_name()} backend")
 
 
 # ── Entry Point ───────────────────────────────────────────────────────
