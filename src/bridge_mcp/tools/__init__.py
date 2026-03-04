@@ -277,7 +277,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Args:
             name: Load case name (工况名称, e.g. "自重", "SW", "恒荷")
             case_type: Load case type (荷载工况类型):
-                "施工阶段荷载" (default), "恒荷", "活荷", "预应力", "车辆荷载"
+                "施工阶段荷载" (default) | "恒载" | "活载" | "制动力" | "风荷载"
+                "体系温度荷载" | "梯度温度荷载"
+                "长轨伸缩挠曲力荷载" | "脱轨荷载" | "长轨断轨力荷载"
+                "船舶撞击荷载" | "汽车撞击荷载" | "用户定义荷载"
         """
         try:
             provider.add_load_case(name=name, case_type=case_type)

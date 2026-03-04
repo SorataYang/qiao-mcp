@@ -99,7 +99,10 @@ class QtModelProvider(BridgeProvider):
         • remove_nodes / remove_elements require confirm_delete_all=True when deleting all
 
         ### Load case types (case_type must be a Chinese string):
-        "施工阶段荷载" | "恒荷" | "活荷" | "预应力" | "车辆荷载"
+        "施工阶段荷载" | "恒载" | "活载" | "制动力" | "风荷载"
+        "体系温度荷载" | "梯度温度荷载"
+        "长轨伸缩挠曲力荷载" | "脱轨荷载" | "长轨断轨力荷载"
+        "船舶撞击荷载" | "汽车撞击荷载" | "用户定义荷载"
         """
 
 
