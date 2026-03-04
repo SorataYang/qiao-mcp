@@ -119,17 +119,123 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
 
     @mcp.tool()
+    def create_beam_element(
+        node_i: int,
+        node_j: int,
+        mat_id: int,
+        sec_id: int,
+        element_id: int = -1,
+        beta_angle: float = 0.0,
+        ele_type: int = 1,
+        initial_type: int = 0,
+        initial_value: float = 0.0,
+    ) -> str:
+        """
+        Create a single frame element (beam/truss/cable) with named parameters
+        (创建单个梁/杆/索单元，参数具名).
+
+        This is the preferred way to create individual elements — all parameters
+        have explicit names and inline documentation.
+
+        Args:
+            node_i: Start node ID (I端节点编号)
+            node_j: End node ID (J端节点编号)
+            mat_id: Material ID — use get_materials to find valid IDs (材料编号)
+            sec_id: Section ID — use get_section_list to find valid IDs (截面编号)
+            element_id: Element ID, -1 = auto-assign next available ID (单元编号，-1表示自动分配)
+            beta_angle: Beta angle in degrees, controls local axis orientation (贝塔角，度)
+            ele_type: Element type (单元类型): 1=Beam(梁), 2=Truss(杆), 3=Cable(索)
+            initial_type: Initial strain/force type (初始应变类型): 0=None, 1=Strain, 2=Force
+            initial_value: Initial strain or force value (初始应变或内力值)
+
+        Example:
+            create_beam_element(node_i=1, node_j=2, mat_id=1, sec_id=1)
+        """
+        try:
+            # Build element data row: [id, type, mat, sec, beta, nodeI, nodeJ, init_type, init_val]
+            eid = element_id if element_id != -1 else 0  # 0 = let API auto-assign
+            ele_data = [[eid, ele_type, mat_id, sec_id, beta_angle, node_i, node_j,
+                         initial_type, initial_value]]
+            provider.add_elements(ele_data=ele_data)
+            return (
+                f"Created {'beam' if ele_type==1 else 'truss' if ele_type==2 else 'cable'} element "
+                f"(nodes {node_i}→{node_j}, mat={mat_id}, sec={sec_id}) "
+                f"(成功创建单元 {node_i}→{node_j})"
+            )
+        except Exception as e:
+            return f"Error creating beam element (创建单元失败): {e}"
+
+    @mcp.tool()
+    def create_beam_elements_linear(
+        node_id_start: int,
+        count: int,
+        mat_id: int,
+        sec_id: int,
+        element_id_start: int = 1,
+        beta_angle: float = 0.0,
+        ele_type: int = 1,
+    ) -> str:
+        """
+        Batch-create frame elements connecting consecutive nodes along a girder
+        (批量创建沿主梁方向连接相邻节点的梁单元).
+
+        This is the most efficient way to model a bridge girder — instead of
+        specifying every element individually, you only need the starting node,
+        the count, and the material/section.
+
+        Elements are created connecting nodes: node_id_start→+1, node_id_start+1→+2, etc.
+
+        Args:
+            node_id_start: ID of the first node (I end of first element) (起始节点编号)
+            count: Number of elements to create (单元数量)
+            mat_id: Material ID for all elements (所有梁单元的材料编号)
+            sec_id: Section ID for all elements (所有梁单元的截面编号)
+            element_id_start: ID assigned to the first element, then auto-incremented
+                              (第一个单元的编号，后续自动递增)
+            beta_angle: Beta angle in degrees, same for all elements (贝塔角，度)
+            ele_type: 1=Beam(梁), 2=Truss(杆), 3=Cable(索)
+
+        Examples:
+            # 100m beam with 100 elements (101 nodes already created at IDs 1–101):
+            create_beam_elements_linear(node_id_start=1, count=100, mat_id=1, sec_id=1)
+
+            # Second span of a two-span continuous beam (nodes 101-201):
+            create_beam_elements_linear(node_id_start=101, count=100, mat_id=1, sec_id=1,
+                                        element_id_start=101)
+        """
+        try:
+            ele_data = [
+                [element_id_start + i, ele_type, mat_id, sec_id, beta_angle,
+                 node_id_start + i, node_id_start + i + 1, 0, 0.0]
+                for i in range(count)
+            ]
+            provider.add_elements(ele_data=ele_data)
+            last_ele = element_id_start + count - 1
+            last_node = node_id_start + count
+            return (
+                f"Created {count} beam elements (IDs {element_id_start}–{last_ele}), "
+                f"connecting nodes {node_id_start}–{last_node} "
+                f"(mat={mat_id}, sec={sec_id}) "
+                f"(成功批量创建 {count} 个梁单元)"
+            )
+        except Exception as e:
+            return f"Error creating beam elements (批量创建梁单元失败): {e}"
+
+    @mcp.tool()
     def create_elements(
         element_data: list[list],
     ) -> str:
         """
-        Create elements in the bridge model (创建单元).
+        Create elements from a raw data array (通过原始数组创建单元).
+
+        For beam elements, prefer `create_beam_element` or `create_beam_elements_linear`
+        which have named parameters and are easier to use correctly.
 
         Args:
-            element_data: Element data list. Each item format depends on element type:
-                - Beam/Truss: [id, type(1=beam,2=truss), materialId, sectionId, betaAngle, nodeI, nodeJ]
-                - Cable: [id, 3, materialId, sectionId, betaAngle, nodeI, nodeJ, tensionType, tensionValue]
-                - Plate: [id, 4, materialId, thicknessId, betaAngle, nodeI, nodeJ, nodeK, nodeL, plateType]
+            element_data: Element data list. Each item format:
+                - Beam/Truss: [id, type(1=beam,2=truss), matId, secId, beta, nodeI, nodeJ, initType, initVal]
+                - Cable:      [id, 3, matId, secId, beta, nodeI, nodeJ, tensionType, tensionVal]
+                - Plate:      [id, 4, matId, thicknessId, beta, nodeI, nodeJ, nodeK, nodeL, plateType]
                 单元数据列表。梁=1, 杆=2, 索=3, 板=4
         """
         try:
@@ -137,6 +243,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Successfully created {len(element_data)} elements (成功创建 {len(element_data)} 个单元)"
         except Exception as e:
             return f"Error creating elements (创建单元失败): {e}"
+
+
 
     @mcp.tool()
     def create_material(
