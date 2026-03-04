@@ -28,6 +28,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         
         Use this ONLY when starting a brand new project, NOT when modifying an existing one.
         (仅在从零开始新建桥梁时使用，修改现有模型时绝对不要调用此工具)
+
+        CRITICAL LLM INSTRUCTION: Do NOT call this tool autonomously to fix your own mistakes. 
+        You MUST explicitly ask the USER for permission before calling this tool.
+        (严重的指令：大模型绝对不可为了修复自己的建型错误而自行调用此工具清空模型！必须先向用户询问并获得许可！)
         
         Args:
             confirm: Must be set to true to execute (必须设为true以确认操作)
@@ -337,19 +341,28 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     # ── 4. Delete operations ──────────────────────────────────────────
 
     @mcp.tool()
-    def remove_nodes(ids: Any = None) -> str:
+    def remove_nodes(ids: Any = None, confirm_delete_all: bool = False) -> str:
         """
         Delete nodes from the model (删除节点).
 
         Args:
             ids: Node ID(s) to delete. Supports int, list, or range string '1to10'.
-                 Leave empty to delete ALL nodes (危险！).
-                 (节点编号，留空则删除全部节点，谨慎使用)
+                 Leave empty to delete ALL nodes.
+                 (节点编号，留空则删除全部节点)
+            confirm_delete_all: MUST be set to true if ids is empty (deleting all nodes).
+                                (如果要删除所有节点，必须设为 true)
+
+        CRITICAL LLM INSTRUCTION: Do NOT delete all nodes autonomously to fix your own mistakes.
+        You MUST explicitly ask the USER for permission before calling this tool with empty ids.
+        (大模型绝对不可为了修复自己的错误而自行清空所有节点！必须先向用户询问并获得许可！)
 
         Example:
             remove_nodes(ids=[5, 6, 7])  # Delete specific nodes
         """
         try:
+            if ids is None and not confirm_delete_all:
+                return "Aborted: To delete ALL nodes, you must set confirm_delete_all=True. (中止：要删除所有节点必须确认)"
+                
             if ids is not None:
                 provider.remove_nodes(ids=ids)
             else:
@@ -361,21 +374,30 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             return f"Error removing nodes (删除节点失败): {e}"
 
     @mcp.tool()
-    def remove_elements(ids: Any = None, remove_free_nodes: bool = False) -> str:
+    def remove_elements(ids: Any = None, remove_free_nodes: bool = False, confirm_delete_all: bool = False) -> str:
         """
         Delete elements from the model (删除单元).
 
         Args:
             ids: Element ID(s) to delete. Supports int, list, or range string '1to10'.
-                 Leave empty to delete ALL elements (危险！).
-                 (单元编号，留空则删除全部单元，谨慎使用)
+                 Leave empty to delete ALL elements.
+                 (单元编号，留空则删除全部单元)
             remove_free_nodes: Also delete nodes that become free after element deletion
                                (是否同时删除孤立节点，默认不删除)
+            confirm_delete_all: MUST be set to true if ids is empty (deleting all elements).
+                                (如果要删除所有单元，必须设为 true)
+
+        CRITICAL LLM INSTRUCTION: Do NOT delete all elements autonomously to fix your own mistakes.
+        You MUST explicitly ask the USER for permission before calling this tool with empty ids.
+        (大模型绝对不可为了修复自己的错误而自行清空所有单元！必须先向用户询问并获得许可！)
 
         Example:
             remove_elements(ids="11to20")
         """
         try:
+            if ids is None and not confirm_delete_all:
+                return "Aborted: To delete ALL elements, you must set confirm_delete_all=True. (中止：要删除所有单元必须确认)"
+
             if ids is not None:
                 provider.remove_elements(ids=ids, remove_free=remove_free_nodes)
             else:
