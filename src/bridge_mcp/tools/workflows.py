@@ -67,7 +67,8 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
             # 3. Create nodes along X-axis
             n = num_elements + 1
             dx = span / num_elements
-            node_data = [[i + 1, i * dx, 0.0, 0.0] for i in range(n)]
+            # Create node array for simple beam
+            node_data = [[i * dx, 0.0, 0.0] for i in range(n)]
             provider.add_nodes(node_data=node_data, is_merged=True)
             log.append(f"✓ {n} nodes created (x=0 to {span}m)")
 
@@ -80,8 +81,9 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
             sec_id = sections[0] if sections else 1
 
             # 5. Create beam elements
+            # Generate sequential beam element array: [id, type, matId, secId, beta, nodeI, nodeJ, initType, initVal]
             ele_data = [
-                [i + 1, 1, mat_id, sec_id, 0, i + 1, i + 2]
+                [i + 1, 1, mat_id, sec_id, 0.0, i + 1, i + 2, 0, 0.0]
                 for i in range(num_elements)
             ]
             provider.add_elements(ele_data=ele_data)
@@ -98,10 +100,15 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
 
             # 7. Add self-weight load case automatically
             try:
+                # Must create the load case first before adding loads to it
+                try:
+                    provider.add_static_load_case(name=self_weight_case, case_type=1)  # 1=Dead Load
+                except Exception:
+                    pass  # might already exist
                 provider.add_self_weight(case_name=self_weight_case)
-                log.append(f"✓ Self-weight case '{self_weight_case}' added")
-            except Exception:
-                log.append(f"ℹ Self-weight case skipped (add manually if needed)")
+                log.append(f"✓ Static load case '{self_weight_case}' and self-weight added")
+            except Exception as e:
+                log.append(f"ℹ Self-weight case skipped (error: {e})")
 
             return (
                 f"✅ Simple beam bridge created successfully! (简支梁桥模型创建成功)\n"
@@ -156,15 +163,13 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
             # 2. Create nodes
             node_data = []
             x = 0.0
-            node_id = 1
             for span_len in spans:
                 dx = span_len / num_elements_per_span
                 for j in range(num_elements_per_span):
-                    node_data.append([node_id, round(x, 6), 0.0, 0.0])
+                    node_data.append([round(x, 6), 0.0, 0.0])
                     x += dx
-                    node_id += 1
             # Add final node
-            node_data.append([node_id, round(total_length, 6), 0.0, 0.0])
+            node_data.append([round(total_length, 6), 0.0, 0.0])
             provider.add_nodes(node_data=node_data, is_merged=True)
             total_nodes = len(node_data)
             log.append(f"✓ {total_nodes} nodes created")
@@ -178,8 +183,10 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
             sec_id = sections[0] if sections else 1
 
             total_elements = total_spans * num_elements_per_span
+            
+            # Generate sequential beam element array: [id, type, matId, secId, beta, nodeI, nodeJ, initType, initVal]
             ele_data = [
-                [i + 1, 1, mat_id, sec_id, 0, i + 1, i + 2]
+                [i + 1, 1, mat_id, sec_id, 0.0, i + 1, i + 2, 0, 0.0]
                 for i in range(total_elements)
             ]
             provider.add_elements(ele_data=ele_data)
@@ -211,10 +218,14 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
 
             # 5. Self-weight
             try:
+                try:
+                    provider.add_static_load_case(name=self_weight_case, case_type=1)
+                except Exception:
+                    pass
                 provider.add_self_weight(case_name=self_weight_case)
-                log.append(f"✓ Self-weight case '{self_weight_case}' added")
-            except Exception:
-                log.append("ℹ Self-weight case skipped")
+                log.append(f"✓ Static load case '{self_weight_case}' and self-weight added")
+            except Exception as e:
+                log.append(f"ℹ Self-weight case skipped (error: {e})")
 
             spans_str = "+".join(f"{s:.0f}" for s in spans)
             return (

@@ -244,6 +244,31 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         except Exception as e:
             return f"Error creating elements (创建单元失败): {e}"
 
+    @mcp.tool()
+    def create_load_case(
+        name: str,
+        case_type: int = 1,
+        desc: str = "",
+    ) -> str:
+        """
+        Create a static load case (创建静力荷载工况).
+
+        Before applying self-weight or other static loads, a load case MUST be created first.
+        必须先创建荷载工况，然后才能在该工况下施加自重、节点荷载等。
+
+        Args:
+            name: Name of the load case (工况名称, e.g. "SW", "DeadLoad", "PreStress")
+            case_type: Type of load (荷载类型):
+                       0=User Defined(用户定义), 1=Dead Load(恒载/自重),
+                       2=Construction(施工荷载), 3=PreStress(预应力荷载), etc.
+            desc: Optional description (工况描述)
+        """
+        try:
+            provider.add_load_case(name=name, case_type=case_type, desc=desc)
+            return f"Successfully created load case '{name}' (成功创建荷载工况 '{name}')"
+        except Exception as e:
+            return f"Error creating load case '{name}' (创建工况失败): {e}"
+
 
 
     @mcp.tool()

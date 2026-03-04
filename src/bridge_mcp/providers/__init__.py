@@ -334,7 +334,12 @@ class BridgeProvider(ABC):
         """Get live load analysis results. 获取移动荷载结果"""
         ...
 
-    # ── Self-weight ────────────────────────────────────────────────────
+    # ── Load Operations ────────────────────────────────────────────────
+
+    @abstractmethod
+    def add_load_case(self, name: str, case_type: int = 1, desc: str = "") -> None:
+        """Add a static load case. 添加静力荷载工况"""
+        ...
 
     @abstractmethod
     def add_self_weight(self, case_name: str, **kwargs) -> None:

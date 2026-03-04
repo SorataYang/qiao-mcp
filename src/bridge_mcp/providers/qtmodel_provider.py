@@ -340,6 +340,11 @@ class QtModelProvider(BridgeProvider):
 
     # ── Load Operations ────────────────────────────────────────────────
 
+    def add_load_case(self, name: str, case_type: int = 1, desc: str = "") -> None:
+        self._require_available()
+        self._mdb.add_load_case(name=name, case_type=case_type, desc=desc)
+        self._mdb.update_model()
+
     def add_nodal_force(
         self, node_id: Any, case_name: str, load_info: list, **kwargs
     ) -> None:
