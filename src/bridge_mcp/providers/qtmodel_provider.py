@@ -605,13 +605,9 @@ class QtModelProvider(BridgeProvider):
 
     def add_self_weight(self, case_name: str, **kwargs) -> None:
         self._require_available()
-        # qtmodel does not have a dedicated add_self_weight API.
-        # Self-weight is enabled globally via update_global_setting.
-        # Here we create a load case for it — the solver applies self-weight automatically.
-        try:
-            self._mdb.add_load_case(name=case_name, case_type=1)  # type 1 = static
-        except Exception:
-            pass  # Load case may already exist
+        # In QiaoTong, self-weight is applied by the solver automatically when a
+        # load case exists. The caller must create the load group and load case
+        # BEFORE calling this method. We only trigger the model refresh here.
         self._mdb.update_model()
 
     # ── Tendon Data ────────────────────────────────────────────────────
