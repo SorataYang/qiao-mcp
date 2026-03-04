@@ -337,8 +337,15 @@ class BridgeProvider(ABC):
     # ── Load Operations ────────────────────────────────────────────────
 
     @abstractmethod
-    def add_load_case(self, name: str, case_type: int = 1, desc: str = "") -> None:
-        """Add a static load case. 添加静力荷载工况"""
+    def add_load_group(self, name: str) -> None:
+        """Add a load group. 添加荷载组"""
+        ...
+
+    @abstractmethod
+    def add_load_case(self, name: str, case_type: str = "施工阶段荷载", desc: str = "") -> None:
+        """Add a static load case. 添加荷载工况
+        case_type options: “施工阶段荷载”、“恒荷”、“活荷”、“预应力”、“车辆荷载”、“刚性阶段分析荷载”
+        """
         ...
 
     @abstractmethod

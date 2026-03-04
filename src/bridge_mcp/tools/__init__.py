@@ -245,27 +245,46 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating elements (创建单元失败): {e}"
 
     @mcp.tool()
+    def create_load_group(name: str = "默认荷载组") -> str:
+        """
+        Create a load group (创建荷载组).
+
+        Every load in QiaoTong must belong to a load group.
+        Create this before creating a load case or applying loads.
+        每个荷载必须属于某个荷载组，迅建荷载工况之前先建荷载组。
+
+        Args:
+            name: Load group name (荷载组名称, e.g. "默认荷载组")
+        """
+        try:
+            provider.add_load_group(name=name)
+            return f"Successfully created load group '{name}' (成功创建荷载组 '{name}')"
+        except Exception as e:
+            return f"Error creating load group (创建荷载组失败): {e}"
+
+    @mcp.tool()
     def create_load_case(
         name: str,
-        case_type: int = 1,
-        desc: str = "",
+        case_type: str = "施工阶段荷载",
     ) -> str:
         """
         Create a static load case (创建静力荷载工况).
 
         Before applying self-weight or other static loads, a load case MUST be created first.
-        必须先创建荷载工况，然后才能在该工况下施加自重、节点荷载等。
+        必须先创建荷载工况，然后才能在该工况下施加荷载。
 
         Args:
-            name: Name of the load case (工况名称, e.g. "SW", "DeadLoad", "PreStress")
-            case_type: Type of load (荷载类型):
-                       0=User Defined(用户定义), 1=Dead Load(恒载/自重),
-                       2=Construction(施工荷载), 3=PreStress(预应力荷载), etc.
-            desc: Optional description (工况描述)
+            name: Name of the load case (工况名称, e.g. "自重", "恒荷", "SW")
+            case_type: Type of load case (荷载工况类型), valid options:
+                "施工阶段荷载" (default, for stage-based 阶段工况),
+                "恒荷" (permanent/dead load),
+                "活荷" (live load),
+                "预应力" (prestress),
+                "车辆荷载" (vehicle load)
         """
         try:
-            provider.add_load_case(name=name, case_type=case_type, desc=desc)
-            return f"Successfully created load case '{name}' (成功创建荷载工况 '{name}')"
+            provider.add_load_case(name=name, case_type=case_type)
+            return f"Successfully created load case '{name}' (type='{case_type}') (成功创建荷载工况 '{name}')"
         except Exception as e:
             return f"Error creating load case '{name}' (创建工况失败): {e}"
 

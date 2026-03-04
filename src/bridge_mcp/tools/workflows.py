@@ -98,17 +98,20 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
             )
             log.append(f"✓ Pin support at node 1, roller at node {n}")
 
-            # 7. Add self-weight load case automatically
+            # 7. Add self-weight (load group → load case → self-weight)
             try:
-                # Must create the load case first before adding loads to it
                 try:
-                    provider.add_static_load_case(name=self_weight_case, case_type=1)  # 1=Dead Load
+                    provider.add_load_group(name="默认荷载组")
                 except Exception:
-                    pass  # might already exist
+                    pass  # group likely already exists
+                try:
+                    provider.add_load_case(name=self_weight_case, case_type="施工阶段荷载")
+                except Exception:
+                    pass  # case likely already exists
                 provider.add_self_weight(case_name=self_weight_case)
-                log.append(f"✓ Static load case '{self_weight_case}' and self-weight added")
+                log.append(f"✓ Load group, load case '{self_weight_case}' and system self-weight applied")
             except Exception as e:
-                log.append(f"ℹ Self-weight case skipped (error: {e})")
+                log.append(f"ℹ Self-weight setup failed (error: {e})")
 
             return (
                 f"✅ Simple beam bridge created successfully! (简支梁桥模型创建成功)\n"
@@ -216,16 +219,20 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
             )
             log.append(f"✓ Right abutment: roller support at node {total_nodes}")
 
-            # 5. Self-weight
+            # 5. Self-weight (load group → load case → self-weight)
             try:
                 try:
-                    provider.add_static_load_case(name=self_weight_case, case_type=1)
+                    provider.add_load_group(name="默认荷载组")
+                except Exception:
+                    pass
+                try:
+                    provider.add_load_case(name=self_weight_case, case_type="施工阶段荷载")
                 except Exception:
                     pass
                 provider.add_self_weight(case_name=self_weight_case)
-                log.append(f"✓ Static load case '{self_weight_case}' and self-weight added")
+                log.append(f"✓ Load group, load case '{self_weight_case}' and system self-weight applied")
             except Exception as e:
-                log.append(f"ℹ Self-weight case skipped (error: {e})")
+                log.append(f"ℹ Self-weight setup failed (error: {e})")
 
             spans_str = "+".join(f"{s:.0f}" for s in spans)
             return (
