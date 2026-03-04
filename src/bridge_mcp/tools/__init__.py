@@ -19,27 +19,104 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def create_nodes(
         node_data: list[list[float]],
-        intersected: bool = True,
+        intersected: bool = False,
         is_merged: bool = True,
+        merge_error: float = 1e-3,
+        numbering_type: int = 1,
+        start_id: int = 1,
     ) -> str:
         """
-        Create nodes in the bridge model (创建节点).
+        Create nodes in the bridge model from an explicit coordinate list (创建节点).
+
+        Prefer `create_nodes_linear` when nodes are evenly spaced along a line
+        — it is far more concise for typical bridge models.
 
         Args:
             node_data: List of node coordinates. Format: [[x,y,z], ...] or [[id,x,y,z], ...]
                        节点坐标列表，格式: [[x,y,z],...] 或 [[id,x,y,z],...]
-            intersected: Whether to perform intersection splitting (是否交叉分割)
-            is_merged: Whether to ignore duplicate nodes at same position (是否忽略重合节点)
+            intersected: Whether to split elements at intersection points (是否交叉分割, 默认关)
+            is_merged: Whether to merge duplicate nodes at the same position (是否合并重合节点)
+            merge_error: Merge tolerance in model units, default 1e-3 (合并容差，默认1mm)
+            numbering_type: Node numbering strategy: 1=sequential (编号方式: 1=顺序编号)
+            start_id: Starting node ID when auto-numbering (起始节点编号)
         """
         try:
             provider.add_nodes(
                 node_data=node_data,
                 intersected=intersected,
                 is_merged=is_merged,
+                merge_error=merge_error,
+                numbering_type=numbering_type,
+                start_id=start_id,
             )
             return f"Successfully created {len(node_data)} nodes (成功创建 {len(node_data)} 个节点)"
         except Exception as e:
             return f"Error creating nodes (创建节点失败): {e}"
+
+    @mcp.tool()
+    def create_nodes_linear(
+        count: int,
+        start_x: float = 0.0,
+        start_y: float = 0.0,
+        start_z: float = 0.0,
+        spacing_x: float = 0.0,
+        spacing_y: float = 0.0,
+        spacing_z: float = 0.0,
+        start_id: int = 1,
+        is_merged: bool = True,
+        merge_error: float = 1e-3,
+    ) -> str:
+        """
+        Create evenly-spaced nodes along a straight line — the preferred way to model
+        a bridge girder (等间距直线批量创建节点).
+
+        Instead of listing 101 coordinates for a 100m span at 1m intervals, just specify
+        the count, starting point, and spacing in each direction.
+
+        Args:
+            count: Number of nodes to create (节点数量)
+            start_x: X coordinate of the first node (起点X坐标)
+            start_y: Y coordinate of the first node (起点Y坐标)
+            start_z: Z coordinate of the first node (起点Z坐标)
+            spacing_x: X increment between nodes, m (相邻节点X方向间距)
+            spacing_y: Y increment between nodes (相邻节点Y方向间距)
+            spacing_z: Z increment between nodes (相邻节点Z方向间距)
+            start_id: ID of the first node (起始节点编号)
+            is_merged: Whether to merge duplicate nodes (是否合并重合节点)
+            merge_error: Merge tolerance, default 1e-3 (合并容差)
+
+        Examples:
+            # 100m simply-supported beam, 101 nodes at 1m pitch along X axis:
+            create_nodes_linear(count=101, start_x=0, spacing_x=1.0)
+
+            # Two-span 50m+50m continuous beam, start x from 0:
+            create_nodes_linear(count=101, start_x=0, spacing_x=1.0)
+        """
+        try:
+            node_data = [
+                [start_x + i * spacing_x, start_y + i * spacing_y, start_z + i * spacing_z]
+                for i in range(count)
+            ]
+            provider.add_nodes(
+                node_data=node_data,
+                intersected=False,
+                is_merged=is_merged,
+                merge_error=merge_error,
+                numbering_type=1,
+                start_id=start_id,
+            )
+            end_x = start_x + (count - 1) * spacing_x
+            end_y = start_y + (count - 1) * spacing_y
+            end_z = start_z + (count - 1) * spacing_z
+            return (
+                f"Created {count} nodes (IDs {start_id}–{start_id + count - 1}), "
+                f"from ({start_x},{start_y},{start_z}) to ({end_x:.3f},{end_y:.3f},{end_z:.3f}) "
+                f"(成功批量创建 {count} 个等间距节点)"
+            )
+        except Exception as e:
+            return f"Error creating linear nodes (批量创建节点失败): {e}"
+
+
 
     @mcp.tool()
     def create_elements(
