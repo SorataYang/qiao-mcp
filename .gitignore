@@ -207,8 +207,13 @@ marimo/_lsp/
 __marimo__/
 
 # Reference documents
-reference-docs/
+reference-docs/*
+!reference-docs/.gitkeep
 
 # Local qtmodel example scripts exported from QiaoTong — not committed to repo
 examples/*
 !examples/.gitkeep
+
+# Reference codes for AI learning
+reference_codes/*
+!reference_codes/.gitkeep
