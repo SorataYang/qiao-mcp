@@ -362,6 +362,103 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating section (创建截面失败): {e}"
 
     @mcp.tool()
+    def create_rectangle_section(name: str, width: float, height: float) -> str:
+        """
+        Create a rectangular cross-section (创建矩形截面).
+
+        Args:
+            name: Section name (截面名称)
+            width: Rectangle width (长)
+            height: Rectangle height (高)
+        """
+        try:
+            provider.add_section(name=name, sec_type="矩形", sec_info=[width, height])
+            return f"Successfully created rectangular section '{name}' ({width}x{height})"
+        except Exception as e:
+            return f"Error creating rectangular section: {e}"
+
+    @mcp.tool()
+    def create_circle_section(name: str, diameter: float) -> str:
+        """
+        Create a circular cross-section (创建圆形截面).
+
+        Args:
+            name: Section name (截面名称)
+            diameter: Circle diameter (直径)
+        """
+        try:
+            provider.add_section(name=name, sec_type="圆形", sec_info=[diameter])
+            return f"Successfully created circular section '{name}' (D={diameter})"
+        except Exception as e:
+            return f"Error creating circular section: {e}"
+
+    @mcp.tool()
+    def create_circular_tube_section(name: str, diameter: float, thickness: float) -> str:
+        """
+        Create a circular tube cross-section (创建圆管截面).
+
+        Args:
+            name: Section name (截面名称)
+            diameter: Tube outer diameter (直径)
+            thickness: Wall thickness (壁厚)
+        """
+        try:
+            provider.add_section(name=name, sec_type="圆管", sec_info=[diameter, thickness])
+            return f"Successfully created circular tube section '{name}'"
+        except Exception as e:
+            return f"Error creating circular tube section: {e}"
+
+    @mcp.tool()
+    def create_t_section(name: str, width: float, height: float, web_thickness: float, top_thickness: float) -> str:
+        """
+        Create a T-shape cross-section (创建T形截面).
+
+        Args:
+            name: Section name (截面名称)
+            width: Top flange width (长)
+            height: Total height (高)
+            web_thickness: Web thickness (腹板厚)
+            top_thickness: Top flange thickness (顶板厚)
+        """
+        try:
+            provider.add_section(name=name, sec_type="T形", sec_info=[width, height, web_thickness, top_thickness])
+            return f"Successfully created T-shape section '{name}'"
+        except Exception as e:
+            return f"Error creating T-shape section: {e}"
+
+    @mcp.tool()
+    def create_i_section(
+        name: str,
+        top_width: float,
+        bottom_width: float,
+        height: float,
+        web_thickness: float,
+        top_thickness: float,
+        bottom_thickness: float,
+    ) -> str:
+        """
+        Create an I-shape cross-section (创建I字形截面).
+
+        Args:
+            name: Section name (截面名称)
+            top_width: Top flange width (顶板宽)
+            bottom_width: Bottom flange width (底板宽)
+            height: Total height (高)
+            web_thickness: Web thickness (腹板厚)
+            top_thickness: Top flange thickness (顶板厚)
+            bottom_thickness: Bottom flange thickness (底板厚)
+        """
+        try:
+            provider.add_section(
+                name=name,
+                sec_type="I字形",
+                sec_info=[top_width, bottom_width, height, web_thickness, top_thickness, bottom_thickness],
+            )
+            return f"Successfully created I-shape section '{name}'"
+        except Exception as e:
+            return f"Error creating I-shape section: {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
