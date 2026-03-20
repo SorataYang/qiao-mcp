@@ -754,6 +754,38 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating CFSB section: {e}"
 
     @mcp.tool()
+    def create_ribbed_h_section(
+        name: str,
+        height: float,
+        width: float,
+        left_right_web_thickness: float,
+        cross_web_thickness: float,
+        web_rib_height: float,
+        web_rib_thickness: float,
+    ) -> str:
+        """
+        Create a ribbed H-section (创建带肋H截面).
+
+        Args:
+            name: Section name (截面名称)
+            height: Total height (高)
+            width: Total width (长)
+            left_right_web_thickness: Left and right web thickness (左右腹板厚)
+            cross_web_thickness: Cross web thickness (横向腹板厚)
+            web_rib_height: Web rib height (腹板肋高)
+            web_rib_thickness: Web rib thickness (腹板肋厚)
+        """
+        try:
+            provider.add_section(
+                name=name,
+                sec_type="带肋H截面",
+                sec_info=[height, width, left_right_web_thickness, cross_web_thickness, web_rib_height, web_rib_thickness]
+            )
+            return f"Successfully created ribbed H-section '{name}'"
+        except Exception as e:
+            return f"Error creating ribbed H-section: {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
