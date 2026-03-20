@@ -786,6 +786,48 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating ribbed H-section: {e}"
 
     @mcp.tool()
+    def create_ribbed_i_section(
+        name: str,
+        top_width: float,
+        bottom_width: float,
+        web_height: float,
+        top_thickness: float,
+        bottom_thickness: float,
+        web_thickness: float,
+        top_flange_rib_distance: float,
+        rib_count: int,
+        rib_spacing: float,
+        rib_height: float,
+        rib_thickness: float,
+    ) -> str:
+        """
+        Create a ribbed steel I-shape section (创建钢工字型带肋截面).
+
+        Args:
+            name: Section name (截面名称)
+            top_width: Top flange width (顶板长)
+            bottom_width: Bottom flange width (底板长)
+            web_height: Web height (中腹高)
+            top_thickness: Top flange thickness (顶板厚)
+            bottom_thickness: Bottom flange thickness (底板厚)
+            web_thickness: Web thickness (腹板厚)
+            top_flange_rib_distance: Distance from top flange to web rib (顶板与腹板肋的距离)
+            rib_count: Number of ribs (肋数)
+            rib_spacing: Rib spacing (肋距)
+            rib_height: Rib height (肋高)
+            rib_thickness: Rib thickness (肋厚)
+        """
+        try:
+            provider.add_section(
+                name=name,
+                sec_type="钢工字型带肋",
+                sec_info=[top_width, bottom_width, web_height, top_thickness, bottom_thickness, web_thickness, top_flange_rib_distance, rib_count, rib_spacing, rib_height, rib_thickness]
+            )
+            return f"Successfully created ribbed steel I-shape section '{name}'"
+        except Exception as e:
+            return f"Error creating ribbed steel I-shape section: {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
