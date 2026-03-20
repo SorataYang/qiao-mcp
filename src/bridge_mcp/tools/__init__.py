@@ -706,6 +706,22 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating concrete I-shape section: {e}"
 
     @mcp.tool()
+    def create_cfst_section(name: str, diameter: float, thickness: float) -> str:
+        """
+        Create a Concrete Filled Steel Tube (CFST) cross-section (创建钢管砼组合截面).
+
+        Args:
+            name: Section name (截面名称)
+            diameter: Outer diameter of the steel tube (钢管直径)
+            thickness: Wall thickness of the steel tube (钢管壁厚)
+        """
+        try:
+            provider.add_section(name=name, sec_type="钢管砼", sec_info=[diameter, thickness])
+            return f"Successfully created CFST section '{name}'"
+        except Exception as e:
+            return f"Error creating CFST section: {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
