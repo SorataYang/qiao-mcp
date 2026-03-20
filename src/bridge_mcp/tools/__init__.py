@@ -828,6 +828,52 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating ribbed steel I-shape section: {e}"
 
     @mcp.tool()
+    def create_ribbed_steel_box_section(
+        name: str,
+        width: float,
+        height: float,
+        web_thickness: float,
+        top_thickness: float,
+        bottom_thickness: float,
+        top_bottom_rib_height: float,
+        top_bottom_rib_thickness: float,
+        web_rib_height: float,
+        web_rib_thickness: float,
+        top_bottom_rib_spacing: float,
+        web_rib_spacing: float,
+        web_rib_count: int,
+        top_bottom_rib_count: int,
+    ) -> str:
+        """
+        Create a ribbed steel box cross-section (创建带肋钢箱截面).
+
+        Args:
+            name: Section name (截面名称)
+            width: Total width (长)
+            height: Total height (高)
+            web_thickness: Web thickness (腹板厚)
+            top_thickness: Top flange thickness (顶板厚)
+            bottom_thickness: Bottom flange thickness (底板厚)
+            top_bottom_rib_height: Top and bottom rib height (顶底板肋高)
+            top_bottom_rib_thickness: Top and bottom rib thickness (顶底板肋厚)
+            web_rib_height: Web rib height (腹板肋高)
+            web_rib_thickness: Web rib thickness (腹板肋厚)
+            top_bottom_rib_spacing: Top and bottom rib spacing (顶底板肋距)
+            web_rib_spacing: Web rib spacing (腹板肋距)
+            web_rib_count: Number of web ribs (腹板肋数)
+            top_bottom_rib_count: Number of top/bottom ribs (顶底板肋数)
+        """
+        try:
+            provider.add_section(
+                name=name,
+                sec_type="带肋钢箱",
+                sec_info=[width, height, web_thickness, top_thickness, bottom_thickness, top_bottom_rib_height, top_bottom_rib_thickness, web_rib_height, web_rib_thickness, top_bottom_rib_spacing, web_rib_spacing, web_rib_count, top_bottom_rib_count]
+            )
+            return f"Successfully created ribbed steel box section '{name}'"
+        except Exception as e:
+            return f"Error creating ribbed steel box section: {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
