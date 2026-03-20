@@ -610,6 +610,24 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating inner octagon section: {e}"
 
     @mcp.tool()
+    def create_inverted_t_section(name: str, width: float, height: float, web_thickness: float, bottom_thickness: float) -> str:
+        """
+        Create an inverted T-shape cross-section (创建倒T形截面).
+
+        Args:
+            name: Section name (截面名称)
+            width: Bottom flange width (长)
+            height: Total height (高)
+            web_thickness: Web thickness (腹板厚)
+            bottom_thickness: Bottom flange thickness (底板厚)
+        """
+        try:
+            provider.add_section(name=name, sec_type="倒T形", sec_info=[width, height, web_thickness, bottom_thickness])
+            return f"Successfully created inverted T-shape section '{name}'"
+        except Exception as e:
+            return f"Error creating inverted T-shape section: {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
