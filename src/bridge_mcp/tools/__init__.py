@@ -628,6 +628,44 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating inverted T-shape section: {e}"
 
     @mcp.tool()
+    def create_horseshoe_t_section(
+        name: str,
+        width: float,
+        height: float,
+        web_thickness: float,
+        flange_thickness: float,
+        web_bottom_taper_height: float,
+        top_chamfer_width: float,
+        top_chamfer_height: float,
+        bottom_chamfer_width: float,
+        bottom_chamfer_height: float,
+    ) -> str:
+        """
+        Create a horseshoe T-shape cross-section (创建马蹄T形截面).
+
+        Args:
+            name: Section name (截面名称)
+            width: Flange width (长)
+            height: Total height (高)
+            web_thickness: Web thickness (腹板厚)
+            flange_thickness: Flange thickness (底板厚)
+            web_bottom_taper_height: Web bottom taper height (腹板底变高)
+            top_chamfer_width: Top chamfer width (顶板倒角宽)
+            top_chamfer_height: Top chamfer height (顶板倒角高)
+            bottom_chamfer_width: Bottom chamfer width (腹板倒角宽)
+            bottom_chamfer_height: Bottom chamfer height (腹板倒角高)
+        """
+        try:
+            provider.add_section(
+                name=name,
+                sec_type="马蹄T形",
+                sec_info=[width, height, web_thickness, flange_thickness, web_bottom_taper_height, top_chamfer_width, top_chamfer_height, bottom_chamfer_width, bottom_chamfer_height]
+            )
+            return f"Successfully created horseshoe T-shape section '{name}'"
+        except Exception as e:
+            return f"Error creating horseshoe T-shape section: {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
