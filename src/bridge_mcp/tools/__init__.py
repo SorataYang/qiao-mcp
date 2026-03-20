@@ -666,6 +666,46 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating horseshoe T-shape section: {e}"
 
     @mcp.tool()
+    def create_concrete_i_section(
+        name: str,
+        top_width: float,
+        bottom_width: float,
+        height: float,
+        web_thickness: float,
+        top_thickness: float,
+        bottom_thickness: float,
+        top_chamfer_width: float,
+        top_chamfer_height: float,
+        bottom_chamfer_width: float,
+        bottom_chamfer_height: float,
+    ) -> str:
+        """
+        Create a concrete I-shape cross-section (创建I字型混凝土截面).
+
+        Args:
+            name: Section name (截面名称)
+            top_width: Top flange width (顶板宽)
+            bottom_width: Bottom flange width (底板宽)
+            height: Total height (高)
+            web_thickness: Web thickness (腹板厚)
+            top_thickness: Top flange thickness (顶板厚)
+            bottom_thickness: Bottom flange thickness (底板厚)
+            top_chamfer_width: Top chamfer width (顶板倒角宽)
+            top_chamfer_height: Top chamfer height (顶板倒角高)
+            bottom_chamfer_width: Bottom chamfer width (底板倒角宽)
+            bottom_chamfer_height: Bottom chamfer height (底板倒角高)
+        """
+        try:
+            provider.add_section(
+                name=name,
+                sec_type="I字型混凝土",
+                sec_info=[top_width, bottom_width, height, web_thickness, top_thickness, bottom_thickness, top_chamfer_width, top_chamfer_height, bottom_chamfer_width, bottom_chamfer_height]
+            )
+            return f"Successfully created concrete I-shape section '{name}'"
+        except Exception as e:
+            return f"Error creating concrete I-shape section: {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
