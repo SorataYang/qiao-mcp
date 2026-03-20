@@ -459,6 +459,89 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating I-shape section: {e}"
 
     @mcp.tool()
+    def create_box_section(
+        name: str,
+        width: float,
+        height: float,
+        bottom_width: float,
+        web_thickness: float,
+        top_thickness: float,
+        bottom_thickness: float,
+    ) -> str:
+        """
+        Create a box cross-section (创建箱型截面).
+
+        Args:
+            name: Section name (截面名称)
+            width: Top width (长)
+            height: Total height (高)
+            bottom_width: Bottom width (底板宽)
+            web_thickness: Web thickness (腹板厚)
+            top_thickness: Top flange thickness (顶板厚)
+            bottom_thickness: Bottom flange thickness (底板厚)
+        """
+        try:
+            provider.add_section(
+                name=name,
+                sec_type="箱型",
+                sec_info=[width, height, bottom_width, web_thickness, top_thickness, bottom_thickness],
+            )
+            return f"Successfully created box section '{name}'"
+        except Exception as e:
+            return f"Error creating box section: {e}"
+
+    @mcp.tool()
+    def create_solid_octagon_section(name: str, width: float, height: float, chamfer_height: float, chamfer_width: float) -> str:
+        """
+        Create a solid octagon cross-section (创建实腹八边形截面).
+
+        Args:
+            name: Section name (截面名称)
+            width: Total width (长)
+            height: Total height (高)
+            chamfer_height: Chamfer height (倒角高)
+            chamfer_width: Chamfer width (倒角宽)
+        """
+        try:
+            provider.add_section(name=name, sec_type="实腹八边形", sec_info=[width, height, chamfer_height, chamfer_width])
+            return f"Successfully created solid octagon section '{name}'"
+        except Exception as e:
+            return f"Error creating solid octagon section: {e}"
+
+    @mcp.tool()
+    def create_solid_round_ended_section(name: str, width: float, height: float) -> str:
+        """
+        Create a solid round-ended cross-section (创建实腹圆端形截面).
+
+        Args:
+            name: Section name (截面名称)
+            width: Total width (长)
+            height: Total height (高)
+        """
+        try:
+            provider.add_section(name=name, sec_type="实腹圆端形", sec_info=[width, height])
+            return f"Successfully created solid round-ended section '{name}'"
+        except Exception as e:
+            return f"Error creating solid round-ended section: {e}"
+
+    @mcp.tool()
+    def create_hollow_round_ended_section(name: str, width: float, height: float, thickness: float) -> str:
+        """
+        Create a hollow round-ended cross-section (创建空腹圆端形截面).
+
+        Args:
+            name: Section name (截面名称)
+            width: Total width (长)
+            height: Total height (高)
+            thickness: Wall thickness (壁厚)
+        """
+        try:
+            provider.add_section(name=name, sec_type="空腹圆端形", sec_info=[width, height, thickness])
+            return f"Successfully created hollow round-ended section '{name}'"
+        except Exception as e:
+            return f"Error creating hollow round-ended section: {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
