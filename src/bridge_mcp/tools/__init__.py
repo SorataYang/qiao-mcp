@@ -874,6 +874,58 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating ribbed steel box section: {e}"
 
     @mcp.tool()
+    def create_steel_truss_box_3_section(
+        name: str,
+        height: float,
+        width: float,
+        top_cantilever_rib_height: float,
+        bottom_cantilever_rib_height: float,
+        web_thickness: float,
+        top_thickness: float,
+        bottom_thickness: float,
+        top_rib_height: float,
+        top_rib_thickness: float,
+        bottom_rib_height: float,
+        bottom_rib_thickness: float,
+        web_rib_height: float,
+        web_rib_thickness: float,
+    ) -> str:
+        """
+        Create a Steel Truss Box 3 cross-section (创建钢桁箱梁3截面).
+
+        Args:
+            name: Section name (截面名称)
+            height: Total height (高)
+            width: Total width (长)
+            top_cantilever_rib_height: Top cantilever rib height (上悬臂肋高)
+            bottom_cantilever_rib_height: Bottom cantilever rib height (下悬臂肋高)
+            web_thickness: Web thickness (腹板厚)
+            top_thickness: Top flange thickness (顶板厚)
+            bottom_thickness: Bottom flange thickness (底板厚)
+            top_rib_height: Top rib height (顶板肋高)
+            top_rib_thickness: Top rib thickness (顶板肋厚)
+            bottom_rib_height: Bottom rib height (底板肋高)
+            bottom_rib_thickness: Bottom rib thickness (底板肋厚)
+            web_rib_height: Web rib height (腹板肋高)
+            web_rib_thickness: Web rib thickness (腹板肋厚)
+        """
+        try:
+            provider.add_section(
+                name=name,
+                sec_type="钢桁箱梁3",
+                sec_info=[
+                    height, width, top_cantilever_rib_height, bottom_cantilever_rib_height,
+                    web_thickness, top_thickness, bottom_thickness,
+                    top_rib_height, top_rib_thickness,
+                    bottom_rib_height, bottom_rib_thickness,
+                    web_rib_height, web_rib_thickness
+                ]
+            )
+            return f"Successfully created Steel Truss Box 3 section '{name}'"
+        except Exception as e:
+            return f"Error creating Steel Truss Box 3 section: {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
