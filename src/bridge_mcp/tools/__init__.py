@@ -926,6 +926,49 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating Steel Truss Box 3 section: {e}"
 
     @mcp.tool()
+    def create_concrete_box_girder_section(
+        name: str,
+        box_num: int,
+        box_height: float,
+        sec_info: list[float],
+        symmetry: bool = True,
+        chamfer_info: list[float] | None = None,
+        box_other_info: dict | None = None,
+    ) -> str:
+        """
+        Create a Concrete Box Girder cross-section (创建混凝土箱梁截面).
+
+        Args:
+            name: Section name (截面名称)
+            box_num: Number of box cells (箱室个数)
+            box_height: Box girder height (梁高)
+            sec_info: Complex geometric list (截面几何基础数据列表如 B1,B2...)
+            symmetry: Whether the section is symmetric (是否对称)
+            chamfer_info: Chamfer parameter list (倒角数据列表)
+            box_other_info: Additional parameters config like i1, B0, B4, T4
+        """
+        try:
+            kwargs = {
+                "box_num": box_num,
+                "box_height": box_height,
+                "symmetry": symmetry,
+            }
+            if chamfer_info is not None:
+                kwargs["chamfer_info"] = chamfer_info
+            if box_other_info is not None:
+                kwargs["box_other_info"] = box_other_info
+
+            provider.add_section(
+                name=name,
+                sec_type="混凝土箱梁",
+                sec_info=sec_info,
+                **kwargs
+            )
+            return f"Successfully created Concrete Box Girder section '{name}'"
+        except Exception as e:
+            return f"Error creating Concrete Box Girder section: {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
