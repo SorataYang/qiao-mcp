@@ -992,6 +992,29 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating polygon section: {e}"
 
     @mcp.tool()
+    def create_line_width_section(
+        name: str,
+        sec_lines: list[list[float]]
+    ) -> str:
+        """
+        Create a line-width cross-section (创建线宽截面).
+
+        Args:
+            name: Section name (截面名称)
+            sec_lines: List of line segments with thickness. Format: [[y1, z1, y2, z2, thickness], ...]
+        """
+        try:
+            provider.add_section(
+                name=name,
+                sec_type="线宽",
+                sec_info=[],
+                sec_lines=sec_lines
+            )
+            return f"Successfully created line-width section '{name}'"
+        except Exception as e:
+            return f"Error creating line-width section: {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
