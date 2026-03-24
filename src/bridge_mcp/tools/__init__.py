@@ -969,6 +969,29 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating Concrete Box Girder section: {e}"
 
     @mcp.tool()
+    def create_polygon_section(
+        name: str,
+        loop_segments: dict[str, list[list[float]]]
+    ) -> str:
+        """
+        Create a custom polygon cross-section (创建任意多边形截面).
+
+        Args:
+            name: Section name (截面名称)
+            loop_segments: Dictionary of loops. Keys should be 'main' for outer loop and 'sub1'... for inner hollow loops. Example: `{"main": [[y1,z1], [y2,z2], ...]}`
+        """
+        try:
+            provider.add_section(
+                name=name,
+                sec_type="任意",
+                sec_info=[],
+                loop_segments=loop_segments
+            )
+            return f"Successfully created polygon section '{name}'"
+        except Exception as e:
+            return f"Error creating polygon section: {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
