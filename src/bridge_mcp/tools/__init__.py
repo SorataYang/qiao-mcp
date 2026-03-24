@@ -1015,6 +1015,40 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating line-width section: {e}"
 
     @mcp.tool()
+    def create_section_from_properties(
+        name: str,
+        area: float,
+        ix: float,
+        iy: float,
+        iz: float,
+        sec_property: list[float] | None = None
+    ) -> str:
+        """
+        Create a section directly from its pre-calculated properties (通过截面特性直接创建截面).
+
+        Args:
+            name: Section name (截面名称)
+            area: Cross-sectional area (横截面面积 Area)
+            ix: Torsional constant (扭转惯性矩 Ixx)
+            iy: Moment of inertia about y-axis (抗弯惯性矩 Iyy)
+            iz: Moment of inertia about z-axis (抗弯惯性矩 Izz)
+            sec_property: Full list of properties (up to 29). If not provided, a basic list is auto-generated with Area, Ix, Iy, Iz.
+        """
+        try:
+            if sec_property is None:
+                sec_property = [area, 0, 0, ix, iy, iz] + [0] * 23
+
+            provider.add_section(
+                name=name,
+                sec_type="任意",
+                sec_info=[],
+                sec_property=sec_property
+            )
+            return f"Successfully created property-based section '{name}'"
+        except Exception as e:
+            return f"Error creating property-based section: {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
