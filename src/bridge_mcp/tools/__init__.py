@@ -926,6 +926,99 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating Steel Truss Box 3 section: {e}"
 
     @mcp.tool()
+    def create_steel_truss_box_1_section(
+        name: str,
+        height: float,
+        width: float,
+        left_cantilever_width: float,
+        right_cantilever_width: float,
+        bottom_cantilever_height: float,
+        web_thickness: float,
+        top_thickness: float,
+        bottom_thickness: float,
+        top_rib_height: float,
+        top_rib_thickness: float,
+        bottom_rib_height: float,
+        bottom_rib_thickness: float,
+        top_web_rib_distance: float,
+        web_rib_count: int,
+        web_rib_spacing: float,
+        web_rib_height: float,
+        web_rib_thickness: float,
+        left_web_rib_pos: int,      # 0 for Inner, 1 for Outer
+        right_web_rib_pos: int,     # 0 for Inner, 1 for Outer
+        left_cantilever_rib_spacing: float,
+        left_cantilever_rib_height: float,
+        left_cantilever_rib_thickness: float,
+        left_cantilever_rib_top_dist: float,
+        left_cantilever_rib_bottom_dist: float,
+        left_cantilever_rib_chamfer: float,
+        right_cantilever_rib_spacing: float,
+        right_cantilever_rib_height: float,
+        right_cantilever_rib_thickness: float,
+        right_cantilever_rib_top_dist: float,
+        right_cantilever_rib_bottom_dist: float,
+        right_cantilever_rib_chamfer: float,
+    ) -> str:
+        """
+        Create a Steel Truss Box 1 cross-section (创建钢桁箱梁1截面).
+
+        Args:
+            name: Section name (截面名称)
+            height: Total height without cantilevers (高)
+            width: Total width (长)
+            left_cantilever_width: Left cantilever width (左悬臂长)
+            right_cantilever_width: Right cantilever width (右悬臂长)
+            bottom_cantilever_height: Bottom cantilever height (下悬臂高)
+            web_thickness: Web thickness (腹板厚)
+            top_thickness: Top flange thickness (顶板厚)
+            bottom_thickness: Bottom flange thickness (底板厚)
+            top_rib_height: Top rib height (顶板肋高)
+            top_rib_thickness: Top rib thickness (顶板肋厚)
+            bottom_rib_height: Bottom rib height (底板肋高)
+            bottom_rib_thickness: Bottom rib thickness (底板肋厚)
+            top_web_rib_distance: Distance from top flange to web ribs (顶板与腹板肋距)
+            web_rib_count: Number of web ribs (腹板肋数)
+            web_rib_spacing: Web rib spacing (腹板肋距)
+            web_rib_height: Web rib height (腹板肋高)
+            web_rib_thickness: Web rib thickness (腹板肋厚)
+            left_web_rib_pos: Left web rib position (0:内Inner, 1:外Outer)
+            right_web_rib_pos: Right web rib position (0:内Inner, 1:外Outer)
+            left_cantilever_rib_spacing: Left cantilever rib spacing (左悬臂肋距)
+            left_cantilever_rib_height: Left cantilever rib height (左悬臂肋高)
+            left_cantilever_rib_thickness: Left cantilever rib thickness (左悬臂肋厚)
+            left_cantilever_rib_top_dist: Left cantilever rib top dist (左悬臂肋顶距离)
+            left_cantilever_rib_bottom_dist: Left cantilever rib bottom dist (左悬臂肋底距离)
+            left_cantilever_rib_chamfer: Left cantilever rib chamfer (左悬臂肋倒角)
+            right_cantilever_rib_spacing: Right cantilever rib spacing (右悬臂肋距)
+            right_cantilever_rib_height: Right cantilever rib height (右悬臂肋高)
+            right_cantilever_rib_thickness: Right cantilever rib thickness (右悬臂肋厚)
+            right_cantilever_rib_top_dist: Right cantilever rib top dist (右悬臂肋顶距离)
+            right_cantilever_rib_bottom_dist: Right cantilever rib bottom dist (右悬臂肋底距离)
+            right_cantilever_rib_chamfer: Right cantilever rib chamfer (右悬臂肋倒角)
+        """
+        try:
+            sec_info = [
+                height, width, left_cantilever_width, right_cantilever_width, bottom_cantilever_height,
+                web_thickness, top_thickness, bottom_thickness,
+                top_rib_height, top_rib_thickness, bottom_rib_height, bottom_rib_thickness,
+                top_web_rib_distance, web_rib_count, web_rib_spacing, web_rib_height, web_rib_thickness,
+                left_web_rib_pos, right_web_rib_pos,
+                left_cantilever_rib_spacing, left_cantilever_rib_height, left_cantilever_rib_thickness,
+                left_cantilever_rib_top_dist, left_cantilever_rib_bottom_dist, left_cantilever_rib_chamfer,
+                right_cantilever_rib_spacing, right_cantilever_rib_height, right_cantilever_rib_thickness,
+                right_cantilever_rib_top_dist, right_cantilever_rib_bottom_dist, right_cantilever_rib_chamfer
+            ]
+            provider.add_section(
+                name=name,
+                sec_type="钢桁箱梁1",
+                sec_info=sec_info,
+            )
+            return f"Successfully created Steel Truss Box 1 section '{name}'"
+        except Exception as e:
+            return f"Error creating Steel Truss Box 1 section: {e}"
+
+    @mcp.tool()
     def create_concrete_box_girder_section(
         name: str,
         box_num: int,
