@@ -1019,6 +1019,90 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating Steel Truss Box 1 section: {e}"
 
     @mcp.tool()
+    def create_steel_truss_box_2_section(
+        name: str,
+        height: float,
+        width: float,
+        left_top_cantilever_width: float,
+        right_top_cantilever_width: float,
+        left_bottom_cantilever_width: float,
+        right_bottom_cantilever_width: float,
+        web_thickness: float,
+        top_thickness: float,
+        bottom_thickness: float,
+        top_rib_height: float,
+        top_rib_thickness: float,
+        bottom_rib_height: float,
+        bottom_rib_thickness: float,
+        top_web_rib_distance: float,
+        web_rib_count: int,
+        web_rib_spacing: float,
+        web_rib_height: float,
+        web_rib_thickness: float,
+        left_web_rib_pos: int,
+        right_web_rib_pos: int,
+        left_top_cantilever_rib_spacing: float,
+        left_top_cantilever_rib_height: float,
+        left_top_cantilever_rib_thickness: float,
+        left_top_cantilever_rib_top_dist: float,
+        left_top_cantilever_rib_bottom_dist: float,
+        left_top_cantilever_rib_chamfer: float,
+        right_top_cantilever_rib_spacing: float,
+        right_top_cantilever_rib_height: float,
+        right_top_cantilever_rib_thickness: float,
+        right_top_cantilever_rib_top_dist: float,
+        right_top_cantilever_rib_bottom_dist: float,
+        right_top_cantilever_rib_chamfer: float,
+        left_bottom_cantilever_rib_spacing: float,
+        left_bottom_cantilever_rib_height: float,
+        left_bottom_cantilever_rib_thickness: float,
+        right_bottom_cantilever_rib_spacing: float,
+        right_bottom_cantilever_rib_height: float,
+        right_bottom_cantilever_rib_thickness: float,
+    ) -> str:
+        """
+        Create a Steel Truss Box 2 cross-section (创建钢桁箱梁2截面).
+
+        Args:
+            name: Section name (截面名称)
+            height: Total height (高)
+            width: Total width (长)
+            left_top_cantilever_width: Left top cantilever width (左上悬臂长)
+            right_top_cantilever_width: Right top cantilever width (右上悬臂长)
+            left_bottom_cantilever_width: Left bottom cantilever width (左下悬臂长)
+            right_bottom_cantilever_width: Right bottom cantilever width (右下悬臂长)
+            web_thickness: Web thickness (腹板厚)
+            top_thickness: Top flange thickness (顶板厚)
+            bottom_thickness: Bottom flange thickness (底板厚)
+            ... (and rib parameters for flanges, webs, and all 4 cantilevers as per QtModel UI)
+        """
+        try:
+            sec_info = [
+                height, width,
+                left_top_cantilever_width, right_top_cantilever_width,
+                left_bottom_cantilever_width, right_bottom_cantilever_width,
+                web_thickness, top_thickness, bottom_thickness,
+                top_rib_height, top_rib_thickness,
+                bottom_rib_height, bottom_rib_thickness,
+                top_web_rib_distance, web_rib_count, web_rib_spacing, web_rib_height, web_rib_thickness,
+                left_web_rib_pos, right_web_rib_pos,
+                left_top_cantilever_rib_spacing, left_top_cantilever_rib_height, left_top_cantilever_rib_thickness,
+                left_top_cantilever_rib_top_dist, left_top_cantilever_rib_bottom_dist, left_top_cantilever_rib_chamfer,
+                right_top_cantilever_rib_spacing, right_top_cantilever_rib_height, right_top_cantilever_rib_thickness,
+                right_top_cantilever_rib_top_dist, right_top_cantilever_rib_bottom_dist, right_top_cantilever_rib_chamfer,
+                left_bottom_cantilever_rib_spacing, left_bottom_cantilever_rib_height, left_bottom_cantilever_rib_thickness,
+                right_bottom_cantilever_rib_spacing, right_bottom_cantilever_rib_height, right_bottom_cantilever_rib_thickness
+            ]
+            provider.add_section(
+                name=name,
+                sec_type="钢桁箱梁2",
+                sec_info=sec_info,
+            )
+            return f"Successfully created Steel Truss Box 2 section '{name}'"
+        except Exception as e:
+            return f"Error creating Steel Truss Box 2 section: {e}"
+
+    @mcp.tool()
     def create_concrete_box_girder_section(
         name: str,
         box_num: int,
