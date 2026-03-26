@@ -1128,6 +1128,56 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating Composite I-Girder section: {e}"
 
     @mcp.tool()
+    def create_composite_box_section(
+        name: str,
+        sec_info: list[float],
+        materials_ratio: list[float]
+    ) -> str:
+        """
+        Create a Composite Box Girder cross-section (创建箱形组合梁截面).
+
+        Args:
+            name: Section name (截面名称)
+            sec_info: Geometric parameters (几何信息数据如顶板宽、底板宽、厚度等)
+            materials_ratio: Combine material parameters (组合材料参数 [Es/Ec, Ds/Dc, ps(钢泊松比), pc(砼泊松比), Ts/Tc])
+        """
+        try:
+            provider.add_section(
+                name=name,
+                sec_type="箱形组合梁",
+                sec_info=sec_info,
+                mat_combine=materials_ratio
+            )
+            return f"Successfully created Composite Box Girder section '{name}'"
+        except Exception as e:
+            return f"Error creating Composite Box Girder section: {e}"
+
+    @mcp.tool()
+    def create_custom_composite_section(
+        name: str,
+        sec_info: list[float],
+        materials_ratio: list[float]
+    ) -> str:
+        """
+        Create a Custom Composite cross-section (创建自定义组合梁截面).
+
+        Args:
+            name: Section name (截面名称)
+            sec_info: Geometric parameters (几何信息数据)
+            materials_ratio: Combine material parameters (组合材料参数 [Es/Ec, Ds/Dc, ps, pc, Ts/Tc])
+        """
+        try:
+            provider.add_section(
+                name=name,
+                sec_type="自定义组合梁",
+                sec_info=sec_info,
+                mat_combine=materials_ratio
+            )
+            return f"Successfully created Custom Composite section '{name}'"
+        except Exception as e:
+            return f"Error creating Custom Composite section: {e}"
+
+    @mcp.tool()
     def create_concrete_box_girder_section(
         name: str,
         box_num: int,
