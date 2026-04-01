@@ -298,6 +298,31 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_section(name=name, sec_type=sec_type, **kwargs)
         self._mdb.update_model()
 
+    def add_tapper_section_by_id(self, name: str, begin_id: int, end_id: int, shear_consider: bool = True, sec_normalize: bool = False) -> None:
+        self._require_available()
+        self._mdb.add_tapper_section_by_id(name=name, begin_id=begin_id, end_id=end_id, shear_consider=shear_consider, sec_normalize=sec_normalize)
+        self._mdb.update_model()
+
+    def remove_section(self, ids: Any) -> None:
+        self._require_available()
+        self._mdb.remove_section(ids=ids)
+        self._mdb.update_model()
+
+    def update_section_bias(self, index: int, bias_type: str, center_type: str = "质心", shear_consider: bool = True, bias_point: list[float] = None, side_i: bool = True) -> None:
+        self._require_available()
+        kwargs = {}
+        if bias_point is not None:
+            kwargs["bias_point"] = bias_point
+        self._mdb.update_section_bias(index=index, bias_type=bias_type, center_type=center_type, shear_consider=shear_consider, side_i=side_i, **kwargs)
+
+    def update_section_property(self, index: int, sec_property: list[float], side_i: bool = True) -> None:
+        self._require_available()
+        self._mdb.update_section_property(index=index, sec_property=sec_property, side_i=side_i)
+
+    def calculate_section_property(self) -> None:
+        self._require_available()
+        self._mdb.calculate_section_property()
+
     # ── Modify Operations ──────────────────────────────────────────────
 
     def update_node(self, node_id: int, **kwargs) -> None:
