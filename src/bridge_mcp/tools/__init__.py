@@ -1301,6 +1301,69 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating property-based section: {e}"
 
     @mcp.tool()
+    def create_tapered_section(
+        name: str,
+        begin_id: int,
+        end_id: int,
+        shear_consider: bool = True,
+        sec_normalize: bool = False
+    ) -> str:
+        """
+        Create a tapered section from two existing sections (根据两个已存截面创建渐变截面).
+
+        Args:
+            name: Tapered section name (渐变截面名称)
+            begin_id: Start section ID (起始截面编号)
+            end_id: End section ID (终止截面编号)
+            shear_consider: Consider shear deformation (是否考虑剪切变形), default True
+            sec_normalize: Normalize section (截面归一化), default False
+        """
+        try:
+            provider.add_tapper_section_by_id(
+                name=name,
+                begin_id=begin_id,
+                end_id=end_id,
+                shear_consider=shear_consider,
+                sec_normalize=sec_normalize
+            )
+            return f"Successfully created tapered section '{name}' (成功创建渐变截面)"
+        except Exception as e:
+            return f"Error creating tapered section (创建渐变截面失败): {e}"
+
+    @mcp.tool()
+    def update_section_bias(
+        index: int,
+        bias_type: str,
+        center_type: str = "质心",
+        shear_consider: bool = True,
+        bias_point: list[float] | None = None,
+        side_i: bool = True
+    ) -> str:
+        """
+        Update section bias/eccentricity (更新截面偏心/对齐方式).
+
+        Args:
+            index: Section ID (截面编号)
+            bias_type: Bias type (偏心类型): e.g. "中心", "中上", "中下", "左上", "右上", "左下", "右下"
+            center_type: Center type (中心类型): "质心" (Centroid) or "剪心" (Shear center), default "质心"
+            shear_consider: Consider shear deformation (是否考虑剪切变形), default True
+            bias_point: Custom bias offset [y, z] (自定义偏心距离)
+            side_i: Apply to I-end (应用于I端) - for tapered sections True means I-end, False means J-end, default True
+        """
+        try:
+            provider.update_section_bias(
+                index=index,
+                bias_type=bias_type,
+                center_type=center_type,
+                shear_consider=shear_consider,
+                bias_point=bias_point,
+                side_i=side_i
+            )
+            return f"Successfully updated section {index} bias to '{bias_type}' (成功更新截面偏心)"
+        except Exception as e:
+            return f"Error updating section bias (更新截面偏心失败): {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
