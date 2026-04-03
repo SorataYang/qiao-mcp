@@ -1537,6 +1537,44 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error applying gradient temperature load (施加梯度温度失败): {e}"
 
     @mcp.tool()
+    def add_support_settlement(
+        node_id: int | list[int] | str,
+        case_name: str,
+        dz: float,
+        dx: float = 0.0,
+        dy: float = 0.0,
+        rx: float = 0.0,
+        ry: float = 0.0,
+        rz: float = 0.0,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply support settlement / nodal displacement load (支座沉降/节点强制位移).
+
+        Args:
+            node_id: Node ID(s) (节点编号)
+            case_name: Load case name (荷载工况名)
+            dz: Settlement in Z direction (Z向沉降量/下沉为负值)
+            dx: Displacement in X direction (X向强制位移)
+            dy: Displacement in Y direction (Y向强制位移)
+            rx: Rotation around X axis (绕X轴强制转角)
+            ry: Rotation around Y axis (绕Y轴强制转角)
+            rz: Rotation around Z axis (绕Z轴强制转角)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            displacement_info = [dx, dy, dz, rx, ry, rz]
+            kwargs = {}
+            if group_name:
+                kwargs["group_name"] = group_name
+            provider.add_support_settlement(
+                node_id=node_id, case_name=case_name, displacement_info=displacement_info, **kwargs
+            )
+            return f"Successfully applied support settlement '{dz}' to node(s) {node_id} (成功施加支座沉降)"
+        except Exception as e:
+            return f"Error applying support settlement (施加支座沉降失败): {e}"
+
+    @mcp.tool()
     def add_construction_stage(
         name: str,
         duration: float,

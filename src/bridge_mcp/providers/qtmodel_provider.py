@@ -446,6 +446,15 @@ class QtModelProvider(BridgeProvider):
         )
         self._mdb.update_model()
 
+    def add_support_settlement(
+        self, node_id: Any, case_name: str, displacement_info: list, **kwargs
+    ) -> None:
+        self._require_available()
+        self._mdb.add_node_displacement(
+            node_id=node_id, case_name=case_name, displacement_info=displacement_info, **kwargs
+        )
+        self._mdb.update_model()
+
     # ── Tendon Operations ──────────────────────────────────────────────
 
     def add_tendon_property(self, name: str, tendon_type: int, **kwargs) -> None:
