@@ -1478,6 +1478,33 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error applying distributed load (施加分布荷载失败): {e}"
 
     @mcp.tool()
+    def add_system_temperature(
+        element_id: int | list[int] | str,
+        case_name: str,
+        temperature: float,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply system temperature load (体系温度/整体升降温荷载).
+
+        Args:
+            element_id: Element ID(s) (单元编号)
+            case_name: Load case name (荷载工况名)
+            temperature: Temperature value (温度变化值，如升温+20，降温-20)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {}
+            if group_name:
+                kwargs["group_name"] = group_name
+            provider.add_system_temperature(
+                element_id=element_id, case_name=case_name, temperature=temperature, **kwargs
+            )
+            return f"Successfully applied system temperature load '{temperature}' to element(s) {element_id} (成功施加体系温度)"
+        except Exception as e:
+            return f"Error applying system temperature load (施加体系温度失败): {e}"
+
+    @mcp.tool()
     def add_construction_stage(
         name: str,
         duration: float,
