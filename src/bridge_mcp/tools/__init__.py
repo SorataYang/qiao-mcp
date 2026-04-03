@@ -1505,6 +1505,38 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error applying system temperature load (施加体系温度失败): {e}"
 
     @mcp.tool()
+    def add_gradient_temperature(
+        element_id: int | list[int] | str,
+        case_name: str,
+        temperature_g: float,
+        temperature_type: int = 1,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply gradient temperature load (梯度温度荷载).
+
+        Args:
+            element_id: Element ID(s) (单元编号)
+            case_name: Load case name (荷载工况名)
+            temperature_g: Gradient temperature value / Temperature difference (梯度温度值/温差)
+            temperature_type: Gradient type (梯度类型): 1=Z方向, 2=Y方向, etc.
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {}
+            if group_name:
+                kwargs["group_name"] = group_name
+            # Other codes may name this temp_type.
+            # Passing it via kwargs so the qtmodel API can catch it if needed.
+            kwargs["temperature_type"] = temperature_type
+            provider.add_gradient_temperature(
+                element_id=element_id, case_name=case_name, temperature_g=temperature_g, **kwargs
+            )
+            return f"Successfully applied gradient temperature load '{temperature_g}' to element(s) {element_id} (成功施加梯度温度)"
+        except Exception as e:
+            return f"Error applying gradient temperature load (施加梯度温度失败): {e}"
+
+    @mcp.tool()
     def add_construction_stage(
         name: str,
         duration: float,

@@ -437,6 +437,15 @@ class QtModelProvider(BridgeProvider):
         )
         self._mdb.update_model()
 
+    def add_gradient_temperature(
+        self, element_id: Any, case_name: str, temperature_g: float, **kwargs
+    ) -> None:
+        self._require_available()
+        self._mdb.add_gradient_temperature(
+            element_id=element_id, case_name=case_name, temperature_g=temperature_g, **kwargs
+        )
+        self._mdb.update_model()
+
     # ── Tendon Operations ──────────────────────────────────────────────
 
     def add_tendon_property(self, name: str, tendon_type: int, **kwargs) -> None:
