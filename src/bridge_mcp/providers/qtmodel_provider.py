@@ -1269,6 +1269,131 @@ class QtModelProvider(BridgeProvider):
         getattr(self._cdb, "update_element_steel_hoop")(*args, **kwargs)
         if "_cdb" == "_mdb":
             self._mdb.update_model()
+
+
+    def add_single_section(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_single_section")(*args, **kwargs)
+
+    def add_elements_to_tapper_section_group(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_elements_to_tapper_section_group")(*args, **kwargs)
+
+    def add_tapper_section_from_group(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_tapper_section_from_group")(*args, **kwargs)
+
+    def add_general_elastic_support_property(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_general_elastic_support_property")(*args, **kwargs)
+
+    def add_general_elastic_support(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_general_elastic_support")(*args, **kwargs)
+
+    def add_master_slave_links(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_master_slave_links")(*args, **kwargs)
+
+    def add_node_axis(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_node_axis")(*args, **kwargs)
+
+    def add_tendon_group(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_tendon_group")(*args, **kwargs)
+
+    def add_distribute_plane_load_type(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_distribute_plane_load_type")(*args, **kwargs)
+
+    def add_user_vehicle(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_user_vehicle")(*args, **kwargs)
+
+    def add_node_tandem(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_node_tandem")(*args, **kwargs)
+
+    def add_influence_plane(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_influence_plane")(*args, **kwargs)
+
+    def add_car_relative_factor(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_car_relative_factor")(*args, **kwargs)
+
+    def add_train_relative_factor(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_train_relative_factor")(*args, **kwargs)
+
+    def add_metro_relative_factor(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_metro_relative_factor")(*args, **kwargs)
+
+    def add_boundary_element_property(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_boundary_element_property")(*args, **kwargs)
+
+    def add_boundary_element_link(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_boundary_element_link")(*args, **kwargs)
+
+    def add_nodal_dynamic_load(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_nodal_dynamic_load")(*args, **kwargs)
+
+    def add_ground_motion(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_ground_motion")(*args, **kwargs)
+
+    def add_vehicle_dynamic_load(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_vehicle_dynamic_load")(*args, **kwargs)
+
+    def add_index_temperature(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_index_temperature")(*args, **kwargs)
+
+    def add_top_plate_temperature(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_top_plate_temperature")(*args, **kwargs)
+
+    def add_deviation_parameter(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_deviation_parameter")(*args, **kwargs)
+
+    def add_deviation_load(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_deviation_load")(*args, **kwargs)
+
+    def add_section_connection_stage(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_section_connection_stage")(*args, **kwargs)
+
+    def add_element_to_connection_stage(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_element_to_connection_stage")(*args, **kwargs)
+
+    def plot_composite_beam_force(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._odb, "plot_composite_beam_force")(*args, **kwargs)
+
+    def plot_composite_beam_stress(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._odb, "plot_composite_beam_stress")(*args, **kwargs)
+
+    def add_check_material(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._cdb, "add_check_material")(*args, **kwargs)
+
+    def add_part_parameter_reinforcement(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._cdb, "add_part_parameter_reinforcement")(*args, **kwargs)
+
+    def add_reinforcement_by_point(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._cdb, "add_reinforcement_by_point")(*args, **kwargs)
     # ── Result Extraction ──────────────────────────────────────────────
 
     def get_deformation(self, ids: Any, stage_id: int, **kwargs) -> str:
