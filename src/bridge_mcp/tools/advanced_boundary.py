@@ -180,3 +180,45 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
             )
         except Exception as e:
             return f"Error adding beam constraint (设置梁端约束失败): {e}"
+
+    @mcp.tool()
+    def add_constraint_equation(
+        name: str,
+        slave_node: int,
+        slave_dof: int = 1,
+        master_info: list[list] | None = None,
+        group_name: str = "",
+    ) -> str:
+        """
+        Add a constraint equation between node DOFs (添加约束方程).
+
+        Establishes a linear relationship between a slave DOF and one or more
+        master DOFs: slave_dof = Σ(coefficient × master_dof).
+        建立从属自由度与主自由度之间的线性约束关系。
+
+        Args:
+            name: Constraint equation name (约束方程名称)
+            slave_node: Slave node ID (从节点编号)
+            slave_dof: Slave DOF index 1-6 (从节点自由度: 1=Dx,2=Dy,3=Dz,4=Rx,5=Ry,6=Rz)
+            master_info: List of master DOF definitions [[node_id, dof, coefficient], ...]
+                         (主自由度信息 [[节点号, 自由度号, 系数], ...])
+            group_name: Boundary group name (边界组名)
+
+        Example:
+            add_constraint_equation("CE1", slave_node=5, slave_dof=3,
+                                    master_info=[[1, 3, 1.0], [2, 3, 0.5]])
+            # Node 5 Dz = 1.0 * Node1_Dz + 0.5 * Node2_Dz
+        """
+        try:
+            kwargs = {"name": name, "sec_node": slave_node, "sec_dof": slave_dof}
+            if master_info is not None:
+                kwargs["master_info"] = [tuple(m) for m in master_info]
+            if group_name:
+                kwargs["group_name"] = group_name
+            provider.add_constraint_equation(**kwargs)
+            return (
+                f"Constraint equation '{name}' added on node {slave_node} DOF {slave_dof} "
+                f"(约束方程 '{name}' 创建成功)"
+            )
+        except Exception as e:
+            return f"Error adding constraint equation (添加约束方程失败): {e}"
