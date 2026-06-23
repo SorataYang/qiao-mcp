@@ -222,3 +222,35 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
             )
         except Exception as e:
             return f"Error adding constraint equation (添加约束方程失败): {e}"
+
+    @mcp.tool()
+    def remove_boundary(
+        remove_id: int,
+        kind: str,
+        group_name: str = "",
+        end: str = "I",
+    ) -> str:
+        """
+        Remove a specific boundary condition (删除指定边界条件).
+
+        Args:
+            remove_id: Node or element ID to remove boundary from (节点或单元编号)
+            kind: Boundary type to remove (边界类型):
+                "support" (一般支承), "elastic_support" (弹性支承),
+                "elastic_link" (弹性连接), "master_slave" (主从约束),
+                "beam_constraint" (梁端约束), "constraint_equation" (约束方程)
+            group_name: Boundary group name (边界组名)
+            end: For beam constraints: "I" or "J" end (梁端约束时指定I端或J端)
+        """
+        try:
+            kwargs = {"remove_id": remove_id, "kind": kind}
+            if group_name:
+                kwargs["group_name"] = group_name
+            kwargs["extra_name"] = end
+            provider.remove_boundary(**kwargs)
+            return (
+                f"Successfully removed {kind} boundary from ID {remove_id} "
+                f"(成功删除 {kind} 边界条件)"
+            )
+        except Exception as e:
+            return f"Error removing boundary (删除边界条件失败): {e}"
