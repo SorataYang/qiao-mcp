@@ -750,6 +750,38 @@ class QtModelProvider(BridgeProvider):
 
     # ── Visualization ──────────────────────────────────────────────────
 
+    def display_node_id(self, show_id: bool = True) -> None:
+        self._require_available()
+        self._odb.display_node_id(show_id=show_id)
+
+    def display_element_id(self, show_id: bool = True) -> None:
+        self._require_available()
+        self._odb.display_element_id(show_id=show_id)
+
+    def set_view_direction(self, **kwargs) -> None:
+        self._require_available()
+        self._odb.set_view_direction(**kwargs)
+
+    def activate_structure(self, **kwargs) -> None:
+        self._require_available()
+        self._odb.activate_structure(**kwargs)
+
+    def set_render(self, flag: bool = True) -> None:
+        self._require_available()
+        self._odb.set_render(flag=flag)
+
+    def reset_display(self) -> None:
+        self._require_available()
+        self._odb.reset_display()
+
+    def set_unit(self, unit_force: str = 'KN', unit_length: str = 'MM') -> None:
+        self._require_available()
+        self._odb.set_unit(unit_force=unit_force, unit_length=unit_length)
+
+    def change_construct_stage(self, stage: int = 0) -> None:
+        self._require_available()
+        self._odb.change_construct_stage(stage=stage)
+
     def save_model_image(self, file_path: str) -> str:
         self._require_available()
         return self._odb.save_png(file_path=file_path)

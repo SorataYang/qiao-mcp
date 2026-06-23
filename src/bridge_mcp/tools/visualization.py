@@ -138,7 +138,7 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
                     )
                 horizontal, vertical = angle_map[angle_preset]
 
-            provider.set_view_angle(horizontal=horizontal, vertical=vertical)
+            provider.set_view_direction(horizontal_degree=horizontal, vertical_degree=vertical)
             return (
                 f"View angle set to {angle_preset} "
                 f"(horizontal={horizontal}°, vertical={vertical}°) "
@@ -146,3 +146,97 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
             )
         except Exception as e:
             return f"Error setting view angle (设置视角失败): {e}"
+
+    @mcp.tool()
+    def display_ids(
+        node_id: bool = False,
+        element_id: bool = False,
+    ) -> str:
+        """
+        Toggle the display of node and element IDs (开关节点和单元编号显示).
+
+        Args:
+            node_id: True to show node IDs, False to hide (显示节点号)
+            element_id: True to show element IDs, False to hide (显示单元号)
+        """
+        try:
+            provider.display_node_id(show_id=node_id)
+            provider.display_element_id(show_id=element_id)
+            return "Successfully updated ID display settings (成功更新编号显示设置)"
+        except Exception as e:
+            return f"Error updating ID display (更新编号显示失败): {e}"
+
+    @mcp.tool()
+    def activate_structure(
+        node_ids: list[int] | None = None,
+        element_ids: list[int] | None = None,
+    ) -> str:
+        """
+        Activate only specific nodes/elements for display (仅激活显示指定节点/单元).
+
+        Args:
+            node_ids: Node IDs to activate (要激活的节点号)
+            element_ids: Element IDs to activate (要激活的单元号)
+        """
+        try:
+            kwargs = {}
+            if node_ids is not None: kwargs["node_ids"] = node_ids
+            if element_ids is not None: kwargs["element_ids"] = element_ids
+            provider.activate_structure(**kwargs)
+            return "Successfully activated selected structure (成功激活选中结构)"
+        except Exception as e:
+            return f"Error activating structure (激活结构失败): {e}"
+
+    @mcp.tool()
+    def set_render(flag: bool = True) -> str:
+        """
+        Toggle solid rendering mode (开关实体渲染模式).
+
+        Args:
+            flag: True for rendered view, False for wireframe (是否渲染)
+        """
+        try:
+            provider.set_render(flag=flag)
+            return f"Successfully set render mode to {flag} (成功设置渲染模式)"
+        except Exception as e:
+            return f"Error setting render mode (设置渲染模式失败): {e}"
+
+    @mcp.tool()
+    def reset_display() -> str:
+        """
+        Reset display view (恢复默认显示/全显).
+        """
+        try:
+            provider.reset_display()
+            return "Successfully reset display (成功恢复默认显示)"
+        except Exception as e:
+            return f"Error resetting display (恢复默认显示失败): {e}"
+
+    @mcp.tool()
+    def set_unit(unit_force: str = "KN", unit_length: str = "MM") -> str:
+        """
+        Set display units (设置显示单位).
+
+        Args:
+            unit_force: Force unit (力单位, 例如: KN, N, TONF)
+            unit_length: Length unit (长度单位, 例如: M, MM, CM)
+        """
+        try:
+            provider.set_unit(unit_force=unit_force, unit_length=unit_length)
+            return f"Successfully set unit to {unit_force}-{unit_length} (成功设置单位)"
+        except Exception as e:
+            return f"Error setting unit (设置单位失败): {e}"
+
+    @mcp.tool()
+    def change_construct_stage(stage: int = 0) -> str:
+        """
+        Change current construction stage in view (切换当前显示的施工阶段).
+
+        Args:
+            stage: Stage ID, 0 for Base stage (施工阶段号，0为成桥阶段)
+        """
+        try:
+            provider.change_construct_stage(stage=stage)
+            return f"Successfully changed to stage {stage} (成功切换施工阶段)"
+        except Exception as e:
+            return f"Error changing construct stage (切换施工阶段失败): {e}"
