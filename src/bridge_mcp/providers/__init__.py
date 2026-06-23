@@ -249,6 +249,11 @@ class BridgeProvider(ABC):
         """Update self-vibration analysis settings. 更新自振分析设置"""
         ...
 
+    @abstractmethod
+    def run_analysis(self) -> None:
+        """Run structural analysis (执行计算/分析)."""
+        ...
+
     # ── Result Extraction ──────────────────────────────────────────────
 
     @abstractmethod

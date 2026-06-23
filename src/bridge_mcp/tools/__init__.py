@@ -1669,6 +1669,20 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error configuring analysis (配置分析失败): {e}"
 
     @mcp.tool()
+    def run_analysis() -> str:
+        """
+        Run the structural analysis calculation (执行结构分析计算).
+
+        Use this tool after you have configured all loads, boundaries, and analysis settings.
+        This will solve the model and make analysis results available.
+        """
+        try:
+            provider.run_analysis()
+            return "Analysis successfully completed (结构分析计算完成)"
+        except Exception as e:
+            return f"Error running analysis (结构分析失败): {e}"
+
+    @mcp.tool()
     def validate_model() -> str:
         """
         Validate the current model for common issues before running analysis

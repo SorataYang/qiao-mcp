@@ -531,6 +531,11 @@ class QtModelProvider(BridgeProvider):
         self._mdb.update_self_vibration_setting(**kwargs)
         self._mdb.update_model()
 
+    def run_analysis(self) -> None:
+        self._require_available()
+        # qtmodel uses do_solve() with read_timeout
+        self._mdb.do_solve(read_timeout=3600)
+
     # ── Result Extraction ──────────────────────────────────────────────
 
     def get_deformation(self, ids: Any, stage_id: int, **kwargs) -> str:
