@@ -624,6 +624,41 @@ class QtModelProvider(BridgeProvider):
         self._mdb.update_self_vibration_setting(**kwargs)
         self._mdb.update_model()
 
+    def update_bulking_setting(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.update_bulking_setting(**kwargs)
+        self._mdb.update_model()
+
+    def add_nodal_mass(self, node_id, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_nodal_mass(node_id=node_id, **kwargs)
+        self._mdb.update_model()
+
+    def add_load_to_mass(self, name: str, factor: float = 1.0) -> None:
+        self._require_available()
+        self._mdb.add_load_to_mass(name=name, factor=factor)
+        self._mdb.update_model()
+
+    def add_spectrum_function(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_spectrum_function(**kwargs)
+        self._mdb.update_model()
+
+    def add_spectrum_case(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_spectrum_case(**kwargs)
+        self._mdb.update_model()
+
+    def add_time_history_function(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_time_history_function(**kwargs)
+        self._mdb.update_model()
+
+    def add_time_history_case(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_time_history_case(**kwargs)
+        self._mdb.update_model()
+
     def run_analysis(self) -> None:
         self._require_available()
         # qtmodel uses do_solve() with read_timeout
@@ -646,6 +681,14 @@ class QtModelProvider(BridgeProvider):
     def get_reaction(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
         return self._odb.get_reaction(ids=ids, stage_id=stage_id, **kwargs)
+
+    def get_vibration_modal_results(self, mode: int = 1) -> list[dict]:
+        self._require_available()
+        return self._odb.get_vibration_modal_results(mode=mode)
+
+    def get_buckling_modal_results(self, mode: int = 1) -> list[dict]:
+        self._require_available()
+        return self._odb.get_buckling_modal_results(mode=mode)
 
     # ── Visualization ──────────────────────────────────────────────────
 

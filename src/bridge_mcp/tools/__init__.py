@@ -1875,6 +1875,178 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error applying support settlement (施加支座沉降失败): {e}"
 
     @mcp.tool()
+    def add_nodal_mass(
+        node_id: int | list[int] | str,
+        mass_x: float = 0.0,
+        mass_y: float = 0.0,
+        mass_z: float = 0.0,
+        mass_rm: float = 0.0,
+    ) -> str:
+        """
+        Add nodal mass for dynamic analysis (添加节点质量).
+
+        Args:
+            node_id: Node ID(s) (节点编号)
+            mass_x: Mass in X direction (X向质量)
+            mass_y: Mass in Y direction (Y向质量)
+            mass_z: Mass in Z direction (Z向质量)
+            mass_rm: Rotational mass (转动质量)
+        """
+        try:
+            mass_info = (mass_x, mass_y, mass_z, mass_rm)
+            provider.add_nodal_mass(node_id=node_id, mass_info=mass_info)
+            return f"Successfully added nodal mass to node(s) {node_id} (成功添加节点质量)"
+        except Exception as e:
+            return f"Error adding nodal mass (添加节点质量失败): {e}"
+
+    @mcp.tool()
+    def add_load_to_mass(
+        name: str,
+        factor: float = 1.0,
+    ) -> str:
+        """
+        Convert a load case to mass for dynamic analysis (将荷载转换为质量).
+
+        Args:
+            name: Load case name to convert (要转换为质量的荷载工况名称)
+            factor: Conversion factor (转换系数，通常取1.0)
+        """
+        try:
+            provider.add_load_to_mass(name=name, factor=factor)
+            return f"Successfully set load '{name}' to convert to mass (成功设置荷载转换为质量)"
+        except Exception as e:
+            return f"Error converting load to mass (荷载转质量失败): {e}"
+
+    @mcp.tool()
+    def add_spectrum_function(
+        name: str,
+        factor: float = 1.0,
+        kind: int = 0,
+        function_info: list[list[float]] | None = None,
+    ) -> str:
+        """
+        Add response spectrum function (添加反应谱函数).
+
+        Args:
+            name: Function name (函数名称)
+            factor: Scale factor (比例系数)
+            kind: Type of spectrum (反应谱类型, 例如中国规范等)
+            function_info: User defined spectrum points [[period, value], ...] (自定义谱数据)
+        """
+        try:
+            kwargs = {"name": name, "factor": factor, "kind": kind}
+            if function_info is not None:
+                kwargs["function_info"] = [tuple(item) for item in function_info]
+            provider.add_spectrum_function(**kwargs)
+            return f"Successfully added spectrum function '{name}' (成功添加反应谱函数)"
+        except Exception as e:
+            return f"Error adding spectrum function (添加反应谱函数失败): {e}"
+
+    @mcp.tool()
+    def add_spectrum_case(
+        name: str,
+        description: str = "",
+        kind: int = 1,
+        info_x: list | None = None,
+        info_y: list | None = None,
+        info_z: list | None = None,
+    ) -> str:
+        """
+        Add response spectrum load case (添加反应谱工况).
+
+        Args:
+            name: Case name (工况名称)
+            description: Description (描述)
+            kind: Combination method (组合方法, SRSS/CQC等)
+            info_x: X direction info [function_name, factor] (X向配置 [谱函数名, 系数])
+            info_y: Y direction info [function_name, factor] (Y向配置)
+            info_z: Z direction info [function_name, factor] (Z向配置)
+        """
+        try:
+            kwargs = {"name": name, "description": description, "kind": kind}
+            if info_x: kwargs["info_x"] = tuple(info_x)
+            if info_y: kwargs["info_y"] = tuple(info_y)
+            if info_z: kwargs["info_z"] = tuple(info_z)
+            provider.add_spectrum_case(**kwargs)
+            return f"Successfully added spectrum case '{name}' (成功添加反应谱工况)"
+        except Exception as e:
+            return f"Error adding spectrum case (添加反应谱工况失败): {e}"
+
+    @mcp.tool()
+    def add_time_history_function(
+        name: str,
+        factor: float = 1.0,
+        kind: int = 0,
+        function_info: list[list[float]] | None = None,
+    ) -> str:
+        """
+        Add time history function (添加时程函数).
+
+        Args:
+            name: Function name (函数名称)
+            factor: Scale factor (比例系数)
+            kind: Type (类型)
+            function_info: Time history points [[time, value], ...] (时程数据点)
+        """
+        try:
+            kwargs = {"name": name, "factor": factor, "kind": kind}
+            if function_info is not None:
+                kwargs["function_info"] = function_info
+            provider.add_time_history_function(**kwargs)
+            return f"Successfully added time history function '{name}' (成功添加时程函数)"
+        except Exception as e:
+            return f"Error adding time history function (添加时程函数失败): {e}"
+
+    @mcp.tool()
+    def add_time_history_case(
+        name: str,
+        duration: float = 1.0,
+        time_step: float = 0.01,
+        description: str = "",
+        index: int = -1,
+    ) -> str:
+        """
+        Add time history analysis case (添加时程分析工况).
+
+        Args:
+            name: Case name (工况名称)
+            duration: Total duration in seconds (总时长)
+            time_step: Output time step in seconds (输出步长)
+            description: Description (描述)
+            index: ID index (编号)
+        """
+        try:
+            provider.add_time_history_case(
+                name=name, duration=duration, time_step=time_step,
+                description=description, index=index
+            )
+            return f"Successfully added time history case '{name}' (成功添加时程工况)"
+        except Exception as e:
+            return f"Error adding time history case (添加时程工况失败): {e}"
+
+    @mcp.tool()
+    def update_bulking_setting(
+        do_analysis: bool = True,
+        mode_count: int = 3,
+        stage_id: int = -1,
+    ) -> str:
+        """
+        Configure buckling analysis settings (屈曲分析设定).
+
+        Args:
+            do_analysis: Enable buckling analysis (是否进行屈曲分析)
+            mode_count: Number of modes to calculate (计算模态数)
+            stage_id: Construction stage ID for base state, -1 for base model (施工阶段号)
+        """
+        try:
+            provider.update_bulking_setting(
+                do_analysis=do_analysis, mode_count=mode_count, stage_id=stage_id
+            )
+            return "Successfully updated buckling analysis settings (成功设定屈曲分析)"
+        except Exception as e:
+            return f"Error updating buckling settings (屈曲分析设定失败): {e}"
+
+    @mcp.tool()
     def add_construction_stage(
         name: str,
         duration: float,

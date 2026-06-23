@@ -274,4 +274,36 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         except Exception as e:
             return f"Error retrieving reinforcement data (获取配筋数据失败): {e}"
 
+    @mcp.tool()
+    def get_vibration_modal_results(mode: int = 1) -> str:
+        """
+        Get self-vibration modal results (获取自振模态结果).
+        
+        Args:
+            mode: Mode number to retrieve (获取的阶数)
+        """
+        try:
+            data = provider.get_vibration_modal_results(mode=mode)
+            if not data:
+                return f"No vibration results found for mode {mode}."
+            return f"Vibration Mode {mode} Results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error retrieving vibration results (获取自振结果失败): {e}"
+
+    @mcp.tool()
+    def get_buckling_modal_results(mode: int = 1) -> str:
+        """
+        Get buckling modal results (获取屈曲模态结果).
+        
+        Args:
+            mode: Mode number to retrieve (获取的阶数)
+        """
+        try:
+            data = provider.get_buckling_modal_results(mode=mode)
+            if not data:
+                return f"No buckling results found for mode {mode}."
+            return f"Buckling Mode {mode} Results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error retrieving buckling results (获取屈曲结果失败): {e}"
+
     # Note: get_tendon_info is registered in tools/tendon.py
