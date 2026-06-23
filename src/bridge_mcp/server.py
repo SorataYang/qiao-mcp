@@ -67,14 +67,14 @@ _SERVER_INSTRUCTIONS = (
     "Core:     create_nodes_linear, create_nodes, create_elements, create_material, create_section (plus specific sections like create_rectangle_section, etc.)\n"
     "Loads:    create_load_group, create_load_case, apply_self_weight, apply_nodal_force, apply_beam_distributed_load, add_system_temperature, add_gradient_temperature, add_support_settlement\n"
     "Boundary: set_support, add_elastic_link, add_master_slave_link, add_elastic_support\n"
-    "Groups:   create_structure_group, create_boundary_group, add_to_structure_group, remove_from_structure_group, list_group_members\n"
+    "Groups:   create_structure_group, update_structure_group_name, remove_structure_group, create_boundary_group, add_to_structure_group, remove_from_structure_group, list_group_members\n"
     "Stages:   add_construction_stage, merge_operation_stage, configure_analysis, get_analysis_results, plot_analysis_result\n"
     "Workflow: create_simple_beam_bridge, create_continuous_beam_bridge\n"
     "Queries:  get_model_info, get_nodes, get_elements, get_materials, get_section_list, get_section_detail, get_boundaries, get_load_cases, get_construction_stages, get_structure_groups\n"
     "Tendons:  create_tendon_property, create_tendon_2d, apply_prestress, get_tendon_info\n"
     "Traffic:  add_standard_vehicle, add_traffic_lane, create_live_load_case, get_live_load_results\n"
     "Checking: setup_concrete_check, add_check_load_combination, add_parametric_reinforcement, run_concrete_check\n"
-    "Modify:   update_node, move_nodes, merge_nodes, remove_nodes, update_element, remove_elements\n"
+    "Modify:   update_node, update_node_id, renumber_nodes, move_nodes, merge_nodes, remove_nodes, update_element, update_element_id, renumber_elements, revert_local_orientation, remove_elements\n"
     "View:     set_view_angle, save_model_screenshot\n"
 )
 
