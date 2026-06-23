@@ -1401,6 +1401,28 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error setting support (设置支承失败): {e}"
 
     @mcp.tool()
+    def apply_self_weight(
+        case_name: str,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply system self-weight load (施加自重荷载).
+        Ensure the load group and case are created before calling this tool.
+
+        Args:
+            case_name: Load case name (荷载工况名)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {}
+            if group_name:
+                kwargs["group_name"] = group_name
+            provider.add_self_weight(case_name=case_name, **kwargs)
+            return f"Successfully applied self-weight in case '{case_name}' (成功施加自重)"
+        except Exception as e:
+            return f"Error applying self-weight (施加自重失败): {e}"
+
+    @mcp.tool()
     def apply_nodal_force(
         node_id: int | list[int] | str,
         case_name: str,
