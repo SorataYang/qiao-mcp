@@ -348,6 +348,21 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         self._mdb.update_element(old_id=old_id, **kwargs)
 
+    def update_element_id(self, old_id: int, new_id: int) -> None:
+        self._require_available()
+        self._mdb.update_element_id(old_id=old_id, new_id=new_id)
+
+    def renumber_elements(self, element_ids: Any = None, new_ids: Any = None) -> None:
+        self._require_available()
+        if element_ids is None:
+            self._mdb.renumber_elements()
+        else:
+            self._mdb.renumber_elements(element_ids, new_ids)
+
+    def revert_local_orientation(self, ids: Any) -> None:
+        self._require_available()
+        self._mdb.revert_local_orientation(ids=ids)
+
     def update_element_material(self, ids: Any, mat_id: int) -> None:
         self._require_available()
         self._mdb.update_element_material(ids=ids, mat_id=mat_id)

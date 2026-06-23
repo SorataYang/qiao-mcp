@@ -207,6 +207,54 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             return f"Error updating element (修改单元失败): {e}"
 
     @mcp.tool()
+    def update_element_id(old_id: int, new_id: int) -> str:
+        """
+        Change an element's ID (更改单元编号).
+
+        Args:
+            old_id: Existing element ID (原单元编号)
+            new_id: New element ID (新单元编号)
+        """
+        try:
+            provider.update_element_id(old_id=old_id, new_id=new_id)
+            provider.update_model()
+            return f"Successfully updated element ID from {old_id} to {new_id} (成功修改单元编号)"
+        except Exception as e:
+            return f"Error updating element ID (修改单元编号失败): {e}"
+
+    @mcp.tool()
+    def renumber_elements(element_ids: Any = None, new_ids: Any = None) -> str:
+        """
+        Renumber elements (单元编号重排序).
+        If no IDs are provided, renumbers all elements starting from 1 continuously.
+
+        Args:
+            element_ids: List of element IDs or string format (可选，原单元号)
+            new_ids: List of new element IDs (可选，新单元号)
+        """
+        try:
+            provider.renumber_elements(element_ids=element_ids, new_ids=new_ids)
+            provider.update_model()
+            return "Successfully renumbered elements (成功重新编号单元)"
+        except Exception as e:
+            return f"Error renumbering elements (重新编号失败): {e}"
+
+    @mcp.tool()
+    def revert_local_orientation(ids: Any) -> str:
+        """
+        Revert local orientation of frame elements (反转杆系单元局部方向).
+
+        Args:
+            ids: Element ID(s) to revert (待反转方向的单元编号)
+        """
+        try:
+            provider.revert_local_orientation(ids=ids)
+            provider.update_model()
+            return f"Successfully reverted local orientation for element(s) {ids} (成功反转单元方向)"
+        except Exception as e:
+            return f"Error reverting local orientation (反转单元方向失败): {e}"
+
+    @mcp.tool()
     def update_element_material(
         ids: Any,
         mat_id: int,

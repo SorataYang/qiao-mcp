@@ -140,6 +140,21 @@ class BridgeProvider(ABC):
         ...
 
     @abstractmethod
+    def update_element_id(self, old_id: int, new_id: int) -> None:
+        """Update element ID. 更改单元编号"""
+        ...
+
+    @abstractmethod
+    def renumber_elements(self, element_ids: Any = None, new_ids: Any = None) -> None:
+        """Renumber elements. 单元编号重排序"""
+        ...
+
+    @abstractmethod
+    def revert_local_orientation(self, ids: Any) -> None:
+        """Revert local orientation of frame elements. 反转杆系单元局部方向"""
+        ...
+
+    @abstractmethod
     def add_material(
         self,
         name: str,
