@@ -322,6 +322,16 @@ class BridgeProvider(ABC):
         ...
 
     @abstractmethod
+    def update_structure_group_name(self, name: str, new_name: str) -> None:
+        """Update a structure group's name. 更新结构组名"""
+        ...
+
+    @abstractmethod
+    def remove_structure_group(self, name: str = "") -> None:
+        """Remove a structure group. 删除结构组"""
+        ...
+
+    @abstractmethod
     def add_elements_to_structure_group(self, name: str, element_ids: Any) -> None:
         """Add elements to a structure group. 向结构组添加单元"""
         ...

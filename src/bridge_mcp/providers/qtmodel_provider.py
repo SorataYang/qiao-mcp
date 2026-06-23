@@ -644,6 +644,19 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_structure_group(name=name)
         self._mdb.update_model()
 
+    def update_structure_group_name(self, name: str, new_name: str) -> None:
+        self._require_available()
+        self._mdb.update_structure_group_name(name=name, new_name=new_name)
+        self._mdb.update_model()
+
+    def remove_structure_group(self, name: str = "") -> None:
+        self._require_available()
+        if name:
+            self._mdb.remove_structure_group(name=name)
+        else:
+            self._mdb.remove_structure_group()
+        self._mdb.update_model()
+
     def add_elements_to_structure_group(self, name: str, element_ids: Any) -> None:
         self._require_available()
         # Real API uses add_structure_to_group

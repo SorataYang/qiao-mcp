@@ -49,6 +49,37 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating structure group (创建结构组失败): {e}"
 
     @mcp.tool()
+    def update_structure_group_name(name: str, new_name: str) -> str:
+        """
+        Rename an existing structure group (重命名结构组).
+
+        Args:
+            name: Current structure group name (当前结构组名称)
+            new_name: New structure group name (新结构组名称)
+        """
+        try:
+            provider.update_structure_group_name(name=name, new_name=new_name)
+            return f"Successfully renamed structure group '{name}' to '{new_name}' (成功重命名结构组)"
+        except Exception as e:
+            return f"Error renaming structure group (重命名结构组失败): {e}"
+
+    @mcp.tool()
+    def remove_structure_group(name: str = "") -> str:
+        """
+        Remove a structure group (删除结构组).
+        If no name is provided, removes all structure groups.
+
+        Args:
+            name: Name of the structure group to remove, leave empty to remove all (待删除的结构组名称，不填则删除全部)
+        """
+        try:
+            provider.remove_structure_group(name=name)
+            target = f"'{name}'" if name else "all"
+            return f"Successfully removed structure group(s) {target} (成功删除结构组)"
+        except Exception as e:
+            return f"Error removing structure group (删除结构组失败): {e}"
+
+    @mcp.tool()
     def create_boundary_group(
         name: str,
     ) -> str:
