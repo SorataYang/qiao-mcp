@@ -142,6 +142,44 @@ class QtModelProvider(BridgeProvider):
                 
         return result
 
+
+    @staticmethod
+    def _validate_ids(ids, required: bool = False):
+        """Validate and normalize ids input for robust error handling."""
+        if ids is None:
+            if required:
+                raise ValueError("ids parameter is required but was empty or None.")
+            return None
+            
+        if isinstance(ids, str):
+            cleaned = ids.strip()
+            if not cleaned:
+                if required:
+                    raise ValueError("ids string cannot be empty.")
+                return None
+            return cleaned
+            
+        if isinstance(ids, (int, float)):
+            if ids <= 0:
+                raise ValueError(f"Invalid ID: {ids}. IDs must be positive integers.")
+            return int(ids)
+            
+        if isinstance(ids, (list, tuple)):
+            if not ids and required:
+                raise ValueError("ids list cannot be empty.")
+            valid_ids = []
+            for i in ids:
+                try:
+                    val = int(i)
+                    if val <= 0:
+                        raise ValueError(f"Invalid ID in list: {i}. IDs must be positive.")
+                    valid_ids.append(val)
+                except (ValueError, TypeError):
+                    raise ValueError(f"Invalid ID format in list: {i}")
+            return valid_ids
+            
+        raise ValueError(f"Unsupported ids type: {type(ids)}. Expected int, list, or string.")
+
     def _safe_get(self, fn_name: str, *args, **kwargs) -> Any:
         """Call an odb method by name, auto-parse JSON, return None on error."""
         fn = getattr(self._odb, fn_name, None)
@@ -182,6 +220,8 @@ class QtModelProvider(BridgeProvider):
 
     def get_node_data(self, ids: Any = None) -> list[dict]:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         result = self._parse(
             self._odb.get_node_data(ids=ids) if ids is not None else self._odb.get_node_data()
         )
@@ -191,6 +231,8 @@ class QtModelProvider(BridgeProvider):
 
     def get_element_data(self, ids: Any = None) -> list[dict]:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         result = self._parse(
             self._odb.get_element_data(ids=ids) if ids is not None else self._odb.get_element_data()
         )
@@ -285,11 +327,15 @@ class QtModelProvider(BridgeProvider):
 
     def add_nodes(self, node_data: list[list[float]], **kwargs) -> None:
         self._require_available()
+        if not node_data:
+            raise ValueError("node_data cannot be empty")
         self._mdb.add_nodes(node_data=node_data, **kwargs)
         self._mdb.update_model()
 
     def add_elements(self, ele_data: list[list], **kwargs) -> None:
         self._require_available()
+        if not ele_data:
+            raise ValueError("ele_data cannot be empty")
         self._mdb.add_elements(ele_data=ele_data, **kwargs)
         self._mdb.update_model()
 
@@ -351,6 +397,8 @@ class QtModelProvider(BridgeProvider):
 
     def remove_section(self, ids: Any) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         self._mdb.remove_section(ids=ids)
         self._mdb.update_model()
 
@@ -381,6 +429,8 @@ class QtModelProvider(BridgeProvider):
 
     def renumber_nodes(self, ids: Any = None, new_ids: Any = None) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         if ids is None:
             self._mdb.renumber_nodes()
         else:
@@ -388,6 +438,8 @@ class QtModelProvider(BridgeProvider):
 
     def move_nodes(self, ids: Any, offset_x: float = 0, offset_y: float = 0, offset_z: float = 0) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         self._mdb.move_nodes(ids=ids, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
 
     def update_element(self, old_id: int, **kwargs) -> None:
@@ -407,18 +459,26 @@ class QtModelProvider(BridgeProvider):
 
     def revert_local_orientation(self, ids: Any) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         self._mdb.revert_local_orientation(ids=ids)
 
     def update_element_material(self, ids: Any, mat_id: int) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         self._mdb.update_element_material(ids=ids, mat_id=mat_id)
 
     def update_frame_section(self, ids: Any, sec_id: int) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         self._mdb.update_frame_section(ids=ids, sec_id=sec_id)
 
     def update_element_beta(self, ids: Any, beta: float) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         self._mdb.update_element_beta(ids=ids, beta=beta)
 
     def update_element_node(self, element_id: int, node_ids: list) -> None:
@@ -432,6 +492,8 @@ class QtModelProvider(BridgeProvider):
     def remove_nodes(self, ids: Any = None) -> None:
         self._require_available()
         if ids is not None:
+            ids = self._validate_ids(ids)
+        if ids is not None:
             self._mdb.remove_nodes(ids=ids)
         else:
             self._mdb.remove_nodes()
@@ -439,12 +501,16 @@ class QtModelProvider(BridgeProvider):
     def remove_elements(self, ids: Any = None, remove_free: bool = False) -> None:
         self._require_available()
         if ids is not None:
+            ids = self._validate_ids(ids)
+        if ids is not None:
             self._mdb.remove_elements(ids=ids, remove_free=remove_free)
         else:
             self._mdb.remove_elements(remove_free=remove_free)
 
     def merge_nodes(self, ids: Any = None, tolerance: float = 1e-4) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         if ids is not None:
             self._mdb.merge_nodes(ids=ids, tolerance=tolerance)
         else:
@@ -614,6 +680,8 @@ class QtModelProvider(BridgeProvider):
 
     def add_tendon_elements(self, ids: Any) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         self._mdb.add_tendon_elements(ids=ids)
         self._mdb.update_model()
 
@@ -1398,18 +1466,26 @@ class QtModelProvider(BridgeProvider):
 
     def get_deformation(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         return self._odb.get_deformation(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_element_force(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         return self._odb.get_element_force(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_element_stress(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         return self._odb.get_element_stress(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_reaction(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         return self._odb.get_reaction(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_vibration_modal_results(self, mode: int = 1) -> list[dict]:
@@ -1799,6 +1875,8 @@ class QtModelProvider(BridgeProvider):
 
     def get_live_load_results(self, case_name: str, result_type: str, ids: Any) -> Any:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         # Live load results are embedded in standard result queries (deformation/force/stress)
         # Query using the live load case name directly
         if result_type == "force":

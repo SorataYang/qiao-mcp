@@ -92,6 +92,9 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             # Two-span 50m+50m continuous beam, start x from 0:
             create_nodes_linear(count=101, start_x=0, spacing_x=1.0)
         """
+        if count <= 0:
+            return "Error: count must be a positive integer > 0 (节点数量必须大于0)"
+
         try:
             node_data = [
                 [start_x + i * spacing_x, start_y + i * spacing_y, start_z + i * spacing_z]
