@@ -1407,6 +1407,21 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error updating section property (修改截面特性失败): {e}"
 
     @mcp.tool()
+    def calculate_section_property() -> str:
+        """
+        Recalculate properties for all sections in the model (重新计算所有截面特性).
+
+        Call this after creating or modifying section geometry to ensure
+        Area, Iy, Iz, J etc. are up-to-date.
+        (在创建或修改截面几何后调用，确保面积、惯性矩等特性值为最新)
+        """
+        try:
+            provider.calculate_section_property()
+            return "Successfully recalculated all section properties (成功重新计算所有截面特性)"
+        except Exception as e:
+            return f"Error calculating section properties (计算截面特性失败): {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
