@@ -710,6 +710,565 @@ class QtModelProvider(BridgeProvider):
         # qtmodel uses do_solve() with read_timeout
         self._mdb.do_solve(read_timeout=3600)
 
+
+
+    def update_plate_thick(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_plate_thick")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_shrink_function(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_shrink_function")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_creep_function(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_creep_function")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_material_time_parameter(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_material_time_parameter")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_material_id(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_material_id")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_time_parameter_id(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_time_parameter_id")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_material(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_material")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_material_construction_factor(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_material_construction_factor")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_time_parameter(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_time_parameter")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_thickness_id(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_thickness_id")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_thickness(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_thickness")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_section_id(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_section_id")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_tapper_section_group(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_tapper_section_group")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_tapper_section_group(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_tapper_section_group")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_boundary_group(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_boundary_group")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_node_axis_id(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_node_axis_id")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_general_elastic_support_property_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_general_elastic_support_property_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_effective_width(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_effective_width")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_boundary_group(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_boundary_group")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_all_boundary(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_all_boundary")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_general_elastic_support_property(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_general_elastic_support_property")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_node_axis(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_node_axis")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_tendon_property_material(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_tendon_property_material")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_tendon_property(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_tendon_property")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_tendon_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_tendon_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_element_component_type(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_element_component_type")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_tendon_group(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_tendon_group")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_tendon(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_tendon")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_tendon_property(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_tendon_property")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_pre_stress(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_pre_stress")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_tendon_group(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_tendon_group")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_distribute_plane_load_type(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_distribute_plane_load_type")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_nodal_force(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_nodal_force")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_nodal_displacement(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_nodal_displacement")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_initial_tension_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_initial_tension_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_beam_element_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_beam_element_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_plate_element_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_plate_element_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_cable_length_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_cable_length_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_distribute_plane_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_distribute_plane_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_distribute_plane_load_type(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_distribute_plane_load_type")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_vehicle_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_vehicle_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_influence_plane_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_influence_plane_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_lane_line_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_lane_line_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_node_tandem_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_node_tandem_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_live_load_case_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_live_load_case_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_vehicle(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_vehicle")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_node_tandem(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_node_tandem")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_influence_plane(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_influence_plane")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_lane_line(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_lane_line")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_live_load_case(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_live_load_case")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_load_to_mass(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_load_to_mass")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_nodal_mass(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_nodal_mass")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_boundary_element_property_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_boundary_element_property_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_boundary_element_link(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_boundary_element_link")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_time_history_case_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_time_history_case_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_time_history_function_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_time_history_function_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_nodal_dynamic_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_nodal_dynamic_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_ground_motion(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_ground_motion")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_time_history_load_case(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_time_history_load_case")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_time_history_function(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_time_history_function")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_load_to_mass(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_load_to_mass")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_nodal_mass(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_nodal_mass")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_boundary_element_property(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_boundary_element_property")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_boundary_element_link(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_boundary_element_link")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_ground_motion(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_ground_motion")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_nodal_dynamic_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_nodal_dynamic_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_spectrum_function_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_spectrum_function_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_spectrum_case_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_spectrum_case_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_spectrum_case(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_spectrum_case")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_spectrum_function(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_spectrum_function")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_element_temperature(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_element_temperature")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_top_plate_temperature(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_top_plate_temperature")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_beam_section_temperature(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_beam_section_temperature")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_gradient_temperature(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_gradient_temperature")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_custom_temperature(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_custom_temperature")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_index_temperature(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_index_temperature")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_deviation_parameter(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_deviation_parameter")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_deviation_parameter(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_deviation_parameter")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_deviation_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_deviation_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_weight_stage(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_weight_stage")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_construction_stage_id(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_construction_stage_id")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_all_stage_setting_type(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_all_stage_setting_type")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_section_connection_stage(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_section_connection_stage")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_section_connection_stage(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_section_connection_stage")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_global_setting(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_global_setting")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_live_load_setting(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_live_load_setting")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_non_linear_setting(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_non_linear_setting")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_operation_stage_setting(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_operation_stage_setting")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_response_spectrum_setting(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_response_spectrum_setting")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_time_history_setting(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_time_history_setting")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_check_load_combine(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._cdb, "remove_check_load_combine")(*args, **kwargs)
+        if "_cdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_concrete_check_case(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._cdb, "remove_concrete_check_case")(*args, **kwargs)
+        if "_cdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_element_steel_hoop(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._cdb, "update_element_steel_hoop")(*args, **kwargs)
+        if "_cdb" == "_mdb":
+            self._mdb.update_model()
     # ── Result Extraction ──────────────────────────────────────────────
 
     def get_deformation(self, ids: Any, stage_id: int, **kwargs) -> str:
