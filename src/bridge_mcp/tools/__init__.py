@@ -1364,6 +1364,21 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error updating section bias (更新截面偏心失败): {e}"
 
     @mcp.tool()
+    def remove_section(ids: int | list[int] | str) -> str:
+        """
+        Delete one or more sections from the model (删除截面).
+
+        Args:
+            ids: Section ID(s) to delete. Supports int, list, or range string '3to5'.
+                 (截面编号，支持整数、列表或范围字符串)
+        """
+        try:
+            provider.remove_section(ids=ids)
+            return f"Successfully removed section(s) {ids} (成功删除截面)"
+        except Exception as e:
+            return f"Error removing section (删除截面失败): {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
