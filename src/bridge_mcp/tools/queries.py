@@ -261,4 +261,17 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         except Exception as e:
             return f"Error getting structure group members (获取结构组成员失败): {e}"
 
+    @mcp.tool()
+    def get_reinforcement_data() -> str:
+        """
+        Get reinforcement data for structural checking (获取配筋数据).
+        
+        Returns all parameter reinforcement, steel hoops, etc. added for checking.
+        """
+        try:
+            data = provider.get_reinforcement_data()
+            return f"Reinforcement data (配筋数据): {data}"
+        except Exception as e:
+            return f"Error retrieving reinforcement data (获取配筋数据失败): {e}"
+
     # Note: get_tendon_info is registered in tools/tendon.py

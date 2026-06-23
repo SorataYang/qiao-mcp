@@ -79,7 +79,7 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
                 standard=standard,
                 kind=kind,
                 combine_type=combine_type,
-                load_case_factors=factors_tuple,
+                combine_info=factors_tuple,
             )
             return (
                 f"Load combination '{name}' added with {len(factors)} cases "
@@ -152,3 +152,72 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
             )
         except Exception as e:
             return f"Error adding reinforcement (添加配筋失败): {e}"
+
+    @mcp.tool()
+    def add_steel_hoop(
+        index: int,
+        name: str,
+        hoop_type: int = 1,
+        material_id: int = 1,
+        nums: int = 2,
+        diameter: float = 0.012,
+        gap: float = 0.1,
+        core_diameter: float = 0.0,
+    ) -> str:
+        """
+        Add shear reinforcement / hoops (添加抗剪钢筋/箍筋).
+
+        Args:
+            index: Hoop ID (箍筋编号)
+            name: Hoop name (箍筋名称)
+            hoop_type: Hoop type (箍筋类型): 1=闭合式箍筋 (closed), 2=开口式箍筋 (open)
+            material_id: Material ID (材料编号)
+            nums: Number of branches (箍筋肢数)
+            diameter: Rebar diameter in meters (钢筋直径m)
+            gap: Spacing in meters (间距m)
+            core_diameter: Core diameter for spiral hoops (芯截面直径, 仅螺旋箍筋使用)
+        """
+        try:
+            provider.add_steel_hoop(
+                index=index,
+                name=name,
+                hoop_type=hoop_type,
+                material_id=material_id,
+                nums=nums,
+                diameter=diameter,
+                gap=gap,
+                core_diameter=core_diameter,
+            )
+            return f"Successfully added steel hoop '{name}' (成功添加抗剪钢筋)"
+        except Exception as e:
+            return f"Error adding steel hoop (添加抗剪钢筋失败): {e}"
+
+    @mcp.tool()
+    def update_vertical_steel_hoop(
+        nums: int = 0,
+        area: float = 0.001,
+        gap: float = 0.2,
+        effective_prestress: float = 800000000.0,
+        fpd: float = 900000000.0,
+    ) -> str:
+        """
+        Update vertical prestress reinforcement parameters for checking (修改竖向预应力抗剪参数).
+
+        Args:
+            nums: Number of vertical rebars/strands (竖向预应力根数)
+            area: Area of a single rebar in m^2 (单根面积)
+            gap: Longitudinal spacing in meters (纵向间距)
+            effective_prestress: Effective prestress in Pa (有效预应力)
+            fpd: Design tensile strength of vertical prestress in Pa (竖向预应力抗拉强度设计值)
+        """
+        try:
+            provider.update_vertical_steel_hoop(
+                nums=nums,
+                area=area,
+                gap=gap,
+                effective_prestress=effective_prestress,
+                fpd=fpd,
+            )
+            return "Successfully updated vertical prestress reinforcement (成功修改竖向预应力参数)"
+        except Exception as e:
+            return f"Error updating vertical steel hoop (修改竖向预应力参数失败): {e}"
