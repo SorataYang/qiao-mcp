@@ -538,6 +538,21 @@ class QtModelProvider(BridgeProvider):
         self._mdb.merge_all_stages(name=name, **kwargs)
         self._mdb.update_model()
 
+    def remove_construction_stage(self, name: str = "") -> None:
+        self._require_available()
+        self._mdb.remove_construction_stage(name=name)
+        self._mdb.update_model()
+
+    def update_construction_stage(self, name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.update_construction_stage(name=name, **kwargs)
+        self._mdb.update_model()
+
+    def switch_display_stage(self, stage_name: str) -> None:
+        self._require_available()
+        self._mdb.update_view_stage(stage_name=stage_name)
+        self._mdb.update_model()
+
     # ── Analysis Operations ────────────────────────────────────────────
 
     def update_project_setting(self, **kwargs) -> None:
