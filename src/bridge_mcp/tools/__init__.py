@@ -291,6 +291,42 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         except Exception as e:
             return f"Error creating load case '{name}' (创建工况失败): {e}"
 
+    @mcp.tool()
+    def add_load_combine(
+        name: str,
+        combine_type: int = 1,
+        combine_info: list[list] | None = None,
+        describe: str = "",
+        index: int = -1,
+    ) -> str:
+        """
+        Add a load combination (添加荷载组合).
+
+        Combines multiple load cases into a single combination for analysis/checking.
+        (将多个荷载工况组合成一个荷载组合)
+
+        Args:
+            name: Load combination name (荷载组合名称)
+            combine_type: Combination type (组合类型): 1=Add(线性加), 2=Envelope(包络), etc.
+            combine_info: List of components [[case_name, case_type, factor], ...]
+                          (组合项信息 [[工况名, 类型(如'ST'), 系数], ...])
+            describe: Description (描述说明)
+            index: ID index, -1 for auto (编号，-1自动生成)
+        """
+        try:
+            kwargs = {
+                "name": name,
+                "combine_type": combine_type,
+                "describe": describe,
+                "index": index,
+            }
+            if combine_info is not None:
+                kwargs["combine_info"] = [tuple(item) for item in combine_info]
+            provider.add_load_combine(**kwargs)
+            return f"Successfully added load combination '{name}' (成功添加荷载组合 '{name}')"
+        except Exception as e:
+            return f"Error adding load combination (添加荷载组合失败): {e}"
+
 
 
     @mcp.tool()

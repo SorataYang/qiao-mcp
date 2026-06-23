@@ -267,6 +267,19 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         self._mdb.update_model()
 
+    def save_model_file(self, file_path: str) -> None:
+        self._require_available()
+        self._mdb.save_file(file_path=file_path)
+
+    def open_model_file(self, file_path: str) -> None:
+        self._require_available()
+        self._mdb.open_file(file_path=file_path)
+
+    def remove_unused_sections(self) -> None:
+        self._require_available()
+        self._mdb.remove_unused_sections()
+        self._mdb.update_model()
+
     def add_nodes(self, node_data: list[list[float]], **kwargs) -> None:
         self._require_available()
         self._mdb.add_nodes(node_data=node_data, **kwargs)
@@ -458,6 +471,14 @@ class QtModelProvider(BridgeProvider):
     def add_load_case(self, name: str, case_type: str = "施工阶段荷载", desc: str = "") -> None:
         self._require_available()
         self._mdb.add_load_case(name=name, case_type=case_type)
+        self._mdb.update_model()
+
+    def add_load_combine(self, index: int = -1, name: str = "", combine_type: int = 1, describe: str = "", combine_info: list[tuple] = None) -> None:
+        self._require_available()
+        kwargs = {"index": index, "name": name, "combine_type": combine_type, "describe": describe}
+        if combine_info is not None:
+            kwargs["combine_info"] = combine_info
+        self._mdb.add_load_combine(**kwargs)
         self._mdb.update_model()
 
     def add_nodal_force(

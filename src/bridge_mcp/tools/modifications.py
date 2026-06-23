@@ -46,6 +46,46 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         except Exception as e:
             return f"Error initializing model (初始化模型失败): {e}"
 
+    @mcp.tool()
+    def save_model_file(file_path: str) -> str:
+        """
+        Save the current model to a file (保存模型文件).
+
+        Args:
+            file_path: Absolute or relative path to the .qtb file (保存的文件路径)
+        """
+        try:
+            provider.save_model_file(file_path=file_path)
+            return f"Successfully saved model to '{file_path}' (成功保存模型)"
+        except Exception as e:
+            return f"Error saving model file (保存模型文件失败): {e}"
+
+    @mcp.tool()
+    def open_model_file(file_path: str) -> str:
+        """
+        Open an existing model file (打开模型文件).
+
+        Args:
+            file_path: Absolute or relative path to the .qtb file (要打开的文件路径)
+        """
+        try:
+            provider.open_model_file(file_path=file_path)
+            provider.update_model()
+            return f"Successfully opened model from '{file_path}' (成功打开模型)"
+        except Exception as e:
+            return f"Error opening model file (打开模型文件失败): {e}"
+
+    @mcp.tool()
+    def remove_unused_sections() -> str:
+        """
+        Clean up and remove all unused sections from the model (删除未使用的截面).
+        """
+        try:
+            provider.remove_unused_sections()
+            return "Successfully removed unused sections (成功清除未使用的截面)"
+        except Exception as e:
+            return f"Error removing unused sections (清除未使用的截面失败): {e}"
+
     # ── 2. Node modifications ─────────────────────────────────────────
 
     @mcp.tool()
