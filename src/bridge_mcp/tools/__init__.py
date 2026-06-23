@@ -1379,6 +1379,34 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error removing section (删除截面失败): {e}"
 
     @mcp.tool()
+    def update_section_property(
+        index: int,
+        sec_property: list[float],
+        side_i: bool = True
+    ) -> str:
+        """
+        Directly modify the calculated properties of a section (直接修改截面特性值).
+
+        Use this to manually override Area, Ix, Iy, Iz etc. after creation.
+        Typically used for fine-tuning or correcting auto-calculated values.
+        (用于手动覆盖截面面积、惯性矩等自动计算值)
+
+        Args:
+            index: Section ID (截面编号)
+            sec_property: List of up to 29 section properties in order:
+                          [Area, Asy, Asz, Ixx, Iyy, Izz, ...]
+                          (截面特性列表，按顺序: 面积, 剪切面积y, 剪切面积z, 扭转惯性矩, 抗弯惯性矩y, 抗弯惯性矩z, ...)
+            side_i: For tapered sections, True=I-end, False=J-end (变截面时 True=I端, False=J端)
+        """
+        try:
+            provider.update_section_property(
+                index=index, sec_property=sec_property, side_i=side_i
+            )
+            return f"Successfully updated section {index} properties (成功修改截面 {index} 特性)"
+        except Exception as e:
+            return f"Error updating section property (修改截面特性失败): {e}"
+
+    @mcp.tool()
     def set_support(
         node_id: int | list[int] | str,
         dx: bool = True,
