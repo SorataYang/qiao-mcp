@@ -309,6 +309,36 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_material(**params)
         self._mdb.update_model()
 
+    def add_time_parameter(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_time_parameter(**kwargs)
+        self._mdb.update_model()
+
+    def add_creep_function(self, name: str, creep_data: list, scale_factor: float = 1) -> None:
+        self._require_available()
+        self._mdb.add_creep_function(name=name, creep_data=creep_data, scale_factor=scale_factor)
+        self._mdb.update_model()
+
+    def add_shrink_function(self, name: str, shrink_data: list = None, scale_factor: float = 1) -> None:
+        self._require_available()
+        self._mdb.add_shrink_function(name=name, shrink_data=shrink_data, scale_factor=scale_factor)
+        self._mdb.update_model()
+
+    def add_thickness(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_thickness(**kwargs)
+        self._mdb.update_model()
+
+    def add_effective_width(self, element_ids, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_effective_width(element_ids=element_ids, **kwargs)
+        self._mdb.update_model()
+
+    def add_tapper_section_group(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_tapper_section_group(**kwargs)
+        self._mdb.update_model()
+
     def add_section(self, name: str, sec_type: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_section(name=name, sec_type=sec_type, **kwargs)

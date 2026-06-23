@@ -365,6 +365,92 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating material (创建材料失败): {e}"
 
     @mcp.tool()
+    def add_time_parameter(
+        name: str,
+        code_index: int = 1,
+        time_parameter: list[float] | None = None,
+        creep_data: list[list] | None = None,
+        shrink_data: str = "",
+        index: int = -1,
+    ) -> str:
+        """
+        Add time-dependent material parameters (添加时间依存材料参数).
+
+        Args:
+            name: Parameter name (参数名称)
+            code_index: Code index (规范号)
+            time_parameter: Code specific parameters (规范关联的材料参数)
+            creep_data: Custom creep data [[time, value], ...] (自定义徐变数据)
+            shrink_data: Custom shrinkage data string (自定义收缩数据)
+            index: ID index, -1 for auto (编号，-1自动生成)
+        """
+        try:
+            kwargs = {
+                "name": name,
+                "code_index": code_index,
+                "index": index,
+            }
+            if time_parameter is not None:
+                kwargs["time_parameter"] = time_parameter
+            if creep_data is not None:
+                kwargs["creep_data"] = [tuple(item) for item in creep_data]
+            if shrink_data:
+                kwargs["shrink_data"] = shrink_data
+
+            provider.add_time_parameter(**kwargs)
+            return f"Successfully added time parameter '{name}' (成功添加时间依存参数 '{name}')"
+        except Exception as e:
+            return f"Error adding time parameter (添加时间依存参数失败): {e}"
+
+    @mcp.tool()
+    def add_creep_function(
+        name: str,
+        creep_data: list[list[float]],
+        scale_factor: float = 1.0,
+    ) -> str:
+        """
+        Add user-defined creep function (添加自定义徐变函数).
+
+        Args:
+            name: Function name (函数名称)
+            creep_data: Creep coefficient over time [[time(days), coefficient], ...]
+                        (徐变系数表 [[天数, 徐变系数], ...])
+            scale_factor: Scale factor (比例系数)
+        """
+        try:
+            creep_tuples = [tuple(item) for item in creep_data]
+            provider.add_creep_function(
+                name=name, creep_data=creep_tuples, scale_factor=scale_factor
+            )
+            return f"Successfully added creep function '{name}' (成功添加徐变函数)"
+        except Exception as e:
+            return f"Error adding creep function (添加徐变函数失败): {e}"
+
+    @mcp.tool()
+    def add_shrink_function(
+        name: str,
+        shrink_data: list[list[float]] | None = None,
+        scale_factor: float = 1.0,
+    ) -> str:
+        """
+        Add user-defined shrinkage function (添加自定义收缩函数).
+
+        Args:
+            name: Function name (函数名称)
+            shrink_data: Shrinkage strain over time [[time(days), strain], ...]
+                         (收缩应变表 [[天数, 应变], ...])
+            scale_factor: Scale factor (比例系数)
+        """
+        try:
+            kwargs = {"name": name, "scale_factor": scale_factor}
+            if shrink_data is not None:
+                kwargs["shrink_data"] = [tuple(item) for item in shrink_data]
+            provider.add_shrink_function(**kwargs)
+            return f"Successfully added shrink function '{name}' (成功添加收缩函数)"
+        except Exception as e:
+            return f"Error adding shrink function (添加收缩函数失败): {e}"
+
+    @mcp.tool()
     def create_section(
         name: str,
         sec_type: str,
@@ -1365,6 +1451,104 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Successfully created tapered section '{name}' (成功创建渐变截面)"
         except Exception as e:
             return f"Error creating tapered section (创建渐变截面失败): {e}"
+
+    @mcp.tool()
+    def add_tapper_section_group(
+        name: str,
+        ids: list[int] | str | None = None,
+        factor_w: float = 1.0,
+        factor_h: float = 1.0,
+        ref_w: int = 0,
+        ref_h: int = 0,
+        dis_w: float = 0,
+        dis_h: float = 0,
+    ) -> str:
+        """
+        Add a tapered section group (添加变截面组).
+
+        Args:
+            name: Group name (变截面组名称)
+            ids: Element IDs in the group (变截面组内的单元编号)
+            factor_w: Width variation factor (宽度变化系数)
+            factor_h: Height variation factor (高度变化系数)
+            ref_w: Width reference point (宽度参考点: 0=i, 1=j)
+            ref_h: Height reference point (高度参考点: 0=i, 1=j)
+            dis_w: Width variation distance (宽度变化距离)
+            dis_h: Height variation distance (高度变化距离)
+        """
+        try:
+            kwargs = {
+                "name": name,
+                "factor_w": factor_w,
+                "factor_h": factor_h,
+                "ref_w": ref_w,
+                "ref_h": ref_h,
+                "dis_w": dis_w,
+                "dis_h": dis_h,
+            }
+            if ids is not None:
+                kwargs["ids"] = ids
+            provider.add_tapper_section_group(**kwargs)
+            return f"Successfully added tapered section group '{name}' (成功添加变截面组)"
+        except Exception as e:
+            return f"Error adding tapered section group (添加变截面组失败): {e}"
+
+    @mcp.tool()
+    def add_thickness(
+        name: str,
+        t: float = 0.1,
+        thick_type: int = 0,
+        index: int = -1,
+    ) -> str:
+        """
+        Add a plate thickness property (添加板厚度).
+
+        Args:
+            name: Thickness name (厚度名称)
+            t: Thickness in meters (板厚 m)
+            thick_type: Thickness type (厚度类型): 0=平面内及平面外等厚, 1=平面内及平面外不等厚
+            index: ID index, -1 for auto (编号，-1自动生成)
+        """
+        try:
+            provider.add_thickness(name=name, t=t, thick_type=thick_type, index=index)
+            return f"Successfully added thickness '{name}' (成功添加板厚度)"
+        except Exception as e:
+            return f"Error adding thickness (添加板厚度失败): {e}"
+
+    @mcp.tool()
+    def add_effective_width(
+        element_ids: int | list[int] | str,
+        factor_i: float,
+        factor_j: float,
+        dz_i: float = 0,
+        dz_j: float = 0,
+        group_name: str = "",
+    ) -> str:
+        """
+        Add effective width to beam elements (添加截面有效宽度).
+
+        Args:
+            element_ids: Element ID(s) (单元编号)
+            factor_i: I-end factor (I端系数)
+            factor_j: J-end factor (J端系数)
+            dz_i: I-end Dz offset (I端 Dz 偏移)
+            dz_j: J-end Dz offset (J端 Dz 偏移)
+            group_name: Boundary group name (边界组名)
+        """
+        try:
+            kwargs = {
+                "element_ids": element_ids,
+                "factor_i": factor_i,
+                "factor_j": factor_j,
+                "dz_i": dz_i,
+                "dz_j": dz_j,
+            }
+            if group_name:
+                kwargs["group_name"] = group_name
+            provider.add_effective_width(**kwargs)
+            return f"Successfully added effective width to elements {element_ids} (成功添加有效宽度)"
+        except Exception as e:
+            return f"Error adding effective width (添加有效宽度失败): {e}"
 
     @mcp.tool()
     def update_section_bias(
