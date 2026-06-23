@@ -306,4 +306,516 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         except Exception as e:
             return f"Error retrieving buckling results (获取屈曲结果失败): {e}"
 
+
+    @mcp.tool()
+    def get_thickness_data(
+    ) -> str:
+        """
+        Get Thickness Data
+        """
+        try:
+            data = provider.get_thickness_data()
+            return f"get_thickness_data results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_thickness_data: {e}"
+
+    @mcp.tool()
+    def get_node_id(
+        x: float = 0,
+        y: float = 0,
+        z: float = 0,
+        tolerance: float = 0.0001,
+    ) -> str:
+        """
+        Get Node Id
+        """
+        try:
+            data = provider.get_node_id(x=x, y=y, z=z, tolerance=tolerance)
+            return f"get_node_id results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_node_id: {e}"
+
+    @mcp.tool()
+    def get_group_nodes(
+        group_name: str = "默认结构组",
+    ) -> str:
+        """
+        Get Group Nodes
+        """
+        try:
+            data = provider.get_group_nodes(group_name=group_name)
+            return f"get_group_nodes results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_group_nodes: {e}"
+
+    @mcp.tool()
+    def get_elements_by_point(
+        x: float = 0,
+        y: float = 0,
+        z: float = 0,
+        tolerance: float = 1,
+    ) -> str:
+        """
+        Get Elements By Point
+        """
+        try:
+            data = provider.get_elements_by_point(x=x, y=y, z=z, tolerance=tolerance)
+            return f"get_elements_by_point results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_elements_by_point: {e}"
+
+    @mcp.tool()
+    def get_elements_by_material(
+        name: str = "",
+    ) -> str:
+        """
+        Get Elements By Material
+        """
+        try:
+            data = provider.get_elements_by_material(name=name)
+            return f"get_elements_by_material results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_elements_by_material: {e}"
+
+    @mcp.tool()
+    def get_elements_by_section(
+        index: int = 1,
+    ) -> str:
+        """
+        Get Elements By Section
+        """
+        try:
+            data = provider.get_elements_by_section(index=index)
+            return f"get_elements_by_section results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_elements_by_section: {e}"
+
+    @mcp.tool()
+    def get_element_type(
+        element_id: int,
+    ) -> str:
+        """
+        Get Element Type
+        """
+        try:
+            data = provider.get_element_type(element_id=element_id)
+            return f"get_element_type results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_element_type: {e}"
+
+    @mcp.tool()
+    def get_element_weight(
+        ids = None,
+    ) -> str:
+        """
+        Get Element Weight
+        """
+        try:
+            data = provider.get_element_weight(ids=ids)
+            return f"get_element_weight results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_element_weight: {e}"
+
+    @mcp.tool()
+    def get_span_supports(
+        span_info_name: str = "",
+    ) -> str:
+        """
+        Get Span Supports
+        """
+        try:
+            data = provider.get_span_supports(span_info_name=span_info_name)
+            return f"get_span_supports results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_span_supports: {e}"
+
+    @mcp.tool()
+    def get_span_elements(
+        span_info_name: str = "",
+    ) -> str:
+        """
+        Get Span Elements
+        """
+        try:
+            data = provider.get_span_elements(span_info_name=span_info_name)
+            return f"get_span_elements results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_span_elements: {e}"
+
+    @mcp.tool()
+    def get_section_shape(
+        sec_id: int,
+    ) -> str:
+        """
+        Get Section Shape
+        """
+        try:
+            data = provider.get_section_shape(sec_id=sec_id)
+            return f"get_section_shape results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_section_shape: {e}"
+
+    @mcp.tool()
+    def get_section_property(
+        index: int,
+    ) -> str:
+        """
+        Get Section Property
+        """
+        try:
+            data = provider.get_section_property(index=index)
+            return f"get_section_property results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_section_property: {e}"
+
+    @mcp.tool()
+    def get_section_property_by_loops(
+        loop_segments: float = None,
+    ) -> str:
+        """
+        Get Section Property By Loops
+        """
+        try:
+            data = provider.get_section_property_by_loops(loop_segments=loop_segments)
+            return f"get_section_property_by_loops results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_section_property_by_loops: {e}"
+
+    @mcp.tool()
+    def get_section_property_by_lines(
+        sec_lines: float = None,
+    ) -> str:
+        """
+        Get Section Property By Lines
+        """
+        try:
+            data = provider.get_section_property_by_lines(sec_lines=sec_lines)
+            return f"get_section_property_by_lines results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_section_property_by_lines: {e}"
+
+    @mcp.tool()
+    def get_node_local_axis_data(
+    ) -> str:
+        """
+        Get Node Local Axis Data
+        """
+        try:
+            data = provider.get_node_local_axis_data()
+            return f"get_node_local_axis_data results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_node_local_axis_data: {e}"
+
+    @mcp.tool()
+    def get_constraint_equation_data(
+    ) -> str:
+        """
+        Get Constraint Equation Data
+        """
+        try:
+            data = provider.get_constraint_equation_data()
+            return f"get_constraint_equation_data results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_constraint_equation_data: {e}"
+
+    @mcp.tool()
+    def get_effective_width_data(
+    ) -> str:
+        """
+        Get Effective Width Data
+        """
+        try:
+            data = provider.get_effective_width_data()
+            return f"get_effective_width_data results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_effective_width_data: {e}"
+
+    @mcp.tool()
+    def get_tendon_property_data(
+    ) -> str:
+        """
+        Get Tendon Property Data
+        """
+        try:
+            data = provider.get_tendon_property_data()
+            return f"get_tendon_property_data results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_tendon_property_data: {e}"
+
+    @mcp.tool()
+    def get_pre_stress_load_data(
+    ) -> str:
+        """
+        Get Pre Stress Load Data
+        """
+        try:
+            data = provider.get_pre_stress_load_data()
+            return f"get_pre_stress_load_data results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_pre_stress_load_data: {e}"
+
+    @mcp.tool()
+    def get_node_mass_data(
+    ) -> str:
+        """
+        Get Node Mass Data
+        """
+        try:
+            data = provider.get_node_mass_data()
+            return f"get_node_mass_data results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_node_mass_data: {e}"
+
+    @mcp.tool()
+    def get_nodal_force_load_data(
+    ) -> str:
+        """
+        Get Nodal Force Load Data
+        """
+        try:
+            data = provider.get_nodal_force_load_data()
+            return f"get_nodal_force_load_data results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_nodal_force_load_data: {e}"
+
+    @mcp.tool()
+    def get_nodal_displacement_load_data(
+    ) -> str:
+        """
+        Get Nodal Displacement Load Data
+        """
+        try:
+            data = provider.get_nodal_displacement_load_data()
+            return f"get_nodal_displacement_load_data results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_nodal_displacement_load_data: {e}"
+
+    @mcp.tool()
+    def get_beam_element_load_data(
+    ) -> str:
+        """
+        Get Beam Element Load Data
+        """
+        try:
+            data = provider.get_beam_element_load_data()
+            return f"get_beam_element_load_data results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_beam_element_load_data: {e}"
+
+    @mcp.tool()
+    def get_plate_element_load_data(
+    ) -> str:
+        """
+        Get Plate Element Load Data
+        """
+        try:
+            data = provider.get_plate_element_load_data()
+            return f"get_plate_element_load_data results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_plate_element_load_data: {e}"
+
+    @mcp.tool()
+    def get_initial_tension_load_data(
+    ) -> str:
+        """
+        Get Initial Tension Load Data
+        """
+        try:
+            data = provider.get_initial_tension_load_data()
+            return f"get_initial_tension_load_data results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_initial_tension_load_data: {e}"
+
+    @mcp.tool()
+    def get_cable_length_load_data(
+    ) -> str:
+        """
+        Get Cable Length Load Data
+        """
+        try:
+            data = provider.get_cable_length_load_data()
+            return f"get_cable_length_load_data results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_cable_length_load_data: {e}"
+
+    @mcp.tool()
+    def get_deviation_parameters(
+    ) -> str:
+        """
+        Get Deviation Parameters
+        """
+        try:
+            data = provider.get_deviation_parameters()
+            return f"get_deviation_parameters results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_deviation_parameters: {e}"
+
+    @mcp.tool()
+    def get_deviation_load_data(
+    ) -> str:
+        """
+        Get Deviation Load Data
+        """
+        try:
+            data = provider.get_deviation_load_data()
+            return f"get_deviation_load_data results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_deviation_load_data: {e}"
+
+    @mcp.tool()
+    def get_elements_of_stage(
+        stage_id: int,
+    ) -> str:
+        """
+        Get Elements Of Stage
+        """
+        try:
+            data = provider.get_elements_of_stage(stage_id=stage_id)
+            return f"get_elements_of_stage results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_elements_of_stage: {e}"
+
+    @mcp.tool()
+    def get_nodes_of_stage(
+        stage_id: int,
+    ) -> str:
+        """
+        Get Nodes Of Stage
+        """
+        try:
+            data = provider.get_nodes_of_stage(stage_id=stage_id)
+            return f"get_nodes_of_stage results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_nodes_of_stage: {e}"
+
+    @mcp.tool()
+    def get_groups_of_stage(
+        stage_id: int,
+    ) -> str:
+        """
+        Get Groups Of Stage
+        """
+        try:
+            data = provider.get_groups_of_stage(stage_id=stage_id)
+            return f"get_groups_of_stage results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_groups_of_stage: {e}"
+
+    @mcp.tool()
+    def get_self_concurrent_reaction(
+        node_id: int,
+        case_name: str,
+    ) -> str:
+        """
+        Get Self Concurrent Reaction
+        """
+        try:
+            data = provider.get_self_concurrent_reaction(node_id=node_id, case_name=case_name)
+            return f"get_self_concurrent_reaction results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_self_concurrent_reaction: {e}"
+
+    @mcp.tool()
+    def get_all_concurrent_reaction(
+        node_id: int,
+        case_name: str,
+    ) -> str:
+        """
+        Get All Concurrent Reaction
+        """
+        try:
+            data = provider.get_all_concurrent_reaction(node_id=node_id, case_name=case_name)
+            return f"get_all_concurrent_reaction results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_all_concurrent_reaction: {e}"
+
+    @mcp.tool()
+    def get_concurrent_force(
+        ids = None,
+        case_name: str = "",
+    ) -> str:
+        """
+        Get Concurrent Force
+        """
+        try:
+            data = provider.get_concurrent_force(ids=ids, case_name=case_name)
+            return f"get_concurrent_force results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_concurrent_force: {e}"
+
+    @mcp.tool()
+    def get_elastic_link_force(
+        ids,
+        result_kind = 1,
+        stage_id = -1,
+        envelop_type = 0,
+        increment_type = 1,
+        case_name = "",
+    ) -> str:
+        """
+        Get Elastic Link Force
+        """
+        try:
+            data = provider.get_elastic_link_force(ids=ids, result_kind=result_kind, stage_id=stage_id, envelop_type=envelop_type, increment_type=increment_type, case_name=case_name)
+            return f"get_elastic_link_force results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_elastic_link_force: {e}"
+
+    @mcp.tool()
+    def get_constrain_equation_force(
+        ids,
+        result_kind = 1,
+        stage_id = 1,
+        envelop_type = 0,
+        increment_type = 1,
+        case_name = "",
+    ) -> str:
+        """
+        Get Constrain Equation Force
+        """
+        try:
+            data = provider.get_constrain_equation_force(ids=ids, result_kind=result_kind, stage_id=stage_id, envelop_type=envelop_type, increment_type=increment_type, case_name=case_name)
+            return f"get_constrain_equation_force results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_constrain_equation_force: {e}"
+
+    @mcp.tool()
+    def get_cable_element_length(
+        ids,
+        stage_id = -1,
+        increment_type = 1,
+    ) -> str:
+        """
+        Get Cable Element Length
+        """
+        try:
+            data = provider.get_cable_element_length(ids=ids, stage_id=stage_id, increment_type=increment_type)
+            return f"get_cable_element_length results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_cable_element_length: {e}"
+
+    @mcp.tool()
+    def get_period_and_vibration_results(
+    ) -> str:
+        """
+        Get Period And Vibration Results
+        """
+        try:
+            data = provider.get_period_and_vibration_results()
+            return f"get_period_and_vibration_results results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_period_and_vibration_results: {e}"
+
+    @mcp.tool()
+    def get_buckling_eigenvalue(
+    ) -> str:
+        """
+        Get Buckling Eigenvalue
+        """
+        try:
+            data = provider.get_buckling_eigenvalue()
+            return f"get_buckling_eigenvalue results:\n{_fmt(data)}"
+        except Exception as e:
+            return f"Error in get_buckling_eigenvalue: {e}"
+
     # Note: get_tendon_info is registered in tools/tendon.py

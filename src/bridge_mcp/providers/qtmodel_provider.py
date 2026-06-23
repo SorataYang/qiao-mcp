@@ -736,6 +736,162 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         return self._odb.get_buckling_modal_results(mode=mode)
 
+
+    def get_thickness_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_thickness_data(*args, **kwargs)
+
+    def get_node_id(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_node_id(*args, **kwargs)
+
+    def get_group_nodes(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_group_nodes(*args, **kwargs)
+
+    def get_elements_by_point(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_elements_by_point(*args, **kwargs)
+
+    def get_elements_by_material(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_elements_by_material(*args, **kwargs)
+
+    def get_elements_by_section(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_elements_by_section(*args, **kwargs)
+
+    def get_element_type(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_element_type(*args, **kwargs)
+
+    def get_element_weight(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_element_weight(*args, **kwargs)
+
+    def get_span_supports(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_span_supports(*args, **kwargs)
+
+    def get_span_elements(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_span_elements(*args, **kwargs)
+
+    def get_section_shape(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_section_shape(*args, **kwargs)
+
+    def get_section_property(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_section_property(*args, **kwargs)
+
+    def get_section_property_by_loops(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_section_property_by_loops(*args, **kwargs)
+
+    def get_section_property_by_lines(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_section_property_by_lines(*args, **kwargs)
+
+    def get_node_local_axis_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_node_local_axis_data(*args, **kwargs)
+
+    def get_constraint_equation_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_constraint_equation_data(*args, **kwargs)
+
+    def get_effective_width_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_effective_width_data(*args, **kwargs)
+
+    def get_tendon_property_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_tendon_property_data(*args, **kwargs)
+
+    def get_pre_stress_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_pre_stress_load_data(*args, **kwargs)
+
+    def get_node_mass_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_node_mass_data(*args, **kwargs)
+
+    def get_nodal_force_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_nodal_force_load_data(*args, **kwargs)
+
+    def get_nodal_displacement_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_nodal_displacement_load_data(*args, **kwargs)
+
+    def get_beam_element_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_beam_element_load_data(*args, **kwargs)
+
+    def get_plate_element_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_plate_element_load_data(*args, **kwargs)
+
+    def get_initial_tension_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_initial_tension_load_data(*args, **kwargs)
+
+    def get_cable_length_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_cable_length_load_data(*args, **kwargs)
+
+    def get_deviation_parameters(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_deviation_parameters(*args, **kwargs)
+
+    def get_deviation_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_deviation_load_data(*args, **kwargs)
+
+    def get_elements_of_stage(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_elements_of_stage(*args, **kwargs)
+
+    def get_nodes_of_stage(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_nodes_of_stage(*args, **kwargs)
+
+    def get_groups_of_stage(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_groups_of_stage(*args, **kwargs)
+
+    def get_self_concurrent_reaction(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_self_concurrent_reaction(*args, **kwargs)
+
+    def get_all_concurrent_reaction(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_all_concurrent_reaction(*args, **kwargs)
+
+    def get_concurrent_force(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_concurrent_force(*args, **kwargs)
+
+    def get_elastic_link_force(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_elastic_link_force(*args, **kwargs)
+
+    def get_constrain_equation_force(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_constrain_equation_force(*args, **kwargs)
+
+    def get_cable_element_length(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_cable_element_length(*args, **kwargs)
+
+    def get_period_and_vibration_results(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_period_and_vibration_results(*args, **kwargs)
+
+    def get_buckling_eigenvalue(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_buckling_eigenvalue(*args, **kwargs)
     def get_tendon_loss_results(self, name: str, stage_id: int = 1) -> list[dict]:
         self._require_available()
         return self._odb.get_tendon_loss_results(name=name, stage_id=stage_id)
