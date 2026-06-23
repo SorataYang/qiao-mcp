@@ -550,6 +550,37 @@ class QtModelProvider(BridgeProvider):
         )
         self._mdb.update_model()
 
+
+    def add_custom_temperature(self, element_id, case_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_custom_temperature(element_id=element_id, case_name=case_name, **kwargs)
+        self._mdb.update_model()
+
+    def add_beam_section_temperature(self, element_id, case_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_beam_section_temperature(element_id=element_id, case_name=case_name, **kwargs)
+        self._mdb.update_model()
+
+    def add_initial_tension_load(self, element_id, case_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_initial_tension_load(element_id=element_id, case_name=case_name, **kwargs)
+        self._mdb.update_model()
+
+    def add_cable_length_load(self, element_id, case_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_cable_length_load(element_id=element_id, case_name=case_name, **kwargs)
+        self._mdb.update_model()
+
+    def add_plate_element_load(self, element_id, case_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_plate_element_load(element_id=element_id, case_name=case_name, **kwargs)
+        self._mdb.update_model()
+
+    def add_distribute_plane_load(self, index: int, case_name: str, type_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_distribute_plane_load(index=index, case_name=case_name, type_name=type_name, **kwargs)
+        self._mdb.update_model()
+
     def add_support_settlement(
         self, node_id: Any, case_name: str, displacement_info: list, **kwargs
     ) -> None:

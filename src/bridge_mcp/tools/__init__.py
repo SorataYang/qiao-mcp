@@ -1837,6 +1837,204 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error applying gradient temperature load (施加梯度温度失败): {e}"
 
     @mcp.tool()
+    def add_custom_temperature(
+        element_id: int | list[int] | str,
+        case_name: str,
+        orientation: int = 1,
+        temperature_data: list[list[float]] | None = None,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply custom temperature load (自定义温度荷载).
+
+        Args:
+            element_id: Element ID(s) (单元编号)
+            case_name: Load case name (荷载工况名)
+            orientation: Direction of temperature change (温度方向, 1=Y向, 2=Z向)
+            temperature_data: Custom temperature points [[distance, temp_diff], ...] (温度数据点)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {"orientation": orientation}
+            if group_name: kwargs["group_name"] = group_name
+            if temperature_data is not None:
+                kwargs["temperature_data"] = [tuple(item) for item in temperature_data]
+            provider.add_custom_temperature(element_id=element_id, case_name=case_name, **kwargs)
+            return f"Successfully applied custom temperature to element(s) {element_id} (成功施加自定义温度)"
+        except Exception as e:
+            return f"Error applying custom temperature (施加自定义温度失败): {e}"
+
+    @mcp.tool()
+    def add_beam_section_temperature(
+        element_id: int | list[int] | str,
+        case_name: str,
+        code_index: int = 1,
+        sec_type: int = 1,
+        t1: float = 0,
+        t2: float = 0,
+        t3: float = 0,
+        t4: float = 0,
+        thick: float = 0,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply beam section temperature load (梁截面温度荷载).
+
+        Args:
+            element_id: Element ID(s) (单元编号)
+            case_name: Load case name (荷载工况名)
+            code_index: Code index (规范号)
+            sec_type: Section type (截面类型, 如1为箱梁等)
+            t1: Temperature difference param 1 (各部位温差参数1)
+            t2: Temperature difference param 2 (各部位温差参数2)
+            t3: Temperature difference param 3 (各部位温差参数3)
+            t4: Temperature difference param 4 (各部位温差参数4)
+            thick: Thickness parameter (厚度参数)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {
+                "code_index": code_index, "sec_type": sec_type,
+                "t1": t1, "t2": t2, "t3": t3, "t4": t4, "thick": thick
+            }
+            if group_name: kwargs["group_name"] = group_name
+            provider.add_beam_section_temperature(element_id=element_id, case_name=case_name, **kwargs)
+            return f"Successfully applied beam section temperature to element(s) {element_id} (成功施加梁截面温度)"
+        except Exception as e:
+            return f"Error applying beam section temperature (施加梁截面温度失败): {e}"
+
+    @mcp.tool()
+    def add_initial_tension_load(
+        element_id: int | list[int] | str,
+        case_name: str,
+        tension: float = 0.0,
+        tension_type: int = 1,
+        application_type: int = 1,
+        stiffness: float = 0.0,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply initial tension load (初拉力荷载).
+
+        Args:
+            element_id: Element ID(s) (单元编号)
+            case_name: Load case name (荷载工况名)
+            tension: Tension force (拉力值)
+            tension_type: Type of tension (初拉力类型)
+            application_type: Application type (施加方式)
+            stiffness: Stiffness reduction (刚度参数)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {
+                "tension": tension, "tension_type": tension_type,
+                "application_type": application_type, "stiffness": stiffness
+            }
+            if group_name: kwargs["group_name"] = group_name
+            provider.add_initial_tension_load(element_id=element_id, case_name=case_name, **kwargs)
+            return f"Successfully applied initial tension {tension} to element(s) {element_id} (成功施加初拉力)"
+        except Exception as e:
+            return f"Error applying initial tension (施加初拉力失败): {e}"
+
+    @mcp.tool()
+    def add_cable_length_load(
+        element_id: int | list[int] | str,
+        case_name: str,
+        length: float = 0.0,
+        tension_type: int = 1,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply cable length adjustment load (索长误差荷载).
+
+        Args:
+            element_id: Element ID(s) (单元编号)
+            case_name: Load case name (荷载工况名)
+            length: Length difference (长度误差量)
+            tension_type: Tension type (拉力类型)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {"length": length, "tension_type": tension_type}
+            if group_name: kwargs["group_name"] = group_name
+            provider.add_cable_length_load(element_id=element_id, case_name=case_name, **kwargs)
+            return f"Successfully applied cable length load {length} to element(s) {element_id} (成功施加索长荷载)"
+        except Exception as e:
+            return f"Error applying cable length load (施加索长荷载失败): {e}"
+
+    @mcp.tool()
+    def add_plate_element_load(
+        element_id: int | list[int] | str,
+        case_name: str,
+        load_type: int = 1,
+        load_place: int = 1,
+        coord_system: int = 3,
+        list_load: list[float] | float | None = None,
+        list_xy: list[float] | None = None,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply plate element load (板单元面上荷载).
+
+        Args:
+            element_id: Element ID(s) (单元编号)
+            case_name: Load case name (荷载工况名)
+            load_type: Load type (荷载类型)
+            load_place: Application place (施加位置)
+            coord_system: Coordinate system (坐标系: 3为整体)
+            list_load: Load values (荷载值)
+            list_xy: Location coords (位置坐标)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {"load_type": load_type, "load_place": load_place, "coord_system": coord_system}
+            if group_name: kwargs["group_name"] = group_name
+            if list_load is not None: kwargs["list_load"] = list_load
+            if list_xy is not None: kwargs["list_xy"] = tuple(list_xy)
+            provider.add_plate_element_load(element_id=element_id, case_name=case_name, **kwargs)
+            return f"Successfully applied plate load to element(s) {element_id} (成功施加板单元荷载)"
+        except Exception as e:
+            return f"Error applying plate load (施加板单元荷载失败): {e}"
+
+    @mcp.tool()
+    def add_distribute_plane_load(
+        index: int,
+        case_name: str,
+        type_name: str,
+        point1: list[float] | None = None,
+        point2: list[float] | None = None,
+        point3: list[float] | None = None,
+        plate_ids: list[int] | None = None,
+        coord_system: int = 3,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply arbitrary distributed plane load (任意分布面荷载).
+
+        Args:
+            index: Load ID (编号)
+            case_name: Load case name (荷载工况名)
+            type_name: Load type name (分布面荷载类型名)
+            point1: 1st point defining the plane [x,y,z] (定义面的点1)
+            point2: 2nd point defining the plane [x,y,z] (定义面的点2)
+            point3: 3rd point defining the plane [x,y,z] (定义面的点3)
+            plate_ids: Optional plate elements to load (指定板单元)
+            coord_system: Coordinate system (坐标系)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {"coord_system": coord_system}
+            if group_name: kwargs["group_name"] = group_name
+            if point1: kwargs["point1"] = tuple(point1)
+            if point2: kwargs["point2"] = tuple(point2)
+            if point3: kwargs["point3"] = tuple(point3)
+            if plate_ids: kwargs["plate_ids"] = plate_ids
+            provider.add_distribute_plane_load(index=index, case_name=case_name, type_name=type_name, **kwargs)
+            return f"Successfully applied distributed plane load '{type_name}' (成功施加分布面荷载)"
+        except Exception as e:
+            return f"Error applying distributed plane load (施加分布面荷载失败): {e}"
+
+    @mcp.tool()
     def add_support_settlement(
         node_id: int | list[int] | str,
         case_name: str,
