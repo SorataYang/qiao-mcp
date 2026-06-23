@@ -132,3 +132,51 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
             )
         except Exception as e:
             return f"Error adding elastic support (添加弹性支承失败): {e}"
+
+    @mcp.tool()
+    def add_beam_constraint(
+        beam_id: int,
+        release_i: list[bool] | None = None,
+        release_j: list[bool] | None = None,
+        group_name: str = "",
+    ) -> str:
+        """
+        Set beam end releases / constraints (设置梁端约束/铰接释放).
+
+        Controls which DOFs are released at each end of a beam element.
+        True = released (free), False = fixed (constrained).
+        用于控制梁单元两端的自由度释放，True=释放(铰接), False=固接。
+
+        Common use: releasing rotation at one end to create a pin connection.
+        常见用法：释放一端转动自由度以创建铰接。
+
+        Args:
+            beam_id: Beam element ID (梁单元编号)
+            release_i: DOF releases at I-end [dx, dy, dz, rx, ry, rz]
+                       (I端自由度释放，True=释放)
+            release_j: DOF releases at J-end [dx, dy, dz, rx, ry, rz]
+                       (J端自由度释放，True=释放)
+            group_name: Boundary group name (边界组名)
+
+        Example:
+            add_beam_constraint(1, release_i=[False,False,False,False,True,False])
+            # Release My rotation at I-end (I端释放绕Y轴转动=铰接)
+        """
+        try:
+            provider.add_beam_constraint(
+                beam_id=beam_id,
+                info_i=release_i,
+                info_j=release_j,
+                group_name=group_name,
+            )
+            parts = []
+            if release_i is not None:
+                parts.append(f"I-end releases={release_i}")
+            if release_j is not None:
+                parts.append(f"J-end releases={release_j}")
+            return (
+                f"Beam constraint set on element {beam_id}: "
+                f"{', '.join(parts)} (梁端约束设置成功)"
+            )
+        except Exception as e:
+            return f"Error adding beam constraint (设置梁端约束失败): {e}"

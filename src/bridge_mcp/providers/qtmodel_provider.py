@@ -424,6 +424,30 @@ class QtModelProvider(BridgeProvider):
         )
         self._mdb.update_model()
 
+    def add_beam_constraint(
+        self, beam_id: int, info_i: list[bool] = None, info_j: list[bool] = None, group_name: str = ""
+    ) -> None:
+        self._require_available()
+        kwargs = {"beam_id": beam_id}
+        if info_i is not None:
+            kwargs["info_i"] = info_i
+        if info_j is not None:
+            kwargs["info_j"] = info_j
+        if group_name:
+            kwargs["group_name"] = group_name
+        self._mdb.add_beam_constraint(**kwargs)
+        self._mdb.update_model()
+
+    def add_constraint_equation(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_constraint_equation(**kwargs)
+        self._mdb.update_model()
+
+    def remove_boundary(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.remove_boundary(**kwargs)
+        self._mdb.update_model()
+
     # ── Load Operations ────────────────────────────────────────────────
 
     def add_load_group(self, name: str) -> None:
