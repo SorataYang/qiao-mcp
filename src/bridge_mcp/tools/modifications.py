@@ -93,6 +93,39 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             return f"Error updating node (修改节点失败): {e}"
 
     @mcp.tool()
+    def update_node_id(node_id: int, new_id: int) -> str:
+        """
+        Change a node's ID (修改节点编号).
+
+        Args:
+            node_id: Existing node ID (原节点编号)
+            new_id: New node ID (新节点编号)
+        """
+        try:
+            provider.update_node_id(node_id=node_id, new_id=new_id)
+            provider.update_model()
+            return f"Successfully updated node ID from {node_id} to {new_id} (成功修改节点编号)"
+        except Exception as e:
+            return f"Error updating node ID (修改节点编号失败): {e}"
+
+    @mcp.tool()
+    def renumber_nodes(ids: Any = None, new_ids: Any = None) -> str:
+        """
+        Renumber nodes (节点重新编号).
+        If no IDs are provided, renumbers all nodes starting from 1 continuously.
+
+        Args:
+            ids: List of node IDs or string format (可选，原节点号)
+            new_ids: List of new node IDs (可选，新节点号)
+        """
+        try:
+            provider.renumber_nodes(ids=ids, new_ids=new_ids)
+            provider.update_model()
+            return "Successfully renumbered nodes (成功重新编号节点)"
+        except Exception as e:
+            return f"Error renumbering nodes (重新编号失败): {e}"
+
+    @mcp.tool()
     def move_nodes(
         ids: Any,
         offset_x: float = 0.0,

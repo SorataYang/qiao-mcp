@@ -329,6 +329,17 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         self._mdb.update_node(node_id=node_id, **kwargs)
 
+    def update_node_id(self, node_id: int, new_id: int) -> None:
+        self._require_available()
+        self._mdb.update_node_id(node_id=node_id, new_id=new_id)
+
+    def renumber_nodes(self, ids: Any = None, new_ids: Any = None) -> None:
+        self._require_available()
+        if ids is None:
+            self._mdb.renumber_nodes()
+        else:
+            self._mdb.renumber_nodes(ids, new_ids)
+
     def move_nodes(self, ids: Any, offset_x: float = 0, offset_y: float = 0, offset_z: float = 0) -> None:
         self._require_available()
         self._mdb.move_nodes(ids=ids, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)

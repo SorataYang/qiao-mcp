@@ -125,6 +125,16 @@ class BridgeProvider(ABC):
         ...
 
     @abstractmethod
+    def update_node_id(self, node_id: int, new_id: int) -> None:
+        """Update node ID. 修改节点编号"""
+        ...
+
+    @abstractmethod
+    def renumber_nodes(self, ids: Any = None, new_ids: Any = None) -> None:
+        """Renumber nodes. 节点重新编号"""
+        ...
+
+    @abstractmethod
     def add_elements(self, ele_data: list[list], **kwargs) -> None:
         """Add elements to the model. 添加单元"""
         ...
