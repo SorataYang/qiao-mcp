@@ -154,3 +154,91 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
             )
         except Exception as e:
             return f"Error getting tendon info (获取钢束信息失败): {e}"
+
+    @mcp.tool()
+    def add_tendon_3d(
+        name: str,
+        property_name: str = "",
+        group_name: str = "默认组",
+        num: int = 1,
+        line_type: int = 1,
+        control_points: list[list[float]] | None = None,
+    ) -> str:
+        """
+        Add a 3D tendon (添加三维钢束).
+
+        Args:
+            name: Tendon name (钢束名称)
+            property_name: Tendon property name (钢束特性名)
+            group_name: Boundary/Tendon group name (所在组名)
+            num: Number of tendons (钢束根数)
+            line_type: Line type (线型)
+            control_points: 3D control points [[x, y, z, R], ...] (三维控制点坐标及曲率半径)
+        """
+        try:
+            kwargs = {
+                "property_name": property_name,
+                "group_name": group_name,
+                "num": num,
+                "line_type": line_type,
+            }
+            if control_points is not None:
+                kwargs["control_points"] = [tuple(pt) for pt in control_points]
+            provider.add_tendon_3d(name=name, **kwargs)
+            return f"Successfully added 3D tendon '{name}' (成功添加三维钢束)"
+        except Exception as e:
+            return f"Error adding 3D tendon (添加三维钢束失败): {e}"
+
+    @mcp.tool()
+    def assign_tendon_elements(ids: int | list[int] | str) -> str:
+        """
+        Assign elements to a tendon (为钢束分配单元).
+
+        Args:
+            ids: Element IDs (单元编号)
+        """
+        try:
+            provider.add_tendon_elements(ids=ids)
+            return f"Successfully assigned elements {ids} to tendon (成功为钢束分配单元)"
+        except Exception as e:
+            return f"Error assigning tendon elements (分配单元失败): {e}"
+
+    @mcp.tool()
+    def get_tendon_loss_results(name: str, stage_id: int = 1) -> str:
+        """
+        Get tendon prestress loss results (获取预应力损失结果).
+
+        Args:
+            name: Tendon name (钢束名)
+            stage_id: Construction stage ID (施工阶段编号)
+        """
+        try:
+            data = provider.get_tendon_loss_results(name=name, stage_id=stage_id)
+            return f"Tendon '{name}' loss results for stage {stage_id}:\n{data}"
+        except Exception as e:
+            return f"Error getting tendon loss results (获取预应力损失结果失败): {e}"
+
+    @mcp.tool()
+    def get_tendon_position_result(name: str) -> str:
+        """
+        Get tendon position/coordinate results (获取钢束坐标结果).
+
+        Args:
+            name: Tendon name (钢束名)
+        """
+        try:
+            data = provider.get_tendon_position_result(name=name)
+            return f"Tendon '{name}' position results:\n{data}"
+        except Exception as e:
+            return f"Error getting tendon position (获取钢束坐标结果失败): {e}"
+
+    @mcp.tool()
+    def get_tendon_length_result() -> str:
+        """
+        Get all tendon length results (获取所有钢束长度结果).
+        """
+        try:
+            data = provider.get_tendon_length_result()
+            return f"Tendon length results:\n{data}"
+        except Exception as e:
+            return f"Error getting tendon lengths (获取钢束长度结果失败): {e}"

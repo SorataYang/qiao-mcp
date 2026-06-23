@@ -602,6 +602,21 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_tendon_2d(name=name, property_name=property_name, **kwargs)
         self._mdb.update_model()
 
+    def add_tendon_profile(self, name: str, property_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_tendon_profile(name=name, property_name=property_name, **kwargs)
+        self._mdb.update_model()
+
+    def add_tendon_3d(self, name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_tendon_3d(name=name, **kwargs)
+        self._mdb.update_model()
+
+    def add_tendon_elements(self, ids: Any) -> None:
+        self._require_available()
+        self._mdb.add_tendon_elements(ids=ids)
+        self._mdb.update_model()
+
     def add_pre_stress(
         self, case_name: str, tendon_name: str, force: float, **kwargs
     ) -> None:
@@ -720,6 +735,18 @@ class QtModelProvider(BridgeProvider):
     def get_buckling_modal_results(self, mode: int = 1) -> list[dict]:
         self._require_available()
         return self._odb.get_buckling_modal_results(mode=mode)
+
+    def get_tendon_loss_results(self, name: str, stage_id: int = 1) -> list[dict]:
+        self._require_available()
+        return self._odb.get_tendon_loss_results(name=name, stage_id=stage_id)
+
+    def get_tendon_position_result(self, name: str) -> list[dict]:
+        self._require_available()
+        return self._odb.get_tendon_position_result(name=name)
+
+    def get_tendon_length_result(self) -> list[dict]:
+        self._require_available()
+        return self._odb.get_tendon_length_result()
 
     # ── Visualization ──────────────────────────────────────────────────
 
