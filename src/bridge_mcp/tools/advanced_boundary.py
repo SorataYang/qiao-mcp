@@ -132,3 +132,125 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
             )
         except Exception as e:
             return f"Error adding elastic support (添加弹性支承失败): {e}"
+
+    @mcp.tool()
+    def add_beam_constraint(
+        beam_id: int,
+        release_i: list[bool] | None = None,
+        release_j: list[bool] | None = None,
+        group_name: str = "",
+    ) -> str:
+        """
+        Set beam end releases / constraints (设置梁端约束/铰接释放).
+
+        Controls which DOFs are released at each end of a beam element.
+        True = released (free), False = fixed (constrained).
+        用于控制梁单元两端的自由度释放，True=释放(铰接), False=固接。
+
+        Common use: releasing rotation at one end to create a pin connection.
+        常见用法：释放一端转动自由度以创建铰接。
+
+        Args:
+            beam_id: Beam element ID (梁单元编号)
+            release_i: DOF releases at I-end [dx, dy, dz, rx, ry, rz]
+                       (I端自由度释放，True=释放)
+            release_j: DOF releases at J-end [dx, dy, dz, rx, ry, rz]
+                       (J端自由度释放，True=释放)
+            group_name: Boundary group name (边界组名)
+
+        Example:
+            add_beam_constraint(1, release_i=[False,False,False,False,True,False])
+            # Release My rotation at I-end (I端释放绕Y轴转动=铰接)
+        """
+        try:
+            provider.add_beam_constraint(
+                beam_id=beam_id,
+                info_i=release_i,
+                info_j=release_j,
+                group_name=group_name,
+            )
+            parts = []
+            if release_i is not None:
+                parts.append(f"I-end releases={release_i}")
+            if release_j is not None:
+                parts.append(f"J-end releases={release_j}")
+            return (
+                f"Beam constraint set on element {beam_id}: "
+                f"{', '.join(parts)} (梁端约束设置成功)"
+            )
+        except Exception as e:
+            return f"Error adding beam constraint (设置梁端约束失败): {e}"
+
+    @mcp.tool()
+    def add_constraint_equation(
+        name: str,
+        slave_node: int,
+        slave_dof: int = 1,
+        master_info: list[list] | None = None,
+        group_name: str = "",
+    ) -> str:
+        """
+        Add a constraint equation between node DOFs (添加约束方程).
+
+        Establishes a linear relationship between a slave DOF and one or more
+        master DOFs: slave_dof = Σ(coefficient × master_dof).
+        建立从属自由度与主自由度之间的线性约束关系。
+
+        Args:
+            name: Constraint equation name (约束方程名称)
+            slave_node: Slave node ID (从节点编号)
+            slave_dof: Slave DOF index 1-6 (从节点自由度: 1=Dx,2=Dy,3=Dz,4=Rx,5=Ry,6=Rz)
+            master_info: List of master DOF definitions [[node_id, dof, coefficient], ...]
+                         (主自由度信息 [[节点号, 自由度号, 系数], ...])
+            group_name: Boundary group name (边界组名)
+
+        Example:
+            add_constraint_equation("CE1", slave_node=5, slave_dof=3,
+                                    master_info=[[1, 3, 1.0], [2, 3, 0.5]])
+            # Node 5 Dz = 1.0 * Node1_Dz + 0.5 * Node2_Dz
+        """
+        try:
+            kwargs = {"name": name, "sec_node": slave_node, "sec_dof": slave_dof}
+            if master_info is not None:
+                kwargs["master_info"] = [tuple(m) for m in master_info]
+            if group_name:
+                kwargs["group_name"] = group_name
+            provider.add_constraint_equation(**kwargs)
+            return (
+                f"Constraint equation '{name}' added on node {slave_node} DOF {slave_dof} "
+                f"(约束方程 '{name}' 创建成功)"
+            )
+        except Exception as e:
+            return f"Error adding constraint equation (添加约束方程失败): {e}"
+
+    @mcp.tool()
+    def remove_boundary(
+        remove_id: int,
+        kind: str,
+        group_name: str = "",
+        end: str = "I",
+    ) -> str:
+        """
+        Remove a specific boundary condition (删除指定边界条件).
+
+        Args:
+            remove_id: Node or element ID to remove boundary from (节点或单元编号)
+            kind: Boundary type to remove (边界类型):
+                "support" (一般支承), "elastic_support" (弹性支承),
+                "elastic_link" (弹性连接), "master_slave" (主从约束),
+                "beam_constraint" (梁端约束), "constraint_equation" (约束方程)
+            group_name: Boundary group name (边界组名)
+            end: For beam constraints: "I" or "J" end (梁端约束时指定I端或J端)
+        """
+        try:
+            kwargs = {"remove_id": remove_id, "kind": kind}
+            if group_name:
+                kwargs["group_name"] = group_name
+            kwargs["extra_name"] = end
+            provider.remove_boundary(**kwargs)
+            return (
+                f"Successfully removed {kind} boundary from ID {remove_id} "
+                f"(成功删除 {kind} 边界条件)"
+            )
+        except Exception as e:
+            return f"Error removing boundary (删除边界条件失败): {e}"

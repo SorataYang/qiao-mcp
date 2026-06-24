@@ -27,8 +27,10 @@ class QtModelProvider(BridgeProvider):
     """
 
     def __init__(self):
+        """Initialize the qtmodel provider and check availability."""
         self._mdb = None
         self._odb = None
+        self._cdb = None
         self._available = False
         self._unavailable_reason = ""
         self._try_import()
@@ -40,6 +42,7 @@ class QtModelProvider(BridgeProvider):
             # Accessing mdb/odb/cdb will raise if the software is not running
             self._mdb = qtmodel.mdb
             self._odb = qtmodel.odb
+            self._cdb = qtmodel.cdb
             self._available = True
         except ImportError:
             self._available = False
@@ -139,6 +142,44 @@ class QtModelProvider(BridgeProvider):
                 
         return result
 
+
+    @staticmethod
+    def _validate_ids(ids, required: bool = False):
+        """Validate and normalize ids input for robust error handling."""
+        if ids is None:
+            if required:
+                raise ValueError("ids parameter is required but was empty or None.")
+            return None
+            
+        if isinstance(ids, str):
+            cleaned = ids.strip()
+            if not cleaned:
+                if required:
+                    raise ValueError("ids string cannot be empty.")
+                return None
+            return cleaned
+            
+        if isinstance(ids, (int, float)):
+            if ids <= 0:
+                raise ValueError(f"Invalid ID: {ids}. IDs must be positive integers.")
+            return int(ids)
+            
+        if isinstance(ids, (list, tuple)):
+            if not ids and required:
+                raise ValueError("ids list cannot be empty.")
+            valid_ids = []
+            for i in ids:
+                try:
+                    val = int(i)
+                    if val <= 0:
+                        raise ValueError(f"Invalid ID in list: {i}. IDs must be positive.")
+                    valid_ids.append(val)
+                except (ValueError, TypeError):
+                    raise ValueError(f"Invalid ID format in list: {i}")
+            return valid_ids
+            
+        raise ValueError(f"Unsupported ids type: {type(ids)}. Expected int, list, or string.")
+
     def _safe_get(self, fn_name: str, *args, **kwargs) -> Any:
         """Call an odb method by name, auto-parse JSON, return None on error."""
         fn = getattr(self._odb, fn_name, None)
@@ -179,6 +220,8 @@ class QtModelProvider(BridgeProvider):
 
     def get_node_data(self, ids: Any = None) -> list[dict]:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         result = self._parse(
             self._odb.get_node_data(ids=ids) if ids is not None else self._odb.get_node_data()
         )
@@ -188,6 +231,8 @@ class QtModelProvider(BridgeProvider):
 
     def get_element_data(self, ids: Any = None) -> list[dict]:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         result = self._parse(
             self._odb.get_element_data(ids=ids) if ids is not None else self._odb.get_element_data()
         )
@@ -267,13 +312,30 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         self._mdb.update_model()
 
+    def save_model_file(self, file_path: str) -> None:
+        self._require_available()
+        self._mdb.save_file(file_path=file_path)
+
+    def open_model_file(self, file_path: str) -> None:
+        self._require_available()
+        self._mdb.open_file(file_path=file_path)
+
+    def remove_unused_sections(self) -> None:
+        self._require_available()
+        self._mdb.remove_unused_sections()
+        self._mdb.update_model()
+
     def add_nodes(self, node_data: list[list[float]], **kwargs) -> None:
         self._require_available()
+        if not node_data:
+            raise ValueError("node_data cannot be empty")
         self._mdb.add_nodes(node_data=node_data, **kwargs)
         self._mdb.update_model()
 
     def add_elements(self, ele_data: list[list], **kwargs) -> None:
         self._require_available()
+        if not ele_data:
+            raise ValueError("ele_data cannot be empty")
         self._mdb.add_elements(ele_data=ele_data, **kwargs)
         self._mdb.update_model()
 
@@ -293,6 +355,36 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_material(**params)
         self._mdb.update_model()
 
+    def add_time_parameter(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_time_parameter(**kwargs)
+        self._mdb.update_model()
+
+    def add_creep_function(self, name: str, creep_data: list, scale_factor: float = 1) -> None:
+        self._require_available()
+        self._mdb.add_creep_function(name=name, creep_data=creep_data, scale_factor=scale_factor)
+        self._mdb.update_model()
+
+    def add_shrink_function(self, name: str, shrink_data: list = None, scale_factor: float = 1) -> None:
+        self._require_available()
+        self._mdb.add_shrink_function(name=name, shrink_data=shrink_data, scale_factor=scale_factor)
+        self._mdb.update_model()
+
+    def add_thickness(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_thickness(**kwargs)
+        self._mdb.update_model()
+
+    def add_effective_width(self, element_ids, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_effective_width(element_ids=element_ids, **kwargs)
+        self._mdb.update_model()
+
+    def add_tapper_section_group(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_tapper_section_group(**kwargs)
+        self._mdb.update_model()
+
     def add_section(self, name: str, sec_type: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_section(name=name, sec_type=sec_type, **kwargs)
@@ -305,6 +397,8 @@ class QtModelProvider(BridgeProvider):
 
     def remove_section(self, ids: Any) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         self._mdb.remove_section(ids=ids)
         self._mdb.update_model()
 
@@ -329,24 +423,62 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         self._mdb.update_node(node_id=node_id, **kwargs)
 
+    def update_node_id(self, node_id: int, new_id: int) -> None:
+        self._require_available()
+        self._mdb.update_node_id(node_id=node_id, new_id=new_id)
+
+    def renumber_nodes(self, ids: Any = None, new_ids: Any = None) -> None:
+        self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
+        if ids is None:
+            self._mdb.renumber_nodes()
+        else:
+            self._mdb.renumber_nodes(ids, new_ids)
+
     def move_nodes(self, ids: Any, offset_x: float = 0, offset_y: float = 0, offset_z: float = 0) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         self._mdb.move_nodes(ids=ids, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
 
     def update_element(self, old_id: int, **kwargs) -> None:
         self._require_available()
         self._mdb.update_element(old_id=old_id, **kwargs)
 
+    def update_element_id(self, old_id: int, new_id: int) -> None:
+        self._require_available()
+        self._mdb.update_element_id(old_id=old_id, new_id=new_id)
+
+    def renumber_elements(self, element_ids: Any = None, new_ids: Any = None) -> None:
+        self._require_available()
+        if element_ids is None:
+            self._mdb.renumber_elements()
+        else:
+            self._mdb.renumber_elements(element_ids, new_ids)
+
+    def revert_local_orientation(self, ids: Any) -> None:
+        self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
+        self._mdb.revert_local_orientation(ids=ids)
+
     def update_element_material(self, ids: Any, mat_id: int) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         self._mdb.update_element_material(ids=ids, mat_id=mat_id)
 
     def update_frame_section(self, ids: Any, sec_id: int) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         self._mdb.update_frame_section(ids=ids, sec_id=sec_id)
 
     def update_element_beta(self, ids: Any, beta: float) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         self._mdb.update_element_beta(ids=ids, beta=beta)
 
     def update_element_node(self, element_id: int, node_ids: list) -> None:
@@ -360,6 +492,8 @@ class QtModelProvider(BridgeProvider):
     def remove_nodes(self, ids: Any = None) -> None:
         self._require_available()
         if ids is not None:
+            ids = self._validate_ids(ids)
+        if ids is not None:
             self._mdb.remove_nodes(ids=ids)
         else:
             self._mdb.remove_nodes()
@@ -367,12 +501,16 @@ class QtModelProvider(BridgeProvider):
     def remove_elements(self, ids: Any = None, remove_free: bool = False) -> None:
         self._require_available()
         if ids is not None:
+            ids = self._validate_ids(ids)
+        if ids is not None:
             self._mdb.remove_elements(ids=ids, remove_free=remove_free)
         else:
             self._mdb.remove_elements(remove_free=remove_free)
 
     def merge_nodes(self, ids: Any = None, tolerance: float = 1e-4) -> None:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         if ids is not None:
             self._mdb.merge_nodes(ids=ids, tolerance=tolerance)
         else:
@@ -398,6 +536,30 @@ class QtModelProvider(BridgeProvider):
         )
         self._mdb.update_model()
 
+    def add_beam_constraint(
+        self, beam_id: int, info_i: list[bool] = None, info_j: list[bool] = None, group_name: str = ""
+    ) -> None:
+        self._require_available()
+        kwargs = {"beam_id": beam_id}
+        if info_i is not None:
+            kwargs["info_i"] = info_i
+        if info_j is not None:
+            kwargs["info_j"] = info_j
+        if group_name:
+            kwargs["group_name"] = group_name
+        self._mdb.add_beam_constraint(**kwargs)
+        self._mdb.update_model()
+
+    def add_constraint_equation(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_constraint_equation(**kwargs)
+        self._mdb.update_model()
+
+    def remove_boundary(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.remove_boundary(**kwargs)
+        self._mdb.update_model()
+
     # ── Load Operations ────────────────────────────────────────────────
 
     def add_load_group(self, name: str) -> None:
@@ -408,6 +570,14 @@ class QtModelProvider(BridgeProvider):
     def add_load_case(self, name: str, case_type: str = "施工阶段荷载", desc: str = "") -> None:
         self._require_available()
         self._mdb.add_load_case(name=name, case_type=case_type)
+        self._mdb.update_model()
+
+    def add_load_combine(self, index: int = -1, name: str = "", combine_type: int = 1, describe: str = "", combine_info: list[tuple] = None) -> None:
+        self._require_available()
+        kwargs = {"index": index, "name": name, "combine_type": combine_type, "describe": describe}
+        if combine_info is not None:
+            kwargs["combine_info"] = combine_info
+        self._mdb.add_load_combine(**kwargs)
         self._mdb.update_model()
 
     def add_nodal_force(
@@ -446,6 +616,37 @@ class QtModelProvider(BridgeProvider):
         )
         self._mdb.update_model()
 
+
+    def add_custom_temperature(self, element_id, case_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_custom_temperature(element_id=element_id, case_name=case_name, **kwargs)
+        self._mdb.update_model()
+
+    def add_beam_section_temperature(self, element_id, case_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_beam_section_temperature(element_id=element_id, case_name=case_name, **kwargs)
+        self._mdb.update_model()
+
+    def add_initial_tension_load(self, element_id, case_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_initial_tension_load(element_id=element_id, case_name=case_name, **kwargs)
+        self._mdb.update_model()
+
+    def add_cable_length_load(self, element_id, case_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_cable_length_load(element_id=element_id, case_name=case_name, **kwargs)
+        self._mdb.update_model()
+
+    def add_plate_element_load(self, element_id, case_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_plate_element_load(element_id=element_id, case_name=case_name, **kwargs)
+        self._mdb.update_model()
+
+    def add_distribute_plane_load(self, index: int, case_name: str, type_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_distribute_plane_load(index=index, case_name=case_name, type_name=type_name, **kwargs)
+        self._mdb.update_model()
+
     def add_support_settlement(
         self, node_id: Any, case_name: str, displacement_info: list, **kwargs
     ) -> None:
@@ -465,6 +666,23 @@ class QtModelProvider(BridgeProvider):
     def add_tendon_2d(self, name: str, property_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_tendon_2d(name=name, property_name=property_name, **kwargs)
+        self._mdb.update_model()
+
+    def add_tendon_profile(self, name: str, property_name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_tendon_profile(name=name, property_name=property_name, **kwargs)
+        self._mdb.update_model()
+
+    def add_tendon_3d(self, name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_tendon_3d(name=name, **kwargs)
+        self._mdb.update_model()
+
+    def add_tendon_elements(self, ids: Any) -> None:
+        self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
+        self._mdb.add_tendon_elements(ids=ids)
         self._mdb.update_model()
 
     def add_pre_stress(
@@ -488,6 +706,21 @@ class QtModelProvider(BridgeProvider):
         self._mdb.merge_all_stages(name=name, **kwargs)
         self._mdb.update_model()
 
+    def remove_construction_stage(self, name: str = "") -> None:
+        self._require_available()
+        self._mdb.remove_construction_stage(name=name)
+        self._mdb.update_model()
+
+    def update_construction_stage(self, name: str, **kwargs) -> None:
+        self._require_available()
+        self._mdb.update_construction_stage(name=name, **kwargs)
+        self._mdb.update_model()
+
+    def switch_display_stage(self, stage_name: str) -> None:
+        self._require_available()
+        self._mdb.update_view_stage(stage_name=stage_name)
+        self._mdb.update_model()
+
     # ── Analysis Operations ────────────────────────────────────────────
 
     def update_project_setting(self, **kwargs) -> None:
@@ -505,25 +738,965 @@ class QtModelProvider(BridgeProvider):
         self._mdb.update_self_vibration_setting(**kwargs)
         self._mdb.update_model()
 
+    def update_bulking_setting(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.update_bulking_setting(**kwargs)
+        self._mdb.update_model()
+
+    def add_nodal_mass(self, node_id, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_nodal_mass(node_id=node_id, **kwargs)
+        self._mdb.update_model()
+
+    def add_load_to_mass(self, name: str, factor: float = 1.0) -> None:
+        self._require_available()
+        self._mdb.add_load_to_mass(name=name, factor=factor)
+        self._mdb.update_model()
+
+    def add_spectrum_function(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_spectrum_function(**kwargs)
+        self._mdb.update_model()
+
+    def add_spectrum_case(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_spectrum_case(**kwargs)
+        self._mdb.update_model()
+
+    def add_time_history_function(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_time_history_function(**kwargs)
+        self._mdb.update_model()
+
+    def add_time_history_case(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.add_time_history_case(**kwargs)
+        self._mdb.update_model()
+
+    def run_analysis(self) -> None:
+        self._require_available()
+        # qtmodel uses do_solve() with read_timeout
+        self._mdb.do_solve(read_timeout=3600)
+
+
+
+    def update_plate_thick(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_plate_thick")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_shrink_function(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_shrink_function")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_creep_function(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_creep_function")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_material_time_parameter(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_material_time_parameter")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_material_id(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_material_id")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_time_parameter_id(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_time_parameter_id")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_material(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_material")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_material_construction_factor(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_material_construction_factor")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_time_parameter(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_time_parameter")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_thickness_id(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_thickness_id")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_thickness(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_thickness")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_section_id(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_section_id")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_tapper_section_group(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_tapper_section_group")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_tapper_section_group(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_tapper_section_group")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_boundary_group(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_boundary_group")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_node_axis_id(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_node_axis_id")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_general_elastic_support_property_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_general_elastic_support_property_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_effective_width(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_effective_width")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_boundary_group(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_boundary_group")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_all_boundary(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_all_boundary")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_general_elastic_support_property(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_general_elastic_support_property")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_node_axis(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_node_axis")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_tendon_property_material(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_tendon_property_material")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_tendon_property(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_tendon_property")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_tendon_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_tendon_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_element_component_type(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_element_component_type")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_tendon_group(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_tendon_group")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_tendon(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_tendon")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_tendon_property(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_tendon_property")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_pre_stress(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_pre_stress")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_tendon_group(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_tendon_group")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_distribute_plane_load_type(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_distribute_plane_load_type")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_nodal_force(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_nodal_force")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_nodal_displacement(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_nodal_displacement")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_initial_tension_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_initial_tension_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_beam_element_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_beam_element_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_plate_element_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_plate_element_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_cable_length_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_cable_length_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_distribute_plane_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_distribute_plane_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_distribute_plane_load_type(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_distribute_plane_load_type")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_vehicle_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_vehicle_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_influence_plane_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_influence_plane_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_lane_line_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_lane_line_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_node_tandem_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_node_tandem_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_live_load_case_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_live_load_case_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_vehicle(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_vehicle")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_node_tandem(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_node_tandem")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_influence_plane(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_influence_plane")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_lane_line(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_lane_line")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_live_load_case(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_live_load_case")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_load_to_mass(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_load_to_mass")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_nodal_mass(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_nodal_mass")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_boundary_element_property_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_boundary_element_property_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_boundary_element_link(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_boundary_element_link")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_time_history_case_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_time_history_case_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_time_history_function_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_time_history_function_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_nodal_dynamic_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_nodal_dynamic_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_ground_motion(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_ground_motion")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_time_history_load_case(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_time_history_load_case")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_time_history_function(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_time_history_function")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_load_to_mass(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_load_to_mass")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_nodal_mass(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_nodal_mass")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_boundary_element_property(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_boundary_element_property")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_boundary_element_link(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_boundary_element_link")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_ground_motion(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_ground_motion")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_nodal_dynamic_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_nodal_dynamic_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_spectrum_function_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_spectrum_function_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_spectrum_case_name(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_spectrum_case_name")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_spectrum_case(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_spectrum_case")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_spectrum_function(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_spectrum_function")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_element_temperature(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_element_temperature")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_top_plate_temperature(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_top_plate_temperature")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_beam_section_temperature(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_beam_section_temperature")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_gradient_temperature(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_gradient_temperature")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_custom_temperature(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_custom_temperature")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_index_temperature(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_index_temperature")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_deviation_parameter(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_deviation_parameter")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_deviation_parameter(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_deviation_parameter")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_deviation_load(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_deviation_load")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_weight_stage(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_weight_stage")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_construction_stage_id(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_construction_stage_id")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_all_stage_setting_type(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_all_stage_setting_type")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_section_connection_stage(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_section_connection_stage")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_section_connection_stage(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "remove_section_connection_stage")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_global_setting(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_global_setting")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_live_load_setting(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_live_load_setting")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_non_linear_setting(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_non_linear_setting")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_operation_stage_setting(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_operation_stage_setting")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_response_spectrum_setting(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_response_spectrum_setting")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_time_history_setting(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._mdb, "update_time_history_setting")(*args, **kwargs)
+        if "_mdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_check_load_combine(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._cdb, "remove_check_load_combine")(*args, **kwargs)
+        if "_cdb" == "_mdb":
+            self._mdb.update_model()
+
+    def remove_concrete_check_case(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._cdb, "remove_concrete_check_case")(*args, **kwargs)
+        if "_cdb" == "_mdb":
+            self._mdb.update_model()
+
+    def update_element_steel_hoop(self, *args, **kwargs):
+        self._require_available()
+        getattr(self._cdb, "update_element_steel_hoop")(*args, **kwargs)
+        if "_cdb" == "_mdb":
+            self._mdb.update_model()
+
+
+    def add_single_section(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_single_section")(*args, **kwargs)
+
+    def add_elements_to_tapper_section_group(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_elements_to_tapper_section_group")(*args, **kwargs)
+
+    def add_tapper_section_from_group(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_tapper_section_from_group")(*args, **kwargs)
+
+    def add_general_elastic_support_property(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_general_elastic_support_property")(*args, **kwargs)
+
+    def add_general_elastic_support(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_general_elastic_support")(*args, **kwargs)
+
+    def add_master_slave_links(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_master_slave_links")(*args, **kwargs)
+
+    def add_node_axis(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_node_axis")(*args, **kwargs)
+
+    def add_tendon_group(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_tendon_group")(*args, **kwargs)
+
+    def add_distribute_plane_load_type(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_distribute_plane_load_type")(*args, **kwargs)
+
+    def add_user_vehicle(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_user_vehicle")(*args, **kwargs)
+
+    def add_node_tandem(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_node_tandem")(*args, **kwargs)
+
+    def add_influence_plane(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_influence_plane")(*args, **kwargs)
+
+    def add_car_relative_factor(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_car_relative_factor")(*args, **kwargs)
+
+    def add_train_relative_factor(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_train_relative_factor")(*args, **kwargs)
+
+    def add_metro_relative_factor(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_metro_relative_factor")(*args, **kwargs)
+
+    def add_boundary_element_property(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_boundary_element_property")(*args, **kwargs)
+
+    def add_boundary_element_link(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_boundary_element_link")(*args, **kwargs)
+
+    def add_nodal_dynamic_load(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_nodal_dynamic_load")(*args, **kwargs)
+
+    def add_ground_motion(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_ground_motion")(*args, **kwargs)
+
+    def add_vehicle_dynamic_load(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_vehicle_dynamic_load")(*args, **kwargs)
+
+    def add_index_temperature(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_index_temperature")(*args, **kwargs)
+
+    def add_top_plate_temperature(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_top_plate_temperature")(*args, **kwargs)
+
+    def add_deviation_parameter(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_deviation_parameter")(*args, **kwargs)
+
+    def add_deviation_load(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_deviation_load")(*args, **kwargs)
+
+    def add_section_connection_stage(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_section_connection_stage")(*args, **kwargs)
+
+    def add_element_to_connection_stage(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._mdb, "add_element_to_connection_stage")(*args, **kwargs)
+
+    def plot_composite_beam_force(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._odb, "plot_composite_beam_force")(*args, **kwargs)
+
+    def plot_composite_beam_stress(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._odb, "plot_composite_beam_stress")(*args, **kwargs)
+
+    def add_check_material(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._cdb, "add_check_material")(*args, **kwargs)
+
+    def add_part_parameter_reinforcement(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._cdb, "add_part_parameter_reinforcement")(*args, **kwargs)
+
+    def add_reinforcement_by_point(self, *args, **kwargs):
+        self._require_available()
+        return getattr(self._cdb, "add_reinforcement_by_point")(*args, **kwargs)
     # ── Result Extraction ──────────────────────────────────────────────
 
     def get_deformation(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         return self._odb.get_deformation(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_element_force(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         return self._odb.get_element_force(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_element_stress(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         return self._odb.get_element_stress(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_reaction(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         return self._odb.get_reaction(ids=ids, stage_id=stage_id, **kwargs)
 
+    def get_vibration_modal_results(self, mode: int = 1) -> list[dict]:
+        self._require_available()
+        return self._odb.get_vibration_modal_results(mode=mode)
+
+    def get_buckling_modal_results(self, mode: int = 1) -> list[dict]:
+        self._require_available()
+        return self._odb.get_buckling_modal_results(mode=mode)
+
+
+    def get_thickness_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_thickness_data(*args, **kwargs)
+
+    def get_node_id(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_node_id(*args, **kwargs)
+
+    def get_group_nodes(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_group_nodes(*args, **kwargs)
+
+    def get_elements_by_point(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_elements_by_point(*args, **kwargs)
+
+    def get_elements_by_material(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_elements_by_material(*args, **kwargs)
+
+    def get_elements_by_section(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_elements_by_section(*args, **kwargs)
+
+    def get_element_type(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_element_type(*args, **kwargs)
+
+    def get_element_weight(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_element_weight(*args, **kwargs)
+
+    def get_span_supports(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_span_supports(*args, **kwargs)
+
+    def get_span_elements(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_span_elements(*args, **kwargs)
+
+    def get_section_shape(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_section_shape(*args, **kwargs)
+
+    def get_section_property(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_section_property(*args, **kwargs)
+
+    def get_section_property_by_loops(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_section_property_by_loops(*args, **kwargs)
+
+    def get_section_property_by_lines(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_section_property_by_lines(*args, **kwargs)
+
+    def get_node_local_axis_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_node_local_axis_data(*args, **kwargs)
+
+    def get_constraint_equation_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_constraint_equation_data(*args, **kwargs)
+
+    def get_effective_width_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_effective_width_data(*args, **kwargs)
+
+    def get_tendon_property_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_tendon_property_data(*args, **kwargs)
+
+    def get_pre_stress_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_pre_stress_load_data(*args, **kwargs)
+
+    def get_node_mass_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_node_mass_data(*args, **kwargs)
+
+    def get_nodal_force_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_nodal_force_load_data(*args, **kwargs)
+
+    def get_nodal_displacement_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_nodal_displacement_load_data(*args, **kwargs)
+
+    def get_beam_element_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_beam_element_load_data(*args, **kwargs)
+
+    def get_plate_element_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_plate_element_load_data(*args, **kwargs)
+
+    def get_initial_tension_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_initial_tension_load_data(*args, **kwargs)
+
+    def get_cable_length_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_cable_length_load_data(*args, **kwargs)
+
+    def get_deviation_parameters(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_deviation_parameters(*args, **kwargs)
+
+    def get_deviation_load_data(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_deviation_load_data(*args, **kwargs)
+
+    def get_elements_of_stage(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_elements_of_stage(*args, **kwargs)
+
+    def get_nodes_of_stage(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_nodes_of_stage(*args, **kwargs)
+
+    def get_groups_of_stage(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_groups_of_stage(*args, **kwargs)
+
+    def get_self_concurrent_reaction(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_self_concurrent_reaction(*args, **kwargs)
+
+    def get_all_concurrent_reaction(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_all_concurrent_reaction(*args, **kwargs)
+
+    def get_concurrent_force(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_concurrent_force(*args, **kwargs)
+
+    def get_elastic_link_force(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_elastic_link_force(*args, **kwargs)
+
+    def get_constrain_equation_force(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_constrain_equation_force(*args, **kwargs)
+
+    def get_cable_element_length(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_cable_element_length(*args, **kwargs)
+
+    def get_period_and_vibration_results(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_period_and_vibration_results(*args, **kwargs)
+
+    def get_buckling_eigenvalue(self, *args, **kwargs):
+        self._require_available()
+        return self._odb.get_buckling_eigenvalue(*args, **kwargs)
+    def get_tendon_loss_results(self, name: str, stage_id: int = 1) -> list[dict]:
+        self._require_available()
+        return self._odb.get_tendon_loss_results(name=name, stage_id=stage_id)
+
+    def get_tendon_position_result(self, name: str) -> list[dict]:
+        self._require_available()
+        return self._odb.get_tendon_position_result(name=name)
+
+    def get_tendon_length_result(self) -> list[dict]:
+        self._require_available()
+        return self._odb.get_tendon_length_result()
+
     # ── Visualization ──────────────────────────────────────────────────
+
+    def display_node_id(self, show_id: bool = True) -> None:
+        self._require_available()
+        self._odb.display_node_id(show_id=show_id)
+
+    def display_element_id(self, show_id: bool = True) -> None:
+        self._require_available()
+        self._odb.display_element_id(show_id=show_id)
+
+    def set_view_direction(self, **kwargs) -> None:
+        self._require_available()
+        self._odb.set_view_direction(**kwargs)
+
+    def activate_structure(self, **kwargs) -> None:
+        self._require_available()
+        self._odb.activate_structure(**kwargs)
+
+    def set_render(self, flag: bool = True) -> None:
+        self._require_available()
+        self._odb.set_render(flag=flag)
+
+    def reset_display(self) -> None:
+        self._require_available()
+        self._odb.reset_display()
+
+    def set_unit(self, unit_force: str = 'KN', unit_length: str = 'MM') -> None:
+        self._require_available()
+        self._odb.set_unit(unit_force=unit_force, unit_length=unit_length)
+
+    def change_construct_stage(self, stage: int = 0) -> None:
+        self._require_available()
+        self._odb.change_construct_stage(stage=stage)
 
     def save_model_image(self, file_path: str) -> str:
         self._require_available()
@@ -595,27 +1768,52 @@ class QtModelProvider(BridgeProvider):
         self, name: str, standard: int, kind: int, **kwargs
     ) -> None:
         self._require_available()
-        raise NotImplementedError("Structural checking (CDB) is not yet supported in this qtmodel version.")
+        self._cdb.add_check_load_combine(name=name, standard=standard, kind=kind, **kwargs)
 
     def solve_concrete_check(self, name: str) -> None:
         self._require_available()
-        raise NotImplementedError("Structural checking (CDB) is not yet supported in this qtmodel version.")
+        self._cdb.solve_concrete_check(name=name)
 
     def add_concrete_check_case(
         self, name: str, standard: int, structure_type: int, group_name: str
     ) -> None:
         self._require_available()
-        raise NotImplementedError("Structural checking (CDB) is not yet supported in this qtmodel version.")
+        self._cdb.add_concrete_check_case(name=name, standard=standard, structure_type=structure_type, group_name=group_name)
 
     def add_parameter_reinforcement(self, sec_id: int, **kwargs) -> None:
         self._require_available()
-        raise NotImplementedError("Structural checking (CDB) is not yet supported in this qtmodel version.")
+        self._cdb.add_parameter_reinforcement(sec_id=sec_id, **kwargs)
+
+    def add_steel_hoop(self, **kwargs) -> None:
+        self._require_available()
+        self._cdb.add_steel_hoop(**kwargs)
+
+    def update_vertical_steel_hoop(self, **kwargs) -> None:
+        self._require_available()
+        self._cdb.update_vertical_steel_hoop(**kwargs)
+
+    def get_reinforcement_data(self) -> dict[str, Any]:
+        self._require_available()
+        return self._cdb.get_reinforcement_data()
 
     # ── Group Management ───────────────────────────────────────────────
 
     def add_structure_group(self, name: str) -> None:
         self._require_available()
         self._mdb.add_structure_group(name=name)
+        self._mdb.update_model()
+
+    def update_structure_group_name(self, name: str, new_name: str) -> None:
+        self._require_available()
+        self._mdb.update_structure_group_name(name=name, new_name=new_name)
+        self._mdb.update_model()
+
+    def remove_structure_group(self, name: str = "") -> None:
+        self._require_available()
+        if name:
+            self._mdb.remove_structure_group(name=name)
+        else:
+            self._mdb.remove_structure_group()
         self._mdb.update_model()
 
     def add_elements_to_structure_group(self, name: str, element_ids: Any) -> None:
@@ -677,6 +1875,8 @@ class QtModelProvider(BridgeProvider):
 
     def get_live_load_results(self, case_name: str, result_type: str, ids: Any) -> Any:
         self._require_available()
+        if ids is not None:
+            ids = self._validate_ids(ids)
         # Live load results are embedded in standard result queries (deformation/force/stress)
         # Query using the live load case name directly
         if result_type == "force":

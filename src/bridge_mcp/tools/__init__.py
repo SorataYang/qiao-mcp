@@ -92,6 +92,9 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             # Two-span 50m+50m continuous beam, start x from 0:
             create_nodes_linear(count=101, start_x=0, spacing_x=1.0)
         """
+        if count <= 0:
+            return "Error: count must be a positive integer > 0 (节点数量必须大于0)"
+
         try:
             node_data = [
                 [start_x + i * spacing_x, start_y + i * spacing_y, start_z + i * spacing_z]
@@ -291,6 +294,42 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         except Exception as e:
             return f"Error creating load case '{name}' (创建工况失败): {e}"
 
+    @mcp.tool()
+    def add_load_combine(
+        name: str,
+        combine_type: int = 1,
+        combine_info: list[list] | None = None,
+        describe: str = "",
+        index: int = -1,
+    ) -> str:
+        """
+        Add a load combination (添加荷载组合).
+
+        Combines multiple load cases into a single combination for analysis/checking.
+        (将多个荷载工况组合成一个荷载组合)
+
+        Args:
+            name: Load combination name (荷载组合名称)
+            combine_type: Combination type (组合类型): 1=Add(线性加), 2=Envelope(包络), etc.
+            combine_info: List of components [[case_name, case_type, factor], ...]
+                          (组合项信息 [[工况名, 类型(如'ST'), 系数], ...])
+            describe: Description (描述说明)
+            index: ID index, -1 for auto (编号，-1自动生成)
+        """
+        try:
+            kwargs = {
+                "name": name,
+                "combine_type": combine_type,
+                "describe": describe,
+                "index": index,
+            }
+            if combine_info is not None:
+                kwargs["combine_info"] = [tuple(item) for item in combine_info]
+            provider.add_load_combine(**kwargs)
+            return f"Successfully added load combination '{name}' (成功添加荷载组合 '{name}')"
+        except Exception as e:
+            return f"Error adding load combination (添加荷载组合失败): {e}"
+
 
 
     @mcp.tool()
@@ -327,6 +366,92 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Successfully created material '{name}' (成功创建材料 '{name}')"
         except Exception as e:
             return f"Error creating material (创建材料失败): {e}"
+
+    @mcp.tool()
+    def add_time_parameter(
+        name: str,
+        code_index: int = 1,
+        time_parameter: list[float] | None = None,
+        creep_data: list[list] | None = None,
+        shrink_data: str = "",
+        index: int = -1,
+    ) -> str:
+        """
+        Add time-dependent material parameters (添加时间依存材料参数).
+
+        Args:
+            name: Parameter name (参数名称)
+            code_index: Code index (规范号)
+            time_parameter: Code specific parameters (规范关联的材料参数)
+            creep_data: Custom creep data [[time, value], ...] (自定义徐变数据)
+            shrink_data: Custom shrinkage data string (自定义收缩数据)
+            index: ID index, -1 for auto (编号，-1自动生成)
+        """
+        try:
+            kwargs = {
+                "name": name,
+                "code_index": code_index,
+                "index": index,
+            }
+            if time_parameter is not None:
+                kwargs["time_parameter"] = time_parameter
+            if creep_data is not None:
+                kwargs["creep_data"] = [tuple(item) for item in creep_data]
+            if shrink_data:
+                kwargs["shrink_data"] = shrink_data
+
+            provider.add_time_parameter(**kwargs)
+            return f"Successfully added time parameter '{name}' (成功添加时间依存参数 '{name}')"
+        except Exception as e:
+            return f"Error adding time parameter (添加时间依存参数失败): {e}"
+
+    @mcp.tool()
+    def add_creep_function(
+        name: str,
+        creep_data: list[list[float]],
+        scale_factor: float = 1.0,
+    ) -> str:
+        """
+        Add user-defined creep function (添加自定义徐变函数).
+
+        Args:
+            name: Function name (函数名称)
+            creep_data: Creep coefficient over time [[time(days), coefficient], ...]
+                        (徐变系数表 [[天数, 徐变系数], ...])
+            scale_factor: Scale factor (比例系数)
+        """
+        try:
+            creep_tuples = [tuple(item) for item in creep_data]
+            provider.add_creep_function(
+                name=name, creep_data=creep_tuples, scale_factor=scale_factor
+            )
+            return f"Successfully added creep function '{name}' (成功添加徐变函数)"
+        except Exception as e:
+            return f"Error adding creep function (添加徐变函数失败): {e}"
+
+    @mcp.tool()
+    def add_shrink_function(
+        name: str,
+        shrink_data: list[list[float]] | None = None,
+        scale_factor: float = 1.0,
+    ) -> str:
+        """
+        Add user-defined shrinkage function (添加自定义收缩函数).
+
+        Args:
+            name: Function name (函数名称)
+            shrink_data: Shrinkage strain over time [[time(days), strain], ...]
+                         (收缩应变表 [[天数, 应变], ...])
+            scale_factor: Scale factor (比例系数)
+        """
+        try:
+            kwargs = {"name": name, "scale_factor": scale_factor}
+            if shrink_data is not None:
+                kwargs["shrink_data"] = [tuple(item) for item in shrink_data]
+            provider.add_shrink_function(**kwargs)
+            return f"Successfully added shrink function '{name}' (成功添加收缩函数)"
+        except Exception as e:
+            return f"Error adding shrink function (添加收缩函数失败): {e}"
 
     @mcp.tool()
     def create_section(
@@ -1331,6 +1456,104 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating tapered section (创建渐变截面失败): {e}"
 
     @mcp.tool()
+    def add_tapper_section_group(
+        name: str,
+        ids: list[int] | str | None = None,
+        factor_w: float = 1.0,
+        factor_h: float = 1.0,
+        ref_w: int = 0,
+        ref_h: int = 0,
+        dis_w: float = 0,
+        dis_h: float = 0,
+    ) -> str:
+        """
+        Add a tapered section group (添加变截面组).
+
+        Args:
+            name: Group name (变截面组名称)
+            ids: Element IDs in the group (变截面组内的单元编号)
+            factor_w: Width variation factor (宽度变化系数)
+            factor_h: Height variation factor (高度变化系数)
+            ref_w: Width reference point (宽度参考点: 0=i, 1=j)
+            ref_h: Height reference point (高度参考点: 0=i, 1=j)
+            dis_w: Width variation distance (宽度变化距离)
+            dis_h: Height variation distance (高度变化距离)
+        """
+        try:
+            kwargs = {
+                "name": name,
+                "factor_w": factor_w,
+                "factor_h": factor_h,
+                "ref_w": ref_w,
+                "ref_h": ref_h,
+                "dis_w": dis_w,
+                "dis_h": dis_h,
+            }
+            if ids is not None:
+                kwargs["ids"] = ids
+            provider.add_tapper_section_group(**kwargs)
+            return f"Successfully added tapered section group '{name}' (成功添加变截面组)"
+        except Exception as e:
+            return f"Error adding tapered section group (添加变截面组失败): {e}"
+
+    @mcp.tool()
+    def add_thickness(
+        name: str,
+        t: float = 0.1,
+        thick_type: int = 0,
+        index: int = -1,
+    ) -> str:
+        """
+        Add a plate thickness property (添加板厚度).
+
+        Args:
+            name: Thickness name (厚度名称)
+            t: Thickness in meters (板厚 m)
+            thick_type: Thickness type (厚度类型): 0=平面内及平面外等厚, 1=平面内及平面外不等厚
+            index: ID index, -1 for auto (编号，-1自动生成)
+        """
+        try:
+            provider.add_thickness(name=name, t=t, thick_type=thick_type, index=index)
+            return f"Successfully added thickness '{name}' (成功添加板厚度)"
+        except Exception as e:
+            return f"Error adding thickness (添加板厚度失败): {e}"
+
+    @mcp.tool()
+    def add_effective_width(
+        element_ids: int | list[int] | str,
+        factor_i: float,
+        factor_j: float,
+        dz_i: float = 0,
+        dz_j: float = 0,
+        group_name: str = "",
+    ) -> str:
+        """
+        Add effective width to beam elements (添加截面有效宽度).
+
+        Args:
+            element_ids: Element ID(s) (单元编号)
+            factor_i: I-end factor (I端系数)
+            factor_j: J-end factor (J端系数)
+            dz_i: I-end Dz offset (I端 Dz 偏移)
+            dz_j: J-end Dz offset (J端 Dz 偏移)
+            group_name: Boundary group name (边界组名)
+        """
+        try:
+            kwargs = {
+                "element_ids": element_ids,
+                "factor_i": factor_i,
+                "factor_j": factor_j,
+                "dz_i": dz_i,
+                "dz_j": dz_j,
+            }
+            if group_name:
+                kwargs["group_name"] = group_name
+            provider.add_effective_width(**kwargs)
+            return f"Successfully added effective width to elements {element_ids} (成功添加有效宽度)"
+        except Exception as e:
+            return f"Error adding effective width (添加有效宽度失败): {e}"
+
+    @mcp.tool()
     def update_section_bias(
         index: int,
         bias_type: str,
@@ -1362,6 +1585,64 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Successfully updated section {index} bias to '{bias_type}' (成功更新截面偏心)"
         except Exception as e:
             return f"Error updating section bias (更新截面偏心失败): {e}"
+
+    @mcp.tool()
+    def remove_section(ids: int | list[int] | str) -> str:
+        """
+        Delete one or more sections from the model (删除截面).
+
+        Args:
+            ids: Section ID(s) to delete. Supports int, list, or range string '3to5'.
+                 (截面编号，支持整数、列表或范围字符串)
+        """
+        try:
+            provider.remove_section(ids=ids)
+            return f"Successfully removed section(s) {ids} (成功删除截面)"
+        except Exception as e:
+            return f"Error removing section (删除截面失败): {e}"
+
+    @mcp.tool()
+    def update_section_property(
+        index: int,
+        sec_property: list[float],
+        side_i: bool = True
+    ) -> str:
+        """
+        Directly modify the calculated properties of a section (直接修改截面特性值).
+
+        Use this to manually override Area, Ix, Iy, Iz etc. after creation.
+        Typically used for fine-tuning or correcting auto-calculated values.
+        (用于手动覆盖截面面积、惯性矩等自动计算值)
+
+        Args:
+            index: Section ID (截面编号)
+            sec_property: List of up to 29 section properties in order:
+                          [Area, Asy, Asz, Ixx, Iyy, Izz, ...]
+                          (截面特性列表，按顺序: 面积, 剪切面积y, 剪切面积z, 扭转惯性矩, 抗弯惯性矩y, 抗弯惯性矩z, ...)
+            side_i: For tapered sections, True=I-end, False=J-end (变截面时 True=I端, False=J端)
+        """
+        try:
+            provider.update_section_property(
+                index=index, sec_property=sec_property, side_i=side_i
+            )
+            return f"Successfully updated section {index} properties (成功修改截面 {index} 特性)"
+        except Exception as e:
+            return f"Error updating section property (修改截面特性失败): {e}"
+
+    @mcp.tool()
+    def calculate_section_property() -> str:
+        """
+        Recalculate properties for all sections in the model (重新计算所有截面特性).
+
+        Call this after creating or modifying section geometry to ensure
+        Area, Iy, Iz, J etc. are up-to-date.
+        (在创建或修改截面几何后调用，确保面积、惯性矩等特性值为最新)
+        """
+        try:
+            provider.calculate_section_property()
+            return "Successfully recalculated all section properties (成功重新计算所有截面特性)"
+        except Exception as e:
+            return f"Error calculating section properties (计算截面特性失败): {e}"
 
     @mcp.tool()
     def set_support(
@@ -1399,6 +1680,28 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Successfully set support on node(s) {node_id} (成功设置支承)"
         except Exception as e:
             return f"Error setting support (设置支承失败): {e}"
+
+    @mcp.tool()
+    def apply_self_weight(
+        case_name: str,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply system self-weight load (施加自重荷载).
+        Ensure the load group and case are created before calling this tool.
+
+        Args:
+            case_name: Load case name (荷载工况名)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {}
+            if group_name:
+                kwargs["group_name"] = group_name
+            provider.add_self_weight(case_name=case_name, **kwargs)
+            return f"Successfully applied self-weight in case '{case_name}' (成功施加自重)"
+        except Exception as e:
+            return f"Error applying self-weight (施加自重失败): {e}"
 
     @mcp.tool()
     def apply_nodal_force(
@@ -1537,6 +1840,204 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error applying gradient temperature load (施加梯度温度失败): {e}"
 
     @mcp.tool()
+    def add_custom_temperature(
+        element_id: int | list[int] | str,
+        case_name: str,
+        orientation: int = 1,
+        temperature_data: list[list[float]] | None = None,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply custom temperature load (自定义温度荷载).
+
+        Args:
+            element_id: Element ID(s) (单元编号)
+            case_name: Load case name (荷载工况名)
+            orientation: Direction of temperature change (温度方向, 1=Y向, 2=Z向)
+            temperature_data: Custom temperature points [[distance, temp_diff], ...] (温度数据点)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {"orientation": orientation}
+            if group_name: kwargs["group_name"] = group_name
+            if temperature_data is not None:
+                kwargs["temperature_data"] = [tuple(item) for item in temperature_data]
+            provider.add_custom_temperature(element_id=element_id, case_name=case_name, **kwargs)
+            return f"Successfully applied custom temperature to element(s) {element_id} (成功施加自定义温度)"
+        except Exception as e:
+            return f"Error applying custom temperature (施加自定义温度失败): {e}"
+
+    @mcp.tool()
+    def add_beam_section_temperature(
+        element_id: int | list[int] | str,
+        case_name: str,
+        code_index: int = 1,
+        sec_type: int = 1,
+        t1: float = 0,
+        t2: float = 0,
+        t3: float = 0,
+        t4: float = 0,
+        thick: float = 0,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply beam section temperature load (梁截面温度荷载).
+
+        Args:
+            element_id: Element ID(s) (单元编号)
+            case_name: Load case name (荷载工况名)
+            code_index: Code index (规范号)
+            sec_type: Section type (截面类型, 如1为箱梁等)
+            t1: Temperature difference param 1 (各部位温差参数1)
+            t2: Temperature difference param 2 (各部位温差参数2)
+            t3: Temperature difference param 3 (各部位温差参数3)
+            t4: Temperature difference param 4 (各部位温差参数4)
+            thick: Thickness parameter (厚度参数)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {
+                "code_index": code_index, "sec_type": sec_type,
+                "t1": t1, "t2": t2, "t3": t3, "t4": t4, "thick": thick
+            }
+            if group_name: kwargs["group_name"] = group_name
+            provider.add_beam_section_temperature(element_id=element_id, case_name=case_name, **kwargs)
+            return f"Successfully applied beam section temperature to element(s) {element_id} (成功施加梁截面温度)"
+        except Exception as e:
+            return f"Error applying beam section temperature (施加梁截面温度失败): {e}"
+
+    @mcp.tool()
+    def add_initial_tension_load(
+        element_id: int | list[int] | str,
+        case_name: str,
+        tension: float = 0.0,
+        tension_type: int = 1,
+        application_type: int = 1,
+        stiffness: float = 0.0,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply initial tension load (初拉力荷载).
+
+        Args:
+            element_id: Element ID(s) (单元编号)
+            case_name: Load case name (荷载工况名)
+            tension: Tension force (拉力值)
+            tension_type: Type of tension (初拉力类型)
+            application_type: Application type (施加方式)
+            stiffness: Stiffness reduction (刚度参数)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {
+                "tension": tension, "tension_type": tension_type,
+                "application_type": application_type, "stiffness": stiffness
+            }
+            if group_name: kwargs["group_name"] = group_name
+            provider.add_initial_tension_load(element_id=element_id, case_name=case_name, **kwargs)
+            return f"Successfully applied initial tension {tension} to element(s) {element_id} (成功施加初拉力)"
+        except Exception as e:
+            return f"Error applying initial tension (施加初拉力失败): {e}"
+
+    @mcp.tool()
+    def add_cable_length_load(
+        element_id: int | list[int] | str,
+        case_name: str,
+        length: float = 0.0,
+        tension_type: int = 1,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply cable length adjustment load (索长误差荷载).
+
+        Args:
+            element_id: Element ID(s) (单元编号)
+            case_name: Load case name (荷载工况名)
+            length: Length difference (长度误差量)
+            tension_type: Tension type (拉力类型)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {"length": length, "tension_type": tension_type}
+            if group_name: kwargs["group_name"] = group_name
+            provider.add_cable_length_load(element_id=element_id, case_name=case_name, **kwargs)
+            return f"Successfully applied cable length load {length} to element(s) {element_id} (成功施加索长荷载)"
+        except Exception as e:
+            return f"Error applying cable length load (施加索长荷载失败): {e}"
+
+    @mcp.tool()
+    def add_plate_element_load(
+        element_id: int | list[int] | str,
+        case_name: str,
+        load_type: int = 1,
+        load_place: int = 1,
+        coord_system: int = 3,
+        list_load: list[float] | float | None = None,
+        list_xy: list[float] | None = None,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply plate element load (板单元面上荷载).
+
+        Args:
+            element_id: Element ID(s) (单元编号)
+            case_name: Load case name (荷载工况名)
+            load_type: Load type (荷载类型)
+            load_place: Application place (施加位置)
+            coord_system: Coordinate system (坐标系: 3为整体)
+            list_load: Load values (荷载值)
+            list_xy: Location coords (位置坐标)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {"load_type": load_type, "load_place": load_place, "coord_system": coord_system}
+            if group_name: kwargs["group_name"] = group_name
+            if list_load is not None: kwargs["list_load"] = list_load
+            if list_xy is not None: kwargs["list_xy"] = tuple(list_xy)
+            provider.add_plate_element_load(element_id=element_id, case_name=case_name, **kwargs)
+            return f"Successfully applied plate load to element(s) {element_id} (成功施加板单元荷载)"
+        except Exception as e:
+            return f"Error applying plate load (施加板单元荷载失败): {e}"
+
+    @mcp.tool()
+    def add_distribute_plane_load(
+        index: int,
+        case_name: str,
+        type_name: str,
+        point1: list[float] | None = None,
+        point2: list[float] | None = None,
+        point3: list[float] | None = None,
+        plate_ids: list[int] | None = None,
+        coord_system: int = 3,
+        group_name: str = "",
+    ) -> str:
+        """
+        Apply arbitrary distributed plane load (任意分布面荷载).
+
+        Args:
+            index: Load ID (编号)
+            case_name: Load case name (荷载工况名)
+            type_name: Load type name (分布面荷载类型名)
+            point1: 1st point defining the plane [x,y,z] (定义面的点1)
+            point2: 2nd point defining the plane [x,y,z] (定义面的点2)
+            point3: 3rd point defining the plane [x,y,z] (定义面的点3)
+            plate_ids: Optional plate elements to load (指定板单元)
+            coord_system: Coordinate system (坐标系)
+            group_name: Load group name (荷载组名)
+        """
+        try:
+            kwargs = {"coord_system": coord_system}
+            if group_name: kwargs["group_name"] = group_name
+            if point1: kwargs["point1"] = tuple(point1)
+            if point2: kwargs["point2"] = tuple(point2)
+            if point3: kwargs["point3"] = tuple(point3)
+            if plate_ids: kwargs["plate_ids"] = plate_ids
+            provider.add_distribute_plane_load(index=index, case_name=case_name, type_name=type_name, **kwargs)
+            return f"Successfully applied distributed plane load '{type_name}' (成功施加分布面荷载)"
+        except Exception as e:
+            return f"Error applying distributed plane load (施加分布面荷载失败): {e}"
+
+    @mcp.tool()
     def add_support_settlement(
         node_id: int | list[int] | str,
         case_name: str,
@@ -1573,6 +2074,178 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Successfully applied support settlement '{dz}' to node(s) {node_id} (成功施加支座沉降)"
         except Exception as e:
             return f"Error applying support settlement (施加支座沉降失败): {e}"
+
+    @mcp.tool()
+    def add_nodal_mass(
+        node_id: int | list[int] | str,
+        mass_x: float = 0.0,
+        mass_y: float = 0.0,
+        mass_z: float = 0.0,
+        mass_rm: float = 0.0,
+    ) -> str:
+        """
+        Add nodal mass for dynamic analysis (添加节点质量).
+
+        Args:
+            node_id: Node ID(s) (节点编号)
+            mass_x: Mass in X direction (X向质量)
+            mass_y: Mass in Y direction (Y向质量)
+            mass_z: Mass in Z direction (Z向质量)
+            mass_rm: Rotational mass (转动质量)
+        """
+        try:
+            mass_info = (mass_x, mass_y, mass_z, mass_rm)
+            provider.add_nodal_mass(node_id=node_id, mass_info=mass_info)
+            return f"Successfully added nodal mass to node(s) {node_id} (成功添加节点质量)"
+        except Exception as e:
+            return f"Error adding nodal mass (添加节点质量失败): {e}"
+
+    @mcp.tool()
+    def add_load_to_mass(
+        name: str,
+        factor: float = 1.0,
+    ) -> str:
+        """
+        Convert a load case to mass for dynamic analysis (将荷载转换为质量).
+
+        Args:
+            name: Load case name to convert (要转换为质量的荷载工况名称)
+            factor: Conversion factor (转换系数，通常取1.0)
+        """
+        try:
+            provider.add_load_to_mass(name=name, factor=factor)
+            return f"Successfully set load '{name}' to convert to mass (成功设置荷载转换为质量)"
+        except Exception as e:
+            return f"Error converting load to mass (荷载转质量失败): {e}"
+
+    @mcp.tool()
+    def add_spectrum_function(
+        name: str,
+        factor: float = 1.0,
+        kind: int = 0,
+        function_info: list[list[float]] | None = None,
+    ) -> str:
+        """
+        Add response spectrum function (添加反应谱函数).
+
+        Args:
+            name: Function name (函数名称)
+            factor: Scale factor (比例系数)
+            kind: Type of spectrum (反应谱类型, 例如中国规范等)
+            function_info: User defined spectrum points [[period, value], ...] (自定义谱数据)
+        """
+        try:
+            kwargs = {"name": name, "factor": factor, "kind": kind}
+            if function_info is not None:
+                kwargs["function_info"] = [tuple(item) for item in function_info]
+            provider.add_spectrum_function(**kwargs)
+            return f"Successfully added spectrum function '{name}' (成功添加反应谱函数)"
+        except Exception as e:
+            return f"Error adding spectrum function (添加反应谱函数失败): {e}"
+
+    @mcp.tool()
+    def add_spectrum_case(
+        name: str,
+        description: str = "",
+        kind: int = 1,
+        info_x: list | None = None,
+        info_y: list | None = None,
+        info_z: list | None = None,
+    ) -> str:
+        """
+        Add response spectrum load case (添加反应谱工况).
+
+        Args:
+            name: Case name (工况名称)
+            description: Description (描述)
+            kind: Combination method (组合方法, SRSS/CQC等)
+            info_x: X direction info [function_name, factor] (X向配置 [谱函数名, 系数])
+            info_y: Y direction info [function_name, factor] (Y向配置)
+            info_z: Z direction info [function_name, factor] (Z向配置)
+        """
+        try:
+            kwargs = {"name": name, "description": description, "kind": kind}
+            if info_x: kwargs["info_x"] = tuple(info_x)
+            if info_y: kwargs["info_y"] = tuple(info_y)
+            if info_z: kwargs["info_z"] = tuple(info_z)
+            provider.add_spectrum_case(**kwargs)
+            return f"Successfully added spectrum case '{name}' (成功添加反应谱工况)"
+        except Exception as e:
+            return f"Error adding spectrum case (添加反应谱工况失败): {e}"
+
+    @mcp.tool()
+    def add_time_history_function(
+        name: str,
+        factor: float = 1.0,
+        kind: int = 0,
+        function_info: list[list[float]] | None = None,
+    ) -> str:
+        """
+        Add time history function (添加时程函数).
+
+        Args:
+            name: Function name (函数名称)
+            factor: Scale factor (比例系数)
+            kind: Type (类型)
+            function_info: Time history points [[time, value], ...] (时程数据点)
+        """
+        try:
+            kwargs = {"name": name, "factor": factor, "kind": kind}
+            if function_info is not None:
+                kwargs["function_info"] = function_info
+            provider.add_time_history_function(**kwargs)
+            return f"Successfully added time history function '{name}' (成功添加时程函数)"
+        except Exception as e:
+            return f"Error adding time history function (添加时程函数失败): {e}"
+
+    @mcp.tool()
+    def add_time_history_case(
+        name: str,
+        duration: float = 1.0,
+        time_step: float = 0.01,
+        description: str = "",
+        index: int = -1,
+    ) -> str:
+        """
+        Add time history analysis case (添加时程分析工况).
+
+        Args:
+            name: Case name (工况名称)
+            duration: Total duration in seconds (总时长)
+            time_step: Output time step in seconds (输出步长)
+            description: Description (描述)
+            index: ID index (编号)
+        """
+        try:
+            provider.add_time_history_case(
+                name=name, duration=duration, time_step=time_step,
+                description=description, index=index
+            )
+            return f"Successfully added time history case '{name}' (成功添加时程工况)"
+        except Exception as e:
+            return f"Error adding time history case (添加时程工况失败): {e}"
+
+    @mcp.tool()
+    def update_bulking_setting(
+        do_analysis: bool = True,
+        mode_count: int = 3,
+        stage_id: int = -1,
+    ) -> str:
+        """
+        Configure buckling analysis settings (屈曲分析设定).
+
+        Args:
+            do_analysis: Enable buckling analysis (是否进行屈曲分析)
+            mode_count: Number of modes to calculate (计算模态数)
+            stage_id: Construction stage ID for base state, -1 for base model (施工阶段号)
+        """
+        try:
+            provider.update_bulking_setting(
+                do_analysis=do_analysis, mode_count=mode_count, stage_id=stage_id
+            )
+            return "Successfully updated buckling analysis settings (成功设定屈曲分析)"
+        except Exception as e:
+            return f"Error updating buckling settings (屈曲分析设定失败): {e}"
 
     @mcp.tool()
     def add_construction_stage(
@@ -1645,6 +2318,20 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             )
         except Exception as e:
             return f"Error configuring analysis (配置分析失败): {e}"
+
+    @mcp.tool()
+    def run_analysis() -> str:
+        """
+        Run the structural analysis calculation (执行结构分析计算).
+
+        Use this tool after you have configured all loads, boundaries, and analysis settings.
+        This will solve the model and make analysis results available.
+        """
+        try:
+            provider.run_analysis()
+            return "Analysis successfully completed (结构分析计算完成)"
+        except Exception as e:
+            return f"Error running analysis (结构分析失败): {e}"
 
     @mcp.tool()
     def validate_model() -> str:

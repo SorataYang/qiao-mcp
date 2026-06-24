@@ -125,8 +125,33 @@ class BridgeProvider(ABC):
         ...
 
     @abstractmethod
+    def update_node_id(self, node_id: int, new_id: int) -> None:
+        """Update node ID. 修改节点编号"""
+        ...
+
+    @abstractmethod
+    def renumber_nodes(self, ids: Any = None, new_ids: Any = None) -> None:
+        """Renumber nodes. 节点重新编号"""
+        ...
+
+    @abstractmethod
     def add_elements(self, ele_data: list[list], **kwargs) -> None:
         """Add elements to the model. 添加单元"""
+        ...
+
+    @abstractmethod
+    def update_element_id(self, old_id: int, new_id: int) -> None:
+        """Update element ID. 更改单元编号"""
+        ...
+
+    @abstractmethod
+    def renumber_elements(self, element_ids: Any = None, new_ids: Any = None) -> None:
+        """Renumber elements. 单元编号重排序"""
+        ...
+
+    @abstractmethod
+    def revert_local_orientation(self, ids: Any) -> None:
+        """Revert local orientation of frame elements. 反转杆系单元局部方向"""
         ...
 
     @abstractmethod
@@ -224,6 +249,11 @@ class BridgeProvider(ABC):
         """Update self-vibration analysis settings. 更新自振分析设置"""
         ...
 
+    @abstractmethod
+    def run_analysis(self) -> None:
+        """Run structural analysis (执行计算/分析)."""
+        ...
+
     # ── Result Extraction ──────────────────────────────────────────────
 
     @abstractmethod
@@ -294,6 +324,16 @@ class BridgeProvider(ABC):
     @abstractmethod
     def add_structure_group(self, name: str) -> None:
         """Create a structure group. 创建结构组"""
+        ...
+
+    @abstractmethod
+    def update_structure_group_name(self, name: str, new_name: str) -> None:
+        """Update a structure group's name. 更新结构组名"""
+        ...
+
+    @abstractmethod
+    def remove_structure_group(self, name: str = "") -> None:
+        """Remove a structure group. 删除结构组"""
         ...
 
     @abstractmethod
