@@ -108,6 +108,40 @@ Add to `.cursor/mcp.json`:
 }
 ```
 
+### Configure in Reasonix (UI)
+
+Open **Settings** → **MCP & Tools**, then add a new MCP server:
+
+- **Name**: `bridge-mcp`
+- **Transport**: `stdio` (keep default)
+- **Command**: `uv --directory /path/to/bridge-mcp run bridge-mcp`
+  - Replace `/path/to/bridge-mcp` with your actual project path
+  - Windows: use backslashes `D:\path\to\bridge-mcp`
+  - macOS/Linux: use forward slashes `/path/to/bridge-mcp`
+- **Environment** (optional): `UV_PYTHON=3.11`
+
+Click **Add** to save.
+
+### Configure in Cherry Studio (UI)
+
+Open **设置** → **扩展** → **MCP Servers**, then add a new server:
+
+- **名称 (Name)**: `bridge-mcp`
+- **描述 (Description)**: Optional description
+- **类型 (Type)**: `标准输入 / 输出 (stdio)`
+- **命令 (Command)**: `uv`
+- **包管理器 (Package Manager)**: Select `默认` (Default)
+- **参数 (Args)**: 
+  ```
+  /path/to/bridge-mcp
+  run
+  bridge-mcp
+  ```
+  (Each line is one argument, no `--directory` prefix needed)
+  - Replace `/path/to/bridge-mcp` with your actual project path
+
+Click **保存** to save.
+
 ### Test with MCP Inspector
 
 ```bash
