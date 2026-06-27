@@ -11,7 +11,7 @@ from typing import Any
 import json
 import ast
 
-from bridge_mcp.providers import BridgeProvider
+from qiao_mcp.providers import BridgeProvider
 
 
 class QtModelProvider(BridgeProvider):

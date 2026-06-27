@@ -1,5 +1,5 @@
 """
-Bridge-MCP Provider abstraction layer.
+Qiao-MCP Provider abstraction layer.
 Defines the interface that backend software adapters must implement.
 桥梁分析软件后端抽象层
 """
@@ -12,7 +12,7 @@ class BridgeProvider(ABC):
     """
     Abstract base class for bridge analysis software providers.
     Each provider adapts a specific bridge analysis software (e.g., qtmodel/桥通)
-    to the bridge-mcp interface.
+    to the qiao-mcp interface.
 
     桥梁分析软件后端抽象基类。
     每个 Provider 对接一个具体的桥梁分析软件。

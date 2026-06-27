@@ -10,7 +10,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from bridge_mcp.providers import BridgeProvider
+from qiao_mcp.providers import BridgeProvider
 
 
 def register_resources(mcp: FastMCP, provider: BridgeProvider):

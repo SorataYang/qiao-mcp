@@ -1,5 +1,5 @@
 [project]
-name = "bridge-mcp"
+name = "qiao-mcp"
 version = "0.1.0"
 description = "MCP server for intelligent bridge structural design and analysis (桥梁智能设计 MCP 服务器)"
 readme = "README.md"
@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-bridge-mcp = "bridge_mcp.server:main"
+qiao-mcp = "qiao_mcp.server:main"
 
 [build-system]
 requires = ["uv_build>=0.9.28,<0.10.0"]

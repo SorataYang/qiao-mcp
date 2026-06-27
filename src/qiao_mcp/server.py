@@ -1,5 +1,5 @@
 """
-Bridge-MCP Server — MCP server for intelligent bridge structural design.
+Qiao-MCP Server — MCP server for intelligent bridge structural design.
 桥梁智能设计 MCP 服务器
 
 This server exposes bridge analysis software capabilities through the
@@ -19,31 +19,31 @@ if sys.platform == "win32":
 
 from mcp.server.fastmcp import FastMCP
 
-from bridge_mcp.providers.qtmodel_provider import QtModelProvider
+from qiao_mcp.providers.qtmodel_provider import QtModelProvider
 
 # Phase 1 modules
-from bridge_mcp.tools import register_modeling_tools
-from bridge_mcp.resources import register_resources
-from bridge_mcp.prompts import register_prompts
+from qiao_mcp.tools import register_modeling_tools
+from qiao_mcp.resources import register_resources
+from qiao_mcp.prompts import register_prompts
 
 # Phase 2 modules
-from bridge_mcp.tools.group_management import register_group_tools
-from bridge_mcp.tools.tendon import register_tendon_tools
-from bridge_mcp.tools.advanced_boundary import register_advanced_boundary_tools
-from bridge_mcp.tools.visualization import register_visualization_tools
-from bridge_mcp.tools.moving_load import register_moving_load_tools
-from bridge_mcp.tools.checking import register_checking_tools
-from bridge_mcp.tools.workflows import register_workflow_tools
+from qiao_mcp.tools.group_management import register_group_tools
+from qiao_mcp.tools.tendon import register_tendon_tools
+from qiao_mcp.tools.advanced_boundary import register_advanced_boundary_tools
+from qiao_mcp.tools.visualization import register_visualization_tools
+from qiao_mcp.tools.moving_load import register_moving_load_tools
+from qiao_mcp.tools.checking import register_checking_tools
+from qiao_mcp.tools.workflows import register_workflow_tools
 
 # Phase 3 — read-only query tools
-from bridge_mcp.tools.queries import register_query_tools
+from qiao_mcp.tools.queries import register_query_tools
 
 # Phase 4 — modify tools
-from bridge_mcp.tools.modifications import register_modification_tools
+from qiao_mcp.tools.modifications import register_modification_tools
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("bridge-mcp")
+logger = logging.getLogger("qiao-mcp")
 
 # ── Initialize Provider first (needed to build dynamic instructions) ──
 
@@ -60,7 +60,7 @@ else:
 
 _SERVER_INSTRUCTIONS = (
     f"You are an AI assistant for bridge structural design "
-    f"connected to {provider.get_software_name()} via Bridge-MCP.\n\n"
+    f"connected to {provider.get_software_name()} via Qiao-MCP.\n\n"
     "## Software-Specific Rules — Read Before Using Any Tool\n"
     + provider.get_llm_instructions()
     + "\n## Available Tool Groups\n"
@@ -80,7 +80,7 @@ _SERVER_INSTRUCTIONS = (
 
 # ── Initialize MCP Server ─────────────────────────────────────────────
 
-mcp = FastMCP("bridge-mcp", instructions=_SERVER_INSTRUCTIONS)
+mcp = FastMCP("qiao-mcp", instructions=_SERVER_INSTRUCTIONS)
 
 # ── Register Phase 1 Tools, Resources, Prompts ────────────────────────
 
@@ -106,13 +106,13 @@ register_query_tools(mcp, provider)
 
 register_modification_tools(mcp, provider)
 
-logger.info(f"🌉 Bridge-MCP server initialized with {provider.get_software_name()} backend")
+logger.info(f"🌉 Qiao-MCP server initialized with {provider.get_software_name()} backend")
 
 
 # ── Entry Point ───────────────────────────────────────────────────────
 
 def main():
-    """Run the Bridge-MCP server."""
+    """Run the Qiao-MCP server."""
     mcp.run(transport="stdio")
 
 

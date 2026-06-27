@@ -8,7 +8,7 @@ and elastic supports (弹性支承).
 
 from mcp.server.fastmcp import FastMCP
 
-from bridge_mcp.providers import BridgeProvider
+from qiao_mcp.providers import BridgeProvider
 
 
 def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):

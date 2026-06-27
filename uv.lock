@@ -51,7 +51,7 @@ wheels = [
 ]
 
 [[package]]
-name = "bridge-mcp"
+name = "qiao-mcp"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

@@ -1,5 +1,5 @@
 """
-Configuration management for bridge-mcp.
+Configuration management for qiao-mcp.
 配置管理
 """
 
@@ -7,15 +7,15 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class BridgeMCPConfig:
-    """Configuration for the bridge-mcp server."""
+class QiaoMCPConfig:
+    """Configuration for the qiao-mcp server."""
 
     # Provider settings
     provider: str = "qtmodel"
     """The backend provider to use (桥梁分析软件后端)"""
 
     # Server settings
-    server_name: str = "bridge-mcp"
+    server_name: str = "qiao-mcp"
     """MCP server display name"""
 
     transport: str = "stdio"

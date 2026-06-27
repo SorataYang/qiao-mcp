@@ -8,7 +8,7 @@ and live load cases for highway and railway bridges.
 
 from mcp.server.fastmcp import FastMCP
 
-from bridge_mcp.providers import BridgeProvider
+from qiao_mcp.providers import BridgeProvider
 
 
 def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):

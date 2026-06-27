@@ -8,7 +8,7 @@ and applying prestress forces.
 
 from mcp.server.fastmcp import FastMCP
 
-from bridge_mcp.providers import BridgeProvider
+from qiao_mcp.providers import BridgeProvider
 
 
 def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):

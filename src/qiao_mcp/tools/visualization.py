@@ -7,10 +7,10 @@ import os
 
 from mcp.server.fastmcp import FastMCP
 
-from bridge_mcp.providers import BridgeProvider
+from qiao_mcp.providers import BridgeProvider
 
 # Default output directory for images (图片默认保存目录)
-DEFAULT_IMAGE_DIR = os.path.join(os.path.expanduser("~"), "bridge_mcp_images")
+DEFAULT_IMAGE_DIR = os.path.join(os.path.expanduser("~"), "qiao_mcp_images")
 
 
 def _ensure_dir(path: str) -> str:

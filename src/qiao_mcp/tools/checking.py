@@ -5,7 +5,7 @@ MCP Tools for structural concrete checking and reinforcement design.
 
 from mcp.server.fastmcp import FastMCP
 
-from bridge_mcp.providers import BridgeProvider
+from qiao_mcp.providers import BridgeProvider
 
 
 def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
