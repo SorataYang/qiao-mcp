@@ -169,4 +169,7 @@ This MCP server wraps the `qtmodel` Python API which provides access to:
 
 ## License
 
-Apache-2.0
+Copyright 2026 Sorata (https://github.com/SorataYang)
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](./LICENSE).
+Additional attribution notices are available in [NOTICE](./NOTICE).
