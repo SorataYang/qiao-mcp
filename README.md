@@ -47,7 +47,7 @@ Bridge-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 ## Architecture
 
 ```
-bridge-mcp/
+qiao-mcp/
 ├── src/bridge_mcp/
 │   ├── server.py              # MCP server entry point
 │   ├── config.py              # Configuration
@@ -89,7 +89,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "bridge-mcp": {
       "command": "uv",
-      "args": ["--directory", "/path/to/bridge-mcp", "run", "bridge-mcp"]
+      "args": ["--directory", "/path/to/qiao-mcp", "run", "bridge-mcp"]
     }
   }
 }
@@ -104,7 +104,7 @@ Add to `.cursor/mcp.json`:
   "mcpServers": {
     "bridge-mcp": {
       "command": "uv",
-      "args": ["--directory", "/path/to/bridge-mcp", "run", "bridge-mcp"]
+      "args": ["--directory", "/path/to/qiao-mcp", "run", "bridge-mcp"]
     }
   }
 }
@@ -116,10 +116,10 @@ Open **Settings** → **MCP & Tools**, then add a new MCP server:
 
 - **Name**: `bridge-mcp`
 - **Transport**: `stdio` (keep default)
-- **Command**: `uv --directory /path/to/bridge-mcp run bridge-mcp`
-  - Replace `/path/to/bridge-mcp` with your actual project path
-  - Windows: use backslashes `D:\path\to\bridge-mcp`
-  - macOS/Linux: use forward slashes `/path/to/bridge-mcp`
+- **Command**: `uv --directory /path/to/qiao-mcp run bridge-mcp`
+  - Replace `/path/to/qiao-mcp` with your actual project path
+  - Windows: use backslashes `D:\path\to\qiao-mcp`
+  - macOS/Linux: use forward slashes `/path/to/qiao-mcp`
 - **Environment** (optional): `UV_PYTHON=3.11`
 
 Click **Add** to save.
@@ -135,12 +135,12 @@ Open **设置** → **扩展** → **MCP Servers**, then add a new server:
 - **包管理器 (Package Manager)**: Select `默认` (Default)
 - **参数 (Args)**: 
   ```
-  /path/to/bridge-mcp
+  /path/to/qiao-mcp
   run
   bridge-mcp
   ```
   (Each line is one argument, no `--directory` prefix needed)
-  - Replace `/path/to/bridge-mcp` with your actual project path
+  - Replace `/path/to/qiao-mcp` with your actual project path
 
 Click **保存** to save.
 

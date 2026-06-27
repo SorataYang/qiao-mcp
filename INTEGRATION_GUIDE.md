@@ -5,8 +5,8 @@
 ### 1️⃣ 克隆项目 Clone Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/bridge-mcp.git
-cd bridge-mcp
+git clone https://github.com/SorataYang/qiao-mcp.git
+cd qiao-mcp
 ```
 
 ### 2️⃣ 安装依赖 Install Dependencies
@@ -56,7 +56,7 @@ npx @modelcontextprotocol/inspector uv run bridge-mcp
       "command": "uv",
       "args": [
         "--directory",
-        "D:/GitHub/bridge-mcp",
+        "D:/GitHub/qiao-mcp",
         "run",
         "bridge-mcp"
       ],
@@ -68,7 +68,7 @@ npx @modelcontextprotocol/inspector uv run bridge-mcp
 }
 ```
 
-> ⚠️ 注意：将 `D:/GitHub/bridge-mcp` 替换为你的实际项目路径
+> ⚠️ 注意：将 `D:/GitHub/qiao-mcp` 替换为你的实际项目路径
 
 **重启 Claude Desktop** 即可生效。
 
@@ -87,7 +87,7 @@ npx @modelcontextprotocol/inspector uv run bridge-mcp
       "command": "uv",
       "args": [
         "--directory",
-        "/absolute/path/to/bridge-mcp",
+        "/absolute/path/to/qiao-mcp",
         "run",
         "bridge-mcp"
       ]
@@ -111,7 +111,7 @@ from mcp.client.stdio import stdio_client
 # 配置 MCP 服务器
 server_params = StdioServerParameters(
     command="uv",
-    args=["--directory", "/path/to/bridge-mcp", "run", "bridge-mcp"],
+    args=["--directory", "/path/to/qiao-mcp", "run", "bridge-mcp"],
     env=None
 )
 
@@ -141,7 +141,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 // 创建传输层
 const transport = new StdioClientTransport({
   command: "uv",
-  args: ["--directory", "/path/to/bridge-mcp", "run", "bridge-mcp"],
+  args: ["--directory", "/path/to/qiao-mcp", "run", "bridge-mcp"],
 });
 
 // 创建客户端
@@ -348,7 +348,7 @@ Agent 会调用:
 ### Q: 如何更新到最新版本？
 **A**: 
 ```bash
-cd bridge-mcp
+cd qiao-mcp
 git pull
 uv sync
 # 重启 Claude Desktop 或你的 Agent

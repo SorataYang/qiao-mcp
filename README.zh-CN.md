@@ -47,7 +47,7 @@ Bridge-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextpr
 ## 架构设计
 
 ```
-bridge-mcp/
+qiao-mcp/
 ├── src/bridge_mcp/
 │   ├── server.py              # MCP 服务器入口
 │   ├── config.py              # 配置管理
@@ -89,7 +89,7 @@ uv run bridge-mcp
   "mcpServers": {
     "bridge-mcp": {
       "command": "uv",
-      "args": ["--directory", "/path/to/bridge-mcp", "run", "bridge-mcp"]
+      "args": ["--directory", "/path/to/qiao-mcp", "run", "bridge-mcp"]
     }
   }
 }
@@ -104,7 +104,7 @@ uv run bridge-mcp
   "mcpServers": {
     "bridge-mcp": {
       "command": "uv",
-      "args": ["--directory", "/path/to/bridge-mcp", "run", "bridge-mcp"]
+      "args": ["--directory", "/path/to/qiao-mcp", "run", "bridge-mcp"]
     }
   }
 }
@@ -116,10 +116,10 @@ uv run bridge-mcp
 
 - **Name**: `bridge-mcp`
 - **Transport**: `stdio`（保持默认）
-- **Command**: `uv --directory /path/to/bridge-mcp run bridge-mcp`
-  - 将 `/path/to/bridge-mcp` 替换为你的实际项目路径
-  - Windows: 使用反斜杠 `D:\path\to\bridge-mcp`
-  - macOS/Linux: 使用正斜杠 `/path/to/bridge-mcp`
+- **Command**: `uv --directory /path/to/qiao-mcp run bridge-mcp`
+  - 将 `/path/to/qiao-mcp` 替换为你的实际项目路径
+  - Windows: 使用反斜杠 `D:\path\to\qiao-mcp`
+  - macOS/Linux: 使用正斜杠 `/path/to/qiao-mcp`
 - **Environment**（可选）: `UV_PYTHON=3.11`
 
 点击 **Add** 保存。
@@ -135,12 +135,12 @@ uv run bridge-mcp
 - **包管理器**: 选择 `默认`
 - **参数**: 
   ```
-  /path/to/bridge-mcp
+  /path/to/qiao-mcp
   run
   bridge-mcp
   ```
   （每行一个参数，无需 `--directory` 前缀）
-  - 将 `/path/to/bridge-mcp` 替换为你的实际项目路径
+  - 将 `/path/to/qiao-mcp` 替换为你的实际项目路径
 
 点击 **保存**。
 

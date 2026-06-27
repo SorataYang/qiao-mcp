@@ -23,7 +23,7 @@ When distributing this software or derivative works, you **must**:
 
 ### In Documentation
 ```
-This software uses Bridge-MCP (https://github.com/SorataYang/bridge-mcp)
+This software uses Bridge-MCP (https://github.com/SorataYang/qiao-mcp)
 Copyright 2026 Sorata
 Licensed under the Apache License, Version 2.0
 ```
@@ -39,7 +39,7 @@ See LICENSE file for details
 ### In Source Code
 ```python
 # Bridge-MCP - MCP server for intelligent bridge structural design
-# Copyright 2026 Sorata (https://github.com/SorataYang/bridge-mcp)
+# Copyright 2026 Sorata (https://github.com/SorataYang/qiao-mcp)
 # Licensed under the Apache License, Version 2.0
 ```
 
@@ -50,4 +50,4 @@ See [NOTICE](NOTICE) for a complete list of third-party dependencies and their l
 ## Questions?
 
 For licensing questions, contact the project maintainer or open an issue at:
-https://github.com/SorataYang/bridge-mcp/issues
+https://github.com/SorataYang/qiao-mcp/issues
