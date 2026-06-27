@@ -1,11 +1,11 @@
-# 🌉 Bridge-MCP
+# 🌉 Qiao-MCP
 
 **English** · [简体中文](./README.zh-CN.md)
 
 > MCP server for intelligent bridge structural design and analysis  
 > 桥梁智能设计 MCP 服务器
 
-Bridge-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI assistants to interact with bridge structural analysis software. It provides tools for creating bridge models, applying loads, running structural analysis, and reviewing results.
+Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI assistants to interact with bridge structural analysis software. It provides tools for creating bridge models, applying loads, running structural analysis, and reviewing results.
 
 ## Features
 
@@ -48,7 +48,7 @@ Bridge-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 
 ```
 qiao-mcp/
-├── src/bridge_mcp/
+├── src/qiao_mcp/
 │   ├── server.py              # MCP server entry point
 │   ├── config.py              # Configuration
 │   ├── tools/                 # MCP Tools
@@ -77,7 +77,7 @@ The **Provider pattern** allows future support for multiple bridge analysis back
 uv sync
 
 # Run the server
-uv run bridge-mcp
+uv run qiao-mcp
 ```
 
 ### Configure in Claude Desktop
@@ -87,9 +87,9 @@ Add to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "bridge-mcp": {
+    "qiao-mcp": {
       "command": "uv",
-      "args": ["--directory", "/path/to/qiao-mcp", "run", "bridge-mcp"]
+      "args": ["--directory", "/path/to/qiao-mcp", "run", "qiao-mcp"]
     }
   }
 }
@@ -102,9 +102,9 @@ Add to `.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "bridge-mcp": {
+    "qiao-mcp": {
       "command": "uv",
-      "args": ["--directory", "/path/to/qiao-mcp", "run", "bridge-mcp"]
+      "args": ["--directory", "/path/to/qiao-mcp", "run", "qiao-mcp"]
     }
   }
 }
@@ -114,9 +114,9 @@ Add to `.cursor/mcp.json`:
 
 Open **Settings** → **MCP & Tools**, then add a new MCP server:
 
-- **Name**: `bridge-mcp`
+- **Name**: `qiao-mcp`
 - **Transport**: `stdio` (keep default)
-- **Command**: `uv --directory /path/to/qiao-mcp run bridge-mcp`
+- **Command**: `uv --directory /path/to/qiao-mcp run qiao-mcp`
   - Replace `/path/to/qiao-mcp` with your actual project path
   - Windows: use backslashes `D:\path\to\qiao-mcp`
   - macOS/Linux: use forward slashes `/path/to/qiao-mcp`
@@ -128,7 +128,7 @@ Click **Add** to save.
 
 Open **设置** → **扩展** → **MCP Servers**, then add a new server:
 
-- **名称 (Name)**: `bridge-mcp`
+- **名称 (Name)**: `qiao-mcp`
 - **描述 (Description)**: Optional description
 - **类型 (Type)**: `标准输入 / 输出 (stdio)`
 - **命令 (Command)**: `uv`
@@ -137,7 +137,7 @@ Open **设置** → **扩展** → **MCP Servers**, then add a new server:
   ```
   /path/to/qiao-mcp
   run
-  bridge-mcp
+  qiao-mcp
   ```
   (Each line is one argument, no `--directory` prefix needed)
   - Replace `/path/to/qiao-mcp` with your actual project path
@@ -147,7 +147,7 @@ Click **保存** to save.
 ### Test with MCP Inspector
 
 ```bash
-npx @modelcontextprotocol/inspector uv run bridge-mcp
+npx @modelcontextprotocol/inspector uv run qiao-mcp
 ```
 
 ## Development
@@ -157,7 +157,7 @@ npx @modelcontextprotocol/inspector uv run bridge-mcp
 uv sync
 
 # Run directly
-uv run python -m bridge_mcp.server
+uv run python -m qiao_mcp.server
 ```
 
 ## Backend: QTModel (桥通)

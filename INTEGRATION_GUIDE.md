@@ -1,4 +1,4 @@
-# Bridge-MCP 接入指南 / Integration Guide
+# Qiao-MCP 接入指南 / Integration Guide
 
 ## 快速接入 Quick Start
 
@@ -31,10 +31,10 @@ uv sync
 
 ```bash
 # 方法 1: 直接运行
-uv run bridge-mcp
+uv run qiao-mcp
 
 # 方法 2: 使用 MCP Inspector 测试
-npx @modelcontextprotocol/inspector uv run bridge-mcp
+npx @modelcontextprotocol/inspector uv run qiao-mcp
 ```
 
 ---
@@ -52,13 +52,13 @@ npx @modelcontextprotocol/inspector uv run bridge-mcp
 ```json
 {
   "mcpServers": {
-    "bridge-mcp": {
+    "qiao-mcp": {
       "command": "uv",
       "args": [
         "--directory",
         "D:/GitHub/qiao-mcp",
         "run",
-        "bridge-mcp"
+        "qiao-mcp"
       ],
       "env": {
         "UV_PYTHON": "3.11"
@@ -83,13 +83,13 @@ npx @modelcontextprotocol/inspector uv run bridge-mcp
 ```json
 {
   "mcpServers": {
-    "bridge-mcp": {
+    "qiao-mcp": {
       "command": "uv",
       "args": [
         "--directory",
         "/absolute/path/to/qiao-mcp",
         "run",
-        "bridge-mcp"
+        "qiao-mcp"
       ]
     }
   }
@@ -111,7 +111,7 @@ from mcp.client.stdio import stdio_client
 # 配置 MCP 服务器
 server_params = StdioServerParameters(
     command="uv",
-    args=["--directory", "/path/to/qiao-mcp", "run", "bridge-mcp"],
+    args=["--directory", "/path/to/qiao-mcp", "run", "qiao-mcp"],
     env=None
 )
 
@@ -141,7 +141,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 // 创建传输层
 const transport = new StdioClientTransport({
   command: "uv",
-  args: ["--directory", "/path/to/qiao-mcp", "run", "bridge-mcp"],
+  args: ["--directory", "/path/to/qiao-mcp", "run", "qiao-mcp"],
 });
 
 // 创建客户端
@@ -242,16 +242,16 @@ export BRIDGE_PROVIDER=qtmodel
 
 ```bash
 # 直接运行查看实时日志
-uv run bridge-mcp
+uv run qiao-mcp
 
 # 或设置详细日志级别
-LOG_LEVEL=DEBUG uv run bridge-mcp
+LOG_LEVEL=DEBUG uv run qiao-mcp
 ```
 
 ### 2. 使用 MCP Inspector 测试
 
 ```bash
-npx @modelcontextprotocol/inspector uv run bridge-mcp
+npx @modelcontextprotocol/inspector uv run qiao-mcp
 ```
 
 浏览器打开 `http://localhost:5173` 可视化调试。
@@ -329,7 +329,7 @@ Agent 会调用:
 4. **查看完整 API 文档**
    ```bash
    # 查看工具列表和参数
-   npx @modelcontextprotocol/inspector uv run bridge-mcp
+   npx @modelcontextprotocol/inspector uv run qiao-mcp
    ```
 
 ---
