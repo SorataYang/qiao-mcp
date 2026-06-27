@@ -2,7 +2,7 @@
 
 ## Main License
 
-**Bridge-MCP** is licensed under the [Apache License, Version 2.0](LICENSE).
+**Qiao-MCP** is licensed under the [Apache License, Version 2.0](LICENSE).
 
 Copyright 2026 Sorata
 
@@ -23,14 +23,14 @@ When distributing this software or derivative works, you **must**:
 
 ### In Documentation
 ```
-This software uses Bridge-MCP (https://github.com/SorataYang/qiao-mcp)
+This software uses Qiao-MCP (https://github.com/SorataYang/qiao-mcp)
 Copyright 2026 Sorata
 Licensed under the Apache License, Version 2.0
 ```
 
 ### In Binary Distributions
 ```
-Bridge-MCP - MCP server for intelligent bridge structural design
+Qiao-MCP - MCP server for intelligent bridge structural design
 Copyright 2026 Sorata
 Licensed under the Apache License, Version 2.0
 See LICENSE file for details
@@ -38,7 +38,7 @@ See LICENSE file for details
 
 ### In Source Code
 ```python
-# Bridge-MCP - MCP server for intelligent bridge structural design
+# Qiao-MCP - MCP server for intelligent bridge structural design
 # Copyright 2026 Sorata (https://github.com/SorataYang/qiao-mcp)
 # Licensed under the Apache License, Version 2.0
 ```
