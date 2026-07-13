@@ -41,6 +41,9 @@ from qiao_mcp.tools.queries import register_query_tools
 # Phase 4 — modify tools
 from qiao_mcp.tools.modifications import register_modification_tools
 
+# Phase 5 — long-tail API gateway (逃生舱)
+from qiao_mcp.tools.api_gateway import register_api_gateway_tools
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("qiao-mcp")
@@ -76,6 +79,7 @@ _SERVER_INSTRUCTIONS = (
     "Checking: setup_concrete_check, add_check_load_combination, add_parametric_reinforcement, run_concrete_check\n"
     "Modify:   update_node, update_node_id, renumber_nodes, move_nodes, merge_nodes, remove_nodes, update_element, update_element_id, renumber_elements, revert_local_orientation, remove_elements\n"
     "View:     set_view_angle, save_model_screenshot\n"
+    "Gateway:  list_qtmodel_api, call_qtmodel_api — 长尾 API 先检索真实签名再调用\n"
 )
 
 # ── Initialize MCP Server ─────────────────────────────────────────────
@@ -105,6 +109,10 @@ register_query_tools(mcp, provider)
 # ── Register Phase 4 Modification Tools ───────────────────────────────
 
 register_modification_tools(mcp, provider)
+
+# ── Register Phase 5 API Gateway (逃生舱) ─────────────────────────────
+
+register_api_gateway_tools(mcp, provider)
 
 logger.info(f"🌉 Qiao-MCP server initialized with {provider.get_software_name()} backend")
 
