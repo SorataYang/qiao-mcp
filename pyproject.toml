@@ -22,7 +22,9 @@ dependencies = [
     "numpy>=2.4.2",
     "openpyxl>=3.1.5",
     "pandas>=3.0.1",
-    "qtmodel>=2.3.3",
+    # qtmodel 自身未声明任何依赖，但 import 时需要 psutil/requests 等，须在此代为声明
+    "psutil>=5.9",
+    "qtmodel>=2.3.3,<2.4",
     "requests>=2.32.5",
 ]
 
@@ -37,3 +39,8 @@ Issues = "https://github.com/SorataYang/qiao-mcp/issues"
 [build-system]
 requires = ["uv_build>=0.9.28,<0.11"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
