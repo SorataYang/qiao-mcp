@@ -122,6 +122,69 @@ class QtModelProvider(BridgeProvider):
                 f"qtmodel provider unavailable: {self._unavailable_reason}"
             )
 
+    # ── Generic API gateway (逃生舱) ───────────────────────────────────
+
+    # 危险/长耗时操作必须走各自带防护的专用工具，禁止经逃生舱直呼
+    _API_BLOCKLIST = {"initial", "do_solve"}
+
+    def _resolve_api_object(self, api_object: str):
+        obj = {"mdb": self._mdb, "odb": self._odb, "cdb": self._cdb}.get(api_object)
+        if obj is None:
+            raise ValueError(f"Unknown api_object '{api_object}'. Use: mdb, odb, cdb")
+        return obj
+
+    def list_api_methods(self, api_object: str, pattern: str = "") -> list[dict]:
+        """List callable qtmodel API methods with signatures, filtered by substring."""
+        import inspect
+
+        self._require_available()
+        obj = self._resolve_api_object(api_object)
+        out = []
+        for name in dir(obj):
+            if name.startswith("_") or name in self._API_BLOCKLIST:
+                continue
+            if pattern and pattern.lower() not in name.lower():
+                continue
+            fn = getattr(obj, name)
+            if not callable(fn):
+                continue
+            try:
+                sig = str(inspect.signature(fn))
+            except (TypeError, ValueError):
+                sig = "(...)"
+            out.append({"method": name, "signature": sig})
+        return out
+
+    def call_api(self, api_object: str, method: str, kwargs: dict | None = None) -> Any:
+        """Call a whitelisted qtmodel API method after validating the signature."""
+        import inspect
+
+        self._require_available()
+        obj = self._resolve_api_object(api_object)
+        if method.startswith("_") or method in self._API_BLOCKLIST:
+            raise ValueError(
+                f"Method '{method}' is not callable via the gateway "
+                f"(该方法不允许经逃生舱调用，请使用对应的专用工具)"
+            )
+        fn = getattr(obj, method, None)
+        if fn is None or not callable(fn):
+            raise ValueError(
+                f"{api_object} has no method '{method}' "
+                f"(方法不存在，可用 list 模式按关键字检索)"
+            )
+        kwargs = kwargs or {}
+        sig = inspect.signature(fn)
+        try:
+            sig.bind(**kwargs)
+        except TypeError as e:
+            raise ValueError(
+                f"Arguments do not match (参数不匹配): {e}. Real signature (真实签名): {method}{sig}"
+            ) from e
+        result = self._parse(fn(**kwargs))
+        if api_object == "mdb" and method.startswith(("add_", "update_", "remove_")):
+            self._mdb.update_model()
+        return result
+
     # ── Model Information ──────────────────────────────────────────────
 
     @staticmethod
