@@ -1875,17 +1875,19 @@ class QtModelProvider(BridgeProvider):
 
     # ── Advanced Boundary ──────────────────────────────────────────────
 
-    def add_master_slave_link(self, master_id: int, slave_ids: Any, **kwargs) -> None:
+    def add_master_slave_link(self, master_id: int, slave_id: Any, **kwargs) -> None:
         self._require_available()
         self._mdb.add_master_slave_link(
-            master_id=master_id, slave_ids=slave_ids, **kwargs
+            master_id=master_id, slave_id=slave_id, **kwargs
         )
         self._mdb.update_model()
 
-    def add_elastic_support(self, node_id: Any, spring_values: list, **kwargs) -> None:
+    def add_elastic_support(
+        self, node_id: Any, support_type: int = 1, boundary_info: list | None = None, **kwargs
+    ) -> None:
         self._require_available()
         self._mdb.add_elastic_support(
-            node_id=node_id, spring_values=spring_values, **kwargs
+            node_id=node_id, support_type=support_type, boundary_info=boundary_info, **kwargs
         )
         self._mdb.update_model()
 

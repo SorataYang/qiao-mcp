@@ -16,32 +16,53 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
 
     @mcp.tool()
     def add_elastic_link(
-        link_type: int,
         start_node_id: int,
         end_node_id: int,
+        link_type: int = 1,
         stiffness_values: list[float] | None = None,
+        kx: float = 0.0,
+        gap: float = 0.0,
+        friction: float = 0.0,
+        beta_angle: float = 0.0,
+        dis_ratio: float = 0.5,
         group_name: str = "",
     ) -> str:
         """
         Add an elastic link between two nodes (添加弹性连接).
 
-        Elastic links model connections like bearings and rigid arms between members.
-        弹性连接用于模拟支座、刚性臂等节点间的连接关系。
+        Elastic links model connections like bearings between members.
+        弹性连接用于模拟支座等节点间的连接关系。
 
         Args:
-            link_type: Link type (连接类型):
-                1=Rigid (刚性连接), 2=Rigid arm (刚性臂), 3=General elastic (一般弹性),
-                4=Fixed-end (固接), 5=Master-slave (主从约束)
             start_node_id: Start node ID (起始节点编号)
             end_node_id: End node ID (终止节点编号)
-            stiffness_values: Stiffness values [kx, ky, kz, krx, kry, krz] for type=3
-                              弹性刚度值 [平动x, 平动y, 平动z, 转动x, 转动y, 转动z]
+            link_type: Link type (连接类型):
+                1=General elastic (一般弹性连接), 2=Rigid (刚性连接),
+                3=Tension-only (受拉弹性连接), 4=Compression-only (受压弹性连接)
+            stiffness_values: Stiffness [kx, ky, kz, krx, kry, krz], ONLY for type=1
+                              (刚度值列表，仅一般弹性连接需要)
+            kx: Axial stiffness for tension/compression links, ONLY for type=3/4
+                (受拉或受压刚度，仅受拉/受压连接需要)
+            gap: Gap for tension/compression links (间隙)
+            friction: Friction coefficient (摩擦系数)
+            beta_angle: Beta angle in degrees (贝塔角)
+            dis_ratio: Distance ratio from I-end, ONLY for type=1 (距i端距离比)
             group_name: Boundary group name (边界组名)
+
+        Example:
+            add_elastic_link(1, 2, link_type=1, stiffness_values=[1e6,1e6,1e6,0,0,0])
+            add_elastic_link(1, 2, link_type=3, kx=1e6)  # tension-only
         """
         try:
-            kwargs = {}
+            kwargs = {
+                "beta_angle": beta_angle,
+                "dis_ratio": dis_ratio,
+                "kx": kx,
+                "gap": gap,
+                "friction": friction,
+            }
             if stiffness_values:
-                kwargs["stiffness"] = stiffness_values
+                kwargs["boundary_info"] = stiffness_values
             if group_name:
                 kwargs["group_name"] = group_name
             provider.add_elastic_link(
@@ -51,8 +72,8 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
                 **kwargs,
             )
             link_type_names = {
-                1: "Rigid(刚性)", 2: "Rigid arm(刚性臂)",
-                3: "General elastic(一般弹性)", 4: "Fixed-end(固接)", 5: "Master-slave(主从)"
+                1: "General elastic(一般弹性)", 2: "Rigid(刚性)",
+                3: "Tension-only(受拉)", 4: "Compression-only(受压)",
             }
             type_name = link_type_names.get(link_type, str(link_type))
             return (
@@ -78,20 +99,22 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
 
         Args:
             master_node_id: Master node ID (主节点编号)
-            slave_node_ids: Slave node ID(s) (从节点编号，支持列表或范围字符串)
-            dof_constraints: DOF constraint flags [dx, dy, dz, rx, ry, rz],
-                             True=constrained (自由度约束标志，True=约束)
+            slave_node_ids: Slave node ID(s), list or range string like "2to5"
+                            (从节点编号，支持列表或范围字符串)
+            dof_constraints: DOF flags [dx, dy, dz, rx, ry, rz],
+                             True=constrained, default all constrained
+                             (自由度约束标志，True=约束，默认全部约束)
             group_name: Boundary group name (边界组名)
         """
         try:
             kwargs = {}
             if dof_constraints:
-                kwargs["dof_constraints"] = dof_constraints
+                kwargs["boundary_info"] = dof_constraints
             if group_name:
                 kwargs["group_name"] = group_name
             provider.add_master_slave_link(
                 master_id=master_node_id,
-                slave_ids=slave_node_ids,
+                slave_id=slave_node_ids,
                 **kwargs,
             )
             return (
@@ -105,6 +128,7 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_elastic_support(
         node_id: int | list[int] | str,
         spring_values: list[float],
+        support_type: int = 1,
         group_name: str = "",
     ) -> str:
         """
@@ -114,21 +138,33 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         用于模拟地基柔度、桩基础、橡胶支座刚度等。
 
         Args:
-            node_id: Node ID(s) (节点编号)
-            spring_values: Spring stiffness [kx, ky, kz, krx, kry, krz] in N/m or N·m/rad
-                           弹簧刚度 [平动x, 平动y, 平动z, 转动x, 转动y, 转动z]，单位 N/m 或 N·m/rad
+            node_id: Node ID(s), list or range string (节点编号)
+            spring_values: Stiffness values, meaning depends on support_type
+                           (刚度信息，含义随支承类型不同):
+                type=1 (linear 线性): [kx, ky, kz, krx, kry, krz] in N/m, N·m/rad
+                type=2/3 (tension/compression 受拉/受压): [direction, stiffness],
+                          direction: 1=X, 2=Y, 3=Z
+            support_type: Support type (支承类型): 1=linear(线性),
+                          2=tension-only(受拉), 3=compression-only(受压)
             group_name: Boundary group name (边界组名)
+
+        Example:
+            add_elastic_support(1, spring_values=[1e6,0,1e6,0,0,0])           # linear
+            add_elastic_support(1, spring_values=[3, 1e6], support_type=3)    # Z compression-only
         """
         try:
             kwargs = {}
             if group_name:
                 kwargs["group_name"] = group_name
             provider.add_elastic_support(
-                node_id=node_id, spring_values=spring_values, **kwargs
+                node_id=node_id,
+                support_type=support_type,
+                boundary_info=spring_values,
+                **kwargs,
             )
             return (
                 f"Elastic support added on node(s) {node_id} "
-                f"with stiffness {spring_values} (弹性支承创建成功)"
+                f"with values {spring_values} (弹性支承创建成功)"
             )
         except Exception as e:
             return f"Error adding elastic support (添加弹性支承失败): {e}"
