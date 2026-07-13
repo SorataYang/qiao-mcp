@@ -1,8 +1,11 @@
 """可视化视角工具行为测试：预设映射与失败可见性。"""
 
+import pytest
+
+from qiao_mcp.tools.envelope import ToolInputError
 from qiao_mcp.tools.visualization import register_visualization_tools
 
-from conftest import tool_fns
+from conftest import tool_fns, tool_text
 
 
 def test_screenshot_uses_builtin_view_preset(fake_provider, tmp_path):
@@ -13,7 +16,7 @@ def test_screenshot_uses_builtin_view_preset(fake_provider, tmp_path):
     assert kw == {"direction": 5}, "top 应映射为软件内置顶视图编号 5"
     _, _, kw = fake_provider._odb.last("save_png")
     assert kw["file_path"] == out
-    assert "Error" not in result
+    assert result["status"] == "success"
 
 
 def test_screenshot_current_view_skips_direction(fake_provider, tmp_path):
@@ -35,7 +38,7 @@ def test_screenshot_view_failure_is_reported_not_swallowed(fake_provider, tmp_pa
     fake_provider._odb = Odb()
     fns = tool_fns(register_visualization_tools, fake_provider)
     result = fns["save_model_screenshot"](file_path=str(tmp_path / "m.png"))
-    assert "WARNING" in result, "视角设置失败必须在返回中可见，不得静默吞掉"
+    assert "WARNING" in tool_text(result), "视角设置失败必须在返回中可见，不得静默吞掉"
     assert saved, "视角失败时仍应完成截图"
 
 
@@ -52,6 +55,6 @@ def test_set_view_angle_preset_and_custom(fake_provider):
 
 def test_set_view_angle_rejects_unknown_preset(fake_provider):
     fns = tool_fns(register_visualization_tools, fake_provider)
-    result = fns["set_view_angle"](angle_preset="bogus")
-    assert "Unknown preset" in result
+    with pytest.raises(ToolInputError):
+        fns["set_view_angle"](angle_preset="bogus")
     assert fake_provider._odb.count("set_view_direction") == 0

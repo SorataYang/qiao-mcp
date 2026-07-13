@@ -9,6 +9,7 @@ and elastic supports (弹性支承).
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 
 
 def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -80,8 +81,10 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Elastic link ({type_name}) added between nodes {start_node_id} "
                 f"and {end_node_id} (弹性连接创建成功)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding elastic link (添加弹性连接失败): {e}"
+            raise ToolError(f"Error adding elastic link (添加弹性连接失败): {e}") from e
 
     @mcp.tool()
     def add_master_slave_link(
@@ -121,8 +124,10 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Master-slave link added: master={master_node_id}, "
                 f"slaves={slave_node_ids} (主从约束创建成功)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding master-slave link (添加主从约束失败): {e}"
+            raise ToolError(f"Error adding master-slave link (添加主从约束失败): {e}") from e
 
     @mcp.tool()
     def add_elastic_support(
@@ -166,8 +171,10 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Elastic support added on node(s) {node_id} "
                 f"with values {spring_values} (弹性支承创建成功)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding elastic support (添加弹性支承失败): {e}"
+            raise ToolError(f"Error adding elastic support (添加弹性支承失败): {e}") from e
 
     @mcp.tool()
     def add_beam_constraint(
@@ -214,8 +221,10 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Beam constraint set on element {beam_id}: "
                 f"{', '.join(parts)} (梁端约束设置成功)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding beam constraint (设置梁端约束失败): {e}"
+            raise ToolError(f"Error adding beam constraint (设置梁端约束失败): {e}") from e
 
     @mcp.tool()
     def add_constraint_equation(
@@ -256,8 +265,10 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Constraint equation '{name}' added on node {slave_node} DOF {slave_dof} "
                 f"(约束方程 '{name}' 创建成功)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding constraint equation (添加约束方程失败): {e}"
+            raise ToolError(f"Error adding constraint equation (添加约束方程失败): {e}") from e
 
     # qtmodel 的 remove_boundary 只接受中文边界类型标识；
     # 工具对外保留英文 token，内部映射，中文原值亦可直接透传。
@@ -302,7 +313,7 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         qt_kind = _BOUNDARY_KIND_MAP.get(kind, kind)
         if qt_kind not in _BOUNDARY_KIND_MAP.values():
             valid = ", ".join(_BOUNDARY_KIND_MAP)
-            return f"Unknown boundary kind '{kind}'. Valid kinds (有效类型): {valid}"
+            raise ToolInputError(f"Unknown boundary kind '{kind}'. Valid kinds (有效类型): {valid}")
         try:
             kwargs = {"remove_id": remove_id, "kind": qt_kind}
             if group_name:
@@ -313,5 +324,7 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Successfully removed {qt_kind} boundary from ID {remove_id} "
                 f"(成功删除 {qt_kind} 边界条件)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error removing boundary (删除边界条件失败): {e}"
+            raise ToolError(f"Error removing boundary (删除边界条件失败): {e}") from e

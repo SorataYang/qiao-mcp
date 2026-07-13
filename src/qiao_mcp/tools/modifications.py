@@ -11,6 +11,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 
 
 def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
@@ -43,8 +44,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             provider.initialize_model()
             provider.update_model()
             return "New model successfully initialized. The software is now ready for a new project. (新模型初始化成功，当前模型已清空)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error initializing model (初始化模型失败): {e}"
+            raise ToolError(f"Error initializing model (初始化模型失败): {e}") from e
 
     @mcp.tool()
     def save_model_file(file_path: str) -> str:
@@ -57,8 +60,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         try:
             provider.save_model_file(file_path=file_path)
             return f"Successfully saved model to '{file_path}' (成功保存模型)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error saving model file (保存模型文件失败): {e}"
+            raise ToolError(f"Error saving model file (保存模型文件失败): {e}") from e
 
     @mcp.tool()
     def open_model_file(file_path: str) -> str:
@@ -72,8 +77,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             provider.open_model_file(file_path=file_path)
             provider.update_model()
             return f"Successfully opened model from '{file_path}' (成功打开模型)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error opening model file (打开模型文件失败): {e}"
+            raise ToolError(f"Error opening model file (打开模型文件失败): {e}") from e
 
     @mcp.tool()
     def remove_unused_sections() -> str:
@@ -83,8 +90,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         try:
             provider.remove_unused_sections()
             return "Successfully removed unused sections (成功清除未使用的截面)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error removing unused sections (清除未使用的截面失败): {e}"
+            raise ToolError(f"Error removing unused sections (清除未使用的截面失败): {e}") from e
 
     # ── 2. Node modifications ─────────────────────────────────────────
 
@@ -129,8 +138,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             if z is not None:
                 parts.append(f"z={z}")
             return f"Node {node_id} updated ({', '.join(parts)}) (节点 {node_id} 修改成功)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating node (修改节点失败): {e}"
+            raise ToolError(f"Error updating node (修改节点失败): {e}") from e
 
     @mcp.tool()
     def update_node_id(node_id: int, new_id: int) -> str:
@@ -145,8 +156,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             provider.update_node_id(node_id=node_id, new_id=new_id)
             provider.update_model()
             return f"Successfully updated node ID from {node_id} to {new_id} (成功修改节点编号)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating node ID (修改节点编号失败): {e}"
+            raise ToolError(f"Error updating node ID (修改节点编号失败): {e}") from e
 
     @mcp.tool()
     def renumber_nodes(ids: Any = None, new_ids: Any = None) -> str:
@@ -162,8 +175,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             provider.renumber_nodes(ids=ids, new_ids=new_ids)
             provider.update_model()
             return "Successfully renumbered nodes (成功重新编号节点)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error renumbering nodes (重新编号失败): {e}"
+            raise ToolError(f"Error renumbering nodes (重新编号失败): {e}") from e
 
     @mcp.tool()
     def move_nodes(
@@ -194,8 +209,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 f"Nodes {ids} moved by ({offset_x}, {offset_y}, {offset_z}) "
                 f"(节点 {ids} 平移成功)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error moving nodes (平移节点失败): {e}"
+            raise ToolError(f"Error moving nodes (平移节点失败): {e}") from e
 
     # ── 2. Element modifications ──────────────────────────────────────
 
@@ -243,8 +260,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             provider.update_element(**kwargs)
             provider.update_model()
             return f"Element {old_id} updated successfully (单元 {old_id} 修改成功)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating element (修改单元失败): {e}"
+            raise ToolError(f"Error updating element (修改单元失败): {e}") from e
 
     @mcp.tool()
     def update_element_id(old_id: int, new_id: int) -> str:
@@ -259,8 +278,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             provider.update_element_id(old_id=old_id, new_id=new_id)
             provider.update_model()
             return f"Successfully updated element ID from {old_id} to {new_id} (成功修改单元编号)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating element ID (修改单元编号失败): {e}"
+            raise ToolError(f"Error updating element ID (修改单元编号失败): {e}") from e
 
     @mcp.tool()
     def renumber_elements(element_ids: Any = None, new_ids: Any = None) -> str:
@@ -276,8 +297,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             provider.renumber_elements(element_ids=element_ids, new_ids=new_ids)
             provider.update_model()
             return "Successfully renumbered elements (成功重新编号单元)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error renumbering elements (重新编号失败): {e}"
+            raise ToolError(f"Error renumbering elements (重新编号失败): {e}") from e
 
     @mcp.tool()
     def revert_local_orientation(ids: Any) -> str:
@@ -291,8 +314,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             provider.revert_local_orientation(ids=ids)
             provider.update_model()
             return f"Successfully reverted local orientation for element(s) {ids} (成功反转单元方向)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error reverting local orientation (反转单元方向失败): {e}"
+            raise ToolError(f"Error reverting local orientation (反转单元方向失败): {e}") from e
 
     @mcp.tool()
     def update_element_material(
@@ -314,8 +339,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             provider.update_element_material(ids=ids, mat_id=mat_id)
             provider.update_model()
             return f"Material of element(s) {ids} changed to {mat_id} (单元材料修改成功)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating element material (修改单元材料失败): {e}"
+            raise ToolError(f"Error updating element material (修改单元材料失败): {e}") from e
 
     @mcp.tool()
     def update_element_section(
@@ -337,8 +364,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             provider.update_frame_section(ids=ids, sec_id=sec_id)
             provider.update_model()
             return f"Section of element(s) {ids} changed to {sec_id} (单元截面修改成功)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating element section (修改单元截面失败): {e}"
+            raise ToolError(f"Error updating element section (修改单元截面失败): {e}") from e
 
     @mcp.tool()
     def update_element_beta(
@@ -363,8 +392,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             provider.update_element_beta(ids=ids, beta=beta)
             provider.update_model()
             return f"Beta angle of element(s) {ids} changed to {beta}° (贝塔角修改成功)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating beta angle (修改贝塔角失败): {e}"
+            raise ToolError(f"Error updating beta angle (修改贝塔角失败): {e}") from e
 
     @mcp.tool()
     def update_element_nodes(
@@ -387,8 +418,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 f"Element {element_id} nodes updated to [{node_i}, {node_j}] "
                 f"(单元 {element_id} 端节点修改成功)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating element nodes (修改单元端节点失败): {e}"
+            raise ToolError(f"Error updating element nodes (修改单元端节点失败): {e}") from e
 
     # ── 3. Structure group modifications ──────────────────────────────
 
@@ -424,8 +457,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 f"(nodes: {node_ids}, elements: {element_ids}) "
                 f"(已添加到结构组 '{group_name}')"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding to structure group (向结构组添加成员失败): {e}"
+            raise ToolError(f"Error adding to structure group (向结构组添加成员失败): {e}") from e
 
     @mcp.tool()
     def remove_from_structure_group(
@@ -456,8 +491,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 f"(nodes: {node_ids}, elements: {element_ids}) "
                 f"(已从结构组 '{group_name}' 移除)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error removing from structure group (从结构组移除成员失败): {e}"
+            raise ToolError(f"Error removing from structure group (从结构组移除成员失败): {e}") from e
 
     # ── 4. Delete operations ──────────────────────────────────────────
 
@@ -491,8 +528,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             provider.update_model()
             target = ids if ids is not None else "ALL NODES"
             return f"Deleted node(s) {target} (节点 {target} 已删除)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error removing nodes (删除节点失败): {e}"
+            raise ToolError(f"Error removing nodes (删除节点失败): {e}") from e
 
     @mcp.tool()
     def remove_elements(ids: Any = None, remove_free_nodes: bool = False, confirm_delete_all: bool = False) -> str:
@@ -526,8 +565,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             provider.update_model()
             target = ids if ids is not None else "ALL ELEMENTS"
             return f"Deleted element(s) {target} (单元 {target} 已删除)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error removing elements (删除单元失败): {e}"
+            raise ToolError(f"Error removing elements (删除单元失败): {e}") from e
 
     @mcp.tool()
     def merge_nodes(ids: Any = None, tolerance: float = 1e-4) -> str:
@@ -555,6 +596,8 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 provider.merge_nodes(tolerance=tolerance)
             provider.update_model()
             return f"Merge nodes completed (tolerance={tolerance}) (节点合并完成)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error merging nodes (合并节点失败): {e}"
+            raise ToolError(f"Error merging nodes (合并节点失败): {e}") from e
 

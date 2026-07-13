@@ -6,6 +6,9 @@ qtmodel 的 remove_boundary 只接受中文 kind 标识
 """
 
 from qiao_mcp.tools.advanced_boundary import register_advanced_boundary_tools
+from qiao_mcp.tools.envelope import ToolInputError
+
+import pytest
 
 from conftest import tool_fns
 
@@ -19,7 +22,7 @@ def test_english_kind_mapped_to_chinese(fake_provider):
     result = fns["remove_boundary"](remove_id=11, kind="master_slave")
     _, _, kwargs = fake_provider._mdb.last("remove_boundary")
     assert kwargs["kind"] == "主从约束"
-    assert "Error" not in result
+    assert result["status"] == "success"
 
 
 def test_all_english_tokens_map_to_valid_chinese(fake_provider):
@@ -51,8 +54,10 @@ def test_chinese_kind_passthrough(fake_provider):
 
 def test_unknown_kind_rejected_without_dispatch(fake_provider):
     fns = _fns(fake_provider)
-    result = fns["remove_boundary"](remove_id=1, kind="bogus")
-    assert "Unknown boundary kind" in result
+def test_unknown_kind_rejected_without_dispatch(fake_provider):
+    fns = _fns(fake_provider)
+    with pytest.raises(ToolInputError):
+        fns["remove_boundary"](remove_id=1, kind="bogus")
     assert fake_provider._mdb.count("remove_boundary") == 0, "无效类型不得下发删除请求"
 
 

@@ -17,6 +17,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 
 # 输出保护：单次返回的最大条数上限
 MAX_LIMIT = 500
@@ -109,15 +110,15 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 data = provider.get_section_names()
             elif kind == "section_detail":
                 if sec_id is None:
-                    return "section_detail requires sec_id (需要提供 sec_id)"
+                    raise ToolInputError("section_detail requires sec_id (需要提供 sec_id)")
                 data = provider.get_section_data(sec_id=sec_id, position=position)
             elif kind == "section_shape":
                 if sec_id is None:
-                    return "section_shape requires sec_id (需要提供 sec_id)"
+                    raise ToolInputError("section_shape requires sec_id (需要提供 sec_id)")
                 data = provider.get_section_shape(sec_id)
             elif kind == "section_property":
                 if sec_id is None:
-                    return "section_property requires sec_id (需要提供 sec_id)"
+                    raise ToolInputError("section_property requires sec_id (需要提供 sec_id)")
                 data = provider.get_section_property(sec_id)
             elif kind == "thickness":
                 data = provider.get_thickness_data()
@@ -135,11 +136,11 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 data = provider.get_structure_group_names()
             elif kind == "group_elements":
                 if not name:
-                    return "group_elements requires name (需要提供结构组名 name)"
+                    raise ToolInputError("group_elements requires name (需要提供结构组名 name)")
                 data = provider.get_structure_group_elements(name=name)
             elif kind == "group_nodes":
                 if not name:
-                    return "group_nodes requires name (需要提供结构组名 name)"
+                    raise ToolInputError("group_nodes requires name (需要提供结构组名 name)")
                 data = provider.get_group_nodes(name)
             elif kind == "load_cases":
                 data = provider.get_load_case_names()
@@ -169,27 +170,27 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 data = provider.get_stage_names()
             elif kind == "stage_elements":
                 if stage_id is None:
-                    return "stage_elements requires stage_id (需要提供 stage_id)"
+                    raise ToolInputError("stage_elements requires stage_id (需要提供 stage_id)")
                 data = provider.get_elements_of_stage(stage_id)
             elif kind == "stage_nodes":
                 if stage_id is None:
-                    return "stage_nodes requires stage_id (需要提供 stage_id)"
+                    raise ToolInputError("stage_nodes requires stage_id (需要提供 stage_id)")
                 data = provider.get_nodes_of_stage(stage_id)
             elif kind == "stage_groups":
                 if stage_id is None:
-                    return "stage_groups requires stage_id (需要提供 stage_id)"
+                    raise ToolInputError("stage_groups requires stage_id (需要提供 stage_id)")
                 data = provider.get_groups_of_stage(stage_id)
             else:
-                return (
-                    f"Unknown kind '{kind}'. See tool description for the full list "
-                    f"(未知查询类型，请查阅工具说明)"
-                )
+                raise ToolInputError(f"Unknown kind '{kind}'. See tool description for the full list "
+                    f"(未知查询类型，请查阅工具说明)")
 
             if data is None or data == [] or data == {}:
                 return f"No data for kind='{kind}' (无数据). Model may be empty or analysis not run."
             return f"{kind}:\n{_paginate(data, limit, offset)}"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error querying {kind} (查询失败): {e}"
+            raise ToolError(f"Error querying {kind} (查询失败): {e}") from e
 
     @mcp.tool()
     def find_entities(
@@ -234,36 +235,38 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 data = provider.get_elements_by_point(x, y, z, tolerance)
             elif by == "elements_by_material":
                 if not name:
-                    return "elements_by_material requires name (需要材料名)"
+                    raise ToolInputError("elements_by_material requires name (需要材料名)")
                 data = provider.get_elements_by_material(name)
             elif by == "elements_by_section":
                 if index is None:
-                    return "elements_by_section requires index (需要截面号)"
+                    raise ToolInputError("elements_by_section requires index (需要截面号)")
                 data = provider.get_elements_by_section(index)
             elif by == "element_type":
                 if ids is None:
-                    return "element_type requires ids (需要单元编号)"
+                    raise ToolInputError("element_type requires ids (需要单元编号)")
                 data = provider.get_element_type(ids)
             elif by == "element_weight":
                 if ids is None:
-                    return "element_weight requires ids (需要单元编号)"
+                    raise ToolInputError("element_weight requires ids (需要单元编号)")
                 data = provider.get_element_weight(ids)
             elif by == "span_supports":
                 if not span_info_name:
-                    return "span_supports requires span_info_name (需要跨径信息名)"
+                    raise ToolInputError("span_supports requires span_info_name (需要跨径信息名)")
                 data = provider.get_span_supports(span_info_name)
             elif by == "span_elements":
                 if not span_info_name:
-                    return "span_elements requires span_info_name (需要跨径信息名)"
+                    raise ToolInputError("span_elements requires span_info_name (需要跨径信息名)")
                 data = provider.get_span_elements(span_info_name)
             else:
-                return f"Unknown search mode '{by}' (未知查找方式，请查阅工具说明)"
+                raise ToolInputError(f"Unknown search mode '{by}' (未知查找方式，请查阅工具说明)")
 
             if data is None or data == []:
                 return f"Nothing found for by='{by}' (未找到匹配项)"
             return f"{by}:\n{_paginate(data, limit, offset)}"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error finding entities (查找失败): {e}"
+            raise ToolError(f"Error finding entities (查找失败): {e}") from e
 
     @mcp.tool()
     def calc_section_property(
@@ -281,14 +284,16 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         """
         try:
             if (loop_segments is None) == (sec_lines is None):
-                return "Provide exactly one of loop_segments / sec_lines (两者恰选其一)"
+                raise ToolInputError("Provide exactly one of loop_segments / sec_lines (两者恰选其一)")
             if loop_segments is not None:
                 data = provider.get_section_property_by_loops(loop_segments)
             else:
                 data = provider.get_section_property_by_lines(sec_lines)
             return f"Section properties:\n{_fmt(data)}"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error calculating section property (计算截面特性失败): {e}"
+            raise ToolError(f"Error calculating section property (计算截面特性失败): {e}") from e
 
     @mcp.tool()
     def get_special_results(
@@ -340,37 +345,39 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 data = provider.get_buckling_eigenvalue()
             elif kind == "self_concurrent_reaction":
                 if node_id is None or not case_name:
-                    return "self_concurrent_reaction requires node_id and case_name"
+                    raise ToolInputError("self_concurrent_reaction requires node_id and case_name")
                 data = provider.get_self_concurrent_reaction(node_id, case_name)
             elif kind == "all_concurrent_reaction":
                 if node_id is None or not case_name:
-                    return "all_concurrent_reaction requires node_id and case_name"
+                    raise ToolInputError("all_concurrent_reaction requires node_id and case_name")
                 data = provider.get_all_concurrent_reaction(node_id, case_name)
             elif kind == "concurrent_force":
                 if ids is None or not case_name:
-                    return "concurrent_force requires ids and case_name"
+                    raise ToolInputError("concurrent_force requires ids and case_name")
                 data = provider.get_concurrent_force(ids, case_name)
             elif kind == "elastic_link_force":
                 if ids is None:
-                    return "elastic_link_force requires ids"
+                    raise ToolInputError("elastic_link_force requires ids")
                 data = provider.get_elastic_link_force(
                     ids, result_kind, stage_id, envelop_type, increment_type, case_name
                 )
             elif kind == "constraint_equation_force":
                 if ids is None:
-                    return "constraint_equation_force requires ids"
+                    raise ToolInputError("constraint_equation_force requires ids")
                 data = provider.get_constrain_equation_force(
                     ids, result_kind, stage_id, envelop_type, increment_type, case_name
                 )
             elif kind == "cable_element_length":
                 if ids is None:
-                    return "cable_element_length requires ids"
+                    raise ToolInputError("cable_element_length requires ids")
                 data = provider.get_cable_element_length(ids, stage_id, increment_type)
             else:
-                return f"Unknown result kind '{kind}' (未知结果类型，请查阅工具说明)"
+                raise ToolInputError(f"Unknown result kind '{kind}' (未知结果类型，请查阅工具说明)")
 
             if data is None or data == []:
                 return f"No results for kind='{kind}' (无结果). Has the analysis been run?"
             return f"{kind}:\n{_paginate(data, limit, offset)}"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error getting special results (查询专项结果失败): {e}"
+            raise ToolError(f"Error getting special results (查询专项结果失败): {e}") from e
