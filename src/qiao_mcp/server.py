@@ -44,6 +44,9 @@ from qiao_mcp.tools.modifications import register_modification_tools
 # Phase 5 — long-tail API gateway (逃生舱)
 from qiao_mcp.tools.api_gateway import register_api_gateway_tools
 
+# Structured-return envelope for all tool registrations
+from qiao_mcp.tools.envelope import register_tools_with_envelope
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("qiao-mcp")
@@ -86,33 +89,29 @@ _SERVER_INSTRUCTIONS = (
 
 mcp = FastMCP("qiao-mcp", instructions=_SERVER_INSTRUCTIONS)
 
-# ── Register Phase 1 Tools, Resources, Prompts ────────────────────────
+# ── Register Tools (wrapped with the structured-return envelope) ──────
+# 所有工具注册统一经 envelope 包装：成功返回结构化 dict，失败抛 ToolError。
 
-register_modeling_tools(mcp, provider)
+_TOOL_REGISTRARS = [
+    register_modeling_tools,       # Phase 1
+    register_group_tools,          # Phase 2
+    register_tendon_tools,
+    register_advanced_boundary_tools,
+    register_visualization_tools,
+    register_moving_load_tools,
+    register_checking_tools,
+    register_workflow_tools,
+    register_query_tools,          # Phase 3
+    register_modification_tools,   # Phase 4
+    register_api_gateway_tools,    # Phase 5 (逃生舱)
+]
+
+for _registrar in _TOOL_REGISTRARS:
+    register_tools_with_envelope(mcp, _registrar, provider)
+
+# Resources 与 Prompts 不经工具包装
 register_resources(mcp, provider)
 register_prompts(mcp)
-
-# ── Register Phase 2 Tools ────────────────────────────────────────────
-
-register_group_tools(mcp, provider)
-register_tendon_tools(mcp, provider)
-register_advanced_boundary_tools(mcp, provider)
-register_visualization_tools(mcp, provider)
-register_moving_load_tools(mcp, provider)
-register_checking_tools(mcp, provider)
-register_workflow_tools(mcp, provider)
-
-# ── Register Phase 3 Query Tools ──────────────────────────────────────
-
-register_query_tools(mcp, provider)
-
-# ── Register Phase 4 Modification Tools ───────────────────────────────
-
-register_modification_tools(mcp, provider)
-
-# ── Register Phase 5 API Gateway (逃生舱) ─────────────────────────────
-
-register_api_gateway_tools(mcp, provider)
 
 logger.info(f"🌉 Qiao-MCP server initialized with {provider.get_software_name()} backend")
 

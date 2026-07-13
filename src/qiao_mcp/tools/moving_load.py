@@ -10,6 +10,7 @@ node tandems (节点纵列) → influence planes (影响面) → lane lines (车
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 
 
 def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -38,8 +39,10 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.add_node_tandem(name=name, node_ids=node_ids, order_by_x=order_by_x)
             return f"Node tandem '{name}' created (节点纵列 '{name}' 创建成功)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding node tandem (添加节点纵列失败): {e}"
+            raise ToolError(f"Error adding node tandem (添加节点纵列失败): {e}") from e
 
     @mcp.tool()
     def add_influence_plane(
@@ -59,8 +62,10 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.add_influence_plane(name=name, tandem_names=tandem_names)
             return f"Influence plane '{name}' created (影响面 '{name}' 创建成功)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding influence plane (添加影响面失败): {e}"
+            raise ToolError(f"Error adding influence plane (添加影响面失败): {e}") from e
 
     @mcp.tool()
     def add_traffic_lane(
@@ -101,8 +106,10 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Traffic lane '{name}' defined on plane '{influence_name}' "
                 f"(width={lane_width}m) (车道线 '{name}' 创建成功)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error defining traffic lane (添加车道线失败): {e}"
+            raise ToolError(f"Error defining traffic lane (添加车道线失败): {e}") from e
 
     @mcp.tool()
     def add_standard_vehicle(
@@ -142,8 +149,10 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Standard vehicle '{name}' added (code {standard_code}, type '{load_type}') "
                 f"(标准车辆 '{name}' 创建成功)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding standard vehicle (添加标准车辆失败): {e}"
+            raise ToolError(f"Error adding standard vehicle (添加标准车辆失败): {e}") from e
 
     @mcp.tool()
     def create_live_load_case(
@@ -182,8 +191,10 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Live load case '{name}' created on plane '{influence_plane}' "
                 f"with {len(formatted)} sub-case(s) (活载工况 '{name}' 创建成功)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating live load case (创建活载工况失败): {e}"
+            raise ToolError(f"Error creating live load case (创建活载工况失败): {e}") from e
 
     @mcp.tool()
     def get_live_load_results(
@@ -209,5 +220,7 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
                 ids=element_ids,
             )
             return str(result)
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error getting live load results (获取移动荷载结果失败): {e}"
+            raise ToolError(f"Error getting live load results (获取移动荷载结果失败): {e}") from e

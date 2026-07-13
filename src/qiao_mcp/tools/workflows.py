@@ -9,6 +9,7 @@ one-step model generation for common bridge types.
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 
 
 def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -124,8 +125,10 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Nodes: {n} | Material: {material_name} | Section: {section_name}\n"
                 + "Next steps: merge_operation_stage → apply_beam_distributed_load → configure_analysis → get_analysis_results"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating simple beam bridge (创建简支梁桥失败): {e}"
+            raise ToolError(f"Error creating simple beam bridge (创建简支梁桥失败): {e}") from e
 
     @mcp.tool()
     def create_continuous_beam_bridge(
@@ -249,5 +252,7 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Nodes: {total_nodes} | Elements: {total_elements}\n"
                 + "Next steps: merge_operation_stage → apply loads → configure_analysis (enable creep) → get_analysis_results"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating continuous beam bridge (创建连续梁桥失败): {e}"
+            raise ToolError(f"Error creating continuous beam bridge (创建连续梁桥失败): {e}") from e

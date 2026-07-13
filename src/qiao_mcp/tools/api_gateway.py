@@ -13,6 +13,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 
 
 def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
@@ -46,8 +47,10 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 + ":\n"
                 + "\n".join(lines)
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error listing API (检索 API 失败): {e}"
+            raise ToolError(f"Error listing API (检索 API 失败): {e}") from e
 
     @mcp.tool()
     def call_qtmodel_api(
@@ -80,5 +83,7 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             result = provider.call_api(api_object, method, kwargs or {})
             suffix = f"\n{json.dumps(result, ensure_ascii=False, default=str)}" if result is not None else ""
             return f"Called {api_object}.{method} successfully (调用成功){suffix}"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error calling {api_object}.{method} (调用失败): {e}"
+            raise ToolError(f"Error calling {api_object}.{method} (调用失败): {e}") from e

@@ -39,8 +39,28 @@ def fake_provider():
     return p
 
 
-def tool_fns(register, provider):
-    """注册工具到临时 FastMCP 实例并返回 {工具名: 可调用函数}。"""
+def tool_fns(register, provider, wrap=True):
+    """注册工具到临时 FastMCP 实例并返回 {工具名: 可调用函数}。
+
+    wrap=True（默认）返回经 envelope 包装的函数，与生产一致：
+    成功返回 dict，失败/校验抛 ToolError/ToolInputError。
+    """
+    from qiao_mcp.tools.envelope import register_tools_with_envelope
+
     mcp = FastMCP("test")
-    register(mcp, provider)
+    if wrap:
+        register_tools_with_envelope(mcp, register, provider)
+    else:
+        register(mcp, provider)
     return {t.name: t.fn for t in mcp._tool_manager.list_tools()}
+
+
+def tool_text(result):
+    """从 envelope 结果中取出可读文本，便于断言。
+
+    成功工具返回 dict（{status, message?, ...}）；此函数把它拍平成字符串。
+    """
+    if isinstance(result, dict):
+        parts = [str(v) for k, v in result.items() if k != "status"]
+        return " ".join(parts) if parts else str(result)
+    return str(result)

@@ -8,6 +8,7 @@ import os
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 
 # Default output directory for images (图片默认保存目录)
 DEFAULT_IMAGE_DIR = os.path.join(os.path.expanduser("~"), "qiao_mcp_images")
@@ -58,7 +59,7 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
             if view_angle != "current":
                 if view_angle not in _VIEW_PRESETS:
                     valid = ", ".join(_VIEW_PRESETS)
-                    return f"Unknown view_angle '{view_angle}'. Valid: {valid}, current"
+                    raise ToolInputError(f"Unknown view_angle '{view_angle}'. Valid: {valid}, current")
                 try:
                     provider.set_view_direction(direction=_VIEW_PRESETS[view_angle])
                 except Exception as e:
@@ -66,8 +67,10 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
 
             provider.save_model_image(file_path=file_path)
             return f"Screenshot saved to: {file_path} (截图已保存){warning}"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error saving screenshot (保存截图失败): {e}"
+            raise ToolError(f"Error saving screenshot (保存截图失败): {e}") from e
 
     @mcp.tool()
     def plot_analysis_result(
@@ -113,8 +116,10 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
                 result_type=result_type, file_path=file_path, **kwargs
             )
             return f"Result plot saved to: {file_path} (结果云图已保存)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error plotting result (生成结果云图失败): {e}"
+            raise ToolError(f"Error plotting result (生成结果云图失败): {e}") from e
 
     @mcp.tool()
     def set_view_angle(
@@ -135,7 +140,7 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             if angle_preset == "custom":
                 if horizontal is None and vertical is None:
-                    return "custom preset requires horizontal/vertical degrees (custom 需给出旋转角度)"
+                    raise ToolInputError("custom preset requires horizontal/vertical degrees (custom 需给出旋转角度)")
                 provider.set_view_direction(
                     horizontal_degree=horizontal or 0, vertical_degree=vertical or 0
                 )
@@ -145,11 +150,13 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
                 )
             if angle_preset not in _VIEW_PRESETS:
                 valid = ", ".join(_VIEW_PRESETS)
-                return f"Unknown preset '{angle_preset}'. Use: {valid}, or custom"
+                raise ToolInputError(f"Unknown preset '{angle_preset}'. Use: {valid}, or custom")
             provider.set_view_direction(direction=_VIEW_PRESETS[angle_preset])
             return f"View angle set to {angle_preset} (视角已设置)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error setting view angle (设置视角失败): {e}"
+            raise ToolError(f"Error setting view angle (设置视角失败): {e}") from e
 
     @mcp.tool()
     def display_ids(
@@ -167,8 +174,10 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
             provider.display_node_id(show_id=node_id)
             provider.display_element_id(show_id=element_id)
             return "Successfully updated ID display settings (成功更新编号显示设置)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating ID display (更新编号显示失败): {e}"
+            raise ToolError(f"Error updating ID display (更新编号显示失败): {e}") from e
 
     @mcp.tool()
     def activate_structure(
@@ -188,8 +197,10 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
             if element_ids is not None: kwargs["element_ids"] = element_ids
             provider.activate_structure(**kwargs)
             return "Successfully activated selected structure (成功激活选中结构)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error activating structure (激活结构失败): {e}"
+            raise ToolError(f"Error activating structure (激活结构失败): {e}") from e
 
     @mcp.tool()
     def set_render(flag: bool = True) -> str:
@@ -202,8 +213,10 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.set_render(flag=flag)
             return f"Successfully set render mode to {flag} (成功设置渲染模式)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error setting render mode (设置渲染模式失败): {e}"
+            raise ToolError(f"Error setting render mode (设置渲染模式失败): {e}") from e
 
     @mcp.tool()
     def reset_display() -> str:
@@ -213,8 +226,10 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.reset_display()
             return "Successfully reset display (成功恢复默认显示)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error resetting display (恢复默认显示失败): {e}"
+            raise ToolError(f"Error resetting display (恢复默认显示失败): {e}") from e
 
     @mcp.tool()
     def set_unit(unit_force: str = "KN", unit_length: str = "MM") -> str:
@@ -228,8 +243,10 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.set_unit(unit_force=unit_force, unit_length=unit_length)
             return f"Successfully set unit to {unit_force}-{unit_length} (成功设置单位)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error setting unit (设置单位失败): {e}"
+            raise ToolError(f"Error setting unit (设置单位失败): {e}") from e
 
     @mcp.tool()
     def change_construct_stage(stage: int = 0) -> str:
@@ -242,5 +259,7 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.change_construct_stage(stage=stage)
             return f"Successfully changed to stage {stage} (成功切换施工阶段)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error changing construct stage (切换施工阶段失败): {e}"
+            raise ToolError(f"Error changing construct stage (切换施工阶段失败): {e}") from e

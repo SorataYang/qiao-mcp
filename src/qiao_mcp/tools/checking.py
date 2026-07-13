@@ -6,6 +6,7 @@ MCP Tools for structural concrete checking and reinforcement design.
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 
 
 def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -45,8 +46,10 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"group='{group_name}' "
                 f"(混凝土检算工况 '{name}' 创建成功)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error setting up concrete check (创建混凝土检算工况失败): {e}"
+            raise ToolError(f"Error setting up concrete check (创建混凝土检算工况失败): {e}") from e
 
     @mcp.tool()
     def add_check_load_combination(
@@ -85,8 +88,10 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Load combination '{name}' added with {len(factors)} cases "
                 f"(荷载组合 '{name}' 添加成功，包含 {len(factors)} 个工况)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding load combination (添加荷载组合失败): {e}"
+            raise ToolError(f"Error adding load combination (添加荷载组合失败): {e}") from e
 
     @mcp.tool()
     def run_concrete_check(
@@ -108,8 +113,10 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Use get_check_results to retrieve results. "
                 f"(混凝土检算 '{name}' 完成，使用 get_check_results 获取结果)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error running concrete check (运行混凝土检算失败): {e}"
+            raise ToolError(f"Error running concrete check (运行混凝土检算失败): {e}") from e
 
     @mcp.tool()
     def add_parametric_reinforcement(
@@ -150,8 +157,10 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"({'I端' if position == 0 else 'J端'}) "
                 f"(参数化配筋添加成功)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding reinforcement (添加配筋失败): {e}"
+            raise ToolError(f"Error adding reinforcement (添加配筋失败): {e}") from e
 
     @mcp.tool()
     def add_steel_hoop(
@@ -189,8 +198,10 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
                 core_diameter=core_diameter,
             )
             return f"Successfully added steel hoop '{name}' (成功添加抗剪钢筋)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding steel hoop (添加抗剪钢筋失败): {e}"
+            raise ToolError(f"Error adding steel hoop (添加抗剪钢筋失败): {e}") from e
 
     @mcp.tool()
     def update_vertical_steel_hoop(
@@ -219,5 +230,7 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
                 fpd=fpd,
             )
             return "Successfully updated vertical prestress reinforcement (成功修改竖向预应力参数)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating vertical steel hoop (修改竖向预应力参数失败): {e}"
+            raise ToolError(f"Error updating vertical steel hoop (修改竖向预应力参数失败): {e}") from e

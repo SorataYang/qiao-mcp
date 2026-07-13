@@ -11,6 +11,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 
 
 def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -50,8 +51,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 start_id=start_id,
             )
             return f"Successfully created {len(node_data)} nodes (成功创建 {len(node_data)} 个节点)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating nodes (创建节点失败): {e}"
+            raise ToolError(f"Error creating nodes (创建节点失败): {e}") from e
 
     @mcp.tool()
     def create_nodes_linear(
@@ -116,8 +119,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"from ({start_x},{start_y},{start_z}) to ({end_x:.3f},{end_y:.3f},{end_z:.3f}) "
                 f"(成功批量创建 {count} 个等间距节点)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating linear nodes (批量创建节点失败): {e}"
+            raise ToolError(f"Error creating linear nodes (批量创建节点失败): {e}") from e
 
 
 
@@ -165,8 +170,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"(nodes {node_i}→{node_j}, mat={mat_id}, sec={sec_id}) "
                 f"(成功创建单元 {node_i}→{node_j})"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating beam element (创建单元失败): {e}"
+            raise ToolError(f"Error creating beam element (创建单元失败): {e}") from e
 
     @mcp.tool()
     def create_beam_elements_linear(
@@ -221,8 +228,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"(mat={mat_id}, sec={sec_id}) "
                 f"(成功批量创建 {count} 个梁单元)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating beam elements (批量创建梁单元失败): {e}"
+            raise ToolError(f"Error creating beam elements (批量创建梁单元失败): {e}") from e
 
     @mcp.tool()
     def create_elements(
@@ -244,8 +253,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.add_elements(ele_data=element_data)
             return f"Successfully created {len(element_data)} elements (成功创建 {len(element_data)} 个单元)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating elements (创建单元失败): {e}"
+            raise ToolError(f"Error creating elements (创建单元失败): {e}") from e
 
     @mcp.tool()
     def create_load_group(name: str = "默认荷载组") -> str:
@@ -262,8 +273,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.add_load_group(name=name)
             return f"Successfully created load group '{name}' (成功创建荷载组 '{name}')"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating load group (创建荷载组失败): {e}"
+            raise ToolError(f"Error creating load group (创建荷载组失败): {e}") from e
 
     @mcp.tool()
     def create_load_case(
@@ -291,8 +304,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Successfully created load case '{name}' (type='{case_type}'). "
                 f"(成功创建荷载工况 '{name}')"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating load case '{name}' (创建工况失败): {e}"
+            raise ToolError(f"Error creating load case '{name}' (创建工况失败): {e}") from e
 
     @mcp.tool()
     def add_load_combine(
@@ -327,8 +342,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["combine_info"] = [tuple(item) for item in combine_info]
             provider.add_load_combine(**kwargs)
             return f"Successfully added load combination '{name}' (成功添加荷载组合 '{name}')"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding load combination (添加荷载组合失败): {e}"
+            raise ToolError(f"Error adding load combination (添加荷载组合失败): {e}") from e
 
 
 
@@ -364,8 +381,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 **kwargs,
             )
             return f"Successfully created material '{name}' (成功创建材料 '{name}')"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating material (创建材料失败): {e}"
+            raise ToolError(f"Error creating material (创建材料失败): {e}") from e
 
     @mcp.tool()
     def add_time_parameter(
@@ -402,8 +421,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
             provider.add_time_parameter(**kwargs)
             return f"Successfully added time parameter '{name}' (成功添加时间依存参数 '{name}')"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding time parameter (添加时间依存参数失败): {e}"
+            raise ToolError(f"Error adding time parameter (添加时间依存参数失败): {e}") from e
 
     @mcp.tool()
     def add_creep_function(
@@ -426,8 +447,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 name=name, creep_data=creep_tuples, scale_factor=scale_factor
             )
             return f"Successfully added creep function '{name}' (成功添加徐变函数)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding creep function (添加徐变函数失败): {e}"
+            raise ToolError(f"Error adding creep function (添加徐变函数失败): {e}") from e
 
     @mcp.tool()
     def add_shrink_function(
@@ -450,8 +473,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["shrink_data"] = [tuple(item) for item in shrink_data]
             provider.add_shrink_function(**kwargs)
             return f"Successfully added shrink function '{name}' (成功添加收缩函数)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding shrink function (添加收缩函数失败): {e}"
+            raise ToolError(f"Error adding shrink function (添加收缩函数失败): {e}") from e
 
     @mcp.tool()
     def create_section(
@@ -540,8 +565,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["symmetry"] = symmetry
             provider.add_section(name=name, sec_type=sec_type, **kwargs)
             return f"Successfully created section '{name}' (type: {sec_type}) (成功创建截面 '{name}')"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating section (创建截面失败): {e}"
+            raise ToolError(f"Error creating section (创建截面失败): {e}") from e
 
     @mcp.tool()
     def create_polygon_section(
@@ -563,8 +590,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 loop_segments=loop_segments
             )
             return f"Successfully created polygon section '{name}'"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating polygon section: {e}"
+            raise ToolError(f"Error creating polygon section: {e}") from e
 
     @mcp.tool()
     def create_line_width_section(
@@ -586,8 +615,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 sec_lines=sec_lines
             )
             return f"Successfully created line-width section '{name}'"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating line-width section: {e}"
+            raise ToolError(f"Error creating line-width section: {e}") from e
 
     @mcp.tool()
     def create_section_from_properties(
@@ -620,8 +651,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 sec_property=sec_property
             )
             return f"Successfully created property-based section '{name}'"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating property-based section: {e}"
+            raise ToolError(f"Error creating property-based section: {e}") from e
 
     @mcp.tool()
     def create_tapered_section(
@@ -650,8 +683,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 sec_normalize=sec_normalize
             )
             return f"Successfully created tapered section '{name}' (成功创建渐变截面)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating tapered section (创建渐变截面失败): {e}"
+            raise ToolError(f"Error creating tapered section (创建渐变截面失败): {e}") from e
 
     @mcp.tool()
     def add_tapper_section_group(
@@ -691,8 +726,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["ids"] = ids
             provider.add_tapper_section_group(**kwargs)
             return f"Successfully added tapered section group '{name}' (成功添加变截面组)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding tapered section group (添加变截面组失败): {e}"
+            raise ToolError(f"Error adding tapered section group (添加变截面组失败): {e}") from e
 
     @mcp.tool()
     def add_thickness(
@@ -713,8 +750,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.add_thickness(name=name, t=t, thick_type=thick_type, index=index)
             return f"Successfully added thickness '{name}' (成功添加板厚度)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding thickness (添加板厚度失败): {e}"
+            raise ToolError(f"Error adding thickness (添加板厚度失败): {e}") from e
 
     @mcp.tool()
     def add_effective_width(
@@ -748,8 +787,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["group_name"] = group_name
             provider.add_effective_width(**kwargs)
             return f"Successfully added effective width to elements {element_ids} (成功添加有效宽度)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding effective width (添加有效宽度失败): {e}"
+            raise ToolError(f"Error adding effective width (添加有效宽度失败): {e}") from e
 
     @mcp.tool()
     def update_section_bias(
@@ -781,8 +822,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 side_i=side_i
             )
             return f"Successfully updated section {index} bias to '{bias_type}' (成功更新截面偏心)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating section bias (更新截面偏心失败): {e}"
+            raise ToolError(f"Error updating section bias (更新截面偏心失败): {e}") from e
 
     @mcp.tool()
     def remove_section(ids: int | list[int] | str) -> str:
@@ -796,8 +839,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.remove_section(ids=ids)
             return f"Successfully removed section(s) {ids} (成功删除截面)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error removing section (删除截面失败): {e}"
+            raise ToolError(f"Error removing section (删除截面失败): {e}") from e
 
     @mcp.tool()
     def update_section_property(
@@ -824,8 +869,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 index=index, sec_property=sec_property, side_i=side_i
             )
             return f"Successfully updated section {index} properties (成功修改截面 {index} 特性)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating section property (修改截面特性失败): {e}"
+            raise ToolError(f"Error updating section property (修改截面特性失败): {e}") from e
 
     @mcp.tool()
     def calculate_section_property() -> str:
@@ -839,8 +886,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.calculate_section_property()
             return "Successfully recalculated all section properties (成功重新计算所有截面特性)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error calculating section properties (计算截面特性失败): {e}"
+            raise ToolError(f"Error calculating section properties (计算截面特性失败): {e}") from e
 
     @mcp.tool()
     def set_support(
@@ -876,8 +925,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 node_id=node_id, boundary_info=boundary_info, **kwargs
             )
             return f"Successfully set support on node(s) {node_id} (成功设置支承)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error setting support (设置支承失败): {e}"
+            raise ToolError(f"Error setting support (设置支承失败): {e}") from e
 
     @mcp.tool()
     def set_self_weight_stage(
@@ -915,8 +966,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Self-weight of group '{structure_group_name}' set to stage "
                 f"id {weight_stage_id} for '{stage_name}' (施工阶段自重设置成功)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error setting self-weight stage (设置施工阶段自重失败): {e}"
+            raise ToolError(f"Error setting self-weight stage (设置施工阶段自重失败): {e}") from e
 
     @mcp.tool()
     def set_gravity(gravity: float = 9.8) -> str:
@@ -929,8 +982,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.update_project_setting(gravity=gravity)
             return f"Gravity set to {gravity} m/s² (重力加速度已设为 {gravity})"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error setting gravity (设置重力加速度失败): {e}"
+            raise ToolError(f"Error setting gravity (设置重力加速度失败): {e}") from e
 
     @mcp.tool()
     def apply_nodal_force(
@@ -967,8 +1022,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 node_id=node_id, case_name=case_name, load_info=load_info, **kwargs
             )
             return f"Successfully applied force to node(s) {node_id} in case '{case_name}' (成功施加荷载)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying force (施加荷载失败): {e}"
+            raise ToolError(f"Error applying force (施加荷载失败): {e}") from e
 
     @mcp.tool()
     def apply_beam_distributed_load(
@@ -1006,8 +1063,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 **kwargs,
             )
             return f"Successfully applied distributed load on element(s) {element_id} (成功施加分布荷载)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying distributed load (施加分布荷载失败): {e}"
+            raise ToolError(f"Error applying distributed load (施加分布荷载失败): {e}") from e
 
     @mcp.tool()
     def add_system_temperature(
@@ -1033,8 +1092,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 element_id=element_id, case_name=case_name, temperature=temperature, **kwargs
             )
             return f"Successfully applied system temperature load '{temperature}' to element(s) {element_id} (成功施加体系温度)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying system temperature load (施加体系温度失败): {e}"
+            raise ToolError(f"Error applying system temperature load (施加体系温度失败): {e}") from e
 
     @mcp.tool()
     def add_gradient_temperature(
@@ -1068,8 +1129,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 element_id=element_id, case_name=case_name, temperature=temperature, **kwargs
             )
             return f"Successfully applied gradient temperature '{temperature}' to element(s) {element_id} (成功施加梯度温度)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying gradient temperature load (施加梯度温度失败): {e}"
+            raise ToolError(f"Error applying gradient temperature load (施加梯度温度失败): {e}") from e
 
     @mcp.tool()
     def add_custom_temperature(
@@ -1096,8 +1159,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["temperature_data"] = [tuple(item) for item in temperature_data]
             provider.add_custom_temperature(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied custom temperature to element(s) {element_id} (成功施加自定义温度)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying custom temperature (施加自定义温度失败): {e}"
+            raise ToolError(f"Error applying custom temperature (施加自定义温度失败): {e}") from e
 
     @mcp.tool()
     def add_beam_section_temperature(
@@ -1135,8 +1200,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             if group_name: kwargs["group_name"] = group_name
             provider.add_beam_section_temperature(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied beam section temperature to element(s) {element_id} (成功施加梁截面温度)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying beam section temperature (施加梁截面温度失败): {e}"
+            raise ToolError(f"Error applying beam section temperature (施加梁截面温度失败): {e}") from e
 
     @mcp.tool()
     def add_initial_tension_load(
@@ -1168,8 +1235,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             if group_name: kwargs["group_name"] = group_name
             provider.add_initial_tension_load(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied initial tension {tension} to element(s) {element_id} (成功施加初拉力)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying initial tension (施加初拉力失败): {e}"
+            raise ToolError(f"Error applying initial tension (施加初拉力失败): {e}") from e
 
     @mcp.tool()
     def add_cable_length_load(
@@ -1194,8 +1263,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             if group_name: kwargs["group_name"] = group_name
             provider.add_cable_length_load(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied cable length load {length} to element(s) {element_id} (成功施加索长荷载)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying cable length load (施加索长荷载失败): {e}"
+            raise ToolError(f"Error applying cable length load (施加索长荷载失败): {e}") from e
 
     @mcp.tool()
     def add_plate_element_load(
@@ -1228,8 +1299,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             if list_xy is not None: kwargs["list_xy"] = tuple(list_xy)
             provider.add_plate_element_load(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied plate load to element(s) {element_id} (成功施加板单元荷载)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying plate load (施加板单元荷载失败): {e}"
+            raise ToolError(f"Error applying plate load (施加板单元荷载失败): {e}") from e
 
     @mcp.tool()
     def add_distribute_plane_load(
@@ -1266,8 +1339,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             if plate_ids: kwargs["plate_ids"] = plate_ids
             provider.add_distribute_plane_load(index=index, case_name=case_name, type_name=type_name, **kwargs)
             return f"Successfully applied distributed plane load '{type_name}' (成功施加分布面荷载)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying distributed plane load (施加分布面荷载失败): {e}"
+            raise ToolError(f"Error applying distributed plane load (施加分布面荷载失败): {e}") from e
 
     @mcp.tool()
     def add_support_settlement(
@@ -1304,8 +1379,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 node_id=node_id, case_name=case_name, displacement_info=displacement_info, **kwargs
             )
             return f"Successfully applied support settlement '{dz}' to node(s) {node_id} (成功施加支座沉降)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying support settlement (施加支座沉降失败): {e}"
+            raise ToolError(f"Error applying support settlement (施加支座沉降失败): {e}") from e
 
     @mcp.tool()
     def add_nodal_mass(
@@ -1329,8 +1406,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             mass_info = (mass_x, mass_y, mass_z, mass_rm)
             provider.add_nodal_mass(node_id=node_id, mass_info=mass_info)
             return f"Successfully added nodal mass to node(s) {node_id} (成功添加节点质量)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding nodal mass (添加节点质量失败): {e}"
+            raise ToolError(f"Error adding nodal mass (添加节点质量失败): {e}") from e
 
     @mcp.tool()
     def add_load_to_mass(
@@ -1347,8 +1426,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.add_load_to_mass(name=name, factor=factor)
             return f"Successfully set load '{name}' to convert to mass (成功设置荷载转换为质量)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error converting load to mass (荷载转质量失败): {e}"
+            raise ToolError(f"Error converting load to mass (荷载转质量失败): {e}") from e
 
     @mcp.tool()
     def add_spectrum_function(
@@ -1372,8 +1453,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["function_info"] = [tuple(item) for item in function_info]
             provider.add_spectrum_function(**kwargs)
             return f"Successfully added spectrum function '{name}' (成功添加反应谱函数)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding spectrum function (添加反应谱函数失败): {e}"
+            raise ToolError(f"Error adding spectrum function (添加反应谱函数失败): {e}") from e
 
     @mcp.tool()
     def add_spectrum_case(
@@ -1402,8 +1485,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             if info_z: kwargs["info_z"] = tuple(info_z)
             provider.add_spectrum_case(**kwargs)
             return f"Successfully added spectrum case '{name}' (成功添加反应谱工况)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding spectrum case (添加反应谱工况失败): {e}"
+            raise ToolError(f"Error adding spectrum case (添加反应谱工况失败): {e}") from e
 
     @mcp.tool()
     def add_time_history_function(
@@ -1427,8 +1512,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["function_info"] = function_info
             provider.add_time_history_function(**kwargs)
             return f"Successfully added time history function '{name}' (成功添加时程函数)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding time history function (添加时程函数失败): {e}"
+            raise ToolError(f"Error adding time history function (添加时程函数失败): {e}") from e
 
     @mcp.tool()
     def add_time_history_case(
@@ -1454,8 +1541,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 description=description, index=index
             )
             return f"Successfully added time history case '{name}' (成功添加时程工况)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding time history case (添加时程工况失败): {e}"
+            raise ToolError(f"Error adding time history case (添加时程工况失败): {e}") from e
 
     @mcp.tool()
     def update_bulking_setting(
@@ -1476,8 +1565,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 do_analysis=do_analysis, mode_count=mode_count, stage_id=stage_id
             )
             return "Successfully updated buckling analysis settings (成功设定屈曲分析)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating buckling settings (屈曲分析设定失败): {e}"
+            raise ToolError(f"Error updating buckling settings (屈曲分析设定失败): {e}") from e
 
     @mcp.tool()
     def add_construction_stage(
@@ -1512,8 +1603,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["active_loads"] = [tuple(l) for l in active_loads]
             provider.add_construction_stage(name=name, duration=duration, **kwargs)
             return f"Successfully added construction stage '{name}' (成功添加施工阶段 '{name}')"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding construction stage (添加施工阶段失败): {e}"
+            raise ToolError(f"Error adding construction stage (添加施工阶段失败): {e}") from e
 
     @mcp.tool()
     def configure_analysis(
@@ -1548,8 +1641,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"creep={do_creep}, vibration={do_vibration} "
                 f"(分析配置完成)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error configuring analysis (配置分析失败): {e}"
+            raise ToolError(f"Error configuring analysis (配置分析失败): {e}") from e
 
     @mcp.tool()
     def run_analysis() -> str:
@@ -1562,8 +1657,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.run_analysis()
             return "Analysis successfully completed (结构分析计算完成)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error running analysis (结构分析失败): {e}"
+            raise ToolError(f"Error running analysis (结构分析失败): {e}") from e
 
     @mcp.tool()
     def validate_model() -> str:
@@ -1606,8 +1703,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                     lines.append(f"  - {warn}")
 
             return "\n".join(lines)
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error validating model (模型验证失败): {e}"
+            raise ToolError(f"Error validating model (模型验证失败): {e}") from e
 
     @mcp.tool()
     def get_model_info() -> str:
@@ -1631,8 +1730,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"  Structure Groups (结构组): {summary['structure_group_count']}\n"
                 f"  Boundary Groups (边界组): {summary['boundary_group_count']}"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error getting model info (获取模型信息失败): {e}"
+            raise ToolError(f"Error getting model info (获取模型信息失败): {e}") from e
 
     @mcp.tool()
     def get_analysis_results(
@@ -1672,10 +1773,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             elif result_type == "reaction":
                 result = provider.get_reaction(ids=ids, stage_id=stage_id, **kwargs)
             else:
-                return (
-                    f"Unknown result_type '{result_type}'. "
-                    "Available: deformation, force, stress, reaction"
-                )
+                raise ToolInputError(f"Unknown result_type '{result_type}'. "
+                    "Available: deformation, force, stress, reaction")
             return f"{result_type} results:\n{_paginate(result, limit, offset)}"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error getting results (获取结果失败): {e}"
+            raise ToolError(f"Error getting results (获取结果失败): {e}") from e

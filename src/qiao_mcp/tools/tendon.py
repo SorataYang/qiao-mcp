@@ -9,6 +9,7 @@ and applying prestress forces.
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 
 
 def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -68,8 +69,10 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Tendon property '{name}' created (类型: {type_names.get(tendon_type, tendon_type)}) "
                 f"(钢束特性 '{name}' 创建成功)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating tendon property (创建钢束特性失败): {e}"
+            raise ToolError(f"Error creating tendon property (创建钢束特性失败): {e}") from e
 
     @mcp.tool()
     def create_tendon_2d(
@@ -122,8 +125,10 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
                 point_insert=tuple(point_insert),
             )
             return f"2D Tendon '{name}' created (2D钢束 '{name}' 创建成功)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating 2D tendon (创建2D钢束失败): {e}"
+            raise ToolError(f"Error creating 2D tendon (创建2D钢束失败): {e}") from e
 
     @mcp.tool()
     def apply_prestress(
@@ -156,8 +161,10 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"in case '{case_name}' "
                 f"(预应力 {force/1000:.0f}kN 已施加到 {count} 根钢束)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying prestress (施加预应力失败): {e}"
+            raise ToolError(f"Error applying prestress (施加预应力失败): {e}") from e
 
     @mcp.tool()
     def get_tendon_info(
@@ -181,8 +188,10 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Total {len(tendon_data)} tendon(s) (共 {len(tendon_data)} 根钢束):\n"
                 + "\n".join(str(t) for t in tendon_data)
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error getting tendon info (获取钢束信息失败): {e}"
+            raise ToolError(f"Error getting tendon info (获取钢束信息失败): {e}") from e
 
     @mcp.tool()
     def add_tendon_3d(
@@ -222,8 +231,10 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
                 point_insert=tuple(point_insert),
             )
             return f"Successfully added 3D tendon '{name}' (成功添加三维钢束)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding 3D tendon (添加三维钢束失败): {e}"
+            raise ToolError(f"Error adding 3D tendon (添加三维钢束失败): {e}") from e
 
     @mcp.tool()
     def assign_tendon_elements(ids: int | list[int] | str) -> str:
@@ -236,8 +247,10 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.add_tendon_elements(ids=ids)
             return f"Successfully assigned elements {ids} to tendon (成功为钢束分配单元)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error assigning tendon elements (分配单元失败): {e}"
+            raise ToolError(f"Error assigning tendon elements (分配单元失败): {e}") from e
 
     @mcp.tool()
     def get_tendon_loss_results(name: str, stage_id: int = 1) -> str:
@@ -251,8 +264,10 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             data = provider.get_tendon_loss_results(name=name, stage_id=stage_id)
             return f"Tendon '{name}' loss results for stage {stage_id}:\n{data}"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error getting tendon loss results (获取预应力损失结果失败): {e}"
+            raise ToolError(f"Error getting tendon loss results (获取预应力损失结果失败): {e}") from e
 
     @mcp.tool()
     def get_tendon_position_result(name: str) -> str:
@@ -265,8 +280,10 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             data = provider.get_tendon_position_result(name=name)
             return f"Tendon '{name}' position results:\n{data}"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error getting tendon position (获取钢束坐标结果失败): {e}"
+            raise ToolError(f"Error getting tendon position (获取钢束坐标结果失败): {e}") from e
 
     @mcp.tool()
     def get_tendon_length_result() -> str:
@@ -276,5 +293,7 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             data = provider.get_tendon_length_result()
             return f"Tendon length results:\n{data}"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error getting tendon lengths (获取钢束长度结果失败): {e}"
+            raise ToolError(f"Error getting tendon lengths (获取钢束长度结果失败): {e}") from e
