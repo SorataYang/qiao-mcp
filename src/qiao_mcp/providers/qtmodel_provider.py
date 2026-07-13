@@ -649,11 +649,11 @@ class QtModelProvider(BridgeProvider):
         self._mdb.update_model()
 
     def add_gradient_temperature(
-        self, element_id: Any, case_name: str, temperature_g: float, **kwargs
+        self, element_id: Any, case_name: str, temperature: float, **kwargs
     ) -> None:
         self._require_available()
         self._mdb.add_gradient_temperature(
-            element_id=element_id, case_name=case_name, temperature_g=temperature_g, **kwargs
+            element_id=element_id, case_name=case_name, temperature=temperature, **kwargs
         )
         self._mdb.update_model()
 
@@ -692,8 +692,9 @@ class QtModelProvider(BridgeProvider):
         self, node_id: Any, case_name: str, displacement_info: list, **kwargs
     ) -> None:
         self._require_available()
+        # qtmodel 的参数名为 load_info
         self._mdb.add_node_displacement(
-            node_id=node_id, case_name=case_name, displacement_info=displacement_info, **kwargs
+            node_id=node_id, case_name=case_name, load_info=displacement_info, **kwargs
         )
         self._mdb.update_model()
 
@@ -1852,16 +1853,23 @@ class QtModelProvider(BridgeProvider):
             self._mdb.remove_structure_group()
         self._mdb.update_model()
 
-    def add_elements_to_structure_group(self, name: str, element_ids: Any) -> None:
+    def add_structure_to_group(
+        self, name: str, node_ids: Any = None, element_ids: Any = None
+    ) -> None:
+        """Add nodes and/or elements to a structure group. 向结构组添加节点/单元"""
         self._require_available()
-        # Real API uses add_structure_to_group
-        self._mdb.add_structure_to_group(name=name, element_ids=element_ids)
+        self._mdb.add_structure_to_group(
+            name=name, node_ids=node_ids, element_ids=element_ids
+        )
         self._mdb.update_model()
+
+    def add_elements_to_structure_group(self, name: str, element_ids: Any) -> None:
+        self.add_structure_to_group(name=name, element_ids=element_ids)
 
     def get_structure_group_elements(self, name: str) -> list:
         self._require_available()
-        # Real API uses get_group_elements
-        return self._odb.get_group_elements(name=name) or []
+        # qtmodel 的参数名为 group_name
+        return self._odb.get_group_elements(group_name=name) or []
 
     def add_boundary_group(self, name: str) -> None:
         self._require_available()

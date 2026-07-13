@@ -1811,31 +1811,34 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_gradient_temperature(
         element_id: int | list[int] | str,
         case_name: str,
-        temperature_g: float,
-        temperature_type: int = 1,
+        temperature: float,
+        section_oriental: int = 0,
+        element_type: int = 1,
         group_name: str = "",
     ) -> str:
         """
         Apply gradient temperature load (梯度温度荷载).
 
         Args:
-            element_id: Element ID(s) (单元编号)
+            element_id: Element ID(s) (单元编号，支持范围字符串)
             case_name: Load case name (荷载工况名)
-            temperature_g: Gradient temperature value / Temperature difference (梯度温度值/温差)
-            temperature_type: Gradient type (梯度类型): 1=Z方向, 2=Y方向, etc.
+            temperature: Temperature difference (温差)
+            section_oriental: Section direction, beams only (截面方向，仅梁单元):
+                0=section Y (截面Y向, default), 1=section Z (截面Z向)
+            element_type: Element type (单元类型): 1=beam(梁), 2=plate(板)
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {}
+            kwargs = {
+                "section_oriental": section_oriental,
+                "element_type": element_type,
+            }
             if group_name:
                 kwargs["group_name"] = group_name
-            # Midas standard usually uses temp_type or similar.
-            # Passing it via kwargs so the qtmodel API can catch it if needed.
-            kwargs["temperature_type"] = temperature_type
             provider.add_gradient_temperature(
-                element_id=element_id, case_name=case_name, temperature_g=temperature_g, **kwargs
+                element_id=element_id, case_name=case_name, temperature=temperature, **kwargs
             )
-            return f"Successfully applied gradient temperature load '{temperature_g}' to element(s) {element_id} (成功施加梯度温度)"
+            return f"Successfully applied gradient temperature '{temperature}' to element(s) {element_id} (成功施加梯度温度)"
         except Exception as e:
             return f"Error applying gradient temperature load (施加梯度温度失败): {e}"
 
