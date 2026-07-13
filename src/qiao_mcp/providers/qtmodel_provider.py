@@ -709,11 +709,6 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_tendon_2d(name=name, property_name=property_name, **kwargs)
         self._mdb.update_model()
 
-    def add_tendon_profile(self, name: str, property_name: str, **kwargs) -> None:
-        self._require_available()
-        self._mdb.add_tendon_profile(name=name, property_name=property_name, **kwargs)
-        self._mdb.update_model()
-
     def add_tendon_3d(self, name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_tendon_3d(name=name, **kwargs)

@@ -34,9 +34,6 @@ _DUMMY = object()
 # ── 已知错配清单（键: "层级::位置::qt方法"）──────────────────────────
 # 修复对应任务后必须删除相应条目。
 KNOWN_FAILURES: dict[str, str] = {
-    # 任务 1.5 钢束
-    "tools::tendon.create_tendon_property::_mdb.add_tendon_property": "传 elastic_modulus/friction/... 真实为 material_name/steel_detail/...",
-    "tools::tendon.create_tendon_2d::_mdb.add_tendon_2d": "传不存在的 element_ids/tension_type",
     # 任务 1.6 高级边界
     "tools::advanced_boundary.add_elastic_link::_mdb.add_elastic_link": "stiffness 应为 boundary_info",
     "tools::advanced_boundary.add_master_slave_link::_mdb.add_master_slave_link": "slave_ids 应为 slave_id、dof_constraints 应为 boundary_info",
@@ -52,7 +49,6 @@ KNOWN_FAILURES: dict[str, str] = {
     # 契约测试新发现（review 遗漏）——归入就近任务
     "provider::add_gradient_temperature::_mdb.add_gradient_temperature": "temperature_g 应为 temperature（归任务 1.4x 荷载修复）",
     "tools::__init__.add_gradient_temperature::_mdb.add_gradient_temperature": "另传了不存在的 temperature_type（真实为 section_oriental/element_type）",
-    "provider::add_tendon_profile::_mdb.add_tendon_profile": "qtmodel 2.3.3 无此方法（归任务 1.5 钢束）",
     "provider::get_structure_group_elements::_odb.get_group_elements": "name 应为 group_name（归组查询修复）",
     "tools::group_management.list_group_members::_odb.get_group_elements": "同上",
     "tools::queries.get_structure_group_members::_odb.get_group_elements": "同上",
