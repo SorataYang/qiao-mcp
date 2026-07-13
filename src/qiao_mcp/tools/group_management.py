@@ -99,25 +99,6 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error creating boundary group (创建边界组失败): {e}"
 
     @mcp.tool()
-    def create_load_group(
-        name: str,
-    ) -> str:
-        """
-        Create a load group (创建荷载组).
-
-        Load groups collect loads to be applied or removed together during
-        construction stages (施工阶段中统一控制荷载施加状态).
-
-        Args:
-            name: Load group name (荷载组名称)
-        """
-        try:
-            provider.add_load_group(name=name)
-            return f"Load group '{name}' created (荷载组 '{name}' 创建成功)"
-        except Exception as e:
-            return f"Error creating load group (创建荷载组失败): {e}"
-
-    @mcp.tool()
     def list_group_members(
         group_type: str,
         name: str,
