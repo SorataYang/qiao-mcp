@@ -1682,26 +1682,57 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             return f"Error setting support (设置支承失败): {e}"
 
     @mcp.tool()
-    def apply_self_weight(
-        case_name: str,
-        group_name: str = "",
+    def set_self_weight_stage(
+        stage_name: str,
+        structure_group_name: str = "默认结构组",
+        weight_stage_id: int = 1,
     ) -> str:
         """
-        Apply system self-weight load (施加自重荷载).
-        Ensure the load group and case are created before calling this tool.
+        Configure self-weight for a construction stage (设置施工阶段自重).
+
+        IMPORTANT — In QiaoTong, self-weight is NOT a load case. It is controlled
+        by each construction stage's "self-weight stage number" per structure group.
+        The solver computes gravity load automatically from section area × material
+        unit weight × g. You only choose WHICH stage carries a group's self-weight.
+        （桥通中自重不是荷载工况，由施工阶段对各结构组的"计自重阶段号"控制，
+        求解器按 截面面积 × 材料容重 × 重力加速度 自动计算。）
+
+        For a single-stage / one-shot (一次成桥) model, self-weight is handled when
+        you merge stages via merge_operation_stage — you usually do NOT need this tool.
+        Use it only to override which stage accounts for a group's self-weight.
 
         Args:
-            case_name: Load case name (荷载工况名)
-            group_name: Load group name (荷载组名)
+            stage_name: Construction stage name (施工阶段名)
+            structure_group_name: Structure group name (结构组名)
+            weight_stage_id: Self-weight stage number (计自重阶段号):
+                0=not counted(不计自重), 1=this stage(本阶段), n=stage n(第n阶段)
         """
         try:
-            kwargs = {}
-            if group_name:
-                kwargs["group_name"] = group_name
-            provider.add_self_weight(case_name=case_name, **kwargs)
-            return f"Successfully applied self-weight in case '{case_name}' (成功施加自重)"
+            provider.set_weight_stage(
+                stage_name=stage_name,
+                structure_group_name=structure_group_name,
+                weight_stage_id=weight_stage_id,
+            )
+            return (
+                f"Self-weight of group '{structure_group_name}' set to stage "
+                f"id {weight_stage_id} for '{stage_name}' (施工阶段自重设置成功)"
+            )
         except Exception as e:
-            return f"Error applying self-weight (施加自重失败): {e}"
+            return f"Error setting self-weight stage (设置施工阶段自重失败): {e}"
+
+    @mcp.tool()
+    def set_gravity(gravity: float = 9.8) -> str:
+        """
+        Set the gravitational acceleration used for self-weight (设置重力加速度).
+
+        Args:
+            gravity: Gravitational acceleration in m/s² (重力加速度，单位 m/s²), default 9.8
+        """
+        try:
+            provider.update_project_setting(gravity=gravity)
+            return f"Gravity set to {gravity} m/s² (重力加速度已设为 {gravity})"
+        except Exception as e:
+            return f"Error setting gravity (设置重力加速度失败): {e}"
 
     @mcp.tool()
     def apply_nodal_force(

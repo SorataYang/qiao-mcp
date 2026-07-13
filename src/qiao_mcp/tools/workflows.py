@@ -98,7 +98,8 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
             )
             log.append(f"✓ Pin support at node 1, roller at node {n}")
 
-            # 7. Add self-weight (load group → load case → self-weight)
+            # 7. Load group & case for later applied loads; self-weight itself is
+            #    governed by QiaoTong stage settings, not by any load case.
             try:
                 try:
                     provider.add_load_group(name="默认荷载组")
@@ -108,17 +109,20 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
                     provider.add_load_case(name=self_weight_case, case_type="施工阶段荷载")
                 except Exception:
                     pass  # case likely already exists
-                provider.add_self_weight(case_name=self_weight_case)
-                log.append(f"✓ Load group, load case '{self_weight_case}' and system self-weight applied")
+                log.append(
+                    f"✓ Load group and load case '{self_weight_case}' created. "
+                    "NOTE: self-weight enters via stage settings — call "
+                    "merge_operation_stage to finalize (自重由施工阶段计自重设置控制)"
+                )
             except Exception as e:
-                log.append(f"ℹ Self-weight setup failed (error: {e})")
+                log.append(f"ℹ Load case setup failed (error: {e})")
 
             return (
                 f"✅ Simple beam bridge created successfully! (简支梁桥模型创建成功)\n"
                 + "\n".join(log)
                 + f"\n\nSpan: {span}m | Elements: {num_elements} | "
                 f"Nodes: {n} | Material: {material_name} | Section: {section_name}\n"
-                + "Next steps: apply_beam_distributed_load → configure_analysis → get_analysis_results"
+                + "Next steps: merge_operation_stage → apply_beam_distributed_load → configure_analysis → get_analysis_results"
             )
         except Exception as e:
             return f"Error creating simple beam bridge (创建简支梁桥失败): {e}"
@@ -219,7 +223,7 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
             )
             log.append(f"✓ Right abutment: roller support at node {total_nodes}")
 
-            # 5. Self-weight (load group → load case → self-weight)
+            # 5. Load group & case; self-weight is governed by stage settings
             try:
                 try:
                     provider.add_load_group(name="默认荷载组")
@@ -229,10 +233,13 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
                     provider.add_load_case(name=self_weight_case, case_type="施工阶段荷载")
                 except Exception:
                     pass
-                provider.add_self_weight(case_name=self_weight_case)
-                log.append(f"✓ Load group, load case '{self_weight_case}' and system self-weight applied")
+                log.append(
+                    f"✓ Load group and load case '{self_weight_case}' created. "
+                    "NOTE: self-weight enters via stage settings — call "
+                    "merge_operation_stage to finalize (自重由施工阶段计自重设置控制)"
+                )
             except Exception as e:
-                log.append(f"ℹ Self-weight setup failed (error: {e})")
+                log.append(f"ℹ Load case setup failed (error: {e})")
 
             spans_str = "+".join(f"{s:.0f}" for s in spans)
             return (
@@ -240,7 +247,7 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
                 + "\n".join(log)
                 + f"\n\nSpans: {spans_str}m | Total: {total_length:.0f}m | "
                 f"Nodes: {total_nodes} | Elements: {total_elements}\n"
-                + "Next steps: apply loads → configure_analysis (enable creep) → get_analysis_results"
+                + "Next steps: merge_operation_stage → apply loads → configure_analysis (enable creep) → get_analysis_results"
             )
         except Exception as e:
             return f"Error creating continuous beam bridge (创建连续梁桥失败): {e}"

@@ -65,7 +65,7 @@ _SERVER_INSTRUCTIONS = (
     + provider.get_llm_instructions()
     + "\n## Available Tool Groups\n"
     "Core:     create_nodes_linear, create_nodes, create_elements, create_material, create_section (plus specific sections like create_rectangle_section, etc.)\n"
-    "Loads:    create_load_group, create_load_case, apply_self_weight, apply_nodal_force, apply_beam_distributed_load, add_system_temperature, add_gradient_temperature, add_support_settlement\n"
+    "Loads:    create_load_group, create_load_case, set_self_weight_stage, set_gravity, apply_nodal_force, apply_beam_distributed_load, add_system_temperature, add_gradient_temperature, add_support_settlement\n"
     "Boundary: set_support, add_elastic_link, add_master_slave_link, add_elastic_support\n"
     "Groups:   create_structure_group, update_structure_group_name, remove_structure_group, create_boundary_group, add_to_structure_group, remove_from_structure_group, list_group_members\n"
     "Stages:   add_construction_stage, merge_operation_stage, configure_analysis, run_analysis, get_analysis_results, plot_analysis_result\n"
