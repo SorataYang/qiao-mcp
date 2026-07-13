@@ -1640,6 +1640,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         ids: int | list[int] | str = 1,
         stage_id: int = -1,
         case_name: str = "",
+        limit: int = 100,
+        offset: int = 0,
     ) -> str:
         """
         Get analysis results from the bridge model (获取分析结果).
@@ -1651,8 +1653,12 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             stage_id: Construction stage (施工阶段): -1=operation(运营), 0=envelope(包络),
                       n=stage n (第n阶段)
             case_name: Load case name for operation stage (运营阶段荷载工况名)
+            limit: Max items per page, default 100 (单页条数上限)
+            offset: Pagination offset (翻页偏移)
         """
         try:
+            from qiao_mcp.tools.queries import _paginate
+
             kwargs = {}
             if case_name:
                 kwargs["case_name"] = case_name
@@ -1670,6 +1676,6 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                     f"Unknown result_type '{result_type}'. "
                     "Available: deformation, force, stress, reaction"
                 )
-            return str(result)
+            return f"{result_type} results:\n{_paginate(result, limit, offset)}"
         except Exception as e:
             return f"Error getting results (获取结果失败): {e}"

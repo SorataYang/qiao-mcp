@@ -1,11 +1,14 @@
 """
 MCP Query Tools — read-only information retrieval from the bridge model.
-桥梁模型只读信息查询工具
+桥梁模型只读信息查询工具（合并版）
 
-Provides tools to inspect current model state:
-    nodes, elements, materials,  sections, boundaries,
-    load cases / groups, structure groups, construction stages,
-    tendon properties, taper section groups.
+Four consolidated tools replace the former 52 single-purpose wrappers:
+    get_model_data      — entity/load/stage data by kind (按类型查询模型数据)
+    find_entities       — locate nodes/elements by coordinates or attributes (按条件定位)
+    calc_section_property — compute properties from raw geometry (按几何计算截面特性)
+    get_special_results — post-analysis special results (专项分析结果)
+
+All list outputs are paginated (limit/offset) to protect the LLM context window.
 """
 
 import json
@@ -14,6 +17,9 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
+
+# 输出保护：单次返回的最大条数上限
+MAX_LIMIT = 500
 
 
 def _fmt(obj: Any) -> str:
@@ -24,798 +30,347 @@ def _fmt(obj: Any) -> str:
         return str(obj)
 
 
+def _paginate(data: Any, limit: int, offset: int) -> str:
+    """Slice list data and annotate with pagination info (分页并标注截断信息)."""
+    if not isinstance(data, list):
+        return _fmt(data)
+    total = len(data)
+    limit = max(1, min(limit, MAX_LIMIT))
+    offset = max(0, offset)
+    window = data[offset : offset + limit]
+    header = f"[{offset + 1}–{offset + len(window)} of {total}]"
+    if offset + len(window) < total:
+        header += (
+            f" TRUNCATED — use offset={offset + len(window)} for the next page "
+            f"(结果已截断，用 offset 翻页)"
+        )
+    return f"{header}\n{_fmt(window)}"
+
+
 def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
-    """Register all read-only query tools."""
-
-    # ── 1. Nodes ──────────────────────────────────────────────────────
+    """Register consolidated read-only query tools."""
 
     @mcp.tool()
-    def get_nodes(ids: Any = None) -> str:
-        """
-        Get node coordinate data from the model (获取节点坐标数据).
-
-        Args:
-            ids: Node ID(s) to query. Supports int, list, or range string like '1to10 15 20'.
-                 Leave empty to get ALL nodes (节点编号，留空返回全部节点).
-
-        Returns:
-            JSON list of node dicts with keys: id, x, y, z
-            (JSON节点列表，每项包含 id, x, y, z 坐标)
-
-        The typical format from qtmodel is:
-            [{"id": 1, "x": 0.0, "y": 0.0, "z": 0.0}, ...]
-        """
-        try:
-            data = provider.get_node_data(ids=ids)
-            if not data:
-                return "No nodes found (未找到节点). Model may be empty."
-            return f"Nodes ({len(data)} total):\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error getting nodes (获取节点失败): {e}"
-
-    # ── 2. Elements ───────────────────────────────────────────────────
-
-    @mcp.tool()
-    def get_elements(ids: Any = None) -> str:
-        """
-        Get element data from the model (获取单元数据).
-
-        Args:
-            ids: Element ID(s) to query. Supports int, list, or range string like '1to50'.
-                 Leave empty to get ALL elements (单元编号，留空返回全部单元).
-
-        Returns:
-            JSON list of element dicts.
-            Typical keys: id, type (1=beam,2=truss,3=cable,4=plate),
-                          material_id, section_id, node_i, node_j
-            (JSON单元列表，包含单元类型、材料、截面、节点等信息)
-        """
-        try:
-            data = provider.get_element_data(ids=ids)
-            if not data:
-                return "No elements found (未找到单元). Model may be empty."
-            return f"Elements ({len(data)} total):\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error getting elements (获取单元失败): {e}"
-
-    # ── 3. Materials ──────────────────────────────────────────────────
-
-    @mcp.tool()
-    def get_materials() -> str:
-        """
-        Get all materials defined in the model (获取所有材料定义).
-
-        Returns:
-            JSON list of material dicts with keys: id, name, mat_type, E, gamma (unit weight),
-            nu (Poisson's ratio), alpha (thermal expansion), standard, database
-            (JSON材料列表，包含材料类型、弹性模量、容重、泊松比等参数)
-
-        Use this before create_element to get valid material IDs.
-        (创建单元前调用此工具以获取有效的材料编号)
-        """
-        try:
-            data = provider.get_material_data()
-            if not data:
-                return "No materials defined (尚未定义材料). Use create_material tool first."
-            return f"Materials ({len(data)} total):\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error getting materials (获取材料失败): {e}"
-
-    # ── 4. Sections ───────────────────────────────────────────────────
-
-    @mcp.tool()
-    def get_section_list() -> str:
-        """
-        Get all section names/IDs defined in the model (获取所有截面列表).
-
-        Returns:
-            Dictionary mapping section IDs to names, or a list of section IDs.
-            (截面编号与名称的映射字典，或截面编号列表)
-
-        Use this before create_elements to get valid section IDs.
-        (创建单元前调用此工具以获取有效的截面编号)
-        """
-        try:
-            data = provider.get_section_names()
-            if not data:
-                return "No sections defined (尚未定义截面). Use create_section tool first."
-            return f"Sections ({len(data)} total):\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error getting sections (获取截面列表失败): {e}"
-
-    @mcp.tool()
-    def get_section_detail(sec_id: int, position: int = 0) -> str:
-        """
-        Get detailed properties of a specific section (获取截面详细属性).
-
-        Args:
-            sec_id: Section ID (截面编号)
-            position: Position along tapered section (变截面位置): 0=start(起端), 1=end(末端)
-
-        Returns:
-            JSON dict of section properties including:
-            area (面积), Iy (y轴惯性矩), Iz (z轴惯性矩), J (扭转惯性矩),
-            Sy (抗弯截面系数y), Sz (抗弯截面系数z), height (梁高), width (梁宽)
-        """
-        try:
-            data = provider.get_section_data(sec_id=sec_id, position=position)
-            if not data:
-                return f"Section {sec_id} not found (截面 {sec_id} 不存在)."
-            return f"Section {sec_id} properties:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error getting section detail (获取截面详情失败): {e}"
-
-    # ── 5. Boundaries ─────────────────────────────────────────────────
-
-    @mcp.tool()
-    def get_boundaries() -> str:
-        """
-        Get all boundary conditions defined in the model (获取所有边界条件).
-
-        Returns:
-            JSON dict with keys:
-              - general_supports: nodal supports (一般支承)
-              - elastic_links: elastic connection links (弹性连接)
-              - elastic_supports: elastic supports (弹性支承)
-              - master_slave_links: rigid body constraints (主从约束)
-              - beam_constraints: beam end releases (梁端约束)
-            (以JSON形式返回所有类型的边界条件)
-        """
-        try:
-            data = provider.get_boundary_data()
-            totals = {k: len(v) for k, v in data.items()}
-            grand_total = sum(totals.values())
-            if grand_total == 0:
-                return "No boundary conditions defined (尚未定义边界条件)."
-            return f"Boundary conditions (total {grand_total}):\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error getting boundaries (获取边界条件失败): {e}"
-
-    # ── 6. Load cases & groups ────────────────────────────────────────
-
-    @mcp.tool()
-    def get_load_cases() -> str:
-        """
-        Get all load case names defined in the model (获取所有荷载工况名称).
-
-        Returns:
-            List of load case names.
-            (荷载工况名称列表)
-
-        Use this to know which load cases are available before querying results.
-        (查询分析结果前，先调用此工具确认已有哪些荷载工况)
-        """
-        try:
-            data = provider.get_load_case_names()
-            if not data:
-                return "No load cases defined (尚未定义荷载工况)."
-            return f"Load cases ({len(data)} total):\n" + "\n".join(f"  - {n}" for n in data)
-        except Exception as e:
-            return f"Error getting load cases (获取荷载工况失败): {e}"
-
-    # ── 7. Construction stages ────────────────────────────────────────
-
-    @mcp.tool()
-    def get_construction_stages() -> str:
-        """
-        Get all construction stage names defined in the model (获取所有施工阶段名称).
-
-        Returns:
-            List of construction stage names in execution order.
-            (施工阶段名称列表，按施工顺序排列)
-        """
-        try:
-            data = provider.get_stage_names()
-            if not data:
-                return "No construction stages defined (尚未定义施工阶段)."
-            return (
-                f"Construction stages ({len(data)} total):\n"
-                + "\n".join(f"  {i+1}. {n}" for i, n in enumerate(data))
-            )
-        except Exception as e:
-            return f"Error getting construction stages (获取施工阶段失败): {e}"
-
-    # ── 8. Structure groups ───────────────────────────────────────────
-
-    @mcp.tool()
-    def get_structure_groups() -> str:
-        """
-        Get all structure group names defined in the model (获取所有结构组名称).
-
-        Returns:
-            List of structure group names.
-            (结构组名称列表)
-
-        Structure groups are used in construction stages to activate/deactivate elements.
-        (结构组在施工阶段中用于激活/钝化单元)
-        """
-        try:
-            data = provider.get_structure_group_names()
-            if not data:
-                return "No structure groups defined (尚未定义结构组)."
-            return (
-                f"Structure groups ({len(data)} total):\n"
-                + "\n".join(f"  - {n}" for n in data)
-            )
-        except Exception as e:
-            return f"Error getting structure groups (获取结构组失败): {e}"
-
-    @mcp.tool()
-    def get_structure_group_members(group_name: str) -> str:
-        """
-        Get the element/node members of a specific structure group
-        (获取指定结构组所包含的单元/节点).
-
-        Args:
-            group_name: Name of the structure group (结构组名称)
-
-        Returns:
-            JSON dict with element and node IDs in the group.
-            (JSON格式的结构组成员列表，含单元和节点编号)
-        """
-        try:
-            data = provider.get_structure_group_elements(name=group_name)
-            if not data:
-                return f"Structure group '{group_name}' is empty or not found."
-            return f"Structure group '{group_name}':\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error getting structure group members (获取结构组成员失败): {e}"
-
-    @mcp.tool()
-    def get_reinforcement_data() -> str:
-        """
-        Get reinforcement data for structural checking (获取配筋数据).
-        
-        Returns all parameter reinforcement, steel hoops, etc. added for checking.
-        """
-        try:
-            data = provider.get_reinforcement_data()
-            return f"Reinforcement data (配筋数据): {data}"
-        except Exception as e:
-            return f"Error retrieving reinforcement data (获取配筋数据失败): {e}"
-
-    @mcp.tool()
-    def get_vibration_modal_results(mode: int = 1) -> str:
-        """
-        Get self-vibration modal results (获取自振模态结果).
-        
-        Args:
-            mode: Mode number to retrieve (获取的阶数)
-        """
-        try:
-            data = provider.get_vibration_modal_results(mode=mode)
-            if not data:
-                return f"No vibration results found for mode {mode}."
-            return f"Vibration Mode {mode} Results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error retrieving vibration results (获取自振结果失败): {e}"
-
-    @mcp.tool()
-    def get_buckling_modal_results(mode: int = 1) -> str:
-        """
-        Get buckling modal results (获取屈曲模态结果).
-        
-        Args:
-            mode: Mode number to retrieve (获取的阶数)
-        """
-        try:
-            data = provider.get_buckling_modal_results(mode=mode)
-            if not data:
-                return f"No buckling results found for mode {mode}."
-            return f"Buckling Mode {mode} Results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error retrieving buckling results (获取屈曲结果失败): {e}"
-
-
-    @mcp.tool()
-    def get_thickness_data(
-    ) -> str:
-        """
-        Get Thickness Data
-        """
-        try:
-            data = provider.get_thickness_data()
-            return f"get_thickness_data results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_thickness_data: {e}"
-
-    @mcp.tool()
-    def get_node_id(
-        x: float = 0,
-        y: float = 0,
-        z: float = 0,
-        tolerance: float = 0.0001,
-    ) -> str:
-        """
-        Get Node Id
-        """
-        try:
-            data = provider.get_node_id(x=x, y=y, z=z, tolerance=tolerance)
-            return f"get_node_id results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_node_id: {e}"
-
-    @mcp.tool()
-    def get_group_nodes(
-        group_name: str = "默认结构组",
-    ) -> str:
-        """
-        Get Group Nodes
-        """
-        try:
-            data = provider.get_group_nodes(group_name=group_name)
-            return f"get_group_nodes results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_group_nodes: {e}"
-
-    @mcp.tool()
-    def get_elements_by_point(
-        x: float = 0,
-        y: float = 0,
-        z: float = 0,
-        tolerance: float = 1,
-    ) -> str:
-        """
-        Get Elements By Point
-        """
-        try:
-            data = provider.get_elements_by_point(x=x, y=y, z=z, tolerance=tolerance)
-            return f"get_elements_by_point results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_elements_by_point: {e}"
-
-    @mcp.tool()
-    def get_elements_by_material(
+    def get_model_data(
+        kind: str,
+        ids: int | list[int] | str | None = None,
         name: str = "",
+        sec_id: int | None = None,
+        position: int = 0,
+        stage_id: int | None = None,
+        limit: int = 100,
+        offset: int = 0,
     ) -> str:
         """
-        Get Elements By Material
+        Query model data by kind (按类型查询模型数据) — the single read tool for
+        entities, loads, groups and stages. List results are paginated.
+
+        Args:
+            kind: What to query (查询类型):
+                ── 实体 Entities ──
+                "nodes" (节点, 可选 ids), "elements" (单元, 可选 ids),
+                "materials" (材料), "sections" (截面列表),
+                "section_detail" (截面详情, 需 sec_id, 可选 position 0=起端 1=末端),
+                "section_shape" (截面形状, 需 sec_id),
+                "section_property" (截面特性, 需 sec_id),
+                "thickness" (板厚), "boundaries" (全部边界条件),
+                "node_local_axis" (节点局部坐标), "constraint_equations" (约束方程),
+                "effective_widths" (有效宽度), "reinforcement" (配筋数据)
+                ── 组 Groups ──
+                "structure_groups" (结构组名列表),
+                "group_elements" (结构组内单元, 需 name),
+                "group_nodes" (结构组内节点, 需 name)
+                ── 荷载 Loads ──
+                "load_cases" (荷载工况名), "nodal_force_loads" (节点力),
+                "nodal_displacement_loads" (节点位移/沉降), "beam_element_loads" (梁单元荷载),
+                "plate_element_loads" (板单元荷载), "initial_tension_loads" (初拉力),
+                "cable_length_loads" (索长荷载), "pre_stress_loads" (预应力荷载),
+                "node_masses" (节点质量), "tendon_properties" (钢束特性),
+                "deviation_parameters" (制造偏差参数), "deviation_loads" (制造偏差荷载)
+                ── 施工阶段 Stages ──
+                "stages" (施工阶段名), "stage_elements" (阶段内单元, 需 stage_id),
+                "stage_nodes" (阶段内节点, 需 stage_id), "stage_groups" (阶段内组, 需 stage_id)
+            ids: Entity IDs for nodes/elements, int/list/range string "1to10" (编号)
+            name: Group name, for group_elements/group_nodes (结构组名)
+            sec_id: Section ID, for section_detail/section_shape/section_property (截面号)
+            position: Tapered section end, for section_detail (变截面位置 0起/1末)
+            stage_id: Stage ID, for stage_* kinds (施工阶段号)
+            limit: Max items per page, default 100, max 500 (单页条数上限)
+            offset: Skip count for pagination (翻页偏移)
         """
         try:
-            data = provider.get_elements_by_material(name=name)
-            return f"get_elements_by_material results:\n{_fmt(data)}"
+            if kind == "nodes":
+                data = provider.get_node_data(ids=ids)
+            elif kind == "elements":
+                data = provider.get_element_data(ids=ids)
+            elif kind == "materials":
+                data = provider.get_material_data()
+            elif kind == "sections":
+                data = provider.get_section_names()
+            elif kind == "section_detail":
+                if sec_id is None:
+                    return "section_detail requires sec_id (需要提供 sec_id)"
+                data = provider.get_section_data(sec_id=sec_id, position=position)
+            elif kind == "section_shape":
+                if sec_id is None:
+                    return "section_shape requires sec_id (需要提供 sec_id)"
+                data = provider.get_section_shape(sec_id)
+            elif kind == "section_property":
+                if sec_id is None:
+                    return "section_property requires sec_id (需要提供 sec_id)"
+                data = provider.get_section_property(sec_id)
+            elif kind == "thickness":
+                data = provider.get_thickness_data()
+            elif kind == "boundaries":
+                data = provider.get_boundary_data()
+            elif kind == "node_local_axis":
+                data = provider.get_node_local_axis_data()
+            elif kind == "constraint_equations":
+                data = provider.get_constraint_equation_data()
+            elif kind == "effective_widths":
+                data = provider.get_effective_width_data()
+            elif kind == "reinforcement":
+                data = provider.get_reinforcement_data()
+            elif kind == "structure_groups":
+                data = provider.get_structure_group_names()
+            elif kind == "group_elements":
+                if not name:
+                    return "group_elements requires name (需要提供结构组名 name)"
+                data = provider.get_structure_group_elements(name=name)
+            elif kind == "group_nodes":
+                if not name:
+                    return "group_nodes requires name (需要提供结构组名 name)"
+                data = provider.get_group_nodes(name)
+            elif kind == "load_cases":
+                data = provider.get_load_case_names()
+            elif kind == "nodal_force_loads":
+                data = provider.get_nodal_force_load_data()
+            elif kind == "nodal_displacement_loads":
+                data = provider.get_nodal_displacement_load_data()
+            elif kind == "beam_element_loads":
+                data = provider.get_beam_element_load_data()
+            elif kind == "plate_element_loads":
+                data = provider.get_plate_element_load_data()
+            elif kind == "initial_tension_loads":
+                data = provider.get_initial_tension_load_data()
+            elif kind == "cable_length_loads":
+                data = provider.get_cable_length_load_data()
+            elif kind == "pre_stress_loads":
+                data = provider.get_pre_stress_load_data()
+            elif kind == "node_masses":
+                data = provider.get_node_mass_data()
+            elif kind == "tendon_properties":
+                data = provider.get_tendon_property_data()
+            elif kind == "deviation_parameters":
+                data = provider.get_deviation_parameters()
+            elif kind == "deviation_loads":
+                data = provider.get_deviation_load_data()
+            elif kind == "stages":
+                data = provider.get_stage_names()
+            elif kind == "stage_elements":
+                if stage_id is None:
+                    return "stage_elements requires stage_id (需要提供 stage_id)"
+                data = provider.get_elements_of_stage(stage_id)
+            elif kind == "stage_nodes":
+                if stage_id is None:
+                    return "stage_nodes requires stage_id (需要提供 stage_id)"
+                data = provider.get_nodes_of_stage(stage_id)
+            elif kind == "stage_groups":
+                if stage_id is None:
+                    return "stage_groups requires stage_id (需要提供 stage_id)"
+                data = provider.get_groups_of_stage(stage_id)
+            else:
+                return (
+                    f"Unknown kind '{kind}'. See tool description for the full list "
+                    f"(未知查询类型，请查阅工具说明)"
+                )
+
+            if data is None or data == [] or data == {}:
+                return f"No data for kind='{kind}' (无数据). Model may be empty or analysis not run."
+            return f"{kind}:\n{_paginate(data, limit, offset)}"
         except Exception as e:
-            return f"Error in get_elements_by_material: {e}"
+            return f"Error querying {kind} (查询失败): {e}"
 
     @mcp.tool()
-    def get_elements_by_section(
-        index: int = 1,
-    ) -> str:
-        """
-        Get Elements By Section
-        """
-        try:
-            data = provider.get_elements_by_section(index=index)
-            return f"get_elements_by_section results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_elements_by_section: {e}"
-
-    @mcp.tool()
-    def get_element_type(
-        element_id: int,
-    ) -> str:
-        """
-        Get Element Type
-        """
-        try:
-            data = provider.get_element_type(element_id=element_id)
-            return f"get_element_type results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_element_type: {e}"
-
-    @mcp.tool()
-    def get_element_weight(
-        ids = None,
-    ) -> str:
-        """
-        Get Element Weight
-        """
-        try:
-            data = provider.get_element_weight(ids=ids)
-            return f"get_element_weight results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_element_weight: {e}"
-
-    @mcp.tool()
-    def get_span_supports(
+    def find_entities(
+        by: str,
+        x: float = 0.0,
+        y: float = 0.0,
+        z: float = 0.0,
+        tolerance: float = 1e-3,
+        name: str = "",
+        index: int | None = None,
+        ids: int | list[int] | str | None = None,
         span_info_name: str = "",
+        limit: int = 100,
+        offset: int = 0,
     ) -> str:
         """
-        Get Span Supports
+        Locate nodes/elements by coordinates or attributes (按坐标或属性定位节点/单元).
+
+        Args:
+            by: Search mode (查找方式):
+                "node_at_point" (按坐标找节点, 需 x/y/z, 可选 tolerance),
+                "elements_at_point" (按坐标找单元, 需 x/y/z, 可选 tolerance),
+                "elements_by_material" (按材料名找单元, 需 name),
+                "elements_by_section" (按截面号找单元, 需 index),
+                "element_type" (查单元类型, 需 ids),
+                "element_weight" (查单元重量, 需 ids),
+                "span_supports" (跨径支承信息, 需 span_info_name),
+                "span_elements" (跨径单元信息, 需 span_info_name)
+            x, y, z: Coordinates for point search (坐标)
+            tolerance: Search tolerance (容差)
+            name: Material name (材料名)
+            index: Section ID (截面号)
+            ids: Element IDs (单元编号)
+            span_info_name: Span info name (跨径信息名)
+            limit: Max items per page (单页条数上限)
+            offset: Pagination offset (翻页偏移)
         """
         try:
-            data = provider.get_span_supports(span_info_name=span_info_name)
-            return f"get_span_supports results:\n{_fmt(data)}"
+            if by == "node_at_point":
+                data = provider.get_node_id(x, y, z, tolerance)
+            elif by == "elements_at_point":
+                data = provider.get_elements_by_point(x, y, z, tolerance)
+            elif by == "elements_by_material":
+                if not name:
+                    return "elements_by_material requires name (需要材料名)"
+                data = provider.get_elements_by_material(name)
+            elif by == "elements_by_section":
+                if index is None:
+                    return "elements_by_section requires index (需要截面号)"
+                data = provider.get_elements_by_section(index)
+            elif by == "element_type":
+                if ids is None:
+                    return "element_type requires ids (需要单元编号)"
+                data = provider.get_element_type(ids)
+            elif by == "element_weight":
+                if ids is None:
+                    return "element_weight requires ids (需要单元编号)"
+                data = provider.get_element_weight(ids)
+            elif by == "span_supports":
+                if not span_info_name:
+                    return "span_supports requires span_info_name (需要跨径信息名)"
+                data = provider.get_span_supports(span_info_name)
+            elif by == "span_elements":
+                if not span_info_name:
+                    return "span_elements requires span_info_name (需要跨径信息名)"
+                data = provider.get_span_elements(span_info_name)
+            else:
+                return f"Unknown search mode '{by}' (未知查找方式，请查阅工具说明)"
+
+            if data is None or data == []:
+                return f"Nothing found for by='{by}' (未找到匹配项)"
+            return f"{by}:\n{_paginate(data, limit, offset)}"
         except Exception as e:
-            return f"Error in get_span_supports: {e}"
+            return f"Error finding entities (查找失败): {e}"
 
     @mcp.tool()
-    def get_span_elements(
-        span_info_name: str = "",
+    def calc_section_property(
+        loop_segments: list[dict] | None = None,
+        sec_lines: list[list[float]] | None = None,
     ) -> str:
         """
-        Get Span Elements
+        Compute section properties from raw geometry, without creating a section
+        (按几何直接计算截面特性，不创建截面).
+
+        Provide EXACTLY ONE of:
+            loop_segments: Polygon loops [{"main": [[x,y],...], "sub": ...}, ...]
+                           (多边形环定义)
+            sec_lines: Line-width segments [[x1,y1,x2,y2,width], ...] (线宽定义)
         """
         try:
-            data = provider.get_span_elements(span_info_name=span_info_name)
-            return f"get_span_elements results:\n{_fmt(data)}"
+            if (loop_segments is None) == (sec_lines is None):
+                return "Provide exactly one of loop_segments / sec_lines (两者恰选其一)"
+            if loop_segments is not None:
+                data = provider.get_section_property_by_loops(loop_segments)
+            else:
+                data = provider.get_section_property_by_lines(sec_lines)
+            return f"Section properties:\n{_fmt(data)}"
         except Exception as e:
-            return f"Error in get_span_elements: {e}"
+            return f"Error calculating section property (计算截面特性失败): {e}"
 
     @mcp.tool()
-    def get_section_shape(
-        sec_id: int,
-    ) -> str:
-        """
-        Get Section Shape
-        """
-        try:
-            data = provider.get_section_shape(sec_id=sec_id)
-            return f"get_section_shape results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_section_shape: {e}"
-
-    @mcp.tool()
-    def get_section_property(
-        index: int,
-    ) -> str:
-        """
-        Get Section Property
-        """
-        try:
-            data = provider.get_section_property(index=index)
-            return f"get_section_property results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_section_property: {e}"
-
-    @mcp.tool()
-    def get_section_property_by_loops(
-        loop_segments: float = None,
-    ) -> str:
-        """
-        Get Section Property By Loops
-        """
-        try:
-            data = provider.get_section_property_by_loops(loop_segments=loop_segments)
-            return f"get_section_property_by_loops results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_section_property_by_loops: {e}"
-
-    @mcp.tool()
-    def get_section_property_by_lines(
-        sec_lines: float = None,
-    ) -> str:
-        """
-        Get Section Property By Lines
-        """
-        try:
-            data = provider.get_section_property_by_lines(sec_lines=sec_lines)
-            return f"get_section_property_by_lines results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_section_property_by_lines: {e}"
-
-    @mcp.tool()
-    def get_node_local_axis_data(
-    ) -> str:
-        """
-        Get Node Local Axis Data
-        """
-        try:
-            data = provider.get_node_local_axis_data()
-            return f"get_node_local_axis_data results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_node_local_axis_data: {e}"
-
-    @mcp.tool()
-    def get_constraint_equation_data(
-    ) -> str:
-        """
-        Get Constraint Equation Data
-        """
-        try:
-            data = provider.get_constraint_equation_data()
-            return f"get_constraint_equation_data results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_constraint_equation_data: {e}"
-
-    @mcp.tool()
-    def get_effective_width_data(
-    ) -> str:
-        """
-        Get Effective Width Data
-        """
-        try:
-            data = provider.get_effective_width_data()
-            return f"get_effective_width_data results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_effective_width_data: {e}"
-
-    @mcp.tool()
-    def get_tendon_property_data(
-    ) -> str:
-        """
-        Get Tendon Property Data
-        """
-        try:
-            data = provider.get_tendon_property_data()
-            return f"get_tendon_property_data results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_tendon_property_data: {e}"
-
-    @mcp.tool()
-    def get_pre_stress_load_data(
-    ) -> str:
-        """
-        Get Pre Stress Load Data
-        """
-        try:
-            data = provider.get_pre_stress_load_data()
-            return f"get_pre_stress_load_data results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_pre_stress_load_data: {e}"
-
-    @mcp.tool()
-    def get_node_mass_data(
-    ) -> str:
-        """
-        Get Node Mass Data
-        """
-        try:
-            data = provider.get_node_mass_data()
-            return f"get_node_mass_data results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_node_mass_data: {e}"
-
-    @mcp.tool()
-    def get_nodal_force_load_data(
-    ) -> str:
-        """
-        Get Nodal Force Load Data
-        """
-        try:
-            data = provider.get_nodal_force_load_data()
-            return f"get_nodal_force_load_data results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_nodal_force_load_data: {e}"
-
-    @mcp.tool()
-    def get_nodal_displacement_load_data(
-    ) -> str:
-        """
-        Get Nodal Displacement Load Data
-        """
-        try:
-            data = provider.get_nodal_displacement_load_data()
-            return f"get_nodal_displacement_load_data results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_nodal_displacement_load_data: {e}"
-
-    @mcp.tool()
-    def get_beam_element_load_data(
-    ) -> str:
-        """
-        Get Beam Element Load Data
-        """
-        try:
-            data = provider.get_beam_element_load_data()
-            return f"get_beam_element_load_data results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_beam_element_load_data: {e}"
-
-    @mcp.tool()
-    def get_plate_element_load_data(
-    ) -> str:
-        """
-        Get Plate Element Load Data
-        """
-        try:
-            data = provider.get_plate_element_load_data()
-            return f"get_plate_element_load_data results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_plate_element_load_data: {e}"
-
-    @mcp.tool()
-    def get_initial_tension_load_data(
-    ) -> str:
-        """
-        Get Initial Tension Load Data
-        """
-        try:
-            data = provider.get_initial_tension_load_data()
-            return f"get_initial_tension_load_data results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_initial_tension_load_data: {e}"
-
-    @mcp.tool()
-    def get_cable_length_load_data(
-    ) -> str:
-        """
-        Get Cable Length Load Data
-        """
-        try:
-            data = provider.get_cable_length_load_data()
-            return f"get_cable_length_load_data results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_cable_length_load_data: {e}"
-
-    @mcp.tool()
-    def get_deviation_parameters(
-    ) -> str:
-        """
-        Get Deviation Parameters
-        """
-        try:
-            data = provider.get_deviation_parameters()
-            return f"get_deviation_parameters results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_deviation_parameters: {e}"
-
-    @mcp.tool()
-    def get_deviation_load_data(
-    ) -> str:
-        """
-        Get Deviation Load Data
-        """
-        try:
-            data = provider.get_deviation_load_data()
-            return f"get_deviation_load_data results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_deviation_load_data: {e}"
-
-    @mcp.tool()
-    def get_elements_of_stage(
-        stage_id: int,
-    ) -> str:
-        """
-        Get Elements Of Stage
-        """
-        try:
-            data = provider.get_elements_of_stage(stage_id=stage_id)
-            return f"get_elements_of_stage results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_elements_of_stage: {e}"
-
-    @mcp.tool()
-    def get_nodes_of_stage(
-        stage_id: int,
-    ) -> str:
-        """
-        Get Nodes Of Stage
-        """
-        try:
-            data = provider.get_nodes_of_stage(stage_id=stage_id)
-            return f"get_nodes_of_stage results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_nodes_of_stage: {e}"
-
-    @mcp.tool()
-    def get_groups_of_stage(
-        stage_id: int,
-    ) -> str:
-        """
-        Get Groups Of Stage
-        """
-        try:
-            data = provider.get_groups_of_stage(stage_id=stage_id)
-            return f"get_groups_of_stage results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_groups_of_stage: {e}"
-
-    @mcp.tool()
-    def get_self_concurrent_reaction(
-        node_id: int,
-        case_name: str,
-    ) -> str:
-        """
-        Get Self Concurrent Reaction
-        """
-        try:
-            data = provider.get_self_concurrent_reaction(node_id=node_id, case_name=case_name)
-            return f"get_self_concurrent_reaction results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_self_concurrent_reaction: {e}"
-
-    @mcp.tool()
-    def get_all_concurrent_reaction(
-        node_id: int,
-        case_name: str,
-    ) -> str:
-        """
-        Get All Concurrent Reaction
-        """
-        try:
-            data = provider.get_all_concurrent_reaction(node_id=node_id, case_name=case_name)
-            return f"get_all_concurrent_reaction results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_all_concurrent_reaction: {e}"
-
-    @mcp.tool()
-    def get_concurrent_force(
-        ids = None,
+    def get_special_results(
+        kind: str,
+        ids: int | list[int] | str | None = None,
         case_name: str = "",
+        node_id: int | None = None,
+        mode: int = 1,
+        stage_id: int = 1,
+        result_kind: int = 1,
+        envelop_type: int = 1,
+        increment_type: int = 1,
+        limit: int = 100,
+        offset: int = 0,
     ) -> str:
         """
-        Get Concurrent Force
+        Get special post-analysis results (专项分析结果查询) — beyond the basic
+        deformation/force/stress/reaction of get_analysis_results.
+
+        Args:
+            kind: Result kind (结果类型):
+                "vibration_modal" (自振振型, 需 mode), "buckling_modal" (屈曲振型, 需 mode),
+                "period_vibration" (周期与振型汇总), "buckling_eigenvalue" (屈曲特征值),
+                "self_concurrent_reaction" (自并发反力, 需 node_id + case_name),
+                "all_concurrent_reaction" (全并发反力, 需 node_id + case_name),
+                "concurrent_force" (并发内力, 需 ids + case_name),
+                "elastic_link_force" (弹性连接内力, 需 ids),
+                "constraint_equation_force" (约束方程内力, 需 ids),
+                "cable_element_length" (索单元无应力长度, 需 ids)
+            ids: Element/link IDs (单元/连接编号)
+            case_name: Load case name (荷载工况名)
+            node_id: Node ID for concurrent reactions (并发反力节点号)
+            mode: Mode number for modal results (振型阶数)
+            stage_id: Construction stage (施工阶段号, -1=运营)
+            result_kind: Result kind flag (结果种类)
+            envelop_type: Envelope type (包络类型)
+            increment_type: Increment type (增量类型)
+            limit: Max items per page (单页条数上限)
+            offset: Pagination offset (翻页偏移)
         """
         try:
-            data = provider.get_concurrent_force(ids=ids, case_name=case_name)
-            return f"get_concurrent_force results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_concurrent_force: {e}"
+            if kind == "vibration_modal":
+                data = provider.get_vibration_modal_results(mode=mode)
+            elif kind == "buckling_modal":
+                data = provider.get_buckling_modal_results(mode=mode)
+            elif kind == "period_vibration":
+                data = provider.get_period_and_vibration_results()
+            elif kind == "buckling_eigenvalue":
+                data = provider.get_buckling_eigenvalue()
+            elif kind == "self_concurrent_reaction":
+                if node_id is None or not case_name:
+                    return "self_concurrent_reaction requires node_id and case_name"
+                data = provider.get_self_concurrent_reaction(node_id, case_name)
+            elif kind == "all_concurrent_reaction":
+                if node_id is None or not case_name:
+                    return "all_concurrent_reaction requires node_id and case_name"
+                data = provider.get_all_concurrent_reaction(node_id, case_name)
+            elif kind == "concurrent_force":
+                if ids is None or not case_name:
+                    return "concurrent_force requires ids and case_name"
+                data = provider.get_concurrent_force(ids, case_name)
+            elif kind == "elastic_link_force":
+                if ids is None:
+                    return "elastic_link_force requires ids"
+                data = provider.get_elastic_link_force(
+                    ids, result_kind, stage_id, envelop_type, increment_type, case_name
+                )
+            elif kind == "constraint_equation_force":
+                if ids is None:
+                    return "constraint_equation_force requires ids"
+                data = provider.get_constrain_equation_force(
+                    ids, result_kind, stage_id, envelop_type, increment_type, case_name
+                )
+            elif kind == "cable_element_length":
+                if ids is None:
+                    return "cable_element_length requires ids"
+                data = provider.get_cable_element_length(ids, stage_id, increment_type)
+            else:
+                return f"Unknown result kind '{kind}' (未知结果类型，请查阅工具说明)"
 
-    @mcp.tool()
-    def get_elastic_link_force(
-        ids,
-        result_kind = 1,
-        stage_id = -1,
-        envelop_type = 0,
-        increment_type = 1,
-        case_name = "",
-    ) -> str:
-        """
-        Get Elastic Link Force
-        """
-        try:
-            data = provider.get_elastic_link_force(ids=ids, result_kind=result_kind, stage_id=stage_id, envelop_type=envelop_type, increment_type=increment_type, case_name=case_name)
-            return f"get_elastic_link_force results:\n{_fmt(data)}"
+            if data is None or data == []:
+                return f"No results for kind='{kind}' (无结果). Has the analysis been run?"
+            return f"{kind}:\n{_paginate(data, limit, offset)}"
         except Exception as e:
-            return f"Error in get_elastic_link_force: {e}"
-
-    @mcp.tool()
-    def get_constrain_equation_force(
-        ids,
-        result_kind = 1,
-        stage_id = 1,
-        envelop_type = 0,
-        increment_type = 1,
-        case_name = "",
-    ) -> str:
-        """
-        Get Constrain Equation Force
-        """
-        try:
-            data = provider.get_constrain_equation_force(ids=ids, result_kind=result_kind, stage_id=stage_id, envelop_type=envelop_type, increment_type=increment_type, case_name=case_name)
-            return f"get_constrain_equation_force results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_constrain_equation_force: {e}"
-
-    @mcp.tool()
-    def get_cable_element_length(
-        ids,
-        stage_id = -1,
-        increment_type = 1,
-    ) -> str:
-        """
-        Get Cable Element Length
-        """
-        try:
-            data = provider.get_cable_element_length(ids=ids, stage_id=stage_id, increment_type=increment_type)
-            return f"get_cable_element_length results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_cable_element_length: {e}"
-
-    @mcp.tool()
-    def get_period_and_vibration_results(
-    ) -> str:
-        """
-        Get Period And Vibration Results
-        """
-        try:
-            data = provider.get_period_and_vibration_results()
-            return f"get_period_and_vibration_results results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_period_and_vibration_results: {e}"
-
-    @mcp.tool()
-    def get_buckling_eigenvalue(
-    ) -> str:
-        """
-        Get Buckling Eigenvalue
-        """
-        try:
-            data = provider.get_buckling_eigenvalue()
-            return f"get_buckling_eigenvalue results:\n{_fmt(data)}"
-        except Exception as e:
-            return f"Error in get_buckling_eigenvalue: {e}"
-
-    # Note: get_tendon_info is registered in tools/tendon.py
+            return f"Error getting special results (查询专项结果失败): {e}"
