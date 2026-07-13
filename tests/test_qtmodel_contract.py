@@ -34,12 +34,6 @@ _DUMMY = object()
 # ── 已知错配清单（键: "层级::位置::qt方法"）──────────────────────────
 # 修复对应任务后必须删除相应条目。
 KNOWN_FAILURES: dict[str, str] = {
-    # 任务 1.6 高级边界
-    "tools::advanced_boundary.add_elastic_link::_mdb.add_elastic_link": "stiffness 应为 boundary_info",
-    "tools::advanced_boundary.add_master_slave_link::_mdb.add_master_slave_link": "slave_ids 应为 slave_id、dof_constraints 应为 boundary_info",
-    "provider::add_master_slave_link::_mdb.add_master_slave_link": "slave_ids 应为 slave_id",
-    "tools::advanced_boundary.add_elastic_support::_mdb.add_elastic_support": "spring_values 应为 boundary_info",
-    "provider::add_elastic_support::_mdb.add_elastic_support": "spring_values 应为 boundary_info",
     # 任务 1.7 视角
     "provider::set_view_angle::_odb.set_view_camera": "传 horizontal/vertical，真实为 camera_point/focus_point",
     "tools::visualization.save_model_screenshot::_odb.set_view_camera": "经 provider.set_view_angle 间接触发，同上",

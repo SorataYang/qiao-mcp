@@ -359,12 +359,14 @@ class BridgeProvider(ABC):
     # ── Advanced Boundary ──────────────────────────────────────────────
 
     @abstractmethod
-    def add_master_slave_link(self, master_id: int, slave_ids: Any, **kwargs) -> None:
+    def add_master_slave_link(self, master_id: int, slave_id: Any, **kwargs) -> None:
         """Add master-slave constraint. 添加主从约束"""
         ...
 
     @abstractmethod
-    def add_elastic_support(self, node_id: Any, spring_values: list, **kwargs) -> None:
+    def add_elastic_support(
+        self, node_id: Any, support_type: int = 1, boundary_info: list | None = None, **kwargs
+    ) -> None:
         """Add elastic spring support. 添加弹性支承"""
         ...
 
