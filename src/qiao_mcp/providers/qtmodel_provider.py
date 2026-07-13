@@ -419,8 +419,29 @@ class QtModelProvider(BridgeProvider):
 
     # ── Modify Operations ──────────────────────────────────────────────
 
+    # qtmodel 的 Element 查询模型用字符串表示单元类型，update_element 则要求整数
+    _ELE_TYPE_TO_INT = {"BEAM": 1, "LINK": 2, "CABLE": 3, "PLATE": 4}
+
+    @staticmethod
+    def _field(entity: Any, name: str) -> Any:
+        """Read a field from a query-model object (attr) or parsed dict."""
+        if isinstance(entity, dict):
+            return entity.get(name)
+        return getattr(entity, name, None)
+
     def update_node(self, node_id: int, **kwargs) -> None:
         self._require_available()
+        # qtmodel 的 update_node 会把未传入的坐标按默认值 1 整体下发，
+        # 部分更新会静默改写其余坐标；此处先读回当前坐标补齐缺省分量。
+        if not {"x", "y", "z"} <= kwargs.keys():
+            nodes = self.get_node_data(ids=node_id)
+            if not nodes:
+                raise ValueError(
+                    f"Node {node_id} not found; cannot fill unchanged coordinates "
+                    f"(节点 {node_id} 不存在，无法回填未指定坐标)"
+                )
+            for axis in ("x", "y", "z"):
+                kwargs.setdefault(axis, self._field(nodes[0], axis))
         self._mdb.update_node(node_id=node_id, **kwargs)
 
     def update_node_id(self, node_id: int, new_id: int) -> None:
@@ -444,6 +465,26 @@ class QtModelProvider(BridgeProvider):
 
     def update_element(self, old_id: int, **kwargs) -> None:
         self._require_available()
+        # 同 update_node：qtmodel 的 update_element 整体下发全部字段，
+        # 未指定字段会被默认值覆盖（如 ele_type→1、beta_angle→0），
+        # 先读回当前单元数据补齐（plate_type 查询模型不含，无法回填）。
+        fields = ("ele_type", "node_ids", "beta_angle", "mat_id", "sec_id",
+                  "initial_type", "initial_value")
+        missing = [f for f in fields if f not in kwargs]
+        if missing:
+            elements = self.get_element_data(ids=old_id)
+            if not elements:
+                raise ValueError(
+                    f"Element {old_id} not found; cannot fill unchanged fields "
+                    f"(单元 {old_id} 不存在，无法回填未指定字段)"
+                )
+            current = elements[0]
+            for f in missing:
+                value = self._field(current, f)
+                if f == "ele_type" and isinstance(value, str):
+                    value = self._ELE_TYPE_TO_INT.get(value.upper(), value)
+                if value is not None:
+                    kwargs.setdefault(f, value)
         self._mdb.update_element(old_id=old_id, **kwargs)
 
     def update_element_id(self, old_id: int, new_id: int) -> None:
