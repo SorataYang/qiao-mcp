@@ -79,15 +79,21 @@ class QtModelProvider(BridgeProvider):
 
     def get_llm_instructions(self) -> str:
         return """
-        ### Self-Weight (自重) — QiaoTong (桥通) handles this AUTOMATICALLY
-        QiaoTong computes and applies self-weight internally once a load case exists.
+        ### Self-Weight (自重) — QiaoTong (桥通) computes it automatically from geometry
+        Self-weight in QiaoTong is NOT a load case and NOT an element load. The solver
+        computes it from section area × material unit weight × gravity. What you control
+        is WHICH construction stage accounts for each structure group's self-weight.
 
-        CORRECT workflow (2 steps, then done):
-        1. create_load_group(name="默认荷载组")
-        2. create_load_case(name="自重", case_type="施工阶段荷载")
-        → Self-weight is now included. NO element loads needed.
+        CORRECT approach:
+        • One-shot bridge (一次成桥): create the model, then call merge_operation_stage
+          — self-weight is included automatically. No self-weight load case is needed.
+        • Staged construction: use set_self_weight_stage(stage_name, structure_group_name,
+          weight_stage_id) to choose the stage that carries each group's self-weight
+          (weight_stage_id: 0=none, 1=this stage, n=stage n).
+        • Gravity defaults to 9.8 m/s²; change it with set_gravity if needed.
 
         DO NOT do this (MIDAS/SAP2000 approach — WRONG for QiaoTong):
+        ✗ Create a load case named "自重" and expect it to hold self-weight
         ✗ Calculate area × density × g manually
         ✗ Call apply_beam_distributed_load with self-weight kN/m values
 
@@ -1941,11 +1947,21 @@ class QtModelProvider(BridgeProvider):
 
     # ── Self-weight ────────────────────────────────────────────────────
 
-    def add_self_weight(self, case_name: str, **kwargs) -> None:
+    def set_weight_stage(
+        self, stage_name: str, structure_group_name: str = "默认结构组", weight_stage_id: int = 1
+    ) -> None:
+        """Set which construction stage accounts for a structure group's self-weight.
+
+        QiaoTong 中自重不是一个"荷载工况"，而是由施工阶段的"计自重阶段号"控制：
+        weight_stage_id: 0=不计自重, 1=本阶段, n=第 n 阶段。
+        重力加速度由 update_project_setting(gravity=...) 决定。
+        """
         self._require_available()
-        # In QiaoTong, self-weight is applied by the solver automatically when a
-        # load case exists. The caller must create the load group and load case
-        # BEFORE calling this method. We only trigger the model refresh here.
+        self._mdb.update_weight_stage(
+            name=stage_name,
+            structure_group_name=structure_group_name,
+            weight_stage_id=weight_stage_id,
+        )
         self._mdb.update_model()
 
     # ── Tendon Data ────────────────────────────────────────────────────

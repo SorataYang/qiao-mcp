@@ -409,8 +409,11 @@ class BridgeProvider(ABC):
         ...
 
     @abstractmethod
-    def add_self_weight(self, case_name: str, **kwargs) -> None:
-        """Add self-weight load. 添加自重荷载"""
+    def set_weight_stage(
+        self, stage_name: str, structure_group_name: str = "默认结构组", weight_stage_id: int = 1
+    ) -> None:
+        """Set which construction stage accounts for a structure group's self-weight.
+        设置施工阶段自重（自重不是荷载工况，由计自重阶段号控制）"""
         ...
 
     # ── Tendon Data ────────────────────────────────────────────────────
