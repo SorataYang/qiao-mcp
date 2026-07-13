@@ -223,34 +223,59 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         except Exception as e:
             return f"Error adding constraint equation (添加约束方程失败): {e}"
 
+    # qtmodel 的 remove_boundary 只接受中文边界类型标识；
+    # 工具对外保留英文 token，内部映射，中文原值亦可直接透传。
+    _BOUNDARY_KIND_MAP = {
+        "support": "一般支承",
+        "elastic_support": "弹性支承",
+        "general_elastic_support": "一般弹性支承",
+        "master_slave": "主从约束",
+        "elastic_link": "一般弹性连接",
+        "tension_elastic_link": "受拉弹性连接",
+        "compression_elastic_link": "受压弹性连接",
+        "rigid_elastic_link": "刚性弹性连接",
+        "constraint_equation": "约束方程",
+        "beam_constraint": "梁端约束",
+    }
+
     @mcp.tool()
     def remove_boundary(
         remove_id: int,
         kind: str,
         group_name: str = "",
-        end: str = "I",
+        extra_name: str = "I",
     ) -> str:
         """
         Remove a specific boundary condition (删除指定边界条件).
 
         Args:
-            remove_id: Node or element ID to remove boundary from (节点或单元编号)
-            kind: Boundary type to remove (边界类型):
+            remove_id: Node or element ID to remove boundary from
+                       (节点号/单元号/从节点号，取决于边界类型)
+            kind: Boundary type to remove (边界类型), English token or Chinese:
                 "support" (一般支承), "elastic_support" (弹性支承),
-                "elastic_link" (弹性连接), "master_slave" (主从约束),
-                "beam_constraint" (梁端约束), "constraint_equation" (约束方程)
+                "general_elastic_support" (一般弹性支承),
+                "elastic_link" (一般弹性连接), "tension_elastic_link" (受拉弹性连接),
+                "compression_elastic_link" (受压弹性连接), "rigid_elastic_link" (刚性弹性连接),
+                "master_slave" (主从约束), "beam_constraint" (梁端约束),
+                "constraint_equation" (约束方程)
             group_name: Boundary group name (边界组名)
-            end: For beam constraints: "I" or "J" end (梁端约束时指定I端或J端)
+            extra_name: Extra identifier (额外标识):
+                for elastic links: "I" or "J" end (弹性连接时为I/J端);
+                for constraint equations: the equation name (约束方程时为方程名)
         """
+        qt_kind = _BOUNDARY_KIND_MAP.get(kind, kind)
+        if qt_kind not in _BOUNDARY_KIND_MAP.values():
+            valid = ", ".join(_BOUNDARY_KIND_MAP)
+            return f"Unknown boundary kind '{kind}'. Valid kinds (有效类型): {valid}"
         try:
-            kwargs = {"remove_id": remove_id, "kind": kind}
+            kwargs = {"remove_id": remove_id, "kind": qt_kind}
             if group_name:
                 kwargs["group_name"] = group_name
-            kwargs["extra_name"] = end
+            kwargs["extra_name"] = extra_name
             provider.remove_boundary(**kwargs)
             return (
-                f"Successfully removed {kind} boundary from ID {remove_id} "
-                f"(成功删除 {kind} 边界条件)"
+                f"Successfully removed {qt_kind} boundary from ID {remove_id} "
+                f"(成功删除 {qt_kind} 边界条件)"
             )
         except Exception as e:
             return f"Error removing boundary (删除边界条件失败): {e}"

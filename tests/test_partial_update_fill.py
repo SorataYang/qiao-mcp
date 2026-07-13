@@ -10,34 +10,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from qiao_mcp.providers.qtmodel_provider import QtModelProvider
-
-
-class FakeMdb:
-    def __init__(self):
-        self.calls = []
-
-    def __getattr__(self, name):
-        def record(*args, **kwargs):
-            self.calls.append((name, args, kwargs))
-
-        return record
-
-    def last(self, name):
-        matched = [c for c in self.calls if c[0] == name]
-        assert matched, f"no call to {name}"
-        return matched[-1]
-
 
 @pytest.fixture
-def provider(monkeypatch):
-    p = QtModelProvider.__new__(QtModelProvider)  # 跳过 __init__ 的 import 探测
-    p._available = True
-    p._unavailable_reason = ""
-    p._mdb = FakeMdb()
-    p._odb = None
-    p._cdb = None
-    return p
+def provider(fake_provider):
+    return fake_provider
 
 
 # ── update_node ──────────────────────────────────────────────────────
