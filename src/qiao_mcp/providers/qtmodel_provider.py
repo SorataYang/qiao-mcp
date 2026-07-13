@@ -1950,5 +1950,7 @@ class QtModelProvider(BridgeProvider):
 
     def set_view_angle(self, horizontal: float, vertical: float) -> None:
         self._require_available()
-        self._odb.set_view_camera(horizontal=horizontal, vertical=vertical)
+        self._odb.set_view_direction(
+            horizontal_degree=horizontal, vertical_degree=vertical
+        )
 

@@ -19,6 +19,18 @@ def _ensure_dir(path: str) -> str:
     return path
 
 
+# QiaoTong 软件内置视图预设编号（odb.set_view_direction 的 direction 参数）
+_VIEW_PRESETS = {
+    "iso": 1,      # 空间视图1
+    "front": 2,    # 前视图
+    "side": 4,     # 左视图
+    "top": 5,      # 顶视图
+    "right": 6,    # 右视图
+    "back": 8,     # 后视图
+    "bottom": 10,  # 底视图
+}
+
+
 def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     """Register visualization MCP tools."""
 
@@ -33,30 +45,27 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         Args:
             file_path: Output file path (.png). If empty, saves to default directory.
                        输出路径（.png格式），为空则保存到默认目录
-            view_angle: View angle preset (视角预设):
-                'iso'(等轴测), 'front'(正视), 'side'(侧视), 'top'(俯视)
+            view_angle: View preset (视角预设): 'iso'(空间视图), 'front'(前视),
+                'side'(左视), 'top'(俯视), 'right'(右视), 'back'(后视), 'bottom'(仰视),
+                or 'current' to keep the current view (保持当前视角)
         """
         try:
             if not file_path:
                 _ensure_dir(DEFAULT_IMAGE_DIR)
                 file_path = os.path.join(DEFAULT_IMAGE_DIR, "model_view.png")
 
-            # Set the view angle first
-            angle_map = {
-                "iso": (45, 35),
-                "front": (0, 0),
-                "side": (90, 0),
-                "top": (0, 90),
-            }
-            if view_angle in angle_map:
-                h, v = angle_map[view_angle]
+            warning = ""
+            if view_angle != "current":
+                if view_angle not in _VIEW_PRESETS:
+                    valid = ", ".join(_VIEW_PRESETS)
+                    return f"Unknown view_angle '{view_angle}'. Valid: {valid}, current"
                 try:
-                    provider.set_view_angle(horizontal=h, vertical=v)
-                except Exception:
-                    pass  # Non-critical; proceed with current view
+                    provider.set_view_direction(direction=_VIEW_PRESETS[view_angle])
+                except Exception as e:
+                    warning = f" (WARNING: view preset failed, used current view — 视角设置失败: {e})"
 
             provider.save_model_image(file_path=file_path)
-            return f"Screenshot saved to: {file_path} (截图已保存)"
+            return f"Screenshot saved to: {file_path} (截图已保存){warning}"
         except Exception as e:
             return f"Error saving screenshot (保存截图失败): {e}"
 
@@ -117,33 +126,28 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         Set the 3D view angle of the bridge model (设置三维视角).
 
         Args:
-            angle_preset: View preset (视角预设):
-                'iso'(等轴测), 'front'(正视图), 'side'(侧视图), 'top'(俯视图)
-                Set to 'custom' to use horizontal/vertical values.
-            horizontal: Horizontal rotation angle in degrees (水平旋转角，单位度)
-            vertical: Vertical rotation angle in degrees (垂直旋转角，单位度)
+            angle_preset: View preset (视角预设): 'iso'(空间视图), 'front'(前视图),
+                'side'(左视图), 'top'(俯视图), 'right'(右视图), 'back'(后视图),
+                'bottom'(仰视图). Set to 'custom' to use horizontal/vertical rotation.
+            horizontal: Horizontal rotation in degrees, for 'custom' (水平旋转角，度)
+            vertical: Vertical rotation in degrees, for 'custom' (垂直旋转角，度)
         """
         try:
-            if angle_preset != "custom":
-                angle_map = {
-                    "iso": (45, 35),
-                    "front": (0, 0),
-                    "side": (90, 0),
-                    "top": (0, 90),
-                }
-                if angle_preset not in angle_map:
-                    return (
-                        f"Unknown preset '{angle_preset}'. "
-                        "Use: iso, front, side, top, or custom"
-                    )
-                horizontal, vertical = angle_map[angle_preset]
-
-            provider.set_view_direction(horizontal_degree=horizontal, vertical_degree=vertical)
-            return (
-                f"View angle set to {angle_preset} "
-                f"(horizontal={horizontal}°, vertical={vertical}°) "
-                f"(视角已设置)"
-            )
+            if angle_preset == "custom":
+                if horizontal is None and vertical is None:
+                    return "custom preset requires horizontal/vertical degrees (custom 需给出旋转角度)"
+                provider.set_view_direction(
+                    horizontal_degree=horizontal or 0, vertical_degree=vertical or 0
+                )
+                return (
+                    f"View rotated to horizontal={horizontal or 0}°, vertical={vertical or 0}° "
+                    f"(视角已设置)"
+                )
+            if angle_preset not in _VIEW_PRESETS:
+                valid = ", ".join(_VIEW_PRESETS)
+                return f"Unknown preset '{angle_preset}'. Use: {valid}, or custom"
+            provider.set_view_direction(direction=_VIEW_PRESETS[angle_preset])
+            return f"View angle set to {angle_preset} (视角已设置)"
         except Exception as e:
             return f"Error setting view angle (设置视角失败): {e}"
 
