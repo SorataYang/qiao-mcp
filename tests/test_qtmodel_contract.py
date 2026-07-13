@@ -34,11 +34,6 @@ _DUMMY = object()
 # ── 已知错配清单（键: "层级::位置::qt方法"）──────────────────────────
 # 修复对应任务后必须删除相应条目。
 KNOWN_FAILURES: dict[str, str] = {
-    # 任务 1.4 移动荷载
-    "provider::add_standard_vehicle::_mdb.add_standard_vehicle": "传 vehicle_type/standard，真实为 standard_code/load_type",
-    "tools::moving_load.add_standard_vehicle::_mdb.add_standard_vehicle": "同上",
-    "tools::moving_load.add_traffic_lane::_mdb.add_lane_line": "传不存在的 lateral_offset/element_ids，缺必填 influence_name/tandem_name",
-    "tools::moving_load.create_live_load_case::_mdb.add_live_load_case": "传 vehicle_names/lane_names/...，真实为 influence_plane/span/sub_case",
     # 任务 1.5 钢束
     "tools::tendon.create_tendon_property::_mdb.add_tendon_property": "传 elastic_modulus/friction/... 真实为 material_name/steel_detail/...",
     "tools::tendon.create_tendon_2d::_mdb.add_tendon_2d": "传不存在的 element_ids/tension_type",

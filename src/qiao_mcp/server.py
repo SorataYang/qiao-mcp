@@ -72,7 +72,7 @@ _SERVER_INSTRUCTIONS = (
     "Workflow: create_simple_beam_bridge, create_continuous_beam_bridge\n"
     "Queries:  get_model_info, get_nodes, get_elements, get_materials, get_section_list, get_section_detail, get_boundaries, get_load_cases, get_construction_stages, get_structure_groups\n"
     "Tendons:  create_tendon_property, create_tendon_2d, apply_prestress, get_tendon_info\n"
-    "Traffic:  add_standard_vehicle, add_traffic_lane, create_live_load_case, get_live_load_results\n"
+    "Traffic:  add_node_tandem, add_influence_plane, add_traffic_lane, add_standard_vehicle, create_live_load_case, get_live_load_results\n"
     "Checking: setup_concrete_check, add_check_load_combination, add_parametric_reinforcement, run_concrete_check\n"
     "Modify:   update_node, update_node_id, renumber_nodes, move_nodes, merge_nodes, remove_nodes, update_element, update_element_id, renumber_elements, revert_local_orientation, remove_elements\n"
     "View:     set_view_angle, save_model_screenshot\n"

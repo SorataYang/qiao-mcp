@@ -1896,10 +1896,12 @@ class QtModelProvider(BridgeProvider):
 
     # ── Moving Loads ───────────────────────────────────────────────────
 
-    def add_standard_vehicle(self, name: str, vehicle_type: int, standard: int) -> None:
+    def add_standard_vehicle(
+        self, name: str, standard_code: int = 1, load_type: str = "公路I级车道", **kwargs
+    ) -> None:
         self._require_available()
         self._mdb.add_standard_vehicle(
-            name=name, vehicle_type=vehicle_type, standard=standard
+            name=name, standard_code=standard_code, load_type=load_type, **kwargs
         )
         self._mdb.update_model()
 
@@ -1927,7 +1929,10 @@ class QtModelProvider(BridgeProvider):
         elif result_type == "deformation":
             return self._odb.get_deformation(ids=ids, stage_id=-1, case_name=case_name)
         else:
-            return self._odb.get_element_force(ids=ids, stage_id=-1, case_name=case_name)
+            raise ValueError(
+                f"Unknown result_type '{result_type}'. "
+                "Available: force, stress, deformation"
+            )
 
     # ── Self-weight ────────────────────────────────────────────────────
 

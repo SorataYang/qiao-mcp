@@ -371,7 +371,9 @@ class BridgeProvider(ABC):
     # ── Moving Loads ───────────────────────────────────────────────────
 
     @abstractmethod
-    def add_standard_vehicle(self, name: str, vehicle_type: int, standard: int) -> None:
+    def add_standard_vehicle(
+        self, name: str, standard_code: int = 1, load_type: str = "公路I级车道", **kwargs
+    ) -> None:
         """Add standard vehicle load. 添加标准车辆"""
         ...
 
