@@ -32,19 +32,8 @@ DB_OBJECTS = {"_mdb": qtmodel.mdb, "_odb": qtmodel.odb, "_cdb": qtmodel.cdb}
 _DUMMY = object()
 
 # ── 已知错配清单（键: "层级::位置::qt方法"）──────────────────────────
-# 修复对应任务后必须删除相应条目。
-KNOWN_FAILURES: dict[str, str] = {
-    # 任务 1.2 附带发现：支座沉降参数名错误
-    "provider::add_support_settlement::_mdb.add_node_displacement": "displacement_info 应为 load_info",
-    "tools::__init__.add_support_settlement::_mdb.add_node_displacement": "同上",
-    # 契约测试新发现（review 遗漏）——归入就近任务
-    "provider::add_gradient_temperature::_mdb.add_gradient_temperature": "temperature_g 应为 temperature（归任务 1.4x 荷载修复）",
-    "tools::__init__.add_gradient_temperature::_mdb.add_gradient_temperature": "另传了不存在的 temperature_type（真实为 section_oriental/element_type）",
-    "provider::get_structure_group_elements::_odb.get_group_elements": "name 应为 group_name（归组查询修复）",
-    "tools::group_management.list_group_members::_odb.get_group_elements": "同上",
-    "tools::queries.get_structure_group_members::_odb.get_group_elements": "同上",
-    "tools::modifications.add_to_structure_group::add_structure_to_group": "QtModelProvider 无此方法（应为 add_elements_to_structure_group）",
-}
+# 修复对应任务后必须删除相应条目。当前无已知错配。
+KNOWN_FAILURES: dict[str, str] = {}
 
 
 # ── AST 解析 ──────────────────────────────────────────────────────────
