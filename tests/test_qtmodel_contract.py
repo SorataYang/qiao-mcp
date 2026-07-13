@@ -34,9 +34,6 @@ _DUMMY = object()
 # ── 已知错配清单（键: "层级::位置::qt方法"）──────────────────────────
 # 修复对应任务后必须删除相应条目。
 KNOWN_FAILURES: dict[str, str] = {
-    # 任务 1.7 视角
-    "provider::set_view_angle::_odb.set_view_camera": "传 horizontal/vertical，真实为 camera_point/focus_point",
-    "tools::visualization.save_model_screenshot::_odb.set_view_camera": "经 provider.set_view_angle 间接触发，同上",
     # 任务 1.2 附带发现：支座沉降参数名错误
     "provider::add_support_settlement::_mdb.add_node_displacement": "displacement_info 应为 load_info",
     "tools::__init__.add_support_settlement::_mdb.add_node_displacement": "同上",
