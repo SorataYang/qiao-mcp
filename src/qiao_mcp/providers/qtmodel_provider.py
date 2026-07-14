@@ -287,6 +287,30 @@ class QtModelProvider(BridgeProvider):
             "boundary_group_count":  self._count(self._safe_get("get_boundary_group_names")),
         }
 
+    @staticmethod
+    def _to_dicts(result: Any) -> list[dict]:
+        """Normalize a query result to a list of plain dicts.
+
+        qtmodel 的 get_node_data/get_element_data 返回 Node/Element 对象，
+        其 __repr__/__str__ 返回 dict（非字符串），直接 JSON 序列化会崩溃；
+        此处统一用对象的 to_dict() 拍平为普通 dict。
+        """
+        if result is None:
+            return []
+        if isinstance(result, dict):
+            result = [result]
+        if not isinstance(result, list):
+            return []
+        out = []
+        for item in result:
+            if isinstance(item, dict):
+                out.append(item)
+            elif hasattr(item, "to_dict"):
+                out.append(item.to_dict())
+            else:
+                out.append(item)
+        return out
+
     def get_node_data(self, ids: Any = None) -> list[dict]:
         self._require_available()
         if ids is not None:
@@ -294,9 +318,7 @@ class QtModelProvider(BridgeProvider):
         result = self._parse(
             self._odb.get_node_data(ids=ids) if ids is not None else self._odb.get_node_data()
         )
-        if isinstance(result, dict):
-            return [result]
-        return result if isinstance(result, list) else []
+        return self._to_dicts(result)
 
     def get_element_data(self, ids: Any = None) -> list[dict]:
         self._require_available()
@@ -305,9 +327,7 @@ class QtModelProvider(BridgeProvider):
         result = self._parse(
             self._odb.get_element_data(ids=ids) if ids is not None else self._odb.get_element_data()
         )
-        if isinstance(result, dict):
-            return [result]
-        return result if isinstance(result, list) else []
+        return self._to_dicts(result)
 
     def get_material_data(self) -> list[dict]:
         self._require_available()
