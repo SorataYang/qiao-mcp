@@ -52,6 +52,19 @@ def _annotations_for(name: str) -> ToolAnnotations:
     )
 
 
+def _normalize(result: Any) -> Any:
+    """Normalize a tool return value to structured content."""
+    if isinstance(result, dict):
+        result.setdefault("status", "success")
+        return result
+    if result is None:
+        return {"status": "success"}
+    if isinstance(result, str):
+        return {"status": "success", "message": result}
+    # 其它类型（如 MCP Image / 富内容对象）原样透传，交由 FastMCP 序列化
+    return result
+
+
 def _wrap(fn: Callable) -> Callable:
     """Preserve the tool signature; normalize the return to structured content.
 
@@ -59,21 +72,22 @@ def _wrap(fn: Callable) -> Callable:
     - str 包裹为 {"status": "success", "message": str}；
     - None 视为无返回值的成功；
     - 异常向上抛出，由 FastMCP 转为 ToolError 响应。
+
+    同时支持同步与异步（async def）工具函数。
     """
     sig = inspect.signature(fn)
 
-    @functools.wraps(fn)
-    def wrapper(*args: Any, **kwargs: Any) -> dict:
-        result = fn(*args, **kwargs)
-        if isinstance(result, dict):
-            result.setdefault("status", "success")
-            return result
-        if result is None:
-            return {"status": "success"}
-        if isinstance(result, str):
-            return {"status": "success", "message": result}
-        # 其它类型（如 MCP Image / 富内容对象）原样透传，交由 FastMCP 序列化
-        return result
+    if inspect.iscoroutinefunction(fn):
+
+        @functools.wraps(fn)
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            return _normalize(await fn(*args, **kwargs))
+
+    else:
+
+        @functools.wraps(fn)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            return _normalize(fn(*args, **kwargs))
 
     # 覆盖返回注解为 dict，让 FastMCP 生成结构化输出；参数签名保持不变。
     wrapper.__signature__ = sig.replace(return_annotation=dict)  # type: ignore[attr-defined]

@@ -72,8 +72,8 @@ class BridgeProvider(ABC):
         ...
 
     @abstractmethod
-    def run_analysis(self) -> None:
-        """Run the structural analysis (执行计算/分析)."""
+    def run_analysis(self, read_timeout: int = 3600) -> None:
+        """Run the structural analysis (执行计算/分析). read_timeout: 最大等待秒数。"""
         ...
 
     # ── 开放扩展面 ─────────────────────────────────────────────────────
