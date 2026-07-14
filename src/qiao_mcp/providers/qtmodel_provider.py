@@ -7,9 +7,9 @@ the BridgeProvider interface.
 桥通软件后端适配器，封装 qtmodel Python API。
 """
 
-from typing import Any
-import json
 import ast
+import json
+from typing import Any
 
 from qiao_mcp.providers import BridgeProvider
 
@@ -243,8 +243,8 @@ class QtModelProvider(BridgeProvider):
                     if val <= 0:
                         raise ValueError(f"Invalid ID in list: {i}. IDs must be positive.")
                     valid_ids.append(val)
-                except (ValueError, TypeError):
-                    raise ValueError(f"Invalid ID format in list: {i}")
+                except (ValueError, TypeError) as e:
+                    raise ValueError(f"Invalid ID format in list: {i}") from e
             return valid_ids
             
         raise ValueError(f"Unsupported ids type: {type(ids)}. Expected int, list, or string.")
@@ -886,11 +886,11 @@ class QtModelProvider(BridgeProvider):
 
     def add_node_tandem(self, *args, **kwargs):
         self._require_available()
-        return getattr(self._mdb, "add_node_tandem")(*args, **kwargs)
+        return self._mdb.add_node_tandem(*args, **kwargs)
 
     def add_influence_plane(self, *args, **kwargs):
         self._require_available()
-        return getattr(self._mdb, "add_influence_plane")(*args, **kwargs)
+        return self._mdb.add_influence_plane(*args, **kwargs)
 
     # ── Result Extraction ──────────────────────────────────────────────
 
@@ -1267,11 +1267,6 @@ class QtModelProvider(BridgeProvider):
     def add_boundary_group(self, name: str) -> None:
         self._require_available()
         self._mdb.add_boundary_group(name=name)
-        self._mdb.update_model()
-
-    def add_load_group(self, name: str) -> None:
-        self._require_available()
-        self._mdb.add_load_group(name=name)
         self._mdb.update_model()
 
     # ── Advanced Boundary ──────────────────────────────────────────────

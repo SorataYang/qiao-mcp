@@ -1,8 +1,8 @@
 """合并后 create_section 的行为测试：各类型分发与专用参数。"""
 
-from qiao_mcp.tools import register_modeling_tools
-
 from conftest import tool_fns
+
+from qiao_mcp.tools import register_modeling_tools
 
 
 def test_specific_section_tools_removed(fake_provider):

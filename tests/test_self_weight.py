@@ -6,10 +6,9 @@
 """
 
 import pytest
+from conftest import tool_fns
 
 from qiao_mcp.tools import register_modeling_tools
-
-from conftest import tool_fns
 
 
 @pytest.fixture

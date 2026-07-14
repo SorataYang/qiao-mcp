@@ -9,7 +9,7 @@ one-step model generation for common bridge types.
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
-from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.envelope import ToolError
 
 
 def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -119,7 +119,7 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
                 log.append(f"ℹ Load case setup failed (error: {e})")
 
             return (
-                f"✅ Simple beam bridge created successfully! (简支梁桥模型创建成功)\n"
+                "✅ Simple beam bridge created successfully! (简支梁桥模型创建成功)\n"
                 + "\n".join(log)
                 + f"\n\nSpan: {span}m | Elements: {num_elements} | "
                 f"Nodes: {n} | Material: {material_name} | Section: {section_name}\n"
@@ -175,7 +175,7 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
             x = 0.0
             for span_len in spans:
                 dx = span_len / num_elements_per_span
-                for j in range(num_elements_per_span):
+                for _ in range(num_elements_per_span):
                     node_data.append([round(x, 6), 0.0, 0.0])
                     x += dx
             # Add final node
@@ -211,7 +211,7 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
 
             # Pier nodes at span boundaries
             node_at_pier = 1
-            for i, span_len in enumerate(spans[:-1]):
+            for i in range(len(spans) - 1):
                 node_at_pier += num_elements_per_span
                 provider.add_general_support(
                     node_id=node_at_pier,
@@ -246,7 +246,7 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
 
             spans_str = "+".join(f"{s:.0f}" for s in spans)
             return (
-                f"✅ Continuous beam bridge created! (连续梁桥模型创建成功)\n"
+                "✅ Continuous beam bridge created! (连续梁桥模型创建成功)\n"
                 + "\n".join(log)
                 + f"\n\nSpans: {spans_str}m | Total: {total_length:.0f}m | "
                 f"Nodes: {total_nodes} | Elements: {total_elements}\n"

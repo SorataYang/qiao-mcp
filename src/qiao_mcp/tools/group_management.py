@@ -8,12 +8,11 @@ Groups are the foundation of construction stage analysis:
 - Load groups (荷载组): collections of loads applied per stage
 """
 
-from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
-from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.envelope import ToolError
 
 
 def register_group_tools(mcp: FastMCP, provider: BridgeProvider):

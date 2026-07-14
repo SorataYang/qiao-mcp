@@ -1,11 +1,10 @@
 """移动荷载工具行为测试：完整工作流的参数下发与格式转换。"""
 
 import pytest
+from conftest import tool_fns
 
 from qiao_mcp.tools.envelope import ToolError
 from qiao_mcp.tools.moving_load import register_moving_load_tools
-
-from conftest import tool_fns, tool_text
 
 
 def test_full_moving_load_workflow_dispatch(fake_provider):

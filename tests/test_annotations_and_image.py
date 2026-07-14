@@ -4,12 +4,11 @@ import asyncio
 import struct
 import zlib
 
+from conftest import tool_fns
 from mcp.server.fastmcp.utilities.types import Image as FastMCPImage
 
 from qiao_mcp.tools.envelope import _annotations_for
 from qiao_mcp.tools.visualization import register_visualization_tools
-
-from conftest import tool_fns
 
 
 def _png_1x1() -> bytes:
@@ -58,8 +57,9 @@ def test_gateway_call_is_open_world():
 
 def test_annotations_applied_on_registered_tools():
     from mcp.server.fastmcp import FastMCP
-    from qiao_mcp.tools.envelope import register_tools_with_envelope
+
     from qiao_mcp.tools import register_modeling_tools
+    from qiao_mcp.tools.envelope import register_tools_with_envelope
 
     mcp = FastMCP("t")
     register_tools_with_envelope(mcp, register_modeling_tools, provider=None)

@@ -40,7 +40,38 @@ Issues = "https://github.com/SorataYang/qiao-mcp/issues"
 requires = ["uv_build>=0.9.28,<0.11"]
 build-backend = "uv_build"
 
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+# E/F = pyflakes+pycodestyle, I = isort, UP = pyupgrade, B = bugbear
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    "E501",  # 行宽由 line-length 控制，长中英双语 docstring 不强制换行
+    "E741",  # 允许 i/j 等工程惯用单字母变量
+]
+
+[tool.ruff.lint.per-file-ignores]
+# 测试通过 `from conftest import ...` 依赖 pytest 的 rootdir 注入，非标准包导入
+"tests/*" = ["E402"]
+
+[tool.mypy]
+python_version = "3.11"
+# qtmodel 无类型信息；provider 是唯一直接触碰它的边界，单独放宽
+ignore_missing_imports = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+# 渐进式：先保证不引入语法/名称级错误，不强制全量类型注解
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "qtmodel.*"
+ignore_missing_imports = true
+
 [dependency-groups]
 dev = [
+    "mypy>=2.3.0",
     "pytest>=9.1.1",
+    "ruff>=0.15.21",
 ]
