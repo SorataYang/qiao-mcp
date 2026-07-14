@@ -6,9 +6,10 @@ Provides tools for creating and managing model entities:
 nodes, elements, materials, sections, structure groups, etc.
 """
 
+import asyncio
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
@@ -1662,15 +1663,38 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             raise ToolError(f"Error configuring analysis (配置分析失败): {e}") from e
 
     @mcp.tool()
-    def run_analysis() -> str:
+    async def run_analysis(ctx: Context, read_timeout: int = 3600) -> str:
         """
         Run the structural analysis calculation (执行结构分析计算).
 
-        Use this tool after you have configured all loads, boundaries, and analysis settings.
-        This will solve the model and make analysis results available.
+        Use this after all loads, boundaries, and analysis settings are configured.
+        Solving can take a long time; it runs in a worker thread so the connection
+        stays responsive, with periodic progress heartbeats.
+        求解可能耗时较长，在工作线程中执行以保持连接不阻塞，并周期性上报进度。
+
+        Args:
+            read_timeout: Max solve time in seconds, default 3600 (求解最大等待秒数)
         """
         try:
-            provider.run_analysis()
+            loop = asyncio.get_running_loop()
+            solve = loop.run_in_executor(
+                None, lambda: provider.run_analysis(read_timeout=read_timeout)
+            )
+            elapsed = 0
+            # 每 5 秒发一次进度心跳，直到求解线程返回
+            while True:
+                done, _ = await asyncio.wait({solve}, timeout=5)
+                if done:
+                    await solve  # 传播求解线程中的异常
+                    break
+                elapsed += 5
+                try:
+                    await ctx.report_progress(
+                        progress=elapsed, total=read_timeout,
+                        message=f"Solving… {elapsed}s elapsed (求解中，已用 {elapsed}s)",
+                    )
+                except Exception:
+                    pass  # 进度上报失败不应影响求解
             return "Analysis successfully completed (结构分析计算完成)"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息

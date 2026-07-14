@@ -878,10 +878,10 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_time_history_case(**kwargs)
         self._mdb.update_model()
 
-    def run_analysis(self) -> None:
+    def run_analysis(self, read_timeout: int = 3600) -> None:
         self._require_available()
-        # qtmodel uses do_solve() with read_timeout
-        self._mdb.do_solve(read_timeout=3600)
+        # qtmodel 的 do_solve 是阻塞式 HTTP 调用，最长阻塞 read_timeout 秒
+        self._mdb.do_solve(read_timeout=read_timeout)
 
 
     def add_node_tandem(self, *args, **kwargs):
