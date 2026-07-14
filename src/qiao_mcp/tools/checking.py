@@ -3,6 +3,8 @@ MCP Tools for structural concrete checking and reinforcement design.
 结构混凝土检算与配筋设计工具
 """
 
+from typing import Any
+
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
@@ -141,7 +143,7 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
             inner_rebar_info: Inner rebar list (内部钢筋信息), same format as outer
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "sec_id": section_id,
                 "position": position,
                 "has_outer": has_outer,

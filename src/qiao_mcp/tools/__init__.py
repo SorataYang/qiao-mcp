@@ -6,6 +6,8 @@ Provides tools for creating and managing model entities:
 nodes, elements, materials, sections, structure groups, etc.
 """
 
+from typing import Any
+
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
@@ -330,7 +332,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             index: ID index, -1 for auto (编号，-1自动生成)
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "name": name,
                 "combine_type": combine_type,
                 "describe": describe,
@@ -368,7 +370,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                        自定义材料参数 [弹性模量, 容重, 泊松比, 热膨胀系数]
         """
         try:
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if data_info:
                 kwargs["data_info"] = data_info
             provider.add_material(
@@ -405,7 +407,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             index: ID index, -1 for auto (编号，-1自动生成)
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "name": name,
                 "code_index": code_index,
                 "index": index,
@@ -466,7 +468,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             scale_factor: Scale factor (比例系数)
         """
         try:
-            kwargs = {"name": name, "scale_factor": scale_factor}
+            kwargs: dict[str, Any] = {"name": name, "scale_factor": scale_factor}
             if shrink_data is not None:
                 kwargs["shrink_data"] = [tuple(item) for item in shrink_data]
             provider.add_shrink_function(**kwargs)
@@ -548,7 +550,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             create_section(name="钢管", sec_type="圆管", sec_info=[0.6, 0.016])
         """
         try:
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if sec_info:
                 kwargs["sec_info"] = sec_info
             if mat_combine is not None:
@@ -711,7 +713,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             dis_h: Height variation distance (高度变化距离)
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "name": name,
                 "factor_w": factor_w,
                 "factor_h": factor_h,
@@ -774,7 +776,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Boundary group name (边界组名)
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "element_ids": element_ids,
                 "factor_i": factor_i,
                 "factor_j": factor_j,
@@ -916,7 +918,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         try:
             boundary_info = [dx, dy, dz, rx, ry, rz]
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if group_name:
                 kwargs["group_name"] = group_name
             provider.add_general_support(
@@ -1013,7 +1015,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         try:
             load_info = [fx, fy, fz, mx, my, mz]
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if group_name:
                 kwargs["group_name"] = group_name
             provider.add_nodal_force(
@@ -1047,7 +1049,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {"coord_system": direction}
+            kwargs: dict[str, Any] = {"coord_system": direction}
             if load_values:
                 kwargs["list_load"] = load_values
             if load_positions:
@@ -1083,7 +1085,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if group_name:
                 kwargs["group_name"] = group_name
             provider.add_system_temperature(
@@ -1117,7 +1119,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "section_oriental": section_oriental,
                 "element_type": element_type,
             }
@@ -1151,7 +1153,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {"orientation": orientation}
+            kwargs: dict[str, Any] = {"orientation": orientation}
             if group_name:
                 kwargs["group_name"] = group_name
             if temperature_data is not None:
@@ -1192,7 +1194,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "code_index": code_index, "sec_type": sec_type,
                 "t1": t1, "t2": t2, "t3": t3, "t4": t4, "thick": thick
             }
@@ -1228,7 +1230,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "tension": tension, "tension_type": tension_type,
                 "application_type": application_type, "stiffness": stiffness
             }
@@ -1260,7 +1262,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {"length": length, "tension_type": tension_type}
+            kwargs: dict[str, Any] = {"length": length, "tension_type": tension_type}
             if group_name:
                 kwargs["group_name"] = group_name
             provider.add_cable_length_load(element_id=element_id, case_name=case_name, **kwargs)
@@ -1295,7 +1297,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {"load_type": load_type, "load_place": load_place, "coord_system": coord_system}
+            kwargs: dict[str, Any] = {"load_type": load_type, "load_place": load_place, "coord_system": coord_system}
             if group_name:
                 kwargs["group_name"] = group_name
             if list_load is not None:
@@ -1336,7 +1338,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {"coord_system": coord_system}
+            kwargs: dict[str, Any] = {"coord_system": coord_system}
             if group_name:
                 kwargs["group_name"] = group_name
             if point1:
@@ -1382,7 +1384,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         try:
             displacement_info = [dx, dy, dz, rx, ry, rz]
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if group_name:
                 kwargs["group_name"] = group_name
             provider.add_support_settlement(
@@ -1458,7 +1460,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             function_info: User defined spectrum points [[period, value], ...] (自定义谱数据)
         """
         try:
-            kwargs = {"name": name, "factor": factor, "kind": kind}
+            kwargs: dict[str, Any] = {"name": name, "factor": factor, "kind": kind}
             if function_info is not None:
                 kwargs["function_info"] = [tuple(item) for item in function_info]
             provider.add_spectrum_function(**kwargs)
@@ -1489,7 +1491,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             info_z: Z direction info [function_name, factor] (Z向配置)
         """
         try:
-            kwargs = {"name": name, "description": description, "kind": kind}
+            kwargs: dict[str, Any] = {"name": name, "description": description, "kind": kind}
             if info_x:
                 kwargs["info_x"] = tuple(info_x)
             if info_y:
@@ -1520,7 +1522,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             function_info: Time history points [[time, value], ...] (时程数据点)
         """
         try:
-            kwargs = {"name": name, "factor": factor, "kind": kind}
+            kwargs: dict[str, Any] = {"name": name, "factor": factor, "kind": kind}
             if function_info is not None:
                 kwargs["function_info"] = function_info
             provider.add_time_history_function(**kwargs)
@@ -1607,7 +1609,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                           [[group_name, time], ...], time: 0=start, 1=end
         """
         try:
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if active_structures:
                 kwargs["active_structures"] = [tuple(s) for s in active_structures]
             if active_boundaries:
@@ -1773,7 +1775,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             from qiao_mcp.tools.queries import _paginate
 
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if case_name:
                 kwargs["case_name"] = case_name
 

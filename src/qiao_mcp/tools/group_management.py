@@ -9,6 +9,8 @@ Groups are the foundation of construction stage analysis:
 """
 
 
+from typing import Any
+
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
@@ -241,7 +243,7 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
             temp_loads: Temporary load group names (临时荷载组名称列表)
         """
         try:
-            kwargs = {"name": name, "new_name": new_name, "duration": duration}
+            kwargs: dict[str, Any] = {"name": name, "new_name": new_name, "duration": duration}
             if active_structures is not None:
                 kwargs["active_structures"] = [tuple(item) for item in active_structures]
             if delete_structures is not None:

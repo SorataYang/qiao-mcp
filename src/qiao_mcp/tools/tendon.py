@@ -6,6 +6,8 @@ Provides tools for defining tendon properties, geometries,
 and applying prestress forces.
 """
 
+from typing import Any
+
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
@@ -149,7 +151,7 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {"tension_type": tension_type}
+            kwargs: dict[str, Any] = {"tension_type": tension_type}
             if group_name:
                 kwargs["group_name"] = group_name
             provider.add_pre_stress(

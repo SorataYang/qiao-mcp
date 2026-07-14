@@ -434,7 +434,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_creep_function(name=name, creep_data=creep_data, scale_factor=scale_factor)
         self._mdb.update_model()
 
-    def add_shrink_function(self, name: str, shrink_data: list = None, scale_factor: float = 1) -> None:
+    def add_shrink_function(self, name: str, shrink_data: list | None = None, scale_factor: float = 1) -> None:
         self._require_available()
         self._mdb.add_shrink_function(name=name, shrink_data=shrink_data, scale_factor=scale_factor)
         self._mdb.update_model()
@@ -471,7 +471,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.remove_section(ids=ids)
         self._mdb.update_model()
 
-    def update_section_bias(self, index: int, bias_type: str, center_type: str = "质心", shear_consider: bool = True, bias_point: list[float] = None, side_i: bool = True) -> None:
+    def update_section_bias(self, index: int, bias_type: str, center_type: str = "质心", shear_consider: bool = True, bias_point: list[float] | None = None, side_i: bool = True) -> None:
         self._require_available()
         kwargs = {}
         if bias_point is not None:
@@ -646,10 +646,10 @@ class QtModelProvider(BridgeProvider):
         self._mdb.update_model()
 
     def add_beam_constraint(
-        self, beam_id: int, info_i: list[bool] = None, info_j: list[bool] = None, group_name: str = ""
+        self, beam_id: int, info_i: list[bool] | None = None, info_j: list[bool] | None = None, group_name: str = ""
     ) -> None:
         self._require_available()
-        kwargs = {"beam_id": beam_id}
+        kwargs: dict[str, Any] = {"beam_id": beam_id}
         if info_i is not None:
             kwargs["info_i"] = info_i
         if info_j is not None:
@@ -681,7 +681,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_load_case(name=name, case_type=case_type)
         self._mdb.update_model()
 
-    def add_load_combine(self, index: int = -1, name: str = "", combine_type: int = 1, describe: str = "", combine_info: list[tuple] = None) -> None:
+    def add_load_combine(self, index: int = -1, name: str = "", combine_type: int = 1, describe: str = "", combine_info: list[tuple] | None = None) -> None:
         self._require_available()
         kwargs = {"index": index, "name": name, "combine_type": combine_type, "describe": describe}
         if combine_info is not None:

@@ -4,6 +4,7 @@ MCP Tools for visualization — screenshots and result plots.
 """
 
 import os
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP, Image
 
@@ -40,7 +41,7 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         file_path: str = "",
         view_angle: str = "iso",
         return_image: bool = True,
-    ) -> str:
+    ) -> str | Image:
         """
         Capture a screenshot of the current bridge model view (截取桥梁模型视图).
 
@@ -90,7 +91,7 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         component: str = "",
         file_path: str = "",
         return_image: bool = True,
-    ) -> str:
+    ) -> str | Image:
         """
         Generate an analysis result contour plot (生成分析结果云图).
 
@@ -122,7 +123,7 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
                     DEFAULT_IMAGE_DIR, f"result_{result_type}_stage{stage_id}.png"
                 )
 
-            kwargs = {"stage_id": stage_id}
+            kwargs: dict[str, Any] = {"stage_id": stage_id}
             if case_name:
                 kwargs["case_name"] = case_name
             if component:
@@ -210,7 +211,7 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
             element_ids: Element IDs to activate (要激活的单元号)
         """
         try:
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if node_ids is not None:
                 kwargs["node_ids"] = node_ids
             if element_ids is not None:

@@ -6,6 +6,8 @@ Provides tools for elastic links (弹性连接), master-slave links (主从约�
 and elastic supports (弹性支承).
 """
 
+from typing import Any
+
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
@@ -55,7 +57,7 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
             add_elastic_link(1, 2, link_type=3, kx=1e6)  # tension-only
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "beta_angle": beta_angle,
                 "dis_ratio": dis_ratio,
                 "kx": kx,
@@ -110,7 +112,7 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Boundary group name (边界组名)
         """
         try:
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if dof_constraints:
                 kwargs["boundary_info"] = dof_constraints
             if group_name:
@@ -158,7 +160,7 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
             add_elastic_support(1, spring_values=[3, 1e6], support_type=3)    # Z compression-only
         """
         try:
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if group_name:
                 kwargs["group_name"] = group_name
             provider.add_elastic_support(
@@ -255,7 +257,7 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
             # Node 5 Dz = 1.0 * Node1_Dz + 0.5 * Node2_Dz
         """
         try:
-            kwargs = {"name": name, "sec_node": slave_node, "sec_dof": slave_dof}
+            kwargs: dict[str, Any] = {"name": name, "sec_node": slave_node, "sec_dof": slave_dof}
             if master_info is not None:
                 kwargs["master_info"] = [tuple(m) for m in master_info]
             if group_name:
@@ -315,7 +317,7 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
             valid = ", ".join(_BOUNDARY_KIND_MAP)
             raise ToolInputError(f"Unknown boundary kind '{kind}'. Valid kinds (有效类型): {valid}")
         try:
-            kwargs = {"remove_id": remove_id, "kind": qt_kind}
+            kwargs: dict[str, Any] = {"remove_id": remove_id, "kind": qt_kind}
             if group_name:
                 kwargs["group_name"] = group_name
             kwargs["extra_name"] = extra_name
