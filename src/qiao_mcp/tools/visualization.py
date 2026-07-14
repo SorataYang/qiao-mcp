@@ -5,7 +5,7 @@ MCP Tools for visualization — screenshots and result plots.
 
 import os
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP, Image
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
@@ -39,9 +39,13 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     def save_model_screenshot(
         file_path: str = "",
         view_angle: str = "iso",
+        return_image: bool = True,
     ) -> str:
         """
-        Save a screenshot of the current bridge model view (保存桥梁模型截图).
+        Capture a screenshot of the current bridge model view (截取桥梁模型视图).
+
+        By default returns the image itself so it can be viewed directly.
+        默认直接返回图像内容，可在客户端预览。
 
         Args:
             file_path: Output file path (.png). If empty, saves to default directory.
@@ -49,6 +53,8 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
             view_angle: View preset (视角预设): 'iso'(空间视图), 'front'(前视),
                 'side'(左视), 'top'(俯视), 'right'(右视), 'back'(后视), 'bottom'(仰视),
                 or 'current' to keep the current view (保持当前视角)
+            return_image: Return the PNG as viewable image content; if False, return
+                          only the saved path (是否直接返回图像内容，否则仅返回路径)
         """
         try:
             if not file_path:
@@ -66,6 +72,10 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
                     warning = f" (WARNING: view preset failed, used current view — 视角设置失败: {e})"
 
             provider.save_model_image(file_path=file_path)
+
+            if return_image and not warning and os.path.exists(file_path):
+                # 直接返回图像内容，便于模型/客户端查看
+                return Image(path=file_path)
             return f"Screenshot saved to: {file_path} (截图已保存){warning}"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
@@ -79,9 +89,13 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         case_name: str = "",
         component: str = "",
         file_path: str = "",
+        return_image: bool = True,
     ) -> str:
         """
-        Generate and save an analysis result plot (生成分析结果云图并保存).
+        Generate an analysis result contour plot (生成分析结果云图).
+
+        By default returns the plot image itself for direct viewing.
+        默认直接返回云图图像内容，可在客户端预览。
 
         Args:
             result_type: Result type (结果类型):
@@ -98,6 +112,8 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
                 Leave empty to use default component.
             file_path: Output file path (.png). Empty = default directory.
                        输出路径，为空则保存到默认目录
+            return_image: Return the PNG as viewable image content; if False, return
+                          only the saved path (是否直接返回图像内容，否则仅返回路径)
         """
         try:
             if not file_path:
@@ -115,6 +131,8 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
             provider.plot_result(
                 result_type=result_type, file_path=file_path, **kwargs
             )
+            if return_image and os.path.exists(file_path):
+                return Image(path=file_path)
             return f"Result plot saved to: {file_path} (结果云图已保存)"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息

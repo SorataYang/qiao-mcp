@@ -17,10 +17,38 @@ import inspect
 from typing import Any, Callable
 
 from mcp.server.fastmcp.exceptions import ToolError
+from mcp.types import ToolAnnotations
 
 
 class ToolInputError(ToolError):
     """Invalid tool input (无效的工具输入/参数)。语义上区别于后端执行失败。"""
+
+
+# 只读工具前缀：不改变模型状态，可安全重复调用
+_READONLY_PREFIXES = ("get_", "list_", "find_", "calc_")
+# 破坏性工具前缀/名称：删除或清空模型数据
+_DESTRUCTIVE_PREFIXES = ("remove_", "delete_")
+_DESTRUCTIVE_NAMES = {
+    "initialize_model",   # 清空整个模型
+    "open_model_file",    # 覆盖当前模型
+    "merge_nodes",        # 合并会删除重合节点
+    "remove_unused_sections",
+}
+# 逃生舱：可调用任意 qtmodel 方法，对外部世界开放
+_OPEN_WORLD_NAMES = {"call_qtmodel_api"}
+
+
+def _annotations_for(name: str) -> ToolAnnotations:
+    """Classify a tool by name into read-only / destructive / open-world hints."""
+    is_readonly = name.startswith(_READONLY_PREFIXES) or name == "validate_model"
+    is_destructive = name.startswith(_DESTRUCTIVE_PREFIXES) or name in _DESTRUCTIVE_NAMES
+    return ToolAnnotations(
+        readOnlyHint=is_readonly,
+        destructiveHint=is_destructive,
+        # 大多数写工具重复调用会累积状态；只读工具天然幂等
+        idempotentHint=is_readonly,
+        openWorldHint=name in _OPEN_WORLD_NAMES,
+    )
 
 
 def _wrap(fn: Callable) -> Callable:
@@ -41,7 +69,10 @@ def _wrap(fn: Callable) -> Callable:
             return result
         if result is None:
             return {"status": "success"}
-        return {"status": "success", "message": result}
+        if isinstance(result, str):
+            return {"status": "success", "message": result}
+        # 其它类型（如 MCP Image / 富内容对象）原样透传，交由 FastMCP 序列化
+        return result
 
     # 覆盖返回注解为 dict，让 FastMCP 生成结构化输出；参数签名保持不变。
     wrapper.__signature__ = sig.replace(return_annotation=dict)
@@ -57,15 +88,20 @@ def _wrap(fn: Callable) -> Callable:
 def register_tools_with_envelope(mcp, register_fn, provider) -> None:
     """Call a register_* function with mcp.tool patched to wrap every tool.
 
-    register_fn 内部照常使用 @mcp.tool()，但每个工具函数都会先经 _wrap 包装，
-    从而统一获得结构化成功返回与 ToolError 失败通道。
+    register_fn 内部照常使用 @mcp.tool()，但每个工具都会：
+    1. 经 _wrap 统一获得结构化成功返回与 ToolError 失败通道；
+    2. 按工具名自动附加 ToolAnnotations（只读/破坏性/开放世界提示），
+       使客户端可据此做权限分级与确认提示。
+    显式传入的 annotations / name 会被尊重（不覆盖）。
     """
     original_tool = mcp.tool
 
     def patched_tool(*t_args: Any, **t_kwargs: Any):
-        decorator = original_tool(*t_args, **t_kwargs)
-
         def apply(fn: Callable):
+            name = t_kwargs.get("name") or fn.__name__
+            if "annotations" not in t_kwargs:
+                t_kwargs["annotations"] = _annotations_for(name)
+            decorator = original_tool(*t_args, **t_kwargs)
             return decorator(_wrap(fn))
 
         return apply
