@@ -67,9 +67,10 @@ def _collect_dict_keys(func_node: ast.FunctionDef, var_name: str) -> tuple[set[s
     keys: set[str] = set()
     dynamic = False
     for node in ast.walk(func_node):
-        # kwargs = {...}
-        if isinstance(node, ast.Assign):
-            for tgt in node.targets:
+        # kwargs = {...}  或  kwargs: dict[str, Any] = {...}
+        if isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for tgt in targets:
                 if isinstance(tgt, ast.Name) and tgt.id == var_name:
                     if isinstance(node.value, ast.Dict):
                         for k in node.value.keys:
@@ -77,7 +78,7 @@ def _collect_dict_keys(func_node: ast.FunctionDef, var_name: str) -> tuple[set[s
                                 keys.add(k.value)
                             else:
                                 dynamic = True
-                    else:
+                    elif node.value is not None:
                         dynamic = True
         # kwargs["k"] = v
         if isinstance(node, ast.Assign):

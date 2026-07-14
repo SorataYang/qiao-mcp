@@ -119,7 +119,7 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             update_node(1, z=-1.5)  # Move node 1 down to z=-1.5
         """
         try:
-            kwargs = {"node_id": node_id, "new_id": new_id}
+            kwargs: dict[str, Any] = {"node_id": node_id, "new_id": new_id}
             if x is not None:
                 kwargs["x"] = x
             if y is not None:

@@ -76,7 +76,7 @@ def _wrap(fn: Callable) -> Callable:
         return result
 
     # 覆盖返回注解为 dict，让 FastMCP 生成结构化输出；参数签名保持不变。
-    wrapper.__signature__ = sig.replace(return_annotation=dict)
+    wrapper.__signature__ = sig.replace(return_annotation=dict)  # type: ignore[attr-defined]
     annotations = dict(getattr(fn, "__annotations__", {}))
     annotations["return"] = dict
     wrapper.__annotations__ = annotations

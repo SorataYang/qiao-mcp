@@ -132,7 +132,7 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
 
     @mcp.tool()
     def create_continuous_beam_bridge(
-        spans: list[float] = None,
+        spans: list[float] | None = None,
         num_elements_per_span: int = 8,
         material_name: str = "C50",
         section_name: str = "箱梁截面",
