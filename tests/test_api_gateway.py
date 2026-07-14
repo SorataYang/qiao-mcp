@@ -1,12 +1,11 @@
 """逃生舱工具行为测试：方法发现、签名先验校验、危险方法拦截。"""
 
 import pytest
+from conftest import tool_fns, tool_text
 
 from qiao_mcp.providers.qtmodel_provider import QtModelProvider
 from qiao_mcp.tools.api_gateway import register_api_gateway_tools
 from qiao_mcp.tools.envelope import ToolError
-
-from conftest import tool_fns, tool_text
 
 
 class RealSigMdb:

@@ -7,8 +7,8 @@ Model Context Protocol (MCP), enabling LLMs to interact with bridge
 structural analysis tools.
 """
 
-import sys
 import logging
+import sys
 
 # Ensure stdout/stderr use UTF-8 to prevent Mojibake in Node.js (MCP Inspector) under Windows
 if sys.platform == "win32":
@@ -19,33 +19,33 @@ if sys.platform == "win32":
 
 from mcp.server.fastmcp import FastMCP
 
+from qiao_mcp.prompts import register_prompts
 from qiao_mcp.providers.qtmodel_provider import QtModelProvider
+from qiao_mcp.resources import register_resources
 
 # Phase 1 modules
 from qiao_mcp.tools import register_modeling_tools
-from qiao_mcp.resources import register_resources
-from qiao_mcp.prompts import register_prompts
-
-# Phase 2 modules
-from qiao_mcp.tools.group_management import register_group_tools
-from qiao_mcp.tools.tendon import register_tendon_tools
 from qiao_mcp.tools.advanced_boundary import register_advanced_boundary_tools
-from qiao_mcp.tools.visualization import register_visualization_tools
-from qiao_mcp.tools.moving_load import register_moving_load_tools
-from qiao_mcp.tools.checking import register_checking_tools
-from qiao_mcp.tools.workflows import register_workflow_tools
-
-# Phase 3 — read-only query tools
-from qiao_mcp.tools.queries import register_query_tools
-
-# Phase 4 — modify tools
-from qiao_mcp.tools.modifications import register_modification_tools
 
 # Phase 5 — long-tail API gateway (逃生舱)
 from qiao_mcp.tools.api_gateway import register_api_gateway_tools
+from qiao_mcp.tools.checking import register_checking_tools
 
 # Structured-return envelope for all tool registrations
 from qiao_mcp.tools.envelope import register_tools_with_envelope
+
+# Phase 2 modules
+from qiao_mcp.tools.group_management import register_group_tools
+
+# Phase 4 — modify tools
+from qiao_mcp.tools.modifications import register_modification_tools
+from qiao_mcp.tools.moving_load import register_moving_load_tools
+
+# Phase 3 — read-only query tools
+from qiao_mcp.tools.queries import register_query_tools
+from qiao_mcp.tools.tendon import register_tendon_tools
+from qiao_mcp.tools.visualization import register_visualization_tools
+from qiao_mcp.tools.workflows import register_workflow_tools
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

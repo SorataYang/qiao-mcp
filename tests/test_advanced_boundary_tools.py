@@ -1,8 +1,8 @@
 """高级边界工具行为测试：参数映射与枚举语义。"""
 
-from qiao_mcp.tools.advanced_boundary import register_advanced_boundary_tools
-
 from conftest import tool_fns
+
+from qiao_mcp.tools.advanced_boundary import register_advanced_boundary_tools
 
 
 def test_elastic_link_maps_stiffness_to_boundary_info(fake_provider):

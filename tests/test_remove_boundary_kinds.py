@@ -5,12 +5,11 @@ qtmodel 的 remove_boundary 只接受中文 kind 标识
 工具层的英文 token 必须映射为中文后再下发。
 """
 
+import pytest
+from conftest import tool_fns
+
 from qiao_mcp.tools.advanced_boundary import register_advanced_boundary_tools
 from qiao_mcp.tools.envelope import ToolInputError
-
-import pytest
-
-from conftest import tool_fns
 
 
 def _fns(fake_provider):
@@ -52,8 +51,6 @@ def test_chinese_kind_passthrough(fake_provider):
     assert kwargs["kind"] == "梁端约束"
 
 
-def test_unknown_kind_rejected_without_dispatch(fake_provider):
-    fns = _fns(fake_provider)
 def test_unknown_kind_rejected_without_dispatch(fake_provider):
     fns = _fns(fake_provider)
     with pytest.raises(ToolInputError):

@@ -6,7 +6,6 @@ Exposes model information as MCP Resources that LLMs can read for context.
 """
 
 import json
-from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 

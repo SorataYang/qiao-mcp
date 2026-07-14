@@ -1,11 +1,10 @@
 """可视化视角工具行为测试：预设映射与失败可见性。"""
 
 import pytest
+from conftest import tool_fns, tool_text
 
 from qiao_mcp.tools.envelope import ToolInputError
 from qiao_mcp.tools.visualization import register_visualization_tools
-
-from conftest import tool_fns, tool_text
 
 
 def test_screenshot_uses_builtin_view_preset(fake_provider, tmp_path):

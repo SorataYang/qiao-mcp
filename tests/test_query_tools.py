@@ -1,11 +1,10 @@
 """合并查询工具行为测试：kind 分发、分页限流、必填参数校验。"""
 
 import pytest
+from conftest import tool_fns, tool_text
 
 from qiao_mcp.tools.envelope import ToolInputError
 from qiao_mcp.tools.queries import MAX_LIMIT, register_query_tools
-
-from conftest import tool_fns, tool_text
 
 
 def _fns(fake_provider):

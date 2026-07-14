@@ -13,7 +13,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
-from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.envelope import ToolError
 
 
 def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:

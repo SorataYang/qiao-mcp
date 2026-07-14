@@ -211,8 +211,10 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         try:
             kwargs = {}
-            if node_ids is not None: kwargs["node_ids"] = node_ids
-            if element_ids is not None: kwargs["element_ids"] = element_ids
+            if node_ids is not None:
+                kwargs["node_ids"] = node_ids
+            if element_ids is not None:
+                kwargs["element_ids"] = element_ids
             provider.activate_structure(**kwargs)
             return "Successfully activated selected structure (成功激活选中结构)"
         except ToolError:

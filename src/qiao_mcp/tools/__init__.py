@@ -6,8 +6,6 @@ Provides tools for creating and managing model entities:
 nodes, elements, materials, sections, structure groups, etc.
 """
 
-from typing import Any
-
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
@@ -1154,7 +1152,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         try:
             kwargs = {"orientation": orientation}
-            if group_name: kwargs["group_name"] = group_name
+            if group_name:
+                kwargs["group_name"] = group_name
             if temperature_data is not None:
                 kwargs["temperature_data"] = [tuple(item) for item in temperature_data]
             provider.add_custom_temperature(element_id=element_id, case_name=case_name, **kwargs)
@@ -1197,7 +1196,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 "code_index": code_index, "sec_type": sec_type,
                 "t1": t1, "t2": t2, "t3": t3, "t4": t4, "thick": thick
             }
-            if group_name: kwargs["group_name"] = group_name
+            if group_name:
+                kwargs["group_name"] = group_name
             provider.add_beam_section_temperature(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied beam section temperature to element(s) {element_id} (成功施加梁截面温度)"
         except ToolError:
@@ -1232,7 +1232,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 "tension": tension, "tension_type": tension_type,
                 "application_type": application_type, "stiffness": stiffness
             }
-            if group_name: kwargs["group_name"] = group_name
+            if group_name:
+                kwargs["group_name"] = group_name
             provider.add_initial_tension_load(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied initial tension {tension} to element(s) {element_id} (成功施加初拉力)"
         except ToolError:
@@ -1260,7 +1261,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         try:
             kwargs = {"length": length, "tension_type": tension_type}
-            if group_name: kwargs["group_name"] = group_name
+            if group_name:
+                kwargs["group_name"] = group_name
             provider.add_cable_length_load(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied cable length load {length} to element(s) {element_id} (成功施加索长荷载)"
         except ToolError:
@@ -1294,9 +1296,12 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         try:
             kwargs = {"load_type": load_type, "load_place": load_place, "coord_system": coord_system}
-            if group_name: kwargs["group_name"] = group_name
-            if list_load is not None: kwargs["list_load"] = list_load
-            if list_xy is not None: kwargs["list_xy"] = tuple(list_xy)
+            if group_name:
+                kwargs["group_name"] = group_name
+            if list_load is not None:
+                kwargs["list_load"] = list_load
+            if list_xy is not None:
+                kwargs["list_xy"] = tuple(list_xy)
             provider.add_plate_element_load(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied plate load to element(s) {element_id} (成功施加板单元荷载)"
         except ToolError:
@@ -1332,11 +1337,16 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         try:
             kwargs = {"coord_system": coord_system}
-            if group_name: kwargs["group_name"] = group_name
-            if point1: kwargs["point1"] = tuple(point1)
-            if point2: kwargs["point2"] = tuple(point2)
-            if point3: kwargs["point3"] = tuple(point3)
-            if plate_ids: kwargs["plate_ids"] = plate_ids
+            if group_name:
+                kwargs["group_name"] = group_name
+            if point1:
+                kwargs["point1"] = tuple(point1)
+            if point2:
+                kwargs["point2"] = tuple(point2)
+            if point3:
+                kwargs["point3"] = tuple(point3)
+            if plate_ids:
+                kwargs["plate_ids"] = plate_ids
             provider.add_distribute_plane_load(index=index, case_name=case_name, type_name=type_name, **kwargs)
             return f"Successfully applied distributed plane load '{type_name}' (成功施加分布面荷载)"
         except ToolError:
@@ -1480,9 +1490,12 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         try:
             kwargs = {"name": name, "description": description, "kind": kind}
-            if info_x: kwargs["info_x"] = tuple(info_x)
-            if info_y: kwargs["info_y"] = tuple(info_y)
-            if info_z: kwargs["info_z"] = tuple(info_z)
+            if info_x:
+                kwargs["info_x"] = tuple(info_x)
+            if info_y:
+                kwargs["info_y"] = tuple(info_y)
+            if info_z:
+                kwargs["info_z"] = tuple(info_z)
             provider.add_spectrum_case(**kwargs)
             return f"Successfully added spectrum case '{name}' (成功添加反应谱工况)"
         except ToolError:

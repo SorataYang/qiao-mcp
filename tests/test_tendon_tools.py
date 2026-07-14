@@ -1,8 +1,8 @@
 """钢束工具行为测试：参数组装与格式转换。"""
 
-from qiao_mcp.tools.tendon import register_tendon_tools
-
 from conftest import tool_fns
+
+from qiao_mcp.tools.tendon import register_tendon_tools
 
 
 def test_tendon_property_builds_steel_detail_and_slip_info(fake_provider):

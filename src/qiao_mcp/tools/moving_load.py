@@ -10,7 +10,7 @@ node tandems (节点纵列) → influence planes (影响面) → lane lines (车
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
-from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.envelope import ToolError
 
 
 def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
