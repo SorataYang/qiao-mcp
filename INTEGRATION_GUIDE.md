@@ -226,7 +226,7 @@ export BRIDGE_PROVIDER=qtmodel
 
 ### QiaoTong (桥通软件)
 - **必须**: QiaoTong 软件已安装并运行
-- **依赖**: `qtmodel>=2.3.3` (从 PyPI 自动安装)
+- **依赖**: `qtmodel>=2.5.0` (从 PyPI 自动安装)
 - **连接**: MCP 通过 `qtmodel` Python API 连接到运行中的 QiaoTong 软件
 
 **如果软件未运行:**

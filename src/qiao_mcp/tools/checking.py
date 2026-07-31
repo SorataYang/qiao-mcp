@@ -59,22 +59,22 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         standard: int = 1,
         kind: int = 3,
         load_case_factors: list[list] | None = None,
-        combine_type: int = 1,
+        combine_method: int = 1,
     ) -> str:
         """
         Add a load combination for structural checking (添加检算荷载组合).
 
         Args:
             name: Combination name (组合名称)
-            standard: Code standard (规范): 1=JTG D60-2015, 2=TB 10002-2017
+            standard: Code standard (规范): 1=JTG D60-2015, 2=TB 2017
             kind: Combination type (组合类型):
                 Highway JTG D60: 1=基本组合, 2=偶然组合, 3=标准值组合,
-                                 4=频遇组合, 5=准永久组合
-                Railway TB 10002: 1=主力组合, 2=主加附组合, 3=主加特殊组合
+                                 4=频遇组合, 5=准永久组合, 6=疲劳组合, 7=临时组合
+                Railway TB 2017: 1=主力组合, 2=主加附组合, 3=主加特殊组合, 4=临时组合
             load_case_factors: Load case factors list, format:
                                [[case_name, unfavorable_factor, favorable_factor], ...]
                                荷载工况系数 [[工况名, 不利系数, 有利系数], ...]
-            combine_type: Combination method (组合方式): 1=叠加判别, 2=包络
+            combine_method: Combination method (组合方式): 1=相加并判别, 2=包络
         """
         try:
             factors = load_case_factors or []
@@ -82,8 +82,8 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
             provider.add_check_load_combine(
                 name=name,
                 standard=standard,
-                kind=kind,
-                combine_type=combine_type,
+                combine_type=kind,
+                combine_method=combine_method,
                 combine_info=factors_tuple,
             )
             return (
@@ -98,18 +98,22 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def run_concrete_check(
         name: str,
+        max_wait_seconds: float | None = 1800.0,
     ) -> str:
         """
         Execute concrete structural checking analysis (运行混凝土检算).
 
-        Runs the code-based verification for the specified check case.
-        对指定的检算工况运行规范验算。
+        Syncs the named check case into the current check data, then runs the
+        code-based verification and waits for the background task to finish.
+        先将指定检算工况同步为当前检算数据，再运行规范验算并等待后台任务完成。
 
         Args:
             name: Check case name to run (要运行的检算工况名)
+            max_wait_seconds: Max seconds to wait for completion; None = no limit
+                              (最长等待秒数，None 表示不限时)
         """
         try:
-            provider.solve_concrete_check(name=name)
+            provider.solve_concrete_check(name=name, wait=True, max_wait=max_wait_seconds)
             return (
                 f"Concrete check '{name}' completed. "
                 f"Use get_check_results to retrieve results. "
@@ -165,74 +169,80 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
             raise ToolError(f"Error adding reinforcement (添加配筋失败): {e}") from e
 
     @mcp.tool()
-    def add_steel_hoop(
-        index: int,
+    def add_check_stirrup(
+        stirrup_id: int,
         name: str,
-        hoop_type: int = 1,
+        stirrup_type: int = 1,
         material_id: int = 1,
-        nums: int = 2,
-        diameter: float = 0.012,
-        gap: float = 0.1,
+        limbs_number: int = 2,
+        loops_number: int = 2,
+        diameter: float = 0.020,
+        spacing: float = 0.2,
         core_diameter: float = 0.0,
     ) -> str:
         """
-        Add shear reinforcement / hoops (添加抗剪钢筋/箍筋).
+        Add a stirrup definition for checking (添加检算箍筋定义).
 
         Args:
-            index: Hoop ID (箍筋编号)
-            name: Hoop name (箍筋名称)
-            hoop_type: Hoop type (箍筋类型): 1=闭合式箍筋 (closed), 2=开口式箍筋 (open)
-            material_id: Material ID (材料编号)
-            nums: Number of branches (箍筋肢数)
-            diameter: Rebar diameter in meters (钢筋直径m)
-            gap: Spacing in meters (间距m)
-            core_diameter: Core diameter for spiral hoops (芯截面直径, 仅螺旋箍筋使用)
+            stirrup_id: Stirrup definition ID (箍筋定义编号)
+            name: Stirrup definition name (箍筋定义名称)
+            stirrup_type: Stirrup type (箍筋类型): 1=普通箍筋 (normal), 2=螺旋式箍筋 (spiral)
+            material_id: Rebar material ID (钢筋材料号)
+            limbs_number: Number of limbs, for normal stirrups (普通箍筋肢数)
+            loops_number: Number of loops, for spiral stirrups (螺旋式箍筋环数)
+            diameter: Stirrup diameter in meters (箍筋直径, 单位 m, 如 0.020 = 20mm)
+            spacing: Stirrup spacing in meters (箍筋间距, 单位 m)
+            core_diameter: Core diameter for spiral stirrups in meters
+                           (螺旋式箍筋核心直径, 单位 m, 仅螺旋箍筋使用)
         """
         try:
-            provider.add_steel_hoop(
-                index=index,
+            provider.add_check_stirrup(
+                stirrup_id=stirrup_id,
                 name=name,
-                hoop_type=hoop_type,
-                material_id=material_id,
-                nums=nums,
-                diameter=diameter,
-                gap=gap,
-                core_diameter=core_diameter,
+                stirrup_type=stirrup_type,
+                rebar_material_id=material_id,
+                limbs_number=limbs_number,
+                loops_number=loops_number,
+                diameter_m=diameter,
+                spacing_m=spacing,
+                core_diameter_m=core_diameter,
             )
-            return f"Successfully added steel hoop '{name}' (成功添加抗剪钢筋)"
+            return f"Successfully added check stirrup '{name}' (成功添加检算箍筋)"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            raise ToolError(f"Error adding steel hoop (添加抗剪钢筋失败): {e}") from e
+            raise ToolError(f"Error adding check stirrup (添加检算箍筋失败): {e}") from e
 
     @mcp.tool()
-    def update_vertical_steel_hoop(
-        nums: int = 0,
-        area: float = 0.001,
-        gap: float = 0.2,
+    def update_vertical_steel_tendon(
+        limbs_number: int = 0,
+        area: float = 0.000804,
+        spacing: float = 0.2,
         effective_prestress: float = 800000000.0,
         fpd: float = 900000000.0,
     ) -> str:
         """
-        Update vertical prestress reinforcement parameters for checking (修改竖向预应力抗剪参数).
+        Update vertical prestress tendon parameters for checking (修改竖向预应力钢束参数).
 
         Args:
-            nums: Number of vertical rebars/strands (竖向预应力根数)
-            area: Area of a single rebar in m^2 (单根面积)
-            gap: Longitudinal spacing in meters (纵向间距)
-            effective_prestress: Effective prestress in Pa (有效预应力)
-            fpd: Design tensile strength of vertical prestress in Pa (竖向预应力抗拉强度设计值)
+            limbs_number: Number of vertical limbs/strands (竖向预应力肢数)
+            area: Area of a single limb in m^2 (单肢面积, 单位 m², 如 0.000804 = 804mm²)
+            spacing: Longitudinal spacing in meters (钢束间距, 单位 m)
+            effective_prestress: Effective prestress in Pa (有效预应力, 单位 Pa, 8e8 = 800MPa)
+            fpd: Design tensile strength in Pa (强度设计值 fpd, 单位 Pa, 9e8 = 900MPa)
         """
         try:
-            provider.update_vertical_steel_hoop(
-                nums=nums,
-                area=area,
-                gap=gap,
-                effective_prestress=effective_prestress,
-                fpd=fpd,
+            provider.update_vertical_steel_tendon(
+                limbs_number=limbs_number,
+                area_m2=area,
+                spacing_m=spacing,
+                effective_prestress_pa=effective_prestress,
+                fpd_pa=fpd,
             )
-            return "Successfully updated vertical prestress reinforcement (成功修改竖向预应力参数)"
+            return "Successfully updated vertical prestress tendon (成功修改竖向预应力钢束参数)"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            raise ToolError(f"Error updating vertical steel hoop (修改竖向预应力参数失败): {e}") from e
+            raise ToolError(
+                f"Error updating vertical steel tendon (修改竖向预应力钢束参数失败): {e}"
+            ) from e

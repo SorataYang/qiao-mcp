@@ -1215,14 +1215,38 @@ class QtModelProvider(BridgeProvider):
     # ── Structural Checking ────────────────────────────────────────────
 
     def add_check_load_combine(
-        self, name: str, standard: int, kind: int, **kwargs
+        self, name: str, standard: int, combine_type: int, combine_method: int, **kwargs
     ) -> None:
         self._require_available()
-        self._cdb.add_check_load_combine(name=name, standard=standard, kind=kind, **kwargs)
+        # 2.5.0 起：旧 kind → combine_type（组合类型：基本/偶然/标准…），
+        # 旧 combine_type → combine_method（组合方式：1-相加并判别 2-包络），index 已移除
+        self._cdb.add_check_load_combine(
+            name=name,
+            standard=standard,
+            combine_type=combine_type,
+            combine_method=combine_method,
+            **kwargs,
+        )
 
-    def solve_concrete_check(self, name: str) -> None:
+    def solve_concrete_check(
+        self,
+        name: str,
+        wait: bool = True,
+        max_wait: float | None = None,
+        poll_interval: float = 5.0,
+    ) -> None:
+        """同步指定检算工况后启动检算；wait=True 时轮询至后台任务结束。
+
+        2.5.0 起 solve_concrete_check 不再接受 name，改为对"当前检算数据"求解，
+        故先用 import_concrete_check_case 把目标工况同步为当前 CSAN 检算数据。
+        """
         self._require_available()
-        self._cdb.solve_concrete_check(name=name)
+        self._cdb.import_concrete_check_case(case_name=name)
+        self._cdb.solve_concrete_check(
+            wait=wait,
+            poll_interval=poll_interval,
+            max_wait=max_wait,
+        )
 
     def add_concrete_check_case(
         self, name: str, standard: int, structure_type: int, group_name: str
@@ -1234,13 +1258,57 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         self._cdb.add_parameter_reinforcement(sec_id=sec_id, **kwargs)
 
-    def add_steel_hoop(self, **kwargs) -> None:
-        self._require_available()
-        self._cdb.add_steel_hoop(**kwargs)
+    def add_check_stirrup(
+        self,
+        stirrup_id: int,
+        name: str,
+        stirrup_type: int = 1,
+        rebar_material_id: int = 1,
+        limbs_number: int = 2,
+        loops_number: int = 2,
+        diameter_m: float = 0.020,
+        spacing_m: float = 0.2,
+        core_diameter_m: float = 0.0,
+    ) -> None:
+        """添加检算箍筋定义（2.5.0 起取代 add_steel_hoop）。
 
-    def update_vertical_steel_hoop(self, **kwargs) -> None:
+        入参统一用 SI（米），此处换算为 qtmodel 2.5.0 要求的单位：
+        箍筋直径 m → mm；间距与核心直径仍为 m。
+        """
         self._require_available()
-        self._cdb.update_vertical_steel_hoop(**kwargs)
+        self._cdb.add_check_stirrup(
+            stirrup_id=stirrup_id,
+            name=name,
+            stirrup_type=stirrup_type,
+            rebar_material_id=rebar_material_id,
+            limbs_number=limbs_number,
+            loops_number=loops_number,
+            stirrup_diameter=diameter_m * 1000.0,  # m → mm
+            stirrup_spacing=spacing_m,
+            core_diameter=core_diameter_m,
+        )
+
+    def update_vertical_steel_tendon(
+        self,
+        limbs_number: int = 0,
+        area_m2: float = 0.000804,
+        spacing_m: float = 0.2,
+        effective_prestress_pa: float = 8.0e8,
+        fpd_pa: float = 9.0e8,
+    ) -> None:
+        """修改竖向钢束设置（2.5.0 起取代 update_vertical_steel_hoop）。
+
+        入参统一用 SI（m²/Pa），此处换算为 qtmodel 2.5.0 要求的单位：
+        面积 m² → mm²（×1e6）；应力 Pa → MPa（÷1e6）。
+        """
+        self._require_available()
+        self._cdb.update_vertical_steel_tendon(
+            limbs_number=limbs_number,
+            single_limb_area=area_m2 * 1.0e6,  # m² → mm²
+            spacing=spacing_m,
+            effective_prestress=effective_prestress_pa / 1.0e6,  # Pa → MPa
+            strength_design_value=fpd_pa / 1.0e6,  # Pa → MPa
+        )
 
     def get_reinforcement_data(self) -> dict[str, Any]:
         self._require_available()
