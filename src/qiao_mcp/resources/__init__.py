@@ -6,11 +6,10 @@ Exposes model information as MCP Resources that LLMs can read for context.
 """
 
 import json
-from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from bridge_mcp.providers import BridgeProvider
+from qiao_mcp.providers import BridgeProvider
 
 
 def register_resources(mcp: FastMCP, provider: BridgeProvider):
