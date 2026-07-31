@@ -8,11 +8,13 @@ Groups are the foundation of construction stage analysis:
 - Load groups (荷载组): collections of loads applied per stage
 """
 
+
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.tools.envelope import ToolError
 
 
 def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -45,8 +47,10 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
                     f"(结构组 '{name}' 创建成功，已添加单元)"
                 )
             return f"Structure group '{name}' created (结构组 '{name}' 创建成功)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating structure group (创建结构组失败): {e}"
+            raise ToolError(f"Error creating structure group (创建结构组失败): {e}") from e
 
     @mcp.tool()
     def update_structure_group_name(name: str, new_name: str) -> str:
@@ -60,8 +64,10 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.update_structure_group_name(name=name, new_name=new_name)
             return f"Successfully renamed structure group '{name}' to '{new_name}' (成功重命名结构组)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error renaming structure group (重命名结构组失败): {e}"
+            raise ToolError(f"Error renaming structure group (重命名结构组失败): {e}") from e
 
     @mcp.tool()
     def remove_structure_group(name: str = "") -> str:
@@ -76,8 +82,10 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
             provider.remove_structure_group(name=name)
             target = f"'{name}'" if name else "all"
             return f"Successfully removed structure group(s) {target} (成功删除结构组)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error removing structure group (删除结构组失败): {e}"
+            raise ToolError(f"Error removing structure group (删除结构组失败): {e}") from e
 
     @mcp.tool()
     def create_boundary_group(
@@ -95,27 +103,10 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.add_boundary_group(name=name)
             return f"Boundary group '{name}' created (边界组 '{name}' 创建成功)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating boundary group (创建边界组失败): {e}"
-
-    @mcp.tool()
-    def create_load_group(
-        name: str,
-    ) -> str:
-        """
-        Create a load group (创建荷载组).
-
-        Load groups collect loads to be applied or removed together during
-        construction stages (施工阶段中统一控制荷载施加状态).
-
-        Args:
-            name: Load group name (荷载组名称)
-        """
-        try:
-            provider.add_load_group(name=name)
-            return f"Load group '{name}' created (荷载组 '{name}' 创建成功)"
-        except Exception as e:
-            return f"Error creating load group (创建荷载组失败): {e}"
+            raise ToolError(f"Error creating boundary group (创建边界组失败): {e}") from e
 
     @mcp.tool()
     def list_group_members(
@@ -144,8 +135,10 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
                 return f"All load cases/groups (所有荷载工况): {cases}"
             else:
                 return "group_type must be 'structure', 'boundary', or 'load'"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error listing group members (查询分组成员失败): {e}"
+            raise ToolError(f"Error listing group members (查询分组成员失败): {e}") from e
 
     @mcp.tool()
     def add_elements_to_group(
@@ -167,8 +160,10 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Added elements {element_ids} to structure group '{group_name}' "
                 f"(已向结构组 '{group_name}' 添加单元)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding elements to group (添加单元到结构组失败): {e}"
+            raise ToolError(f"Error adding elements to group (添加单元到结构组失败): {e}") from e
 
     @mcp.tool()
     def merge_operation_stage(
@@ -190,8 +185,10 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Successfully merged all stages into operation stage '{name}' "
                 f"(成功合并为运营阶段 '{name}')"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error merging stages (合并施工阶段失败): {e}"
+            raise ToolError(f"Error merging stages (合并施工阶段失败): {e}") from e
 
     @mcp.tool()
     def remove_construction_stage(name: str = "") -> str:
@@ -206,8 +203,10 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
             provider.remove_construction_stage(name=name)
             target = f"stage '{name}'" if name else "all stages"
             return f"Successfully removed {target} (成功删除施工阶段)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error removing construction stage (删除施工阶段失败): {e}"
+            raise ToolError(f"Error removing construction stage (删除施工阶段失败): {e}") from e
 
     @mcp.tool()
     def update_construction_stage(
@@ -244,7 +243,7 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
             temp_loads: Temporary load group names (临时荷载组名称列表)
         """
         try:
-            kwargs = {"name": name, "new_name": new_name, "duration": duration}
+            kwargs: dict[str, Any] = {"name": name, "new_name": new_name, "duration": duration}
             if active_structures is not None:
                 kwargs["active_structures"] = [tuple(item) for item in active_structures]
             if delete_structures is not None:
@@ -262,8 +261,10 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
 
             provider.update_construction_stage(**kwargs)
             return f"Successfully updated construction stage '{name}' (成功修改施工阶段 '{name}')"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating construction stage (修改施工阶段失败): {e}"
+            raise ToolError(f"Error updating construction stage (修改施工阶段失败): {e}") from e
 
     @mcp.tool()
     def switch_display_stage(stage_name: str) -> str:
@@ -279,5 +280,7 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.switch_display_stage(stage_name=stage_name)
             return f"Successfully switched display to stage '{stage_name}' (成功切换显示阶段)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error switching display stage (切换显示阶段失败): {e}"
+            raise ToolError(f"Error switching display stage (切换显示阶段失败): {e}") from e
