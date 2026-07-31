@@ -3,12 +3,40 @@ MCP Tools for structural concrete checking and reinforcement design.
 结构混凝土检算与配筋设计工具
 """
 
+import json
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
-from qiao_mcp.tools.envelope import ToolError
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
+
+MAX_LIMIT = 500
+
+
+def _fmt(obj: Any) -> str:
+    """把 qtmodel 返回值（含 CheckStressItem 等自定义对象）序列化为文本。"""
+    try:
+        return json.dumps(obj, ensure_ascii=False, indent=2, default=str)
+    except Exception:
+        return str(obj)
+
+
+def _paginate(data: Any, limit: int, offset: int) -> str:
+    """Slice list data and annotate with pagination info (分页并标注截断信息)."""
+    if not isinstance(data, list):
+        return _fmt(data)
+    total = len(data)
+    limit = max(1, min(limit, MAX_LIMIT))
+    offset = max(0, offset)
+    window = data[offset : offset + limit]
+    header = f"[{offset + 1}–{offset + len(window)} of {total}]"
+    if offset + len(window) < total:
+        header += (
+            f" TRUNCATED — use offset={offset + len(window)} for the next page "
+            f"(结果已截断，用 offset 翻页)"
+        )
+    return f"{header}\n{_fmt(window)}"
 
 
 def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -246,3 +274,294 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
             raise ToolError(
                 f"Error updating vertical steel tendon (修改竖向预应力钢束参数失败): {e}"
             ) from e
+
+    # ── qtmodel 2.5.0 新增检算能力 ─────────────────────────────────────
+
+    @mcp.tool()
+    def get_check_data(
+        kind: str,
+        element_id: int | None = None,
+        stress_type: int = 1,
+        combine_type: int = 1,
+        name: str = "",
+        limit: int = 100,
+        offset: int = 0,
+    ) -> str:
+        """
+        Query concrete-check data by kind (按类型查询混凝土检算数据).
+
+        Read-only. Requires a check case to be open/imported first.
+        只读工具；需先创建或打开检算工况。列表结果分页返回。
+
+        Args:
+            kind: What to query (查询类型):
+                ── 结果 Results ──
+                "stress" (应力信息, 可选 stress_type/name),
+                "solve_status" (检算求解状态)
+                ── 工况 Case ──
+                "case" (检算工况, 可选 name), "basic_info" (检算基本信息),
+                "materials" (材料信息), "load_table" (荷载表, 可选 combine_type/name),
+                "section_property" (截面特性), "element_table" (单元表)
+                ── 配筋 Reinforcement ──
+                "reinforcement" (配筋数据), "stirrups" (箍筋定义),
+                "shear_stirrup" (单元抗剪箍筋, 可选 element_id),
+                "torsion_stirrup" (单元抗扭箍筋, 可选 element_id),
+                "vertical_prestress" (竖向预应力), "tendon_section" (钢束截面)
+                ── 分析设置 Analysis settings ──
+                "normal_section_bearing_setting" (正截面承载力),
+                "oblique_shear_bearing_setting" (斜截面抗剪承载力),
+                "limit_state_setting" (极限状态法), "normal_stress_setting" (正应力),
+                "crack_width_setting" (裂缝宽度), "moment_curvature_setting" (弯矩曲率),
+                "bearing_curve_setting" (承载力曲线)
+            element_id: Element ID for stirrup queries; omit for all (单元号，省略则查全部)
+            stress_type: Stress combination type for kind="stress" (应力组合类型):
+                非 AASHTO: 1=标准值组合, 2=频遇组合, 3=准永久值组合, 4=主力组合,
+                          5=主加附组合, 6=施工组合, 7=主加特殊组合, 8=恒载作用,
+                          9=预应力作用, 10~13=使用组合Ⅰ~Ⅳ, 14=永久作用组合
+                AASHTO 2020: 1~4=使用组合Ⅰ~Ⅳ, 5=永久作用组合, 6=施工组合
+            combine_type: Combination type for kind="load_table" (荷载表组合类型)
+            name: Explicit display name; overrides stress_type/combine_type when set
+                  (指定组合显示名，非空时优先于类型序号)
+            limit: Max items per page, default 100, max 500 (单页条数上限)
+            offset: Pagination offset (分页偏移)
+        """
+        try:
+            data = provider.get_check_data(
+                kind,
+                element_id=element_id,
+                stress_type=stress_type,
+                combine_type=combine_type,
+                name=name,
+            )
+            if data is None or data == [] or data == {}:
+                return (
+                    f"No data for kind='{kind}' (无数据). "
+                    f"Check case may not be open or analysis not run."
+                )
+            return f"{kind}:\n{_paginate(data, limit, offset)}"
+        except ValueError as e:
+            raise ToolInputError(
+                f"{e}. See tool description for valid kinds (未知查询类型，请查阅工具说明)"
+            ) from e
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
+        except Exception as e:
+            raise ToolError(f"Error querying check data '{kind}' (查询检算数据失败): {e}") from e
+
+    @mcp.tool()
+    def configure_check_analysis(kind: str, settings: dict[str, Any]) -> str:
+        """
+        Configure a concrete-check analysis setting group (配置混凝土检算分析设置).
+
+        ⚠️ UNITS (单位): parameters in this tool use qtmodel's NATIVE units —
+        **mm for lengths and MPa for stresses**, NOT the SI (m/Pa) used elsewhere
+        in this server. qtmodel does not document these units; they are inferred
+        from its defaults (e.g. protective_thickness=30.0 means 30 mm,
+        fatigue_limit_steel_bar=145.0 means 145 MPa). Pass values accordingly.
+        本工具参数沿用 qtmodel 原生单位（长度 mm、应力 MPa），与本服务器其余
+        工具的 SI 约定不同；qtmodel 未标注单位，此结论由其默认值推断。
+
+        Use get_check_data("<kind>_setting") to read current values first.
+        建议先用 get_check_data 读取当前值，再按需覆盖。
+
+        Args:
+            kind: Setting group (设置类别):
+                "normal_section_bearing" (正截面承载力):
+                    normal_section_bearing_calculation_type: 1=同比例变化 2=轴力不变
+                        3=My不变 4=Mz不变 5=轴力与My不变 6=轴力与Mz不变 7=My与Mz不变
+                "oblique_shear_bearing" (斜截面抗剪承载力):
+                    reinforcement_height_multiple, is_consider_as_simple_support,
+                    shear_strength_material_factor,
+                    oblique_section_shear_direction_type: 1=竖向(z) 2=横向(y) 3=双向
+                "limit_state" (极限状态法):
+                    cal_fatigue, fatigue_limit_steel_bar (MPa),
+                    fatigue_limit_prestress (MPa), is_consider_as_simple_support,
+                    is_consider_construction_load
+                "normal_stress" (正应力):
+                    aashto2020_normal_stress_rebar_type: 1=直钢筋/无交叉焊缝焊接钢丝网
+                        2=高应力区带交叉焊缝的直焊接钢丝网,
+                    tendon_allowable_stress_amplitude (MPa),
+                    flange_web_slenderness_ratio,
+                    construction_stage_concrete_tensile_limit (MPa),
+                    service_combination3_concrete_tension_limit (MPa)
+                "crack_width" (裂缝宽度):
+                    highway_environment_category_type (1~7 公路环境类别),
+                    railway_environment_category_type (1~6 铁路环境类别),
+                    railway_limit_environment_category_type (1~11 铁路限值环境类别),
+                    crack_setting_type: 1=0 2=0.10 3=0.15 4=0.20 5=0.25 6=禁止使用,
+                    clear_protective_thickness (mm), protective_thickness (mm),
+                    steel_bar_type: 1=带肋钢筋 2=光圆钢筋,
+                    effect_coefficient_type: 1=软件自动计算 2=用户指定,
+                    user_specified_effect_coefficient, is_epoxy_resin_rebar,
+                    is_welded_rebar_skeleton, mq_mg (活载/恒载弯矩比), exposure_coefficient
+                "moment_curvature" (弯矩曲率):
+                    moment_curvature_type: 1=轴力P变化 2=弯矩M变化,
+                    moment_curvature_model_type: 1=双线性模型 2=理想弹塑性模型
+                "bearing_curve" (承载力曲线):
+                    bearing_curve_count (计算点数),
+                    angle_between_m_and_y_axis (弯矩方向与y轴夹角), force_p (轴力P)
+            settings: Parameter dict for the chosen kind; only pass what you change
+                      (该类别的参数字典，只需传要修改的项)
+        """
+        try:
+            if not isinstance(settings, dict):
+                raise ToolInputError("settings must be a dict (settings 必须为字典)")
+            provider.configure_check_analysis(kind, settings)
+            changed = ", ".join(f"{k}={v}" for k, v in settings.items()) or "(no change)"
+            return f"Analysis setting '{kind}' updated: {changed} (检算分析设置已更新)"
+        except ValueError as e:
+            raise ToolInputError(
+                f"{e}. See tool description for valid kinds (未知设置类别，请查阅工具说明)"
+            ) from e
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
+        except Exception as e:
+            raise ToolError(f"Error configuring '{kind}' (配置检算分析设置失败): {e}") from e
+
+    @mcp.tool()
+    def manage_check_stirrup(
+        action: str,
+        stirrup_id: int = -1,
+        name: str = "",
+        stirrup_type: int = 1,
+        material_id: int = 1,
+        limbs_number: int = 2,
+        loops_number: int = 2,
+        diameter: float = 0.020,
+        spacing: float = 0.2,
+        core_diameter: float = 0.0,
+    ) -> str:
+        """
+        Update or remove a stirrup definition (修改或删除检算箍筋定义).
+
+        Use add_check_stirrup to create one. Lengths are in METERS (SI), converted
+        internally. 新增请用 add_check_stirrup；长度入参为米，内部换算。
+
+        Args:
+            action: "update" (修改) or "remove" (删除)
+            stirrup_id: Stirrup definition ID (箍筋定义编号); <=0 means match by name
+            name: Stirrup definition name (箍筋定义名称)
+            stirrup_type: 1=普通箍筋 (normal), 2=螺旋式箍筋 (spiral)
+            material_id: Rebar material ID (钢筋材料号)
+            limbs_number: Limbs, for normal stirrups (普通箍筋肢数)
+            loops_number: Loops, for spiral stirrups (螺旋式箍筋环数)
+            diameter: Stirrup diameter in meters (箍筋直径, 单位 m)
+            spacing: Stirrup spacing in meters (箍筋间距, 单位 m)
+            core_diameter: Spiral core diameter in meters (螺旋箍筋核心直径, 单位 m)
+        """
+        try:
+            if action == "update":
+                if not name:
+                    raise ToolInputError("update requires name (修改需提供箍筋名称)")
+                provider.update_check_stirrup(
+                    stirrup_id=stirrup_id,
+                    name=name,
+                    stirrup_type=stirrup_type,
+                    rebar_material_id=material_id,
+                    limbs_number=limbs_number,
+                    loops_number=loops_number,
+                    diameter_m=diameter,
+                    spacing_m=spacing,
+                    core_diameter_m=core_diameter,
+                )
+                return f"Stirrup '{name}' updated (箍筋定义已修改)"
+            if action == "remove":
+                if stirrup_id <= 0 and not name:
+                    raise ToolInputError(
+                        "remove requires stirrup_id or name (删除需提供编号或名称)"
+                    )
+                provider.remove_check_stirrup(stirrup_id=stirrup_id, name=name)
+                target = name or f"#{stirrup_id}"
+                return f"Stirrup '{target}' removed (箍筋定义已删除)"
+            raise ToolInputError(f"Unknown action '{action}'; use update/remove (未知操作)")
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
+        except Exception as e:
+            raise ToolError(f"Error managing stirrup (管理箍筋定义失败): {e}") from e
+
+    @mcp.tool()
+    def assign_element_stirrup(
+        action: str,
+        element_id: int = -1,
+        stirrup_i_y: int = 1,
+        stirrup_i_x: int = 1,
+        stirrup_j_y: int = 1,
+        stirrup_j_x: int = 1,
+        stirrup_i: int = 1,
+        stirrup_j: int = 1,
+    ) -> str:
+        """
+        Assign or remove element stirrups (指定或删除单元箍筋).
+
+        Stirrup numbers refer to definitions created by add_check_stirrup.
+        箍筋号引用 add_check_stirrup 创建的箍筋定义。
+
+        Args:
+            action: "shear" (抗剪箍筋), "torsion" (抗扭箍筋), or "remove" (删除)
+            element_id: Element ID (单元号); for "remove", <=0 removes all elements
+            stirrup_i_y: I-end vertical stirrup ID, shear only (I端竖向箍筋号)
+            stirrup_i_x: I-end transverse stirrup ID, shear only (I端横向箍筋号)
+            stirrup_j_y: J-end vertical stirrup ID, shear only (J端竖向箍筋号)
+            stirrup_j_x: J-end transverse stirrup ID, shear only (J端横向箍筋号)
+            stirrup_i: I-end stirrup ID, torsion only (I端抗扭箍筋号)
+            stirrup_j: J-end stirrup ID, torsion only (J端抗扭箍筋号)
+        """
+        try:
+            if action == "shear":
+                if element_id <= 0:
+                    raise ToolInputError("shear requires element_id (需提供单元号)")
+                provider.set_element_shear_stirrup(
+                    element_id=element_id,
+                    stirrup_i_y=stirrup_i_y,
+                    stirrup_i_x=stirrup_i_x,
+                    stirrup_j_y=stirrup_j_y,
+                    stirrup_j_x=stirrup_j_x,
+                )
+                return f"Shear stirrup assigned to element {element_id} (单元抗剪箍筋已指定)"
+            if action == "torsion":
+                if element_id <= 0:
+                    raise ToolInputError("torsion requires element_id (需提供单元号)")
+                provider.set_element_torsion_stirrup(
+                    element_id=element_id, stirrup_i=stirrup_i, stirrup_j=stirrup_j
+                )
+                return f"Torsion stirrup assigned to element {element_id} (单元抗扭箍筋已指定)"
+            if action == "remove":
+                provider.remove_element_stirrup(element_id=element_id)
+                scope = f"element {element_id}" if element_id > 0 else "all elements"
+                return f"Stirrups removed from {scope} (单元箍筋已删除)"
+            raise ToolInputError(
+                f"Unknown action '{action}'; use shear/torsion/remove (未知操作)"
+            )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
+        except Exception as e:
+            raise ToolError(f"Error assigning element stirrup (指定单元箍筋失败): {e}") from e
+
+    @mcp.tool()
+    def manage_check_case_file(action: str, name: str = "", file_path: str = "") -> str:
+        """
+        Open or save a concrete check case file (打开或保存混凝土检算工况文件).
+
+        Args:
+            action: "open" (打开) or "save" (保存)
+            name: Check case name; for "open", resolves to the default check data
+                  directory when file_path is empty (工况名称)
+            file_path: Full path to the case file. For "open" it takes priority over
+                       name; for "save" a non-empty value means save-as
+                       (工况文件完整路径；保存时非空表示另存为)
+        """
+        try:
+            if action == "open":
+                if not name and not file_path:
+                    raise ToolInputError("open requires name or file_path (需提供名称或路径)")
+                provider.open_check_case(name=name, file_path=file_path)
+                return f"Check case '{name or file_path}' opened (检算工况已打开)"
+            if action == "save":
+                provider.save_check_case(file_path=file_path)
+                where = f" to {file_path}" if file_path else ""
+                return f"Check case saved{where} (检算工况已保存)"
+            raise ToolInputError(f"Unknown action '{action}'; use open/save (未知操作)")
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
+        except Exception as e:
+            raise ToolError(f"Error managing check case file (管理检算工况文件失败): {e}") from e
