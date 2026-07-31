@@ -37,7 +37,7 @@ Repository = "https://github.com/SorataYang/qiao-mcp"
 Issues = "https://github.com/SorataYang/qiao-mcp/issues"
 
 [build-system]
-requires = ["uv_build>=0.9.28,<0.11"]
+requires = ["uv_build>=0.9.28,<0.12"]
 build-backend = "uv_build"
 
 [tool.ruff]
