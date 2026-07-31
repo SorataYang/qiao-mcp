@@ -1673,7 +1673,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         求解可能耗时较长，在工作线程中执行以保持连接不阻塞，并周期性上报进度。
 
         Args:
-            read_timeout: Max solve time in seconds, default 3600 (求解最大等待秒数)
+            read_timeout: Max total solve time in seconds, default 3600
+                          (求解总时限秒数；超时抛错，求解本身在后台继续)
         """
         try:
             loop = asyncio.get_running_loop()

@@ -899,10 +899,23 @@ class QtModelProvider(BridgeProvider):
         self._mdb.update_model()
 
     def run_analysis(self, read_timeout: int = 3600) -> None:
-        self._require_available()
-        # qtmodel 的 do_solve 是阻塞式 HTTP 调用，最长阻塞 read_timeout 秒
-        self._mdb.do_solve(read_timeout=read_timeout)
+        """启动求解并阻塞至后台任务真正结束。
 
+        2.5.0 起 do_solve 默认 wait=False——只启动后台求解便立即返回（内部
+        sleep(3)）。若不显式等待，调用方会在求解仍在进行时就去取结果。
+        这里用 wait=True 让 qtmodel 轮询 GET-PROJECT-SOLVE-STATUS 直到收敛，
+        并把 read_timeout 作为求解总时限（而非单次 HTTP 超时）。
+
+        求解失败/取消时 qtmodel 抛 RuntimeError，超时抛 TimeoutError，
+        均由上层转为 ToolError。
+        """
+        self._require_available()
+        self._mdb.do_solve(
+            wait=True,
+            poll_interval=2.0,
+            max_wait=read_timeout,
+            status_read_timeout=30,
+        )
 
     def add_node_tandem(self, *args, **kwargs):
         self._require_available()
