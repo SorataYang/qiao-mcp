@@ -1327,6 +1327,156 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         return self._cdb.get_reinforcement_data()
 
+    # ── Concrete Check: 2.5.0 新增能力 ─────────────────────────────────
+    #
+    # 说明：cdb 的检算设置类接口（*_analysis_setting）在 qtmodel 源码与官方
+    # 文档中均未标注量纲，但从默认值可判定为 mm/MPa（如保护层 30.0=30mm、
+    # 钢筋疲劳限值 145.0=145MPa）。因未见权威单位说明，此处**不做换算**，
+    # 按原生单位透传，由工具层 docstring 明确告知调用方。
+
+    # 查询：全部为读操作，直接透传 qtmodel 返回值
+    _CHECK_QUERY_METHODS = {
+        "case": "get_concrete_check_case",
+        "basic_info": "get_check_case_basic_info",
+        "materials": "get_check_case_material_infos",
+        "vertical_prestress": "get_check_case_vertical_prestress_info",
+        "stirrups": "get_check_case_stirrup_infos",
+        "reinforcement": "get_check_case_reinforcement_data",
+        "tendon_section": "get_check_case_prestress_tendon_sec_info",
+        "section_property": "get_check_case_section_property",
+        "element_table": "get_element_table_info",
+        "solve_status": "get_concrete_check_solve_status",
+        "normal_section_bearing_setting": "get_normal_section_bearing_analysis_setting",
+        "oblique_shear_bearing_setting": "get_oblique_section_shear_bearing_analysis_setting",
+        "limit_state_setting": "get_limit_state_method_analysis_setting",
+        "normal_stress_setting": "get_normal_stress_analysis_setting",
+        "crack_width_setting": "get_crack_width_analysis_setting",
+        "moment_curvature_setting": "get_moment_curvature_curve_analysis_setting",
+        "bearing_curve_setting": "get_bearing_curve_analysis_setting",
+    }
+
+    def get_check_data(self, kind: str, **kwargs) -> Any:
+        """按 kind 读取检算数据；kind 到 qtmodel 方法的映射见 _CHECK_QUERY_METHODS。"""
+        self._require_available()
+        if kind in self._CHECK_QUERY_METHODS:
+            method = getattr(self._cdb, self._CHECK_QUERY_METHODS[kind])
+            return method(**{k: v for k, v in kwargs.items() if v is not None})
+        # 需要参数的查询单独分派
+        if kind == "stress":
+            return self._cdb.get_concrete_check_stress_info(
+                stress_type=kwargs.get("stress_type", 1),
+                specific_load_type_name=kwargs.get("name", ""),
+            )
+        if kind == "load_table":
+            return self._cdb.get_check_case_load_table_info(
+                combine_type=kwargs.get("combine_type", 1),
+                specific_load_type_name=kwargs.get("name", ""),
+            )
+        if kind == "shear_stirrup":
+            ele_id = kwargs.get("element_id")
+            return self._cdb.get_element_shear_stirrup_data(
+                ele_id=-1 if ele_id is None else ele_id
+            )
+        if kind == "torsion_stirrup":
+            ele_id = kwargs.get("element_id")
+            return self._cdb.get_element_torsion_stirrup_data(
+                ele_id=-1 if ele_id is None else ele_id
+            )
+        raise ValueError(f"unknown check data kind: {kind}")
+
+    # 分析设置：kind → qtmodel update 方法；参数原样透传（原生 mm/MPa）
+    _CHECK_SETTING_METHODS = {
+        "normal_section_bearing": "update_normal_section_bearing_analysis_setting",
+        "oblique_shear_bearing": "update_oblique_section_shear_bearing_analysis_setting",
+        "limit_state": "update_limit_state_method_analysis_setting",
+        "normal_stress": "update_normal_stress_analysis_setting",
+        "crack_width": "update_crack_width_analysis_setting",
+        "moment_curvature": "update_moment_curvature_curve_analysis_setting",
+        "bearing_curve": "update_bearing_curve_analysis_setting",
+    }
+
+    def configure_check_analysis(self, kind: str, settings: dict[str, Any]) -> None:
+        """更新某一类检算分析设置；settings 按 qtmodel 原生参数名与单位传入。"""
+        self._require_available()
+        if kind not in self._CHECK_SETTING_METHODS:
+            raise ValueError(f"unknown analysis setting kind: {kind}")
+        getattr(self._cdb, self._CHECK_SETTING_METHODS[kind])(**settings)
+
+    def update_check_stirrup(
+        self,
+        stirrup_id: int,
+        name: str,
+        stirrup_type: int = 1,
+        rebar_material_id: int = 1,
+        limbs_number: int = 2,
+        loops_number: int = 2,
+        diameter_m: float = 0.020,
+        spacing_m: float = 0.2,
+        core_diameter_m: float = 0.0,
+    ) -> None:
+        """修改检算箍筋定义；直径由 m 换算为 qtmodel 要求的 mm。"""
+        self._require_available()
+        self._cdb.update_check_stirrup(
+            stirrup_id=stirrup_id,
+            name=name,
+            stirrup_type=stirrup_type,
+            rebar_material_id=rebar_material_id,
+            limbs_number=limbs_number,
+            loops_number=loops_number,
+            stirrup_diameter=diameter_m * 1000.0,  # m → mm
+            stirrup_spacing=spacing_m,
+            core_diameter=core_diameter_m,
+        )
+
+    def remove_check_stirrup(self, stirrup_id: int = -1, name: str = "") -> None:
+        self._require_available()
+        self._cdb.remove_check_stirrup(stirrup_id=stirrup_id, name=name)
+
+    def set_element_shear_stirrup(
+        self,
+        element_id: int,
+        stirrup_i_y: int = 1,
+        stirrup_i_x: int = 1,
+        stirrup_j_y: int = 1,
+        stirrup_j_x: int = 1,
+    ) -> None:
+        self._require_available()
+        self._cdb.add_element_shear_stirrup(
+            ele_id=element_id,
+            stirrup_i_y=stirrup_i_y,
+            stirrup_i_x=stirrup_i_x,
+            stirrup_j_y=stirrup_j_y,
+            stirrup_j_x=stirrup_j_x,
+        )
+
+    def set_element_torsion_stirrup(
+        self, element_id: int, stirrup_i: int = 1, stirrup_j: int = 1
+    ) -> None:
+        self._require_available()
+        self._cdb.add_element_torsion_stirrup(
+            ele_id=element_id, stirrup_i=stirrup_i, stirrup_j=stirrup_j
+        )
+
+    def remove_element_stirrup(
+        self, element_id: int = -1, remove_shear: bool = True, remove_torsion: bool = True
+    ) -> None:
+        """删除单元箍筋设置；element_id<=0 表示删除全部。"""
+        self._require_available()
+        self._cdb.remove_element_stirrup(
+            ele_id=element_id, remove_shear=remove_shear, remove_torsion=remove_torsion
+        )
+
+    def open_check_case(self, name: str = "", file_path: str = "") -> Any:
+        self._require_available()
+        return self._cdb.open_concrete_check_case(name=name, file_path=file_path)
+
+    def save_check_case(self, file_path: str = "") -> Any:
+        """保存当前检算工况；给出 file_path 时另存为该路径。"""
+        self._require_available()
+        if file_path:
+            return self._cdb.save_as_check_case(file_path=file_path)
+        return self._cdb.save_check_case()
+
     # ── Group Management ───────────────────────────────────────────────
 
     def add_structure_group(self, name: str) -> None:
