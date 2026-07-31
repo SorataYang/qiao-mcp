@@ -1,24 +1,77 @@
 [project]
-name = "bridge-mcp"
-version = "0.1.0"
+name = "qiao-mcp"
+version = "0.2.33"
 description = "MCP server for intelligent bridge structural design and analysis (桥梁智能设计 MCP 服务器)"
 readme = "README.md"
 authors = [
     { name = "Sorata", email = "194564851+SorataYang@users.noreply.github.com" }
 ]
 requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
 dependencies = [
     "mcp[cli]>=1.0.0",
     "numpy>=2.4.2",
     "openpyxl>=3.1.5",
     "pandas>=3.0.1",
-    "qtmodel>=2.3.3",
+    # qtmodel 自身未声明任何依赖，但 import 时需要 psutil/requests 等，须在此代为声明
+    "psutil>=5.9",
+    "qtmodel>=2.3.3,<2.4",
     "requests>=2.32.5",
 ]
 
 [project.scripts]
-bridge-mcp = "bridge_mcp.server:main"
+qiao-mcp = "qiao_mcp.server:main"
+
+[project.urls]
+Homepage = "https://github.com/SorataYang/qiao-mcp"
+Repository = "https://github.com/SorataYang/qiao-mcp"
+Issues = "https://github.com/SorataYang/qiao-mcp/issues"
 
 [build-system]
-requires = ["uv_build>=0.9.28,<0.10.0"]
+requires = ["uv_build>=0.9.28,<0.12"]
 build-backend = "uv_build"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+# E/F = pyflakes+pycodestyle, I = isort, UP = pyupgrade, B = bugbear
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    "E501",  # 行宽由 line-length 控制，长中英双语 docstring 不强制换行
+    "E741",  # 允许 i/j 等工程惯用单字母变量
+]
+
+[tool.ruff.lint.per-file-ignores]
+# 测试通过 `from conftest import ...` 依赖 pytest 的 rootdir 注入，非标准包导入
+"tests/*" = ["E402"]
+
+[tool.mypy]
+python_version = "3.11"
+# qtmodel 无类型信息；provider 是唯一直接触碰它的边界，单独放宽
+ignore_missing_imports = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+# 渐进式：先保证不引入语法/名称级错误，不强制全量类型注解
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "qtmodel.*"
+ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.0",
+    "pytest>=9.1.1",
+    "ruff>=0.15.21",
+]
