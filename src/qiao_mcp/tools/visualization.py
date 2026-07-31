@@ -4,10 +4,12 @@ MCP Tools for visualization — screenshots and result plots.
 """
 
 import os
+from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP, Image
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 
 # Default output directory for images (图片默认保存目录)
 DEFAULT_IMAGE_DIR = os.path.join(os.path.expanduser("~"), "qiao_mcp_images")
@@ -19,6 +21,18 @@ def _ensure_dir(path: str) -> str:
     return path
 
 
+# QiaoTong 软件内置视图预设编号（odb.set_view_direction 的 direction 参数）
+_VIEW_PRESETS = {
+    "iso": 1,      # 空间视图1
+    "front": 2,    # 前视图
+    "side": 4,     # 左视图
+    "top": 5,      # 顶视图
+    "right": 6,    # 右视图
+    "back": 8,     # 后视图
+    "bottom": 10,  # 底视图
+}
+
+
 def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     """Register visualization MCP tools."""
 
@@ -26,39 +40,48 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     def save_model_screenshot(
         file_path: str = "",
         view_angle: str = "iso",
-    ) -> str:
+        return_image: bool = True,
+    ) -> str | Image:
         """
-        Save a screenshot of the current bridge model view (保存桥梁模型截图).
+        Capture a screenshot of the current bridge model view (截取桥梁模型视图).
+
+        By default returns the image itself so it can be viewed directly.
+        默认直接返回图像内容，可在客户端预览。
 
         Args:
             file_path: Output file path (.png). If empty, saves to default directory.
                        输出路径（.png格式），为空则保存到默认目录
-            view_angle: View angle preset (视角预设):
-                'iso'(等轴测), 'front'(正视), 'side'(侧视), 'top'(俯视)
+            view_angle: View preset (视角预设): 'iso'(空间视图), 'front'(前视),
+                'side'(左视), 'top'(俯视), 'right'(右视), 'back'(后视), 'bottom'(仰视),
+                or 'current' to keep the current view (保持当前视角)
+            return_image: Return the PNG as viewable image content; if False, return
+                          only the saved path (是否直接返回图像内容，否则仅返回路径)
         """
         try:
             if not file_path:
                 _ensure_dir(DEFAULT_IMAGE_DIR)
                 file_path = os.path.join(DEFAULT_IMAGE_DIR, "model_view.png")
 
-            # Set the view angle first
-            angle_map = {
-                "iso": (45, 35),
-                "front": (0, 0),
-                "side": (90, 0),
-                "top": (0, 90),
-            }
-            if view_angle in angle_map:
-                h, v = angle_map[view_angle]
+            warning = ""
+            if view_angle != "current":
+                if view_angle not in _VIEW_PRESETS:
+                    valid = ", ".join(_VIEW_PRESETS)
+                    raise ToolInputError(f"Unknown view_angle '{view_angle}'. Valid: {valid}, current")
                 try:
-                    provider.set_view_angle(horizontal=h, vertical=v)
-                except Exception:
-                    pass  # Non-critical; proceed with current view
+                    provider.set_view_direction(direction=_VIEW_PRESETS[view_angle])
+                except Exception as e:
+                    warning = f" (WARNING: view preset failed, used current view — 视角设置失败: {e})"
 
             provider.save_model_image(file_path=file_path)
-            return f"Screenshot saved to: {file_path} (截图已保存)"
+
+            if return_image and not warning and os.path.exists(file_path):
+                # 直接返回图像内容，便于模型/客户端查看
+                return Image(path=file_path)
+            return f"Screenshot saved to: {file_path} (截图已保存){warning}"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error saving screenshot (保存截图失败): {e}"
+            raise ToolError(f"Error saving screenshot (保存截图失败): {e}") from e
 
     @mcp.tool()
     def plot_analysis_result(
@@ -67,9 +90,13 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         case_name: str = "",
         component: str = "",
         file_path: str = "",
-    ) -> str:
+        return_image: bool = True,
+    ) -> str | Image:
         """
-        Generate and save an analysis result plot (生成分析结果云图并保存).
+        Generate an analysis result contour plot (生成分析结果云图).
+
+        By default returns the plot image itself for direct viewing.
+        默认直接返回云图图像内容，可在客户端预览。
 
         Args:
             result_type: Result type (结果类型):
@@ -86,6 +113,8 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
                 Leave empty to use default component.
             file_path: Output file path (.png). Empty = default directory.
                        输出路径，为空则保存到默认目录
+            return_image: Return the PNG as viewable image content; if False, return
+                          only the saved path (是否直接返回图像内容，否则仅返回路径)
         """
         try:
             if not file_path:
@@ -94,7 +123,7 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
                     DEFAULT_IMAGE_DIR, f"result_{result_type}_stage{stage_id}.png"
                 )
 
-            kwargs = {"stage_id": stage_id}
+            kwargs: dict[str, Any] = {"stage_id": stage_id}
             if case_name:
                 kwargs["case_name"] = case_name
             if component:
@@ -103,9 +132,13 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
             provider.plot_result(
                 result_type=result_type, file_path=file_path, **kwargs
             )
+            if return_image and os.path.exists(file_path):
+                return Image(path=file_path)
             return f"Result plot saved to: {file_path} (结果云图已保存)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error plotting result (生成结果云图失败): {e}"
+            raise ToolError(f"Error plotting result (生成结果云图失败): {e}") from e
 
     @mcp.tool()
     def set_view_angle(
@@ -117,35 +150,32 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         Set the 3D view angle of the bridge model (设置三维视角).
 
         Args:
-            angle_preset: View preset (视角预设):
-                'iso'(等轴测), 'front'(正视图), 'side'(侧视图), 'top'(俯视图)
-                Set to 'custom' to use horizontal/vertical values.
-            horizontal: Horizontal rotation angle in degrees (水平旋转角，单位度)
-            vertical: Vertical rotation angle in degrees (垂直旋转角，单位度)
+            angle_preset: View preset (视角预设): 'iso'(空间视图), 'front'(前视图),
+                'side'(左视图), 'top'(俯视图), 'right'(右视图), 'back'(后视图),
+                'bottom'(仰视图). Set to 'custom' to use horizontal/vertical rotation.
+            horizontal: Horizontal rotation in degrees, for 'custom' (水平旋转角，度)
+            vertical: Vertical rotation in degrees, for 'custom' (垂直旋转角，度)
         """
         try:
-            if angle_preset != "custom":
-                angle_map = {
-                    "iso": (45, 35),
-                    "front": (0, 0),
-                    "side": (90, 0),
-                    "top": (0, 90),
-                }
-                if angle_preset not in angle_map:
-                    return (
-                        f"Unknown preset '{angle_preset}'. "
-                        "Use: iso, front, side, top, or custom"
-                    )
-                horizontal, vertical = angle_map[angle_preset]
-
-            provider.set_view_direction(horizontal_degree=horizontal, vertical_degree=vertical)
-            return (
-                f"View angle set to {angle_preset} "
-                f"(horizontal={horizontal}°, vertical={vertical}°) "
-                f"(视角已设置)"
-            )
+            if angle_preset == "custom":
+                if horizontal is None and vertical is None:
+                    raise ToolInputError("custom preset requires horizontal/vertical degrees (custom 需给出旋转角度)")
+                provider.set_view_direction(
+                    horizontal_degree=horizontal or 0, vertical_degree=vertical or 0
+                )
+                return (
+                    f"View rotated to horizontal={horizontal or 0}°, vertical={vertical or 0}° "
+                    f"(视角已设置)"
+                )
+            if angle_preset not in _VIEW_PRESETS:
+                valid = ", ".join(_VIEW_PRESETS)
+                raise ToolInputError(f"Unknown preset '{angle_preset}'. Use: {valid}, or custom")
+            provider.set_view_direction(direction=_VIEW_PRESETS[angle_preset])
+            return f"View angle set to {angle_preset} (视角已设置)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error setting view angle (设置视角失败): {e}"
+            raise ToolError(f"Error setting view angle (设置视角失败): {e}") from e
 
     @mcp.tool()
     def display_ids(
@@ -163,8 +193,10 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
             provider.display_node_id(show_id=node_id)
             provider.display_element_id(show_id=element_id)
             return "Successfully updated ID display settings (成功更新编号显示设置)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating ID display (更新编号显示失败): {e}"
+            raise ToolError(f"Error updating ID display (更新编号显示失败): {e}") from e
 
     @mcp.tool()
     def activate_structure(
@@ -179,13 +211,17 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
             element_ids: Element IDs to activate (要激活的单元号)
         """
         try:
-            kwargs = {}
-            if node_ids is not None: kwargs["node_ids"] = node_ids
-            if element_ids is not None: kwargs["element_ids"] = element_ids
+            kwargs: dict[str, Any] = {}
+            if node_ids is not None:
+                kwargs["node_ids"] = node_ids
+            if element_ids is not None:
+                kwargs["element_ids"] = element_ids
             provider.activate_structure(**kwargs)
             return "Successfully activated selected structure (成功激活选中结构)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error activating structure (激活结构失败): {e}"
+            raise ToolError(f"Error activating structure (激活结构失败): {e}") from e
 
     @mcp.tool()
     def set_render(flag: bool = True) -> str:
@@ -198,8 +234,10 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.set_render(flag=flag)
             return f"Successfully set render mode to {flag} (成功设置渲染模式)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error setting render mode (设置渲染模式失败): {e}"
+            raise ToolError(f"Error setting render mode (设置渲染模式失败): {e}") from e
 
     @mcp.tool()
     def reset_display() -> str:
@@ -209,8 +247,10 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.reset_display()
             return "Successfully reset display (成功恢复默认显示)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error resetting display (恢复默认显示失败): {e}"
+            raise ToolError(f"Error resetting display (恢复默认显示失败): {e}") from e
 
     @mcp.tool()
     def set_unit(unit_force: str = "KN", unit_length: str = "MM") -> str:
@@ -224,8 +264,10 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.set_unit(unit_force=unit_force, unit_length=unit_length)
             return f"Successfully set unit to {unit_force}-{unit_length} (成功设置单位)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error setting unit (设置单位失败): {e}"
+            raise ToolError(f"Error setting unit (设置单位失败): {e}") from e
 
     @mcp.tool()
     def change_construct_stage(stage: int = 0) -> str:
@@ -238,5 +280,7 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.change_construct_stage(stage=stage)
             return f"Successfully changed to stage {stage} (成功切换施工阶段)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error changing construct stage (切换施工阶段失败): {e}"
+            raise ToolError(f"Error changing construct stage (切换施工阶段失败): {e}") from e

@@ -6,11 +6,13 @@ Provides tools for creating and managing model entities:
 nodes, elements, materials, sections, structure groups, etc.
 """
 
+import asyncio
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 
 
 def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -50,8 +52,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 start_id=start_id,
             )
             return f"Successfully created {len(node_data)} nodes (成功创建 {len(node_data)} 个节点)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating nodes (创建节点失败): {e}"
+            raise ToolError(f"Error creating nodes (创建节点失败): {e}") from e
 
     @mcp.tool()
     def create_nodes_linear(
@@ -116,8 +120,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"from ({start_x},{start_y},{start_z}) to ({end_x:.3f},{end_y:.3f},{end_z:.3f}) "
                 f"(成功批量创建 {count} 个等间距节点)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating linear nodes (批量创建节点失败): {e}"
+            raise ToolError(f"Error creating linear nodes (批量创建节点失败): {e}") from e
 
 
 
@@ -165,8 +171,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"(nodes {node_i}→{node_j}, mat={mat_id}, sec={sec_id}) "
                 f"(成功创建单元 {node_i}→{node_j})"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating beam element (创建单元失败): {e}"
+            raise ToolError(f"Error creating beam element (创建单元失败): {e}") from e
 
     @mcp.tool()
     def create_beam_elements_linear(
@@ -221,8 +229,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"(mat={mat_id}, sec={sec_id}) "
                 f"(成功批量创建 {count} 个梁单元)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating beam elements (批量创建梁单元失败): {e}"
+            raise ToolError(f"Error creating beam elements (批量创建梁单元失败): {e}") from e
 
     @mcp.tool()
     def create_elements(
@@ -244,8 +254,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.add_elements(ele_data=element_data)
             return f"Successfully created {len(element_data)} elements (成功创建 {len(element_data)} 个单元)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating elements (创建单元失败): {e}"
+            raise ToolError(f"Error creating elements (创建单元失败): {e}") from e
 
     @mcp.tool()
     def create_load_group(name: str = "默认荷载组") -> str:
@@ -262,8 +274,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.add_load_group(name=name)
             return f"Successfully created load group '{name}' (成功创建荷载组 '{name}')"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating load group (创建荷载组失败): {e}"
+            raise ToolError(f"Error creating load group (创建荷载组失败): {e}") from e
 
     @mcp.tool()
     def create_load_case(
@@ -291,8 +305,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"Successfully created load case '{name}' (type='{case_type}'). "
                 f"(成功创建荷载工况 '{name}')"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating load case '{name}' (创建工况失败): {e}"
+            raise ToolError(f"Error creating load case '{name}' (创建工况失败): {e}") from e
 
     @mcp.tool()
     def add_load_combine(
@@ -317,7 +333,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             index: ID index, -1 for auto (编号，-1自动生成)
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "name": name,
                 "combine_type": combine_type,
                 "describe": describe,
@@ -327,8 +343,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["combine_info"] = [tuple(item) for item in combine_info]
             provider.add_load_combine(**kwargs)
             return f"Successfully added load combination '{name}' (成功添加荷载组合 '{name}')"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding load combination (添加荷载组合失败): {e}"
+            raise ToolError(f"Error adding load combination (添加荷载组合失败): {e}") from e
 
 
 
@@ -353,7 +371,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                        自定义材料参数 [弹性模量, 容重, 泊松比, 热膨胀系数]
         """
         try:
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if data_info:
                 kwargs["data_info"] = data_info
             provider.add_material(
@@ -364,8 +382,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 **kwargs,
             )
             return f"Successfully created material '{name}' (成功创建材料 '{name}')"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating material (创建材料失败): {e}"
+            raise ToolError(f"Error creating material (创建材料失败): {e}") from e
 
     @mcp.tool()
     def add_time_parameter(
@@ -388,7 +408,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             index: ID index, -1 for auto (编号，-1自动生成)
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "name": name,
                 "code_index": code_index,
                 "index": index,
@@ -402,8 +422,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
             provider.add_time_parameter(**kwargs)
             return f"Successfully added time parameter '{name}' (成功添加时间依存参数 '{name}')"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding time parameter (添加时间依存参数失败): {e}"
+            raise ToolError(f"Error adding time parameter (添加时间依存参数失败): {e}") from e
 
     @mcp.tool()
     def add_creep_function(
@@ -426,8 +448,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 name=name, creep_data=creep_tuples, scale_factor=scale_factor
             )
             return f"Successfully added creep function '{name}' (成功添加徐变函数)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding creep function (添加徐变函数失败): {e}"
+            raise ToolError(f"Error adding creep function (添加徐变函数失败): {e}") from e
 
     @mcp.tool()
     def add_shrink_function(
@@ -445,905 +469,107 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             scale_factor: Scale factor (比例系数)
         """
         try:
-            kwargs = {"name": name, "scale_factor": scale_factor}
+            kwargs: dict[str, Any] = {"name": name, "scale_factor": scale_factor}
             if shrink_data is not None:
                 kwargs["shrink_data"] = [tuple(item) for item in shrink_data]
             provider.add_shrink_function(**kwargs)
             return f"Successfully added shrink function '{name}' (成功添加收缩函数)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding shrink function (添加收缩函数失败): {e}"
+            raise ToolError(f"Error adding shrink function (添加收缩函数失败): {e}") from e
 
     @mcp.tool()
     def create_section(
         name: str,
         sec_type: str,
         sec_info: list[float] | None = None,
-        box_height: float | None = None,
+        mat_combine: list[float] | None = None,
         box_num: int | None = None,
+        box_height: float | None = None,
+        symmetry: bool = True,
+        chamfer_info: list[str] | None = None,
     ) -> str:
         """
-        Create a cross-section in the bridge model (创建截面).
+        Create a cross-section (创建截面) — one tool for all parametric section types.
 
         Args:
             name: Section name (截面名称)
-            sec_type: Section type name (截面类型), e.g.: '矩形'(Rectangle), '圆形'(Circle),
-                      '工字形'(I-shape), '混凝土箱梁'(Concrete box girder), '工字钢梁'(Steel I-girder),
-                      '箱型钢梁'(Steel box girder)
-            sec_info: Section dimension parameters (截面参数列表), varies by sec_type
-            box_height: Box girder height, required for concrete box girder (箱梁梁高)
-            box_num: Number of cells, required for concrete box girder (箱室数)
+            sec_type: Section type, Chinese enum (截面类型，中文枚举)。
+                sec_info layout per type (各类型 sec_info 参数顺序):
+                ─ 基本形状 ─
+                "矩形":       [宽, 高]
+                "圆形":       [直径]
+                "圆管":       [直径, 壁厚]
+                "箱型":       [宽, 高, 底宽, 腹板厚, 顶板厚, 底板厚]
+                "T形":        [宽, 高, 腹板厚, 顶板厚]
+                "倒T形":      [宽, 高, 腹板厚, 底板厚]
+                "I字形":      [顶宽, 底宽, 高, 腹板厚, 顶板厚, 底板厚]
+                "马蹄T形":    [宽, 高, 腹板厚, 翼缘厚, 腹板底渐变高, 顶倒角宽, 顶倒角高, 底倒角宽, 底倒角高]
+                "实腹八边形": [宽, 高, 倒角高, 倒角宽]
+                "空腹八边形": [宽, 高, 腹板厚, 顶板厚, 底板厚, 倒角宽, 倒角高]
+                "内八角形":   [宽, 高, 腹板厚, 顶板厚, 底板厚, 倒角宽, 倒角高]
+                "实腹圆端形": [宽, 高]
+                "空腹圆端形": [宽, 高, 壁厚]
+                ─ 混凝土/组合 ─
+                "I字型混凝土": [顶宽, 底宽, 高, 腹板厚, 顶板厚, 底板厚, 顶倒角宽, 顶倒角高, 底倒角宽, 底倒角高]
+                "钢管砼":     [直径, 壁厚]
+                "钢箱砼":     [宽, 高, 底宽, 腹板厚, 顶板厚, 底板厚]
+                "混凝土箱梁": 顶板/腹板/底板参数列表，配合 box_num/box_height/symmetry/chamfer_info
+                "工字组合梁" | "箱形组合梁" | "自定义组合梁": sec_info + mat_combine(材料组合比)
+                ─ 钢结构带肋 ─
+                "带肋H截面":   [高, 宽, 左右腹板厚, 横腹板厚, 腹板肋高, 腹板肋厚]
+                "钢工字型带肋": [顶宽, 底宽, 腹板高, 顶板厚, 底板厚, 腹板厚, 顶缘肋距, 肋数, 肋距, 肋高, 肋厚]
+                "带肋钢箱":   [宽, 高, 腹板厚, 顶板厚, 底板厚, 顶底板肋高, 顶底板肋厚, 腹板肋高, 腹板肋厚,
+                              顶底板肋距, 腹板肋距, 腹板肋数, 顶底板肋数]
+                "钢桁箱梁3":  [高, 宽, 顶悬臂肋高, 底悬臂肋高, 腹板厚, 顶板厚, 底板厚, 顶板肋高, 顶板肋厚,
+                              底板肋高, 底板肋厚, 腹板肋高, 腹板肋厚]
+                "钢桁箱梁1":  [高, 宽, 左悬臂宽, 右悬臂宽, 底悬臂高, 腹板厚, 顶板厚, 底板厚, 顶板肋高, 顶板肋厚,
+                              底板肋高, 底板肋厚, 顶缘腹板肋距, 腹板肋数, 腹板肋距, 腹板肋高, 腹板肋厚,
+                              左腹板肋位置, 右腹板肋位置, 左悬臂肋距, 左悬臂肋高, 左悬臂肋厚, 左悬臂肋顶距,
+                              左悬臂肋底距, 左悬臂肋倒角, 右悬臂肋距, 右悬臂肋高, 右悬臂肋厚, 右悬臂肋顶距,
+                              右悬臂肋底距, 右悬臂肋倒角]  (32项)
+                "钢桁箱梁2":  [高, 宽, 左上悬臂宽, 右上悬臂宽, 左下悬臂宽, 右下悬臂宽, 腹板厚, 顶板厚, 底板厚,
+                              顶板肋高, 顶板肋厚, 底板肋高, 底板肋厚, 顶缘腹板肋距, 腹板肋数, 腹板肋距,
+                              腹板肋高, 腹板肋厚, 左腹板肋位置, 右腹板肋位置, 左上悬臂肋距, 左上悬臂肋高,
+                              左上悬臂肋厚, 左上悬臂肋顶距, 左上悬臂肋底距, 左上悬臂肋倒角, 右上悬臂肋距,
+                              右上悬臂肋高, 右上悬臂肋厚, 右上悬臂肋顶距, 右上悬臂肋底距, 右上悬臂肋倒角,
+                              左下悬臂肋距, 左下悬臂肋高, 左下悬臂肋厚, 右下悬臂肋距, 右下悬臂肋高,
+                              右下悬臂肋厚]  (38项)
+            sec_info: Section dimensions in the order shown above (按上表顺序的截面尺寸参数)
+            mat_combine: Material combination ratios for composite sections (组合梁材料组合比)
+            box_num: Number of box cells, concrete box girder only (箱室数，混凝土箱梁)
+            box_height: Box girder height, concrete box girder only (箱梁梁高)
+            symmetry: Symmetric section, concrete box girder (是否对称截面)
+            chamfer_info: Chamfer info strings, concrete box girder (倒角信息)
+
+        For non-parametric sections use: create_polygon_section (任意多边形),
+        create_line_width_section (线宽), create_section_from_properties (按特性值).
+
+        Example:
+            create_section(name="主梁", sec_type="矩形", sec_info=[1.0, 1.5])
+            create_section(name="钢管", sec_type="圆管", sec_info=[0.6, 0.016])
         """
         try:
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if sec_info:
                 kwargs["sec_info"] = sec_info
-            if box_height is not None:
-                kwargs["box_height"] = box_height
+            if mat_combine is not None:
+                kwargs["mat_combine"] = mat_combine
             if box_num is not None:
                 kwargs["box_num"] = box_num
-            provider.add_section(name=name, sec_type=sec_type, **kwargs)
-            return f"Successfully created section '{name}' (type: {sec_type}) (成功创建截面 '{name}')"
-        except Exception as e:
-            return f"Error creating section (创建截面失败): {e}"
-
-    @mcp.tool()
-    def create_rectangle_section(name: str, width: float, height: float) -> str:
-        """
-        Create a rectangular cross-section (创建矩形截面).
-
-        Args:
-            name: Section name (截面名称)
-            width: Rectangle width (长)
-            height: Rectangle height (高)
-        """
-        try:
-            provider.add_section(name=name, sec_type="矩形", sec_info=[width, height])
-            return f"Successfully created rectangular section '{name}' ({width}x{height})"
-        except Exception as e:
-            return f"Error creating rectangular section: {e}"
-
-    @mcp.tool()
-    def create_circle_section(name: str, diameter: float) -> str:
-        """
-        Create a circular cross-section (创建圆形截面).
-
-        Args:
-            name: Section name (截面名称)
-            diameter: Circle diameter (直径)
-        """
-        try:
-            provider.add_section(name=name, sec_type="圆形", sec_info=[diameter])
-            return f"Successfully created circular section '{name}' (D={diameter})"
-        except Exception as e:
-            return f"Error creating circular section: {e}"
-
-    @mcp.tool()
-    def create_circular_tube_section(name: str, diameter: float, thickness: float) -> str:
-        """
-        Create a circular tube cross-section (创建圆管截面).
-
-        Args:
-            name: Section name (截面名称)
-            diameter: Tube outer diameter (直径)
-            thickness: Wall thickness (壁厚)
-        """
-        try:
-            provider.add_section(name=name, sec_type="圆管", sec_info=[diameter, thickness])
-            return f"Successfully created circular tube section '{name}'"
-        except Exception as e:
-            return f"Error creating circular tube section: {e}"
-
-    @mcp.tool()
-    def create_t_section(name: str, width: float, height: float, web_thickness: float, top_thickness: float) -> str:
-        """
-        Create a T-shape cross-section (创建T形截面).
-
-        Args:
-            name: Section name (截面名称)
-            width: Top flange width (长)
-            height: Total height (高)
-            web_thickness: Web thickness (腹板厚)
-            top_thickness: Top flange thickness (顶板厚)
-        """
-        try:
-            provider.add_section(name=name, sec_type="T形", sec_info=[width, height, web_thickness, top_thickness])
-            return f"Successfully created T-shape section '{name}'"
-        except Exception as e:
-            return f"Error creating T-shape section: {e}"
-
-    @mcp.tool()
-    def create_i_section(
-        name: str,
-        top_width: float,
-        bottom_width: float,
-        height: float,
-        web_thickness: float,
-        top_thickness: float,
-        bottom_thickness: float,
-    ) -> str:
-        """
-        Create an I-shape cross-section (创建I字形截面).
-
-        Args:
-            name: Section name (截面名称)
-            top_width: Top flange width (顶板宽)
-            bottom_width: Bottom flange width (底板宽)
-            height: Total height (高)
-            web_thickness: Web thickness (腹板厚)
-            top_thickness: Top flange thickness (顶板厚)
-            bottom_thickness: Bottom flange thickness (底板厚)
-        """
-        try:
-            provider.add_section(
-                name=name,
-                sec_type="I字形",
-                sec_info=[top_width, bottom_width, height, web_thickness, top_thickness, bottom_thickness],
-            )
-            return f"Successfully created I-shape section '{name}'"
-        except Exception as e:
-            return f"Error creating I-shape section: {e}"
-
-    @mcp.tool()
-    def create_box_section(
-        name: str,
-        width: float,
-        height: float,
-        bottom_width: float,
-        web_thickness: float,
-        top_thickness: float,
-        bottom_thickness: float,
-    ) -> str:
-        """
-        Create a box cross-section (创建箱型截面).
-
-        Args:
-            name: Section name (截面名称)
-            width: Top width (长)
-            height: Total height (高)
-            bottom_width: Bottom width (底板宽)
-            web_thickness: Web thickness (腹板厚)
-            top_thickness: Top flange thickness (顶板厚)
-            bottom_thickness: Bottom flange thickness (底板厚)
-        """
-        try:
-            provider.add_section(
-                name=name,
-                sec_type="箱型",
-                sec_info=[width, height, bottom_width, web_thickness, top_thickness, bottom_thickness],
-            )
-            return f"Successfully created box section '{name}'"
-        except Exception as e:
-            return f"Error creating box section: {e}"
-
-    @mcp.tool()
-    def create_solid_octagon_section(name: str, width: float, height: float, chamfer_height: float, chamfer_width: float) -> str:
-        """
-        Create a solid octagon cross-section (创建实腹八边形截面).
-
-        Args:
-            name: Section name (截面名称)
-            width: Total width (长)
-            height: Total height (高)
-            chamfer_height: Chamfer height (倒角高)
-            chamfer_width: Chamfer width (倒角宽)
-        """
-        try:
-            provider.add_section(name=name, sec_type="实腹八边形", sec_info=[width, height, chamfer_height, chamfer_width])
-            return f"Successfully created solid octagon section '{name}'"
-        except Exception as e:
-            return f"Error creating solid octagon section: {e}"
-
-    @mcp.tool()
-    def create_solid_round_ended_section(name: str, width: float, height: float) -> str:
-        """
-        Create a solid round-ended cross-section (创建实腹圆端形截面).
-
-        Args:
-            name: Section name (截面名称)
-            width: Total width (长)
-            height: Total height (高)
-        """
-        try:
-            provider.add_section(name=name, sec_type="实腹圆端形", sec_info=[width, height])
-            return f"Successfully created solid round-ended section '{name}'"
-        except Exception as e:
-            return f"Error creating solid round-ended section: {e}"
-
-    @mcp.tool()
-    def create_hollow_round_ended_section(name: str, width: float, height: float, thickness: float) -> str:
-        """
-        Create a hollow round-ended cross-section (创建空腹圆端形截面).
-
-        Args:
-            name: Section name (截面名称)
-            width: Total width (长)
-            height: Total height (高)
-            thickness: Wall thickness (壁厚)
-        """
-        try:
-            provider.add_section(name=name, sec_type="空腹圆端形", sec_info=[width, height, thickness])
-            return f"Successfully created hollow round-ended section '{name}'"
-        except Exception as e:
-            return f"Error creating hollow round-ended section: {e}"
-
-    @mcp.tool()
-    def create_hollow_octagon_section(
-        name: str,
-        width: float,
-        height: float,
-        web_thickness: float,
-        top_thickness: float,
-        bottom_thickness: float,
-        chamfer_width: float,
-        chamfer_height: float,
-    ) -> str:
-        """
-        Create a hollow octagon cross-section (创建空腹八边形截面).
-
-        Args:
-            name: Section name (截面名称)
-            width: Total width (长)
-            height: Total height (高)
-            web_thickness: Web thickness (腹板厚)
-            top_thickness: Top flange thickness (顶板厚)
-            bottom_thickness: Bottom flange thickness (底板厚)
-            chamfer_width: Chamfer width (倒角宽)
-            chamfer_height: Chamfer height (倒角高)
-        """
-        try:
-            provider.add_section(
-                name=name,
-                sec_type="空腹八边形",
-                sec_info=[width, height, web_thickness, top_thickness, bottom_thickness, chamfer_width, chamfer_height]
-            )
-            return f"Successfully created hollow octagon section '{name}'"
-        except Exception as e:
-            return f"Error creating hollow octagon section: {e}"
-
-    @mcp.tool()
-    def create_inner_octagon_section(
-        name: str,
-        width: float,
-        height: float,
-        web_thickness: float,
-        top_thickness: float,
-        bottom_thickness: float,
-        chamfer_width: float,
-        chamfer_height: float,
-    ) -> str:
-        """
-        Create an inner octagon cross-section (创建内八角形截面).
-
-        Args:
-            name: Section name (截面名称)
-            width: Total width (长)
-            height: Total height (高)
-            web_thickness: Web thickness (腹板厚)
-            top_thickness: Top flange thickness (顶板厚)
-            bottom_thickness: Bottom flange thickness (底板厚)
-            chamfer_width: Chamfer width (倒角宽)
-            chamfer_height: Chamfer height (倒角高)
-        """
-        try:
-            provider.add_section(
-                name=name,
-                sec_type="内八角形",
-                sec_info=[width, height, web_thickness, top_thickness, bottom_thickness, chamfer_width, chamfer_height]
-            )
-            return f"Successfully created inner octagon section '{name}'"
-        except Exception as e:
-            return f"Error creating inner octagon section: {e}"
-
-    @mcp.tool()
-    def create_inverted_t_section(name: str, width: float, height: float, web_thickness: float, bottom_thickness: float) -> str:
-        """
-        Create an inverted T-shape cross-section (创建倒T形截面).
-
-        Args:
-            name: Section name (截面名称)
-            width: Bottom flange width (长)
-            height: Total height (高)
-            web_thickness: Web thickness (腹板厚)
-            bottom_thickness: Bottom flange thickness (底板厚)
-        """
-        try:
-            provider.add_section(name=name, sec_type="倒T形", sec_info=[width, height, web_thickness, bottom_thickness])
-            return f"Successfully created inverted T-shape section '{name}'"
-        except Exception as e:
-            return f"Error creating inverted T-shape section: {e}"
-
-    @mcp.tool()
-    def create_horseshoe_t_section(
-        name: str,
-        width: float,
-        height: float,
-        web_thickness: float,
-        flange_thickness: float,
-        web_bottom_taper_height: float,
-        top_chamfer_width: float,
-        top_chamfer_height: float,
-        bottom_chamfer_width: float,
-        bottom_chamfer_height: float,
-    ) -> str:
-        """
-        Create a horseshoe T-shape cross-section (创建马蹄T形截面).
-
-        Args:
-            name: Section name (截面名称)
-            width: Flange width (长)
-            height: Total height (高)
-            web_thickness: Web thickness (腹板厚)
-            flange_thickness: Flange thickness (底板厚)
-            web_bottom_taper_height: Web bottom taper height (腹板底变高)
-            top_chamfer_width: Top chamfer width (顶板倒角宽)
-            top_chamfer_height: Top chamfer height (顶板倒角高)
-            bottom_chamfer_width: Bottom chamfer width (腹板倒角宽)
-            bottom_chamfer_height: Bottom chamfer height (腹板倒角高)
-        """
-        try:
-            provider.add_section(
-                name=name,
-                sec_type="马蹄T形",
-                sec_info=[width, height, web_thickness, flange_thickness, web_bottom_taper_height, top_chamfer_width, top_chamfer_height, bottom_chamfer_width, bottom_chamfer_height]
-            )
-            return f"Successfully created horseshoe T-shape section '{name}'"
-        except Exception as e:
-            return f"Error creating horseshoe T-shape section: {e}"
-
-    @mcp.tool()
-    def create_concrete_i_section(
-        name: str,
-        top_width: float,
-        bottom_width: float,
-        height: float,
-        web_thickness: float,
-        top_thickness: float,
-        bottom_thickness: float,
-        top_chamfer_width: float,
-        top_chamfer_height: float,
-        bottom_chamfer_width: float,
-        bottom_chamfer_height: float,
-    ) -> str:
-        """
-        Create a concrete I-shape cross-section (创建I字型混凝土截面).
-
-        Args:
-            name: Section name (截面名称)
-            top_width: Top flange width (顶板宽)
-            bottom_width: Bottom flange width (底板宽)
-            height: Total height (高)
-            web_thickness: Web thickness (腹板厚)
-            top_thickness: Top flange thickness (顶板厚)
-            bottom_thickness: Bottom flange thickness (底板厚)
-            top_chamfer_width: Top chamfer width (顶板倒角宽)
-            top_chamfer_height: Top chamfer height (顶板倒角高)
-            bottom_chamfer_width: Bottom chamfer width (底板倒角宽)
-            bottom_chamfer_height: Bottom chamfer height (底板倒角高)
-        """
-        try:
-            provider.add_section(
-                name=name,
-                sec_type="I字型混凝土",
-                sec_info=[top_width, bottom_width, height, web_thickness, top_thickness, bottom_thickness, top_chamfer_width, top_chamfer_height, bottom_chamfer_width, bottom_chamfer_height]
-            )
-            return f"Successfully created concrete I-shape section '{name}'"
-        except Exception as e:
-            return f"Error creating concrete I-shape section: {e}"
-
-    @mcp.tool()
-    def create_cfst_section(name: str, diameter: float, thickness: float) -> str:
-        """
-        Create a Concrete Filled Steel Tube (CFST) cross-section (创建钢管砼组合截面).
-
-        Args:
-            name: Section name (截面名称)
-            diameter: Outer diameter of the steel tube (钢管直径)
-            thickness: Wall thickness of the steel tube (钢管壁厚)
-        """
-        try:
-            provider.add_section(name=name, sec_type="钢管砼", sec_info=[diameter, thickness])
-            return f"Successfully created CFST section '{name}'"
-        except Exception as e:
-            return f"Error creating CFST section: {e}"
-
-    @mcp.tool()
-    def create_cfsb_section(
-        name: str,
-        width: float,
-        height: float,
-        bottom_width: float,
-        web_thickness: float,
-        top_thickness: float,
-        bottom_thickness: float,
-    ) -> str:
-        """
-        Create a Concrete Filled Steel Box (CFSB) cross-section (创建钢箱砼组合截面).
-
-        Args:
-            name: Section name (截面名称)
-            width: Top width (长)
-            height: Total height (高)
-            bottom_width: Steel box bottom width (钢箱底板宽)
-            web_thickness: Steel box web thickness (钢箱腹板厚)
-            top_thickness: Steel box top flange thickness (钢箱顶板厚)
-            bottom_thickness: Steel box bottom flange thickness (钢箱底板厚)
-        """
-        try:
-            provider.add_section(
-                name=name,
-                sec_type="钢箱砼",
-                sec_info=[width, height, bottom_width, web_thickness, top_thickness, bottom_thickness]
-            )
-            return f"Successfully created CFSB section '{name}'"
-        except Exception as e:
-            return f"Error creating CFSB section: {e}"
-
-    @mcp.tool()
-    def create_ribbed_h_section(
-        name: str,
-        height: float,
-        width: float,
-        left_right_web_thickness: float,
-        cross_web_thickness: float,
-        web_rib_height: float,
-        web_rib_thickness: float,
-    ) -> str:
-        """
-        Create a ribbed H-section (创建带肋H截面).
-
-        Args:
-            name: Section name (截面名称)
-            height: Total height (高)
-            width: Total width (长)
-            left_right_web_thickness: Left and right web thickness (左右腹板厚)
-            cross_web_thickness: Cross web thickness (横向腹板厚)
-            web_rib_height: Web rib height (腹板肋高)
-            web_rib_thickness: Web rib thickness (腹板肋厚)
-        """
-        try:
-            provider.add_section(
-                name=name,
-                sec_type="带肋H截面",
-                sec_info=[height, width, left_right_web_thickness, cross_web_thickness, web_rib_height, web_rib_thickness]
-            )
-            return f"Successfully created ribbed H-section '{name}'"
-        except Exception as e:
-            return f"Error creating ribbed H-section: {e}"
-
-    @mcp.tool()
-    def create_ribbed_i_section(
-        name: str,
-        top_width: float,
-        bottom_width: float,
-        web_height: float,
-        top_thickness: float,
-        bottom_thickness: float,
-        web_thickness: float,
-        top_flange_rib_distance: float,
-        rib_count: int,
-        rib_spacing: float,
-        rib_height: float,
-        rib_thickness: float,
-    ) -> str:
-        """
-        Create a ribbed steel I-shape section (创建钢工字型带肋截面).
-
-        Args:
-            name: Section name (截面名称)
-            top_width: Top flange width (顶板长)
-            bottom_width: Bottom flange width (底板长)
-            web_height: Web height (中腹高)
-            top_thickness: Top flange thickness (顶板厚)
-            bottom_thickness: Bottom flange thickness (底板厚)
-            web_thickness: Web thickness (腹板厚)
-            top_flange_rib_distance: Distance from top flange to web rib (顶板与腹板肋的距离)
-            rib_count: Number of ribs (肋数)
-            rib_spacing: Rib spacing (肋距)
-            rib_height: Rib height (肋高)
-            rib_thickness: Rib thickness (肋厚)
-        """
-        try:
-            provider.add_section(
-                name=name,
-                sec_type="钢工字型带肋",
-                sec_info=[top_width, bottom_width, web_height, top_thickness, bottom_thickness, web_thickness, top_flange_rib_distance, rib_count, rib_spacing, rib_height, rib_thickness]
-            )
-            return f"Successfully created ribbed steel I-shape section '{name}'"
-        except Exception as e:
-            return f"Error creating ribbed steel I-shape section: {e}"
-
-    @mcp.tool()
-    def create_ribbed_steel_box_section(
-        name: str,
-        width: float,
-        height: float,
-        web_thickness: float,
-        top_thickness: float,
-        bottom_thickness: float,
-        top_bottom_rib_height: float,
-        top_bottom_rib_thickness: float,
-        web_rib_height: float,
-        web_rib_thickness: float,
-        top_bottom_rib_spacing: float,
-        web_rib_spacing: float,
-        web_rib_count: int,
-        top_bottom_rib_count: int,
-    ) -> str:
-        """
-        Create a ribbed steel box cross-section (创建带肋钢箱截面).
-
-        Args:
-            name: Section name (截面名称)
-            width: Total width (长)
-            height: Total height (高)
-            web_thickness: Web thickness (腹板厚)
-            top_thickness: Top flange thickness (顶板厚)
-            bottom_thickness: Bottom flange thickness (底板厚)
-            top_bottom_rib_height: Top and bottom rib height (顶底板肋高)
-            top_bottom_rib_thickness: Top and bottom rib thickness (顶底板肋厚)
-            web_rib_height: Web rib height (腹板肋高)
-            web_rib_thickness: Web rib thickness (腹板肋厚)
-            top_bottom_rib_spacing: Top and bottom rib spacing (顶底板肋距)
-            web_rib_spacing: Web rib spacing (腹板肋距)
-            web_rib_count: Number of web ribs (腹板肋数)
-            top_bottom_rib_count: Number of top/bottom ribs (顶底板肋数)
-        """
-        try:
-            provider.add_section(
-                name=name,
-                sec_type="带肋钢箱",
-                sec_info=[width, height, web_thickness, top_thickness, bottom_thickness, top_bottom_rib_height, top_bottom_rib_thickness, web_rib_height, web_rib_thickness, top_bottom_rib_spacing, web_rib_spacing, web_rib_count, top_bottom_rib_count]
-            )
-            return f"Successfully created ribbed steel box section '{name}'"
-        except Exception as e:
-            return f"Error creating ribbed steel box section: {e}"
-
-    @mcp.tool()
-    def create_steel_truss_box_3_section(
-        name: str,
-        height: float,
-        width: float,
-        top_cantilever_rib_height: float,
-        bottom_cantilever_rib_height: float,
-        web_thickness: float,
-        top_thickness: float,
-        bottom_thickness: float,
-        top_rib_height: float,
-        top_rib_thickness: float,
-        bottom_rib_height: float,
-        bottom_rib_thickness: float,
-        web_rib_height: float,
-        web_rib_thickness: float,
-    ) -> str:
-        """
-        Create a Steel Truss Box 3 cross-section (创建钢桁箱梁3截面).
-
-        Args:
-            name: Section name (截面名称)
-            height: Total height (高)
-            width: Total width (长)
-            top_cantilever_rib_height: Top cantilever rib height (上悬臂肋高)
-            bottom_cantilever_rib_height: Bottom cantilever rib height (下悬臂肋高)
-            web_thickness: Web thickness (腹板厚)
-            top_thickness: Top flange thickness (顶板厚)
-            bottom_thickness: Bottom flange thickness (底板厚)
-            top_rib_height: Top rib height (顶板肋高)
-            top_rib_thickness: Top rib thickness (顶板肋厚)
-            bottom_rib_height: Bottom rib height (底板肋高)
-            bottom_rib_thickness: Bottom rib thickness (底板肋厚)
-            web_rib_height: Web rib height (腹板肋高)
-            web_rib_thickness: Web rib thickness (腹板肋厚)
-        """
-        try:
-            provider.add_section(
-                name=name,
-                sec_type="钢桁箱梁3",
-                sec_info=[
-                    height, width, top_cantilever_rib_height, bottom_cantilever_rib_height,
-                    web_thickness, top_thickness, bottom_thickness,
-                    top_rib_height, top_rib_thickness,
-                    bottom_rib_height, bottom_rib_thickness,
-                    web_rib_height, web_rib_thickness
-                ]
-            )
-            return f"Successfully created Steel Truss Box 3 section '{name}'"
-        except Exception as e:
-            return f"Error creating Steel Truss Box 3 section: {e}"
-
-    @mcp.tool()
-    def create_steel_truss_box_1_section(
-        name: str,
-        height: float,
-        width: float,
-        left_cantilever_width: float,
-        right_cantilever_width: float,
-        bottom_cantilever_height: float,
-        web_thickness: float,
-        top_thickness: float,
-        bottom_thickness: float,
-        top_rib_height: float,
-        top_rib_thickness: float,
-        bottom_rib_height: float,
-        bottom_rib_thickness: float,
-        top_web_rib_distance: float,
-        web_rib_count: int,
-        web_rib_spacing: float,
-        web_rib_height: float,
-        web_rib_thickness: float,
-        left_web_rib_pos: int,      # 0 for Inner, 1 for Outer
-        right_web_rib_pos: int,     # 0 for Inner, 1 for Outer
-        left_cantilever_rib_spacing: float,
-        left_cantilever_rib_height: float,
-        left_cantilever_rib_thickness: float,
-        left_cantilever_rib_top_dist: float,
-        left_cantilever_rib_bottom_dist: float,
-        left_cantilever_rib_chamfer: float,
-        right_cantilever_rib_spacing: float,
-        right_cantilever_rib_height: float,
-        right_cantilever_rib_thickness: float,
-        right_cantilever_rib_top_dist: float,
-        right_cantilever_rib_bottom_dist: float,
-        right_cantilever_rib_chamfer: float,
-    ) -> str:
-        """
-        Create a Steel Truss Box 1 cross-section (创建钢桁箱梁1截面).
-
-        Args:
-            name: Section name (截面名称)
-            height: Total height without cantilevers (高)
-            width: Total width (长)
-            left_cantilever_width: Left cantilever width (左悬臂长)
-            right_cantilever_width: Right cantilever width (右悬臂长)
-            bottom_cantilever_height: Bottom cantilever height (下悬臂高)
-            web_thickness: Web thickness (腹板厚)
-            top_thickness: Top flange thickness (顶板厚)
-            bottom_thickness: Bottom flange thickness (底板厚)
-            top_rib_height: Top rib height (顶板肋高)
-            top_rib_thickness: Top rib thickness (顶板肋厚)
-            bottom_rib_height: Bottom rib height (底板肋高)
-            bottom_rib_thickness: Bottom rib thickness (底板肋厚)
-            top_web_rib_distance: Distance from top flange to web ribs (顶板与腹板肋距)
-            web_rib_count: Number of web ribs (腹板肋数)
-            web_rib_spacing: Web rib spacing (腹板肋距)
-            web_rib_height: Web rib height (腹板肋高)
-            web_rib_thickness: Web rib thickness (腹板肋厚)
-            left_web_rib_pos: Left web rib position (0:内Inner, 1:外Outer)
-            right_web_rib_pos: Right web rib position (0:内Inner, 1:外Outer)
-            left_cantilever_rib_spacing: Left cantilever rib spacing (左悬臂肋距)
-            left_cantilever_rib_height: Left cantilever rib height (左悬臂肋高)
-            left_cantilever_rib_thickness: Left cantilever rib thickness (左悬臂肋厚)
-            left_cantilever_rib_top_dist: Left cantilever rib top dist (左悬臂肋顶距离)
-            left_cantilever_rib_bottom_dist: Left cantilever rib bottom dist (左悬臂肋底距离)
-            left_cantilever_rib_chamfer: Left cantilever rib chamfer (左悬臂肋倒角)
-            right_cantilever_rib_spacing: Right cantilever rib spacing (右悬臂肋距)
-            right_cantilever_rib_height: Right cantilever rib height (右悬臂肋高)
-            right_cantilever_rib_thickness: Right cantilever rib thickness (右悬臂肋厚)
-            right_cantilever_rib_top_dist: Right cantilever rib top dist (右悬臂肋顶距离)
-            right_cantilever_rib_bottom_dist: Right cantilever rib bottom dist (右悬臂肋底距离)
-            right_cantilever_rib_chamfer: Right cantilever rib chamfer (右悬臂肋倒角)
-        """
-        try:
-            sec_info = [
-                height, width, left_cantilever_width, right_cantilever_width, bottom_cantilever_height,
-                web_thickness, top_thickness, bottom_thickness,
-                top_rib_height, top_rib_thickness, bottom_rib_height, bottom_rib_thickness,
-                top_web_rib_distance, web_rib_count, web_rib_spacing, web_rib_height, web_rib_thickness,
-                left_web_rib_pos, right_web_rib_pos,
-                left_cantilever_rib_spacing, left_cantilever_rib_height, left_cantilever_rib_thickness,
-                left_cantilever_rib_top_dist, left_cantilever_rib_bottom_dist, left_cantilever_rib_chamfer,
-                right_cantilever_rib_spacing, right_cantilever_rib_height, right_cantilever_rib_thickness,
-                right_cantilever_rib_top_dist, right_cantilever_rib_bottom_dist, right_cantilever_rib_chamfer
-            ]
-            provider.add_section(
-                name=name,
-                sec_type="钢桁箱梁1",
-                sec_info=sec_info,
-            )
-            return f"Successfully created Steel Truss Box 1 section '{name}'"
-        except Exception as e:
-            return f"Error creating Steel Truss Box 1 section: {e}"
-
-    @mcp.tool()
-    def create_steel_truss_box_2_section(
-        name: str,
-        height: float,
-        width: float,
-        left_top_cantilever_width: float,
-        right_top_cantilever_width: float,
-        left_bottom_cantilever_width: float,
-        right_bottom_cantilever_width: float,
-        web_thickness: float,
-        top_thickness: float,
-        bottom_thickness: float,
-        top_rib_height: float,
-        top_rib_thickness: float,
-        bottom_rib_height: float,
-        bottom_rib_thickness: float,
-        top_web_rib_distance: float,
-        web_rib_count: int,
-        web_rib_spacing: float,
-        web_rib_height: float,
-        web_rib_thickness: float,
-        left_web_rib_pos: int,
-        right_web_rib_pos: int,
-        left_top_cantilever_rib_spacing: float,
-        left_top_cantilever_rib_height: float,
-        left_top_cantilever_rib_thickness: float,
-        left_top_cantilever_rib_top_dist: float,
-        left_top_cantilever_rib_bottom_dist: float,
-        left_top_cantilever_rib_chamfer: float,
-        right_top_cantilever_rib_spacing: float,
-        right_top_cantilever_rib_height: float,
-        right_top_cantilever_rib_thickness: float,
-        right_top_cantilever_rib_top_dist: float,
-        right_top_cantilever_rib_bottom_dist: float,
-        right_top_cantilever_rib_chamfer: float,
-        left_bottom_cantilever_rib_spacing: float,
-        left_bottom_cantilever_rib_height: float,
-        left_bottom_cantilever_rib_thickness: float,
-        right_bottom_cantilever_rib_spacing: float,
-        right_bottom_cantilever_rib_height: float,
-        right_bottom_cantilever_rib_thickness: float,
-    ) -> str:
-        """
-        Create a Steel Truss Box 2 cross-section (创建钢桁箱梁2截面).
-
-        Args:
-            name: Section name (截面名称)
-            height: Total height (高)
-            width: Total width (长)
-            left_top_cantilever_width: Left top cantilever width (左上悬臂长)
-            right_top_cantilever_width: Right top cantilever width (右上悬臂长)
-            left_bottom_cantilever_width: Left bottom cantilever width (左下悬臂长)
-            right_bottom_cantilever_width: Right bottom cantilever width (右下悬臂长)
-            web_thickness: Web thickness (腹板厚)
-            top_thickness: Top flange thickness (顶板厚)
-            bottom_thickness: Bottom flange thickness (底板厚)
-            ... (and rib parameters for flanges, webs, and all 4 cantilevers as per QtModel UI)
-        """
-        try:
-            sec_info = [
-                height, width,
-                left_top_cantilever_width, right_top_cantilever_width,
-                left_bottom_cantilever_width, right_bottom_cantilever_width,
-                web_thickness, top_thickness, bottom_thickness,
-                top_rib_height, top_rib_thickness,
-                bottom_rib_height, bottom_rib_thickness,
-                top_web_rib_distance, web_rib_count, web_rib_spacing, web_rib_height, web_rib_thickness,
-                left_web_rib_pos, right_web_rib_pos,
-                left_top_cantilever_rib_spacing, left_top_cantilever_rib_height, left_top_cantilever_rib_thickness,
-                left_top_cantilever_rib_top_dist, left_top_cantilever_rib_bottom_dist, left_top_cantilever_rib_chamfer,
-                right_top_cantilever_rib_spacing, right_top_cantilever_rib_height, right_top_cantilever_rib_thickness,
-                right_top_cantilever_rib_top_dist, right_top_cantilever_rib_bottom_dist, right_top_cantilever_rib_chamfer,
-                left_bottom_cantilever_rib_spacing, left_bottom_cantilever_rib_height, left_bottom_cantilever_rib_thickness,
-                right_bottom_cantilever_rib_spacing, right_bottom_cantilever_rib_height, right_bottom_cantilever_rib_thickness
-            ]
-            provider.add_section(
-                name=name,
-                sec_type="钢桁箱梁2",
-                sec_info=sec_info,
-            )
-            return f"Successfully created Steel Truss Box 2 section '{name}'"
-        except Exception as e:
-            return f"Error creating Steel Truss Box 2 section: {e}"
-
-    @mcp.tool()
-    def create_composite_i_section(
-        name: str,
-        sec_info: list[float],
-        materials_ratio: list[float]
-    ) -> str:
-        """
-        Create a Composite I-Girder cross-section (创建工字组合梁截面).
-
-        Args:
-            name: Section name (截面名称)
-            sec_info: Geometric parameters (几何信息数据如顶板宽、底板宽、厚度等)
-            materials_ratio: Combine material parameters (组合材料参数 [Es/Ec, Ds/Dc, ps(钢泊松比), pc(砼泊松比), Ts/Tc])
-        """
-        try:
-            provider.add_section(
-                name=name,
-                sec_type="工字组合梁",
-                sec_info=sec_info,
-                mat_combine=materials_ratio
-            )
-            return f"Successfully created Composite I-Girder section '{name}'"
-        except Exception as e:
-            return f"Error creating Composite I-Girder section: {e}"
-
-    @mcp.tool()
-    def create_composite_box_section(
-        name: str,
-        sec_info: list[float],
-        materials_ratio: list[float]
-    ) -> str:
-        """
-        Create a Composite Box Girder cross-section (创建箱形组合梁截面).
-
-        Args:
-            name: Section name (截面名称)
-            sec_info: Geometric parameters (几何信息数据如顶板宽、底板宽、厚度等)
-            materials_ratio: Combine material parameters (组合材料参数 [Es/Ec, Ds/Dc, ps(钢泊松比), pc(砼泊松比), Ts/Tc])
-        """
-        try:
-            provider.add_section(
-                name=name,
-                sec_type="箱形组合梁",
-                sec_info=sec_info,
-                mat_combine=materials_ratio
-            )
-            return f"Successfully created Composite Box Girder section '{name}'"
-        except Exception as e:
-            return f"Error creating Composite Box Girder section: {e}"
-
-    @mcp.tool()
-    def create_custom_composite_section(
-        name: str,
-        sec_info: list[float],
-        materials_ratio: list[float]
-    ) -> str:
-        """
-        Create a Custom Composite cross-section (创建自定义组合梁截面).
-
-        Args:
-            name: Section name (截面名称)
-            sec_info: Geometric parameters (几何信息数据)
-            materials_ratio: Combine material parameters (组合材料参数 [Es/Ec, Ds/Dc, ps, pc, Ts/Tc])
-        """
-        try:
-            provider.add_section(
-                name=name,
-                sec_type="自定义组合梁",
-                sec_info=sec_info,
-                mat_combine=materials_ratio
-            )
-            return f"Successfully created Custom Composite section '{name}'"
-        except Exception as e:
-            return f"Error creating Custom Composite section: {e}"
-
-    @mcp.tool()
-    def create_concrete_box_girder_section(
-        name: str,
-        box_num: int,
-        box_height: float,
-        sec_info: list[float],
-        symmetry: bool = True,
-        chamfer_info: list[float] | None = None,
-        box_other_info: dict | None = None,
-    ) -> str:
-        """
-        Create a Concrete Box Girder cross-section (创建混凝土箱梁截面).
-
-        Args:
-            name: Section name (截面名称)
-            box_num: Number of box cells (箱室个数)
-            box_height: Box girder height (梁高)
-            sec_info: Complex geometric list (截面几何基础数据列表如 B1,B2...)
-            symmetry: Whether the section is symmetric (是否对称)
-            chamfer_info: Chamfer parameter list (倒角数据列表)
-            box_other_info: Additional parameters config like i1, B0, B4, T4
-        """
-        try:
-            kwargs = {
-                "box_num": box_num,
-                "box_height": box_height,
-                "symmetry": symmetry,
-            }
+            if box_height is not None:
+                kwargs["box_height"] = box_height
             if chamfer_info is not None:
                 kwargs["chamfer_info"] = chamfer_info
-            if box_other_info is not None:
-                kwargs["box_other_info"] = box_other_info
-
-            provider.add_section(
-                name=name,
-                sec_type="混凝土箱梁",
-                sec_info=sec_info,
-                **kwargs
-            )
-            return f"Successfully created Concrete Box Girder section '{name}'"
+            if sec_type == "混凝土箱梁":
+                kwargs["symmetry"] = symmetry
+            provider.add_section(name=name, sec_type=sec_type, **kwargs)
+            return f"Successfully created section '{name}' (type: {sec_type}) (成功创建截面 '{name}')"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating Concrete Box Girder section: {e}"
+            raise ToolError(f"Error creating section (创建截面失败): {e}") from e
 
     @mcp.tool()
     def create_polygon_section(
@@ -1365,8 +591,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 loop_segments=loop_segments
             )
             return f"Successfully created polygon section '{name}'"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating polygon section: {e}"
+            raise ToolError(f"Error creating polygon section: {e}") from e
 
     @mcp.tool()
     def create_line_width_section(
@@ -1388,8 +616,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 sec_lines=sec_lines
             )
             return f"Successfully created line-width section '{name}'"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating line-width section: {e}"
+            raise ToolError(f"Error creating line-width section: {e}") from e
 
     @mcp.tool()
     def create_section_from_properties(
@@ -1422,8 +652,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 sec_property=sec_property
             )
             return f"Successfully created property-based section '{name}'"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating property-based section: {e}"
+            raise ToolError(f"Error creating property-based section: {e}") from e
 
     @mcp.tool()
     def create_tapered_section(
@@ -1452,8 +684,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 sec_normalize=sec_normalize
             )
             return f"Successfully created tapered section '{name}' (成功创建渐变截面)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error creating tapered section (创建渐变截面失败): {e}"
+            raise ToolError(f"Error creating tapered section (创建渐变截面失败): {e}") from e
 
     @mcp.tool()
     def add_tapper_section_group(
@@ -1480,7 +714,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             dis_h: Height variation distance (高度变化距离)
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "name": name,
                 "factor_w": factor_w,
                 "factor_h": factor_h,
@@ -1493,8 +727,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["ids"] = ids
             provider.add_tapper_section_group(**kwargs)
             return f"Successfully added tapered section group '{name}' (成功添加变截面组)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding tapered section group (添加变截面组失败): {e}"
+            raise ToolError(f"Error adding tapered section group (添加变截面组失败): {e}") from e
 
     @mcp.tool()
     def add_thickness(
@@ -1515,8 +751,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.add_thickness(name=name, t=t, thick_type=thick_type, index=index)
             return f"Successfully added thickness '{name}' (成功添加板厚度)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding thickness (添加板厚度失败): {e}"
+            raise ToolError(f"Error adding thickness (添加板厚度失败): {e}") from e
 
     @mcp.tool()
     def add_effective_width(
@@ -1539,7 +777,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Boundary group name (边界组名)
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "element_ids": element_ids,
                 "factor_i": factor_i,
                 "factor_j": factor_j,
@@ -1550,8 +788,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["group_name"] = group_name
             provider.add_effective_width(**kwargs)
             return f"Successfully added effective width to elements {element_ids} (成功添加有效宽度)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding effective width (添加有效宽度失败): {e}"
+            raise ToolError(f"Error adding effective width (添加有效宽度失败): {e}") from e
 
     @mcp.tool()
     def update_section_bias(
@@ -1583,8 +823,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 side_i=side_i
             )
             return f"Successfully updated section {index} bias to '{bias_type}' (成功更新截面偏心)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating section bias (更新截面偏心失败): {e}"
+            raise ToolError(f"Error updating section bias (更新截面偏心失败): {e}") from e
 
     @mcp.tool()
     def remove_section(ids: int | list[int] | str) -> str:
@@ -1598,8 +840,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.remove_section(ids=ids)
             return f"Successfully removed section(s) {ids} (成功删除截面)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error removing section (删除截面失败): {e}"
+            raise ToolError(f"Error removing section (删除截面失败): {e}") from e
 
     @mcp.tool()
     def update_section_property(
@@ -1626,8 +870,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 index=index, sec_property=sec_property, side_i=side_i
             )
             return f"Successfully updated section {index} properties (成功修改截面 {index} 特性)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating section property (修改截面特性失败): {e}"
+            raise ToolError(f"Error updating section property (修改截面特性失败): {e}") from e
 
     @mcp.tool()
     def calculate_section_property() -> str:
@@ -1641,8 +887,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.calculate_section_property()
             return "Successfully recalculated all section properties (成功重新计算所有截面特性)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error calculating section properties (计算截面特性失败): {e}"
+            raise ToolError(f"Error calculating section properties (计算截面特性失败): {e}") from e
 
     @mcp.tool()
     def set_support(
@@ -1671,37 +919,74 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         try:
             boundary_info = [dx, dy, dz, rx, ry, rz]
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if group_name:
                 kwargs["group_name"] = group_name
             provider.add_general_support(
                 node_id=node_id, boundary_info=boundary_info, **kwargs
             )
             return f"Successfully set support on node(s) {node_id} (成功设置支承)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error setting support (设置支承失败): {e}"
+            raise ToolError(f"Error setting support (设置支承失败): {e}") from e
 
     @mcp.tool()
-    def apply_self_weight(
-        case_name: str,
-        group_name: str = "",
+    def set_self_weight_stage(
+        stage_name: str,
+        structure_group_name: str = "默认结构组",
+        weight_stage_id: int = 1,
     ) -> str:
         """
-        Apply system self-weight load (施加自重荷载).
-        Ensure the load group and case are created before calling this tool.
+        Configure self-weight for a construction stage (设置施工阶段自重).
+
+        IMPORTANT — In QiaoTong, self-weight is NOT a load case. It is controlled
+        by each construction stage's "self-weight stage number" per structure group.
+        The solver computes gravity load automatically from section area × material
+        unit weight × g. You only choose WHICH stage carries a group's self-weight.
+        （桥通中自重不是荷载工况，由施工阶段对各结构组的"计自重阶段号"控制，
+        求解器按 截面面积 × 材料容重 × 重力加速度 自动计算。）
+
+        For a single-stage / one-shot (一次成桥) model, self-weight is handled when
+        you merge stages via merge_operation_stage — you usually do NOT need this tool.
+        Use it only to override which stage accounts for a group's self-weight.
 
         Args:
-            case_name: Load case name (荷载工况名)
-            group_name: Load group name (荷载组名)
+            stage_name: Construction stage name (施工阶段名)
+            structure_group_name: Structure group name (结构组名)
+            weight_stage_id: Self-weight stage number (计自重阶段号):
+                0=not counted(不计自重), 1=this stage(本阶段), n=stage n(第n阶段)
         """
         try:
-            kwargs = {}
-            if group_name:
-                kwargs["group_name"] = group_name
-            provider.add_self_weight(case_name=case_name, **kwargs)
-            return f"Successfully applied self-weight in case '{case_name}' (成功施加自重)"
+            provider.set_weight_stage(
+                stage_name=stage_name,
+                structure_group_name=structure_group_name,
+                weight_stage_id=weight_stage_id,
+            )
+            return (
+                f"Self-weight of group '{structure_group_name}' set to stage "
+                f"id {weight_stage_id} for '{stage_name}' (施工阶段自重设置成功)"
+            )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying self-weight (施加自重失败): {e}"
+            raise ToolError(f"Error setting self-weight stage (设置施工阶段自重失败): {e}") from e
+
+    @mcp.tool()
+    def set_gravity(gravity: float = 9.8) -> str:
+        """
+        Set the gravitational acceleration used for self-weight (设置重力加速度).
+
+        Args:
+            gravity: Gravitational acceleration in m/s² (重力加速度，单位 m/s²), default 9.8
+        """
+        try:
+            provider.update_project_setting(gravity=gravity)
+            return f"Gravity set to {gravity} m/s² (重力加速度已设为 {gravity})"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
+        except Exception as e:
+            raise ToolError(f"Error setting gravity (设置重力加速度失败): {e}") from e
 
     @mcp.tool()
     def apply_nodal_force(
@@ -1731,15 +1016,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         try:
             load_info = [fx, fy, fz, mx, my, mz]
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if group_name:
                 kwargs["group_name"] = group_name
             provider.add_nodal_force(
                 node_id=node_id, case_name=case_name, load_info=load_info, **kwargs
             )
             return f"Successfully applied force to node(s) {node_id} in case '{case_name}' (成功施加荷载)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying force (施加荷载失败): {e}"
+            raise ToolError(f"Error applying force (施加荷载失败): {e}") from e
 
     @mcp.tool()
     def apply_beam_distributed_load(
@@ -1763,7 +1050,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {"coord_system": direction}
+            kwargs: dict[str, Any] = {"coord_system": direction}
             if load_values:
                 kwargs["list_load"] = load_values
             if load_positions:
@@ -1777,8 +1064,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 **kwargs,
             )
             return f"Successfully applied distributed load on element(s) {element_id} (成功施加分布荷载)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying distributed load (施加分布荷载失败): {e}"
+            raise ToolError(f"Error applying distributed load (施加分布荷载失败): {e}") from e
 
     @mcp.tool()
     def add_system_temperature(
@@ -1797,47 +1086,54 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if group_name:
                 kwargs["group_name"] = group_name
             provider.add_system_temperature(
                 element_id=element_id, case_name=case_name, temperature=temperature, **kwargs
             )
             return f"Successfully applied system temperature load '{temperature}' to element(s) {element_id} (成功施加体系温度)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying system temperature load (施加体系温度失败): {e}"
+            raise ToolError(f"Error applying system temperature load (施加体系温度失败): {e}") from e
 
     @mcp.tool()
     def add_gradient_temperature(
         element_id: int | list[int] | str,
         case_name: str,
-        temperature_g: float,
-        temperature_type: int = 1,
+        temperature: float,
+        section_oriental: int = 0,
+        element_type: int = 1,
         group_name: str = "",
     ) -> str:
         """
         Apply gradient temperature load (梯度温度荷载).
 
         Args:
-            element_id: Element ID(s) (单元编号)
+            element_id: Element ID(s) (单元编号，支持范围字符串)
             case_name: Load case name (荷载工况名)
-            temperature_g: Gradient temperature value / Temperature difference (梯度温度值/温差)
-            temperature_type: Gradient type (梯度类型): 1=Z方向, 2=Y方向, etc.
+            temperature: Temperature difference (温差)
+            section_oriental: Section direction, beams only (截面方向，仅梁单元):
+                0=section Y (截面Y向, default), 1=section Z (截面Z向)
+            element_type: Element type (单元类型): 1=beam(梁), 2=plate(板)
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {}
+            kwargs: dict[str, Any] = {
+                "section_oriental": section_oriental,
+                "element_type": element_type,
+            }
             if group_name:
                 kwargs["group_name"] = group_name
-            # Midas standard usually uses temp_type or similar.
-            # Passing it via kwargs so the qtmodel API can catch it if needed.
-            kwargs["temperature_type"] = temperature_type
             provider.add_gradient_temperature(
-                element_id=element_id, case_name=case_name, temperature_g=temperature_g, **kwargs
+                element_id=element_id, case_name=case_name, temperature=temperature, **kwargs
             )
-            return f"Successfully applied gradient temperature load '{temperature_g}' to element(s) {element_id} (成功施加梯度温度)"
+            return f"Successfully applied gradient temperature '{temperature}' to element(s) {element_id} (成功施加梯度温度)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying gradient temperature load (施加梯度温度失败): {e}"
+            raise ToolError(f"Error applying gradient temperature load (施加梯度温度失败): {e}") from e
 
     @mcp.tool()
     def add_custom_temperature(
@@ -1858,14 +1154,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {"orientation": orientation}
-            if group_name: kwargs["group_name"] = group_name
+            kwargs: dict[str, Any] = {"orientation": orientation}
+            if group_name:
+                kwargs["group_name"] = group_name
             if temperature_data is not None:
                 kwargs["temperature_data"] = [tuple(item) for item in temperature_data]
             provider.add_custom_temperature(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied custom temperature to element(s) {element_id} (成功施加自定义温度)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying custom temperature (施加自定义温度失败): {e}"
+            raise ToolError(f"Error applying custom temperature (施加自定义温度失败): {e}") from e
 
     @mcp.tool()
     def add_beam_section_temperature(
@@ -1896,15 +1195,18 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "code_index": code_index, "sec_type": sec_type,
                 "t1": t1, "t2": t2, "t3": t3, "t4": t4, "thick": thick
             }
-            if group_name: kwargs["group_name"] = group_name
+            if group_name:
+                kwargs["group_name"] = group_name
             provider.add_beam_section_temperature(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied beam section temperature to element(s) {element_id} (成功施加梁截面温度)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying beam section temperature (施加梁截面温度失败): {e}"
+            raise ToolError(f"Error applying beam section temperature (施加梁截面温度失败): {e}") from e
 
     @mcp.tool()
     def add_initial_tension_load(
@@ -1929,15 +1231,18 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "tension": tension, "tension_type": tension_type,
                 "application_type": application_type, "stiffness": stiffness
             }
-            if group_name: kwargs["group_name"] = group_name
+            if group_name:
+                kwargs["group_name"] = group_name
             provider.add_initial_tension_load(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied initial tension {tension} to element(s) {element_id} (成功施加初拉力)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying initial tension (施加初拉力失败): {e}"
+            raise ToolError(f"Error applying initial tension (施加初拉力失败): {e}") from e
 
     @mcp.tool()
     def add_cable_length_load(
@@ -1958,12 +1263,15 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {"length": length, "tension_type": tension_type}
-            if group_name: kwargs["group_name"] = group_name
+            kwargs: dict[str, Any] = {"length": length, "tension_type": tension_type}
+            if group_name:
+                kwargs["group_name"] = group_name
             provider.add_cable_length_load(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied cable length load {length} to element(s) {element_id} (成功施加索长荷载)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying cable length load (施加索长荷载失败): {e}"
+            raise ToolError(f"Error applying cable length load (施加索长荷载失败): {e}") from e
 
     @mcp.tool()
     def add_plate_element_load(
@@ -1990,14 +1298,19 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {"load_type": load_type, "load_place": load_place, "coord_system": coord_system}
-            if group_name: kwargs["group_name"] = group_name
-            if list_load is not None: kwargs["list_load"] = list_load
-            if list_xy is not None: kwargs["list_xy"] = tuple(list_xy)
+            kwargs: dict[str, Any] = {"load_type": load_type, "load_place": load_place, "coord_system": coord_system}
+            if group_name:
+                kwargs["group_name"] = group_name
+            if list_load is not None:
+                kwargs["list_load"] = list_load
+            if list_xy is not None:
+                kwargs["list_xy"] = tuple(list_xy)
             provider.add_plate_element_load(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied plate load to element(s) {element_id} (成功施加板单元荷载)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying plate load (施加板单元荷载失败): {e}"
+            raise ToolError(f"Error applying plate load (施加板单元荷载失败): {e}") from e
 
     @mcp.tool()
     def add_distribute_plane_load(
@@ -2026,16 +1339,23 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             group_name: Load group name (荷载组名)
         """
         try:
-            kwargs = {"coord_system": coord_system}
-            if group_name: kwargs["group_name"] = group_name
-            if point1: kwargs["point1"] = tuple(point1)
-            if point2: kwargs["point2"] = tuple(point2)
-            if point3: kwargs["point3"] = tuple(point3)
-            if plate_ids: kwargs["plate_ids"] = plate_ids
+            kwargs: dict[str, Any] = {"coord_system": coord_system}
+            if group_name:
+                kwargs["group_name"] = group_name
+            if point1:
+                kwargs["point1"] = tuple(point1)
+            if point2:
+                kwargs["point2"] = tuple(point2)
+            if point3:
+                kwargs["point3"] = tuple(point3)
+            if plate_ids:
+                kwargs["plate_ids"] = plate_ids
             provider.add_distribute_plane_load(index=index, case_name=case_name, type_name=type_name, **kwargs)
             return f"Successfully applied distributed plane load '{type_name}' (成功施加分布面荷载)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying distributed plane load (施加分布面荷载失败): {e}"
+            raise ToolError(f"Error applying distributed plane load (施加分布面荷载失败): {e}") from e
 
     @mcp.tool()
     def add_support_settlement(
@@ -2065,15 +1385,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         try:
             displacement_info = [dx, dy, dz, rx, ry, rz]
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if group_name:
                 kwargs["group_name"] = group_name
             provider.add_support_settlement(
                 node_id=node_id, case_name=case_name, displacement_info=displacement_info, **kwargs
             )
             return f"Successfully applied support settlement '{dz}' to node(s) {node_id} (成功施加支座沉降)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error applying support settlement (施加支座沉降失败): {e}"
+            raise ToolError(f"Error applying support settlement (施加支座沉降失败): {e}") from e
 
     @mcp.tool()
     def add_nodal_mass(
@@ -2097,8 +1419,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             mass_info = (mass_x, mass_y, mass_z, mass_rm)
             provider.add_nodal_mass(node_id=node_id, mass_info=mass_info)
             return f"Successfully added nodal mass to node(s) {node_id} (成功添加节点质量)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding nodal mass (添加节点质量失败): {e}"
+            raise ToolError(f"Error adding nodal mass (添加节点质量失败): {e}") from e
 
     @mcp.tool()
     def add_load_to_mass(
@@ -2115,8 +1439,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             provider.add_load_to_mass(name=name, factor=factor)
             return f"Successfully set load '{name}' to convert to mass (成功设置荷载转换为质量)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error converting load to mass (荷载转质量失败): {e}"
+            raise ToolError(f"Error converting load to mass (荷载转质量失败): {e}") from e
 
     @mcp.tool()
     def add_spectrum_function(
@@ -2135,13 +1461,15 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             function_info: User defined spectrum points [[period, value], ...] (自定义谱数据)
         """
         try:
-            kwargs = {"name": name, "factor": factor, "kind": kind}
+            kwargs: dict[str, Any] = {"name": name, "factor": factor, "kind": kind}
             if function_info is not None:
                 kwargs["function_info"] = [tuple(item) for item in function_info]
             provider.add_spectrum_function(**kwargs)
             return f"Successfully added spectrum function '{name}' (成功添加反应谱函数)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding spectrum function (添加反应谱函数失败): {e}"
+            raise ToolError(f"Error adding spectrum function (添加反应谱函数失败): {e}") from e
 
     @mcp.tool()
     def add_spectrum_case(
@@ -2164,14 +1492,19 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             info_z: Z direction info [function_name, factor] (Z向配置)
         """
         try:
-            kwargs = {"name": name, "description": description, "kind": kind}
-            if info_x: kwargs["info_x"] = tuple(info_x)
-            if info_y: kwargs["info_y"] = tuple(info_y)
-            if info_z: kwargs["info_z"] = tuple(info_z)
+            kwargs: dict[str, Any] = {"name": name, "description": description, "kind": kind}
+            if info_x:
+                kwargs["info_x"] = tuple(info_x)
+            if info_y:
+                kwargs["info_y"] = tuple(info_y)
+            if info_z:
+                kwargs["info_z"] = tuple(info_z)
             provider.add_spectrum_case(**kwargs)
             return f"Successfully added spectrum case '{name}' (成功添加反应谱工况)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding spectrum case (添加反应谱工况失败): {e}"
+            raise ToolError(f"Error adding spectrum case (添加反应谱工况失败): {e}") from e
 
     @mcp.tool()
     def add_time_history_function(
@@ -2190,13 +1523,15 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             function_info: Time history points [[time, value], ...] (时程数据点)
         """
         try:
-            kwargs = {"name": name, "factor": factor, "kind": kind}
+            kwargs: dict[str, Any] = {"name": name, "factor": factor, "kind": kind}
             if function_info is not None:
                 kwargs["function_info"] = function_info
             provider.add_time_history_function(**kwargs)
             return f"Successfully added time history function '{name}' (成功添加时程函数)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding time history function (添加时程函数失败): {e}"
+            raise ToolError(f"Error adding time history function (添加时程函数失败): {e}") from e
 
     @mcp.tool()
     def add_time_history_case(
@@ -2222,8 +1557,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 description=description, index=index
             )
             return f"Successfully added time history case '{name}' (成功添加时程工况)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding time history case (添加时程工况失败): {e}"
+            raise ToolError(f"Error adding time history case (添加时程工况失败): {e}") from e
 
     @mcp.tool()
     def update_bulking_setting(
@@ -2244,8 +1581,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 do_analysis=do_analysis, mode_count=mode_count, stage_id=stage_id
             )
             return "Successfully updated buckling analysis settings (成功设定屈曲分析)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error updating buckling settings (屈曲分析设定失败): {e}"
+            raise ToolError(f"Error updating buckling settings (屈曲分析设定失败): {e}") from e
 
     @mcp.tool()
     def add_construction_stage(
@@ -2271,7 +1610,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                           [[group_name, time], ...], time: 0=start, 1=end
         """
         try:
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if active_structures:
                 kwargs["active_structures"] = [tuple(s) for s in active_structures]
             if active_boundaries:
@@ -2280,8 +1619,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["active_loads"] = [tuple(l) for l in active_loads]
             provider.add_construction_stage(name=name, duration=duration, **kwargs)
             return f"Successfully added construction stage '{name}' (成功添加施工阶段 '{name}')"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error adding construction stage (添加施工阶段失败): {e}"
+            raise ToolError(f"Error adding construction stage (添加施工阶段失败): {e}") from e
 
     @mcp.tool()
     def configure_analysis(
@@ -2316,22 +1657,49 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"creep={do_creep}, vibration={do_vibration} "
                 f"(分析配置完成)"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error configuring analysis (配置分析失败): {e}"
+            raise ToolError(f"Error configuring analysis (配置分析失败): {e}") from e
 
     @mcp.tool()
-    def run_analysis() -> str:
+    async def run_analysis(ctx: Context, read_timeout: int = 3600) -> str:
         """
         Run the structural analysis calculation (执行结构分析计算).
 
-        Use this tool after you have configured all loads, boundaries, and analysis settings.
-        This will solve the model and make analysis results available.
+        Use this after all loads, boundaries, and analysis settings are configured.
+        Solving can take a long time; it runs in a worker thread so the connection
+        stays responsive, with periodic progress heartbeats.
+        求解可能耗时较长，在工作线程中执行以保持连接不阻塞，并周期性上报进度。
+
+        Args:
+            read_timeout: Max solve time in seconds, default 3600 (求解最大等待秒数)
         """
         try:
-            provider.run_analysis()
+            loop = asyncio.get_running_loop()
+            solve = loop.run_in_executor(
+                None, lambda: provider.run_analysis(read_timeout=read_timeout)
+            )
+            elapsed = 0
+            # 每 5 秒发一次进度心跳，直到求解线程返回
+            while True:
+                done, _ = await asyncio.wait({solve}, timeout=5)
+                if done:
+                    await solve  # 传播求解线程中的异常
+                    break
+                elapsed += 5
+                try:
+                    await ctx.report_progress(
+                        progress=elapsed, total=read_timeout,
+                        message=f"Solving… {elapsed}s elapsed (求解中，已用 {elapsed}s)",
+                    )
+                except Exception:
+                    pass  # 进度上报失败不应影响求解
             return "Analysis successfully completed (结构分析计算完成)"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error running analysis (结构分析失败): {e}"
+            raise ToolError(f"Error running analysis (结构分析失败): {e}") from e
 
     @mcp.tool()
     def validate_model() -> str:
@@ -2374,8 +1742,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                     lines.append(f"  - {warn}")
 
             return "\n".join(lines)
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error validating model (模型验证失败): {e}"
+            raise ToolError(f"Error validating model (模型验证失败): {e}") from e
 
     @mcp.tool()
     def get_model_info() -> str:
@@ -2399,8 +1769,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"  Structure Groups (结构组): {summary['structure_group_count']}\n"
                 f"  Boundary Groups (边界组): {summary['boundary_group_count']}"
             )
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error getting model info (获取模型信息失败): {e}"
+            raise ToolError(f"Error getting model info (获取模型信息失败): {e}") from e
 
     @mcp.tool()
     def get_analysis_results(
@@ -2408,6 +1780,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         ids: int | list[int] | str = 1,
         stage_id: int = -1,
         case_name: str = "",
+        limit: int = 100,
+        offset: int = 0,
     ) -> str:
         """
         Get analysis results from the bridge model (获取分析结果).
@@ -2419,9 +1793,13 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             stage_id: Construction stage (施工阶段): -1=operation(运营), 0=envelope(包络),
                       n=stage n (第n阶段)
             case_name: Load case name for operation stage (运营阶段荷载工况名)
+            limit: Max items per page, default 100 (单页条数上限)
+            offset: Pagination offset (翻页偏移)
         """
         try:
-            kwargs = {}
+            from qiao_mcp.tools.queries import _paginate
+
+            kwargs: dict[str, Any] = {}
             if case_name:
                 kwargs["case_name"] = case_name
 
@@ -2434,10 +1812,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             elif result_type == "reaction":
                 result = provider.get_reaction(ids=ids, stage_id=stage_id, **kwargs)
             else:
-                return (
-                    f"Unknown result_type '{result_type}'. "
-                    "Available: deformation, force, stress, reaction"
-                )
-            return str(result)
+                raise ToolInputError(f"Unknown result_type '{result_type}'. "
+                    "Available: deformation, force, stress, reaction")
+            return f"{result_type} results:\n{_paginate(result, limit, offset)}"
+        except ToolError:
+            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
-            return f"Error getting results (获取结果失败): {e}"
+            raise ToolError(f"Error getting results (获取结果失败): {e}") from e

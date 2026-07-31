@@ -9,21 +9,28 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-### 🔧 Tools (12 tools)
-| Tool | Description |
-|------|-------------|
-| `get_model_info` | Get bridge model summary (获取模型概要) |
-| `create_nodes` | Create nodes (创建节点) |
-| `create_elements` | Create beam/truss/cable/plate elements (创建单元) |
-| `create_material` | Create materials — concrete, steel, etc. (创建材料) |
-| `create_section` | Create cross-sections (创建截面) |
-| `set_support` | Set boundary conditions (设置支承) |
-| `apply_nodal_force` | Apply forces at nodes (施加节点荷载) |
-| `apply_beam_distributed_load` | Apply distributed loads on beams (施加分布荷载) |
-| `add_construction_stage` | Define construction stages (添加施工阶段) |
-| `configure_analysis` | Set up analysis parameters (配置分析) |
-| `validate_model` | Check model for issues (验证模型) |
-| `get_analysis_results` | Retrieve results (获取分析结果) |
+### 🔧 Tools (126 tools, grouped)
+
+Tools are organized by workflow area. Highlights per group:
+
+| Group | Representative tools |
+|-------|----------------------|
+| **Core modeling** | `create_nodes_linear`, `create_beam_elements_linear`, `create_material`, `create_section` (all parametric section types), `create_polygon_section` |
+| **Loads** | `create_load_group`, `create_load_case`, `set_self_weight_stage`, `set_gravity`, `apply_nodal_force`, `apply_beam_distributed_load`, temperature/settlement loads |
+| **Boundary** | `set_support`, `add_elastic_link`, `add_master_slave_link`, `add_elastic_support`, `add_beam_constraint` |
+| **Groups** | `create_structure_group`, `add_to_structure_group`, `merge_operation_stage` |
+| **Stages & analysis** | `add_construction_stage`, `configure_analysis`, `run_analysis` (async, progress-reporting), `get_analysis_results` |
+| **Tendons** | `create_tendon_property`, `create_tendon_2d`, `apply_prestress`, `get_tendon_info` |
+| **Traffic (moving load)** | `add_node_tandem`, `add_influence_plane`, `add_traffic_lane`, `add_standard_vehicle`, `create_live_load_case` |
+| **Checking** | `setup_concrete_check`, `add_check_load_combination`, `add_parametric_reinforcement`, `run_concrete_check` |
+| **Queries** | `get_model_info`, `get_model_data` (by kind), `find_entities`, `calc_section_property`, `get_special_results` — all paginated |
+| **Visualization** | `save_model_screenshot`, `plot_analysis_result` (return viewable images), `set_view_angle` |
+| **Workflows** | `create_simple_beam_bridge`, `create_continuous_beam_bridge` |
+| **Gateway (escape hatch)** | `list_qtmodel_api`, `call_qtmodel_api` — discover & call long-tail qtmodel methods with signature validation |
+
+All tools return structured content (`{status, …}`) and raise typed errors; read-only
+and destructive operations carry MCP tool annotations. See the server startup
+instructions for the full tool list.
 
 ### 📦 Resources (7 resources)
 | URI | Description |
@@ -50,8 +57,7 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 qiao-mcp/
 ├── src/qiao_mcp/
 │   ├── server.py              # MCP server entry point
-│   ├── config.py              # Configuration
-│   ├── tools/                 # MCP Tools
+│   ├── tools/                 # MCP Tools (envelope-wrapped)
 │   ├── resources/             # MCP Resources
 │   ├── prompts/               # MCP Prompts
 │   └── providers/             # Backend adapters
@@ -153,12 +159,21 @@ npx @modelcontextprotocol/inspector uv run qiao-mcp
 ## Development
 
 ```bash
-# Install in dev mode
+# Install in dev mode (includes ruff, mypy, pytest)
 uv sync
 
 # Run directly
 uv run python -m qiao_mcp.server
+
+# Quality gate (same checks as CI)
+uv run ruff check src/ tests/
+uv run mypy src/qiao_mcp/
+uv run pytest tests/ -q
 ```
+
+The test suite runs fully offline — it does not require the QiaoTong software.
+Provider/tool calls are validated against the real `qtmodel` API signatures
+(contract tests) and dispatched against an in-process fake backend.
 
 ## Backend: QTModel (桥通)
 
@@ -166,6 +181,26 @@ This MCP server wraps the `qtmodel` Python API which provides access to:
 - **mdb** — Model database: building & modifying bridge models
 - **odb** — Output database: querying analysis results & visualization
 - **cdb** — Check database: structural verification & code checking
+
+## Versioning
+
+The version number mirrors the `qtmodel` release it is verified against:
+
+```
+0 . 2 . 33
+│   │   └── qtmodel minor + patch concatenated (qtmodel 次版本+补丁拼接, 3.3 -> 33)
+│   └────── qtmodel major (qtmodel 主版本, 2)
+└────────── pre-1.0 (1.0 = stable API)
+```
+
+So `0.2.33` corresponds to `qtmodel 2.3.3`; a later `0.2.50` corresponds to
+`qtmodel 2.5.0`. Releases track qtmodel one-to-one. The dependency is pinned to the
+verified range (`qtmodel>=2.3.3,<2.4`); bump both the version and the bound together
+when moving to a new qtmodel release.
+
+> Note: the encoding assumes single-digit qtmodel minor/patch (e.g. `2.3.3` -> `33`).
+> qtmodel versions with two-digit segments (e.g. `2.3.10`) would break sort order and
+> require a scheme revision before use.
 
 ## License
 
