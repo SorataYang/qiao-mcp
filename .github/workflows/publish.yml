@@ -41,7 +41,8 @@ jobs:
       - name: Get version
         id: version
         run: |
-          VERSION=$(ls dist/*.whl | grep -oP '(?<=-)[0-9]+\.[0-9]+\.[0-9]+(?=-)')
+          # 匹配 wheel 文件名中任意段数的版本号（如 0.1.233.0）
+          VERSION=$(ls dist/*.whl | grep -oP '(?<=-)[0-9]+(?:\.[0-9]+)+(?=-)')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Check if version exists on TestPyPI
