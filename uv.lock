@@ -1045,7 +1045,7 @@ wheels = [
 
 [[package]]
 name = "qiao-mcp"
-version = "0.2.33"
+version = "0.2.50"
 source = { editable = "." }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
@@ -1071,7 +1071,7 @@ requires-dist = [
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=3.0.1" },
     { name = "psutil", specifier = ">=5.9" },
-    { name = "qtmodel", specifier = ">=2.3.3,<2.4" },
+    { name = "qtmodel", specifier = ">=2.5.0,<2.6" },
     { name = "requests", specifier = ">=2.32.5" },
 ]
 
@@ -1084,11 +1084,15 @@ dev = [
 
 [[package]]
 name = "qtmodel"
-version = "2.3.3"
+version = "2.5.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/26/58/acfee979bd73b056848b3242af180b2bd07bd75e41e1bfa1b0cc5a5a866f/qtmodel-2.3.3.tar.gz", hash = "sha256:eacb483bddce55e9662ac43f39d7cba97dd54492a4b64b75b51f1fdd1a38e725", size = 173774, upload-time = "2026-06-02T08:26:24.282Z" }
+dependencies = [
+    { name = "psutil" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/67/43/85175207fb156f612367cb9382c6804b3dc104999044aca7257c3ab694de/qtmodel-2.5.0.tar.gz", hash = "sha256:8b9bf00a08373be946bd6a69f5d3a2ff1031b8901b4a5e16bc7a897c3a7b8fa8", size = 252686, upload-time = "2026-07-18T10:33:17.316Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/4d/2856f3d0b22d010940578a12998dca35bbf8d3435c3af4f8f3032888f2a4/qtmodel-2.3.3-py3-none-any.whl", hash = "sha256:2ebe2a5e51699d39dfdfb21f39e6281adee2f0a409d1968cbd1c2227f7265202", size = 129567, upload-time = "2026-06-02T08:26:22.683Z" },
+    { url = "https://files.pythonhosted.org/packages/19/3d/6c99777353df9415722fd8060d9b0f303e57b429d9a517c2e1fe5bb093bb/qtmodel-2.5.0-py3-none-any.whl", hash = "sha256:2742c3461c7385dfa5bb274631024bff4f886005664c10f73010ab0ff8e38628", size = 189156, upload-time = "2026-07-18T10:33:15.651Z" },
 ]
 
 [[package]]
