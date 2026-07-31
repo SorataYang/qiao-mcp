@@ -182,6 +182,26 @@ This MCP server wraps the `qtmodel` Python API which provides access to:
 - **odb** — Output database: querying analysis results & visualization
 - **cdb** — Check database: structural verification & code checking
 
+## Versioning
+
+The version number mirrors the `qtmodel` release it is verified against:
+
+```
+0 . 2 . 33
+│   │   └── qtmodel minor + patch concatenated (qtmodel 次版本+补丁拼接, 3.3 -> 33)
+│   └────── qtmodel major (qtmodel 主版本, 2)
+└────────── pre-1.0 (1.0 = stable API)
+```
+
+So `0.2.33` corresponds to `qtmodel 2.3.3`; a later `0.2.50` corresponds to
+`qtmodel 2.5.0`. Releases track qtmodel one-to-one. The dependency is pinned to the
+verified range (`qtmodel>=2.3.3,<2.4`); bump both the version and the bound together
+when moving to a new qtmodel release.
+
+> Note: the encoding assumes single-digit qtmodel minor/patch (e.g. `2.3.3` -> `33`).
+> qtmodel versions with two-digit segments (e.g. `2.3.10`) would break sort order and
+> require a scheme revision before use.
+
 ## License
 
 Copyright 2026 Sorata (https://github.com/SorataYang)
