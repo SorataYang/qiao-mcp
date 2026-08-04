@@ -5,6 +5,9 @@ on:
     branches: [develop]
     tags: ["v*"]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -37,6 +40,8 @@ jobs:
         with:
           name: dist
           path: dist/
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
 
       - name: Get version
         id: version
@@ -77,6 +82,8 @@ jobs:
         with:
           name: dist
           path: dist/
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
 
       - name: Publish to PyPI
         run: uvx twine upload dist/*
