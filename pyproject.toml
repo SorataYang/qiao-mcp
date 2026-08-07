@@ -19,8 +19,8 @@ classifiers = [
 ]
 dependencies = [
     # mcp 2.0 移除了 mcp.server.fastmcp（FastMCP 更名为 mcp.server.mcpserver.MCPServer），
-    # 本项目全部工具注册基于 FastMCP，故锁定 1.x 直至完成 2.x 迁移
-    "mcp[cli]>=1.0.0,<2",
+    # 本项目锁定到已验证的 1.29 维护线，直至完成 2.x API 与并发语义迁移
+    "mcp[cli]>=1.29,<2",
     "numpy>=2.4.2",
     "openpyxl>=3.1.5",
     "pandas>=3.0.1",
