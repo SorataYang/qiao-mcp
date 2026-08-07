@@ -8,17 +8,19 @@
 
 因此对本项目**直接构建在其 API 之上**的依赖，必须声明大版本上界。
 
-关于 `mcp[cli]<2`——这是已评估的决定，不是待偿的技术债，请勿顺手"升级"掉：
+关于 `mcp[cli]>=1.29,<2`——这是已评估的兼容策略，请勿只修改版本号：
 
-- 迁移成本很低：src 侧为纯机械替换（`fastmcp`→`mcpserver`、`FastMCP`→`MCPServer`），
-  实测迁移后全量测试与 1.x 上完全一致；
-- 但没有到期日：mcp 1.x 仍在维护，`1.29.0` 与 `2.0.0` 为同日发布；
-- 且是单向切换：迁移后的代码无法在 1.x 上运行（`mcp.server.mcpserver` 在 1.x 不存在），
-  mcp 2.0 另要求 Python >=3.10，一迁即断掉存量用户。
+- 1.29.0 是与 2.0.0 同日发布的 1.x 维护版本，包含本项目使用的
+  `Context.report_progress()` 路由修复；
+- 2.0 的装饰器 API 基本不变，但需要迁移模块/类名、snake_case 模型字段和
+  `call_tool()` 返回结构；
+- 更重要的是，2.0 会在线程池并发执行同步 handler。本项目的工具共享同一个有状态
+  QtModelProvider，升级前必须验证或约束模型读写的并发语义；
+- 本项目已经要求 Python >=3.11，因此 2.0 的 Python >=3.10 要求不是迁移障碍。
 
-触发迁移的条件应是：需要使用 mcp 2.x 的新能力，或 1.x 宣布停止维护。届时同步上调
-本文件的上界。（另注：`ToolAnnotations` 在 2.0 改为 snake_case 字段，但构造仍接受
-camelCase，线上协议也仍是 camelCase，故 envelope 的构造代码无需改动。）
+触发迁移的条件应是：需要使用 mcp 2.x 的新能力，或项目完成真实 QtModel 环境下的
+并发与客户端兼容验证。届时同步上调本文件的上界。（另注：`ToolAnnotations` 在 2.0
+改为 snake_case 字段，但构造仍接受 camelCase，线上协议也仍是 camelCase。）
 """
 
 from __future__ import annotations
@@ -38,13 +40,18 @@ MUST_HAVE_UPPER_BOUND = {
     "qtmodel": "provider 直接调用 mdb/odb/cdb，次版本间已多次删除函数与改参数单位",
 }
 
+# 已完成全量测试的最低维护版本。提高基线时应同步更新锁文件并重新验证。
+MUST_HAVE_TESTED_FLOOR = {
+    "mcp": ">=1.29",
+}
+
 
 def _dependencies() -> dict[str, str]:
     """解析 [project].dependencies 为 {包名: 完整约束串}。"""
     data = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
     out = {}
     for spec in data["project"]["dependencies"]:
-        # 形如 "mcp[cli]>=1.0.0,<2" → 包名 mcp
+        # 形如 "mcp[cli]>=1.29,<2" → 包名 mcp
         name = re.split(r"[<>=!~\[]", spec, maxsplit=1)[0].strip().lower()
         out[name] = spec
     return out
@@ -60,6 +67,17 @@ def test_critical_dependency_has_upper_bound(pkg: str):
         f"依赖 {pkg} 缺少版本上界（当前: {spec!r}）。\n"
         f"原因: {MUST_HAVE_UPPER_BOUND[pkg]}\n"
         f"请改为形如 {pkg}>=X.Y,<Z 的形式；确认已适配新大版本后再上调上界。"
+    )
+
+
+@pytest.mark.parametrize("pkg", sorted(MUST_HAVE_TESTED_FLOOR))
+def test_critical_dependency_uses_tested_floor(pkg: str):
+    """关键 SDK 的最低版本必须与已验证基线一致。"""
+    deps = _dependencies()
+    expected = MUST_HAVE_TESTED_FLOOR[pkg]
+    assert expected in deps[pkg], (
+        f"依赖 {pkg} 未使用已验证的最低版本 {expected}（当前: {deps[pkg]!r}）。\n"
+        "若要调整基线，请同步刷新 uv.lock 并运行完整测试。"
     )
 
 
