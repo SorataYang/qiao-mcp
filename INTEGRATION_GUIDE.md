@@ -366,7 +366,7 @@ uv sync
 
 - **Issues**: GitHub Issues
 - **文档**: [MCP Protocol Docs](https://modelcontextprotocol.io/)
-- **示例代码**: 查看 `examples/` 目录（如果有）
+- **代理脚本**: 查看 `scripts/qiaotong_lan_proxy.py`
 
 ---
 

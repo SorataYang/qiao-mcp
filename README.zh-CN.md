@@ -159,6 +159,32 @@ uv run qiao-mcp
 npx @modelcontextprotocol/inspector uv run qiao-mcp
 ```
 
+### 局域网调试转发
+
+跨机器调试时，可以运行 [`scripts/qiaotong_lan_proxy.py`](./scripts/qiaotong_lan_proxy.py)，将局域网端口转发到代理所在机器上的桥通 API。脚本默认监听 `45125`，并转发到选定桥通进程的 `127.0.0.1:55125`：
+
+```bash
+python scripts/qiaotong_lan_proxy.py
+```
+
+客户端机器设置：
+
+```python
+from qtmodel import mdb
+
+mdb.set_url("http://<代理机器局域网IP>:45125/pythonForQt/")
+```
+
+代理会在终端输出每次转发请求和响应。多个桥通进程同时运行时，请为该固定代理保留 `55125`，或者为不同进程分别启动不同监听端口的代理实例。
+
+也可以使用 SSH 隧道，不直接暴露局域网 API 端口：
+
+```bash
+ssh -N -L 45125:127.0.0.1:55125 <用户名>@<桥通机器局域网IP>
+```
+
+隧道运行期间，客户端使用 `http://127.0.0.1:45125/pythonForQt/`。
+
 ## 开发
 
 ```bash
