@@ -133,7 +133,7 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
                 7=市域铁路 T/CRS C0101-2017
             load_type: Load type name exactly as shown in the QiaoTong UI
                        (荷载类型，与软件界面名称一致), e.g. "公路I级车道" (公路通规),
-                       "高速铁路" (铁路规范)
+                       "ZK高速铁路" (铁路规范 TB10002-2017)
             load_length: Load length limit, 0 = unlimited (荷载长度限制，铁路规范参数)
             factor: Load factor (荷载系数，铁路 ZH 荷载参数)
         """
