@@ -164,6 +164,38 @@ Click **保存** to save.
 npx @modelcontextprotocol/inspector uv run qiao-mcp
 ```
 
+### LAN debugging proxy
+
+For cross-machine debugging, [`scripts/qiaotong_lan_proxy.py`](./scripts/qiaotong_lan_proxy.py)
+forwards a LAN-facing port to the QiaoTong API on the same machine. It uses
+`45125` for the proxy and forwards to the selected QiaoTong process on
+`127.0.0.1:55125`:
+
+```bash
+python scripts/qiaotong_lan_proxy.py
+```
+
+Then point the client machine at:
+
+```python
+from qtmodel import mdb
+
+mdb.set_url("http://<proxy-machine-LAN-IP>:45125/pythonForQt/")
+```
+
+The proxy prints each forwarded request and response. When several QiaoTong
+processes are running, keep one process on `55125` for this fixed proxy, or use
+separate proxy instances and ports for separate processes.
+
+An SSH tunnel is an alternative that does not expose the API port on the LAN:
+
+```bash
+ssh -N -L 45125:127.0.0.1:55125 <user>@<qiaotong-machine-LAN-IP>
+```
+
+Use `http://127.0.0.1:45125/pythonForQt/` in the client machine while the tunnel
+is running.
+
 ## Development
 
 ```bash
