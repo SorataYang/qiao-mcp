@@ -51,13 +51,84 @@ class QtModelProvider(BridgeProvider):
                 "(qtmodel 包未安装，请运行: uv add qtmodel)"
             )
         except Exception as e:
-            # qtmodel is installed but QiaoTong software is likely not running
+            # qtmodel is installed but QiaoTong software is likely not running.
+            # qtmodel 2.6 起能区分"软件未启动"与"桥通 API 版本不匹配"，
+            # 后者要求用户升级软件而非启动软件，必须分开告知。
             self._available = False
-            self._unavailable_reason = (
+            detail = self._handshake_detail()
+            self._unavailable_reason = detail or (
                 f"qtmodel imported but connection failed ({type(e).__name__}: {e}). "
                 "Please ensure QiaoTong software is running. "
                 "(qtmodel 已安装，但连接失败，请确保桥通软件已启动)"
             )
+
+    @staticmethod
+    def _handshake_detail() -> str:
+        """Return a precise reason from qtmodel's version handshake, or "" if unavailable."""
+        try:
+            from qtmodel.core.qt_server import QtServer
+
+            probe = getattr(QtServer, "get_connection_status", None)
+            if probe is None:
+                return ""
+            status = probe()
+        except Exception:
+            return ""
+        if not isinstance(status, dict) or status.get("status") == "connected":
+            return ""
+        message = str(status.get("message", "")).strip()
+        action = str(status.get("action", "")).strip()
+        return " ".join(p for p in (message, action) if p)
+
+    def get_connection_status(self) -> dict[str, Any]:
+        """Probe QiaoTong and return an actionable, structured connection status.
+
+        qtmodel 2.6 起提供 QtServer.get_connection_status()，它区分三种状态：
+        connected / version_mismatch（桥通 API 版本与 qtmodel 精确不符）/
+        software_not_running，并各自带 message 与 action。
+
+        这比 is_available() 的布尔值有用得多——后者把"软件没启动"和
+        "版本不匹配"混为一谈，而这两者的处置完全不同（启动软件 vs 升级软件）。
+
+        qtmodel 未安装或该 API 不存在时降级为本地推断的状态，保证工具永不抛错。
+        """
+        try:
+            from qtmodel.core.qt_server import QtServer
+        except ImportError:
+            return {
+                "status": "qtmodel_not_installed",
+                "connected": False,
+                "compatible": None,
+                "message": "qtmodel 包未安装。",
+                "action": "运行 uv add qtmodel 或重装 qiao-mcp。",
+            }
+
+        probe = getattr(QtServer, "get_connection_status", None)
+        if probe is None:
+            # qtmodel < 2.6：无握手 API，只能回报本地探测结果
+            return {
+                "status": "unknown",
+                "connected": self._available,
+                "compatible": None,
+                "message": (
+                    f"当前 qtmodel {self.version} 不提供连接状态查询"
+                    "（2.6 起可用）。"
+                ),
+                "action": self._unavailable_reason or "无需处理。",
+                "client": {"qtmodel_version": self.version},
+            }
+
+        try:
+            return probe()
+        except Exception as e:
+            return {
+                "status": "probe_failed",
+                "connected": False,
+                "compatible": None,
+                "message": f"探测桥通服务失败（{type(e).__name__}: {e}）。",
+                "action": "确认桥通软件已启动，并检查 QIAOTONG_HTTP_URL 是否指向正确端口。",
+                "client": {"qtmodel_version": self.version},
+            }
 
     @property
     def name(self) -> str:
