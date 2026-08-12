@@ -9,7 +9,7 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-### 🔧 Tools (126 tools, grouped)
+### 🔧 Tools (132 tools, grouped)
 
 Tools are organized by workflow area. Highlights per group:
 
@@ -19,18 +19,21 @@ Tools are organized by workflow area. Highlights per group:
 | **Loads** | `create_load_group`, `create_load_case`, `set_self_weight_stage`, `set_gravity`, `apply_nodal_force`, `apply_beam_distributed_load`, temperature/settlement loads |
 | **Boundary** | `set_support`, `add_elastic_link`, `add_master_slave_link`, `add_elastic_support`, `add_beam_constraint` |
 | **Groups** | `create_structure_group`, `add_to_structure_group`, `merge_operation_stage` |
-| **Stages & analysis** | `add_construction_stage`, `configure_analysis`, `run_analysis` (async, progress-reporting), `get_analysis_results` |
+| **Stages & analysis** | `add_construction_stage`, `merge_operation_stage`, `configure_analysis`, `run_analysis` (async, progress-reporting), `get_analysis_results` |
 | **Tendons** | `create_tendon_property`, `create_tendon_2d`, `apply_prestress`, `get_tendon_info` |
 | **Traffic (moving load)** | `add_node_tandem`, `add_influence_plane`, `add_traffic_lane`, `add_standard_vehicle`, `create_live_load_case` |
-| **Checking** | `setup_concrete_check`, `add_check_load_combination`, `add_parametric_reinforcement`, `run_concrete_check` |
-| **Queries** | `get_model_info`, `get_model_data` (by kind), `find_entities`, `calc_section_property`, `get_special_results` — all paginated |
-| **Visualization** | `save_model_screenshot`, `plot_analysis_result` (return viewable images), `set_view_angle` |
+| **Checking** | `setup_concrete_check`, `add_check_load_combination`, `add_parametric_reinforcement`, `run_concrete_check`, `get_check_data` |
+| **Queries** | `get_model_info`, `get_model_data` (by kind), `find_entities`, `calc_section_property`, `get_special_results` (paginated where applicable) |
+| **Modification** | `initialize_model`, `save_model_file`, `open_model_file`, `update_node`, `move_nodes`, `update_element`, `remove_nodes`, `remove_elements` |
+| **Visualization** | `save_model_screenshot`, `plot_analysis_result` (optionally return viewable images), `set_view_angle`, `display_ids` |
 | **Workflows** | `create_simple_beam_bridge`, `create_continuous_beam_bridge` |
-| **Gateway (escape hatch)** | `list_qtmodel_api`, `call_qtmodel_api` — discover & call long-tail qtmodel methods with signature validation |
+| **Gateway & diagnostics** | `check_qiaotong_connection`, `list_qtmodel_api`, `call_qtmodel_api` — diagnose the bridge connection or discover and call long-tail qtmodel methods with signature validation |
 
-All tools return structured content (`{status, …}`) and raise typed errors; read-only
-and destructive operations carry MCP tool annotations. See the server startup
-instructions for the full tool list.
+Tool responses are normalized to structured content (`{status, ...}`), while image
+tools can return MCP image content directly. Tool failures use typed MCP errors, and
+read-only, destructive, and open-world operations carry MCP tool annotations. The
+server instructions include the full tool-group overview; use `list_qtmodel_api`
+before calling an uncovered backend method through the gateway.
 
 ### 📦 Resources (7 resources)
 | URI | Description |
@@ -63,7 +66,8 @@ qiao-mcp/
 │   └── providers/             # Backend adapters
 │       ├── __init__.py        # BridgeProvider abstract base
 │       └── qtmodel_provider.py  # QiaoTong adapter
-└── reference-docs/            # API & software documentation
+├── tests/                     # Offline unit, integration, and API contract tests
+└── reference-docs/            # Review notes and project documentation
 ```
 
 The **Provider pattern** allows future support for multiple bridge analysis backends. Currently supports:
@@ -74,7 +78,11 @@ The **Provider pattern** allows future support for multiple bridge analysis back
 ### Prerequisites
 - Python >= 3.11
 - [uv](https://docs.astral.sh/uv/) package manager
-- QiaoTong software running (optional — tools return error messages if unavailable)
+- `qtmodel` 2.6.3 (installed by `uv sync`)
+- QiaoTong software 2.6.3 running when calling backend model, analysis, or visualization operations
+
+The MCP server can start without QiaoTong. Use `check_qiaotong_connection` to
+distinguish a connected server, a version mismatch, and software that is not running.
 
 ### Install & Run
 
@@ -171,8 +179,8 @@ uv run mypy src/qiao_mcp/
 uv run pytest tests/ -q
 ```
 
-The test suite runs fully offline — it does not require the QiaoTong software.
-Provider/tool calls are validated against the real `qtmodel` API signatures
+The test suite is designed to run offline — it does not require the QiaoTong software.
+Provider/tool calls are validated against the installed `qtmodel` API signatures
 (contract tests) and dispatched against an in-process fake backend.
 
 ## Backend: QTModel (桥通)
@@ -187,16 +195,16 @@ This MCP server wraps the `qtmodel` Python API which provides access to:
 The version number mirrors the `qtmodel` release it is verified against:
 
 ```
-0 . 2 . 50
+0 . 2 . 63
 │   │   └── qtmodel minor + patch concatenated (qtmodel 次版本+补丁拼接, 5.0 -> 50)
 │   └────── qtmodel major (qtmodel 主版本, 2)
 └────────── pre-1.0 (1.0 = stable API)
 ```
 
-So `0.2.50` corresponds to `qtmodel 2.5.0`; an earlier `0.2.33` corresponded to
-`qtmodel 2.3.3`. Releases track qtmodel one-to-one. The dependency is pinned to the
-verified range (`qtmodel>=2.5.0,<2.6`); bump both the version and the bound together
-when moving to a new qtmodel release.
+So `0.2.63` corresponds to `qtmodel 2.6.3`; an earlier `0.2.50` corresponded to
+`qtmodel 2.5.0`. Releases track qtmodel one-to-one. The dependency is constrained to
+the verified compatibility line (`qtmodel>=2.6.3,<2.7`); bump both the project version
+and the dependency bound together when moving to a new qtmodel release.
 
 > Note: the encoding assumes single-digit qtmodel minor/patch (e.g. `2.3.3` -> `33`).
 > qtmodel versions with two-digit segments (e.g. `2.3.10`) would break sort order and
