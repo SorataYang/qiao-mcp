@@ -567,6 +567,79 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_elements(ele_data=ele_data, **kwargs)
         self._mdb.update_model()
 
+    def get_node_coords(self, node_ids: list[int]) -> dict[int, tuple[float, float, float]]:
+        """Return {node_id: (x, y, z)} for the requested IDs that actually exist.
+
+        用于建单元前校验节点几何。缺失的编号不出现在返回值中，调用方据此
+        识别无效引用；查询失败时返回空字典，由调用方决定是否降级放行。
+        """
+        self._require_available()
+        rows = self._safe_get("get_node_data")
+        if rows is None:
+            return {}
+        wanted = set(node_ids)
+        out: dict[int, tuple[float, float, float]] = {}
+        for row in self._to_dicts(rows):
+            node_id = row.get("node_id", row.get("id"))
+            if not isinstance(node_id, int) or node_id not in wanted:
+                continue
+            try:
+                out[node_id] = (float(row["x"]), float(row["y"]), float(row["z"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+        return out
+
+    def check_node_chain_geometry(self, node_ids: list[int]) -> dict[str, Any]:
+        """Verify a node chain forms a monotonic polyline before building elements.
+
+        后端会接受任意有效编号的连线，即使几何上来回折返——单元长度忽长忽短、
+        方向正负交替，求解器照样计算，只是算的是另一座桥。实测在编号乱序的
+        节点批上按编号递推建梁，得到长度 [3, 12, 3, 3] 的折返链且无任何报错。
+
+        判定标准：相邻节点的位移向量方向一致（点积为正）。这允许折线桥（曲线
+        梁、变坡），只拒绝真正的往回折返。
+
+        返回 {ok, reason, total_length, missing}。查询不可用时 ok=True——
+        校验能力缺失不应阻断建模，宁可放行也不误拒。
+        """
+        coords = self.get_node_coords(node_ids)
+        if not coords:
+            return {"ok": True, "reason": "coordinates unavailable, check skipped"}
+
+        missing = [n for n in node_ids if n not in coords]
+        if missing:
+            return {
+                "ok": False,
+                "reason": f"node(s) not found in model: {missing}",
+                "missing": missing,
+            }
+
+        total = 0.0
+        prev_vec: tuple[float, float, float] | None = None
+        for a, b in zip(node_ids, node_ids[1:], strict=False):
+            xa, ya, za = coords[a]
+            xb, yb, zb = coords[b]
+            vec = (xb - xa, yb - ya, zb - za)
+            length = (vec[0] ** 2 + vec[1] ** 2 + vec[2] ** 2) ** 0.5
+            if length < 1e-9:
+                return {
+                    "ok": False,
+                    "reason": f"nodes {a} and {b} are coincident (zero-length element)",
+                }
+            total += length
+            if prev_vec is not None:
+                dot = sum(p * c for p, c in zip(prev_vec, vec, strict=False))
+                if dot < 0:
+                    return {
+                        "ok": False,
+                        "reason": (
+                            f"chain folds back at node {a}: segment to {b} reverses "
+                            f"direction (元素在此折返)"
+                        ),
+                    }
+            prev_vec = vec
+        return {"ok": True, "reason": "monotonic", "total_length": total}
+
     def add_material(
         self,
         name: str,

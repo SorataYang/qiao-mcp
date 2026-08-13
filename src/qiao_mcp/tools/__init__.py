@@ -238,56 +238,116 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
     @mcp.tool()
     def create_beam_elements_linear(
-        node_id_start: int,
-        count: int,
         mat_id: int,
         sec_id: int,
+        node_ids: list[int] | None = None,
+        node_id_start: int = 0,
+        count: int = 0,
         element_id_start: int = 1,
         beta_angle: float = 0.0,
         ele_type: int = 1,
     ) -> str:
         """
-        Batch-create frame elements connecting consecutive nodes along a girder
+        Batch-create frame elements chaining nodes along a girder
         (批量创建沿主梁方向连接相邻节点的梁单元).
 
-        This is the most efficient way to model a bridge girder — instead of
-        specifying every element individually, you only need the starting node,
-        the count, and the material/section.
+        PREFERRED: pass node_ids — the exact ID sequence reported by
+        create_nodes_linear. Elements chain them in the order given:
+        node_ids[0]→[1], [1]→[2], …
+        （首选：直接传 create_nodes_linear 回报的编号序列，按给定顺序连接）
 
-        Elements are created connecting nodes: node_id_start→+1, node_id_start+1→+2, etc.
+        Do NOT assume node IDs are consecutive. The backend assigns numbering in
+        an order that is NOT predictable from the request — measured on qtmodel
+        2.6.3, one batch came back [1104,1103,1102,1101,1100] (reversed) and
+        another [1201,1200,1204,1203,1202] (neither ascending nor reversed).
+        Chaining by ID arithmetic on such a batch silently produces folded-back
+        geometry: elements of wrong length and direction that the solver accepts
+        without error, yielding a model that computes the wrong bridge.
+        （后端编号顺序不可预测，按编号递推会静默建出折返几何，求解器不会报错）
+
+        Node coordinates are checked before writing: if the chain is not
+        geometrically monotonic, the call fails instead of building a bad model.
 
         Args:
-            node_id_start: ID of the first node (I end of first element) (起始节点编号)
-            count: Number of elements to create (单元数量)
             mat_id: Material ID for all elements (所有梁单元的材料编号)
             sec_id: Section ID for all elements (所有梁单元的截面编号)
+            node_ids: Node IDs in girder order, as reported by create_nodes_linear
+                      (节点编号序列，按主梁走向排列). Creates len(node_ids)-1 elements.
+            node_id_start: LEGACY fallback, only when node_ids is omitted — assumes
+                           IDs run consecutively from here (旧式用法，假设编号连续)
+            count: Number of elements, only with node_id_start (单元数量)
             element_id_start: ID assigned to the first element, then auto-incremented
                               (第一个单元的编号，后续自动递增)
             beta_angle: Beta angle in degrees, same for all elements (贝塔角，度)
             ele_type: 1=Beam(梁), 2=Truss(杆), 3=Cable(索)
 
         Examples:
-            # 100m beam with 100 elements (101 nodes already created at IDs 1–101):
-            create_beam_elements_linear(node_id_start=1, count=100, mat_id=1, sec_id=1)
+            # Preferred — chain the IDs create_nodes_linear actually returned:
+            create_beam_elements_linear(mat_id=1, sec_id=1,
+                                        node_ids=[5, 501, 500, 502])
 
-            # Second span of a two-span continuous beam (nodes 101-201):
-            create_beam_elements_linear(node_id_start=101, count=100, mat_id=1, sec_id=1,
-                                        element_id_start=101)
+            # Legacy — only safe when the nodes are known to be consecutive:
+            create_beam_elements_linear(mat_id=1, sec_id=1,
+                                        node_id_start=1, count=100)
         """
+        # ── 解析节点链：显式序列优先，否则回落到编号递推 ──
+        if node_ids:
+            chain = [int(n) for n in node_ids]
+            if len(chain) < 2:
+                raise ToolInputError(
+                    "node_ids needs at least 2 node IDs to form one element "
+                    "(至少需要 2 个节点编号才能形成 1 个单元)"
+                )
+            if len(set(chain)) != len(chain):
+                raise ToolInputError(
+                    f"node_ids contains duplicates: {chain} "
+                    "(节点编号序列中存在重复)"
+                )
+        elif node_id_start > 0 and count > 0:
+            chain = [node_id_start + i for i in range(count + 1)]
+        else:
+            raise ToolInputError(
+                "Provide node_ids (preferred), or both node_id_start and count "
+                "(请提供 node_ids，或同时提供 node_id_start 与 count)"
+            )
+
+        # ── 写入前几何校验：拦截折返几何 ──
+        # 后端接受任何有效节点编号的连线，长度忽正忽负也不报错，最终算出错的桥。
+        # 这里在写入前按真实坐标核对单调性，宁可拒绝也不建出坏模型。
+        try:
+            geom = provider.check_node_chain_geometry(chain)
+        except Exception:
+            geom = None  # 校验本身失败（如查询不可用）不应阻塞建模
+
+        if geom and not geom.get("ok"):
+            raise ToolInputError(
+                f"Refusing to create elements — node chain is not geometrically "
+                f"monotonic: {geom.get('reason', 'unknown')}. Chaining these IDs "
+                f"would build folded-back elements that the solver accepts but "
+                f"which model the wrong structure. Query get_model_data(kind='nodes') "
+                f"and pass node_ids in true girder order. "
+                f"（节点链几何非单调，拒绝建单元以免产生折返几何，"
+                f"请按主梁真实走向传入 node_ids）"
+            )
+
         try:
             ele_data = [
                 [element_id_start + i, ele_type, mat_id, sec_id, beta_angle,
-                 node_id_start + i, node_id_start + i + 1, 0, 0.0]
-                for i in range(count)
+                 chain[i], chain[i + 1], 0, 0.0]
+                for i in range(len(chain) - 1)
             ]
             provider.add_elements(ele_data=ele_data)
-            last_ele = element_id_start + count - 1
-            last_node = node_id_start + count
+            n_ele = len(ele_data)
+            last_ele = element_id_start + n_ele - 1
+            kind = {1: "beam", 2: "truss", 3: "cable"}.get(ele_type, "frame")
+            detail = ""
+            if geom and geom.get("total_length"):
+                detail = f", total length {geom['total_length']:.3f}"
             return (
-                f"Created {count} beam elements (IDs {element_id_start}–{last_ele}), "
-                f"connecting nodes {node_id_start}–{last_node} "
-                f"(mat={mat_id}, sec={sec_id}) "
-                f"(成功批量创建 {count} 个梁单元)"
+                f"Created {n_ele} {kind} elements (IDs {element_id_start}–{last_ele}) "
+                f"chaining nodes {_describe_ids(chain)} "
+                f"(mat={mat_id}, sec={sec_id}{detail}) "
+                f"(成功批量创建 {n_ele} 个单元)"
             )
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
