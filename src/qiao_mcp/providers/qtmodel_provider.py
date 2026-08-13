@@ -9,6 +9,7 @@ the BridgeProvider interface.
 
 import ast
 import json
+import time
 from typing import Any
 
 from qiao_mcp.providers import BridgeProvider
@@ -26,20 +27,42 @@ class QtModelProvider(BridgeProvider):
     桥通软件 qtmodel API 适配器。
     """
 
+    # 连通性探测结果的缓存时长（秒）。探测要走 HTTP，不能每次调用都发；
+    # 但也不能永久缓存——用户常常先起 MCP、后开桥通，缓存必须能自愈。
+    _PROBE_TTL = 3.0
+
+    # 类级默认值：测试普遍用 __new__ 跳过 __init__ 注入假 mdb/odb/cdb，
+    # 没有这两个默认值，那些实例一调 is_available() 就 AttributeError。
+    _probe_cache: dict[str, Any] | None = None
+    _probe_at: float = 0.0
+
     def __init__(self):
-        """Initialize the qtmodel provider and check availability."""
+        """Initialize the qtmodel provider and bind the qtmodel API objects.
+
+        只做 import 与绑定，**不做**网络探测：MCP server 在 import 期就构造
+        provider，而探测最坏要枚举 461 个候选端口（psutil 在 macOS 上常因
+        AccessDenied 回退到逐端口连接），不能让 server 启动同步等待。
+        真实连通性由 is_available() 惰性探测并缓存。
+        """
         self._mdb = None
         self._odb = None
         self._cdb = None
         self._available = False
         self._unavailable_reason = ""
+        self._probe_cache: dict[str, Any] | None = None
+        self._probe_at = 0.0
         self._try_import()
 
     def _try_import(self):
-        """Attempt to import qtmodel and connect to QiaoTong software."""
+        """Import qtmodel and bind mdb/odb/cdb.
+
+        注意：绑定 qtmodel.mdb/odb/cdb **不会**因桥通未启动而抛错——这三个
+        对象是惰性的，只有真正调用其方法时才发 HTTP。因此下面的 except 分支
+        实际只拦得住 import 期的异常（如依赖缺失），"软件没启动"走不到这里，
+        由 is_available() / get_connection_status() 负责识别。
+        """
         try:
             import qtmodel
-            # Accessing mdb/odb/cdb will raise if the software is not running
             self._mdb = qtmodel.mdb
             self._odb = qtmodel.odb
             self._cdb = qtmodel.cdb
@@ -142,8 +165,70 @@ class QtModelProvider(BridgeProvider):
         except ImportError:
             return "not installed"
 
+    def _probe_connection(self, force: bool = False) -> dict[str, Any] | None:
+        """Probe QiaoTong's HTTP service, caching the result for _PROBE_TTL seconds.
+
+        返回 qtmodel 的结构化状态字典；无法探测时返回 None（qtmodel 未安装，
+        或 qtmodel < 2.6 没有握手 API）——"探不到"与"不可用"是两回事，
+        调用方需自行决定降级策略。
+
+        缓存是必需的：探测要发 HTTP，而 is_available() 可能被频繁调用；
+        但缓存必须过期，因为用户常常先起 MCP server、后开桥通软件。
+        """
+        now = time.monotonic()
+        cache = self._probe_cache
+        if not force and cache is not None and now - self._probe_at < self._PROBE_TTL:
+            return cache
+        try:
+            from qtmodel.core.qt_server import QtServer
+
+            probe = getattr(QtServer, "get_connection_status", None)
+            if probe is None:
+                return None
+            status = probe()
+        except Exception:
+            return None
+        if not isinstance(status, dict):
+            return None
+        self._probe_cache = status
+        self._probe_at = now
+        return status
+
     def is_available(self) -> bool:
-        return self._available
+        """Report whether the backend is usable **right now**.
+
+        绑定 qtmodel 对象成功不等于后端可用：桥通未启动、或桥通 API 版本与
+        qtmodel 不精确匹配时，绑定照样成功（mdb/odb/cdb 是惰性的），直到真正
+        调用方法才失败。此前本方法只回报 import 结果，于是无论桥通是否运行
+        都返回 True，server 启动日志也总是打印"✅ loaded successfully"。
+
+        因此在 import 成功的基础上再做一次连通性探测，结果缓存 _PROBE_TTL 秒。
+        无法探测时（qtmodel < 2.6 无握手 API）退回 import 结果——缺少判定手段
+        不等于后端不可用，此时保持原有的乐观行为。
+
+        注意：探测会发 HTTP，故本方法不适合放在 import 期的热路径上。
+        """
+        if not self._available:
+            return False
+        status = self._probe_connection()
+        if status is None:
+            return True  # 无从判断，保持乐观
+        # version_mismatch 时 connected=True 但 compatible=False，同样不可用
+        usable = bool(status.get("connected")) and status.get("compatible") is not False
+        if not usable:
+            # server.py 与 _require_available 都会展示这条原因，必须填上探测结论，
+            # 否则用户只看到"不可用"却不知道该启动软件还是升级软件
+            detail = " ".join(
+                p
+                for p in (
+                    str(status.get("message", "")).strip(),
+                    str(status.get("action", "")).strip(),
+                )
+                if p
+            )
+            if detail:
+                self._unavailable_reason = detail
+        return usable
 
     def get_software_name(self) -> str:
         return "QiaoTong (桥通)"
