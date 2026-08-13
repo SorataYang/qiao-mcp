@@ -362,9 +362,19 @@ class QtModelProvider(BridgeProvider):
     def _to_dicts(result: Any) -> list[dict]:
         """Normalize a query result to a list of plain dicts.
 
-        qtmodel 的 get_node_data/get_element_data 返回 Node/Element 对象，
-        其 __repr__/__str__ 返回 dict（非字符串），直接 JSON 序列化会崩溃；
-        此处统一用对象的 to_dict() 拍平为普通 dict。
+        qtmodel 的查询返回自定义数据对象（Node/Element/Material/…），必须拍平
+        为普通 dict，否则工具层 json.dumps(default=str) 会把整个对象变成
+        **字符串化的 Python dict**（单引号、外层再套双引号），LLM 拿到的不是
+        结构化数据，取 node_ids 之类的字段还要二次解析。
+
+        qtmodel 的这批类只有 Node 提供 to_dict()，Element/Material/ElasticLink
+        等一律没有（实测 2.6.3：40+ 个数据类缺失），故按以下顺序降级：
+
+        1. 已经是 dict —— 原样；
+        2. 有 to_dict() —— 调用它（Node 等，尊重上游的字段命名）；
+        3. 有 __dict__ —— 取实例属性。实测这批类无 property、无 __slots__，
+           __dict__ 即字段全集（如 Element 的 8 个 __init__ 参数全在）；
+        4. 其余标量（str/int/如结构组名列表）—— 原样，由调用方处理。
         """
         if result is None:
             return []
@@ -378,6 +388,12 @@ class QtModelProvider(BridgeProvider):
                 out.append(item)
             elif hasattr(item, "to_dict"):
                 out.append(item.to_dict())
+            elif hasattr(item, "__dict__") and not isinstance(
+                item, (str, bytes, int, float, bool)
+            ):
+                # vars() 拷贝一份，避免调用方改动泄漏回 qtmodel 的对象
+                flat = {k: v for k, v in vars(item).items() if not k.startswith("_")}
+                out.append(flat if flat else item)
             else:
                 out.append(item)
         return out
