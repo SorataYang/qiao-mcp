@@ -15,6 +15,34 @@ from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
 
 
+def _describe_ids(ids: list[int]) -> str:
+    """Render an ID sequence compactly, preserving the order given.
+
+    批量建模常创建上百个节点，逐一列出会淹没消息。但这里的顺序有语义——
+    第 i 个编号对应第 i 个请求坐标，而后端的编号方向可能与坐标相反
+    （实测 x=10/20/30 -> 102/101/100），因此**不能排序**，只能压缩
+    单调连续段（升序或降序），断点必须忠实保留。
+    """
+    if not ids:
+        return "none"
+    runs: list[tuple[int, int]] = []
+    start = prev = ids[0]
+    step = 0
+    for i in ids[1:]:
+        delta = i - prev
+        if delta in (1, -1) and (step == 0 or delta == step):
+            step, prev = delta, i
+            continue
+        runs.append((start, prev))
+        start = prev = i
+        step = 0
+    runs.append((start, prev))
+    parts = [str(a) if a == b else f"{a}–{b}" for a, b in runs]
+    if len(parts) <= 4:
+        return ", ".join(parts)
+    return ", ".join(parts[:3]) + f", … (+{len(parts) - 3} more ranges)"
+
+
 def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     """Register all modeling-related MCP tools."""
 
@@ -85,8 +113,14 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             spacing_x: X increment between nodes, m (相邻节点X方向间距)
             spacing_y: Y increment between nodes (相邻节点Y方向间距)
             spacing_z: Z increment between nodes (相邻节点Z方向间距)
-            start_id: ID of the first node (起始节点编号)
-            is_merged: Whether to merge duplicate nodes (是否合并重合节点)
+            start_id: Requested ID of the first node (期望的起始节点编号).
+                      HONORED ONLY when the model has no conflicting IDs — the
+                      backend assigns its own numbering when start_id is taken.
+                      The returned message reports the IDs actually assigned;
+                      always trust those, not start_id.
+                      （编号可能被后端改派，请以返回消息中的实际编号为准）
+            is_merged: Whether to merge duplicate nodes (是否合并重合节点).
+                       When merging occurs, fewer nodes are created than requested.
             merge_error: Merge tolerance, default 1e-3 (合并容差)
 
         Examples:
@@ -104,21 +138,47 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 [start_x + i * spacing_x, start_y + i * spacing_y, start_z + i * spacing_z]
                 for i in range(count)
             ]
-            provider.add_nodes(
+            # numbering_type: 0=未使用的最小号码 1=最大号码加1 2=用户定义号码。
+            # 只有 2 会读 start_id；此前硬编码 1，导致 start_id 被静默忽略。
+            created_ids = provider.add_nodes_returning_ids(
                 node_data=node_data,
                 intersected=False,
                 is_merged=is_merged,
                 merge_error=merge_error,
-                numbering_type=1,
+                numbering_type=2,
                 start_id=start_id,
             )
             end_x = start_x + (count - 1) * spacing_x
             end_y = start_y + (count - 1) * spacing_y
             end_z = start_z + (count - 1) * spacing_z
+            span = (
+                f"from ({start_x},{start_y},{start_z}) "
+                f"to ({end_x:.3f},{end_y:.3f},{end_z:.3f})"
+            )
+            # 实际编号由后端裁定，必须回报真实值——LLM 会用它建单元
+            if not created_ids:
+                return (
+                    f"Created {count} nodes {span}, but the assigned IDs could not "
+                    f"be read back — query them with get_model_data(kind='nodes') "
+                    f"before creating elements "
+                    f"(成功创建 {count} 个节点，但未能读回编号，建单元前请先查询)"
+                )
+            # created_ids 按请求坐标顺序给出该点真实可用的编号（可能是新建的，
+            # 也可能是 is_merged 命中的既有节点），故按序展示而非排序后压缩
+            id_desc = _describe_ids(created_ids)
+            note = ""
+            if len(created_ids) != count:
+                note = (
+                    f" NOTE: {count} coordinates requested but only "
+                    f"{len(created_ids)} node IDs resolved — verify with "
+                    f"get_model_data(kind='nodes') "
+                    f"（有坐标未能解析到编号，请查询核实）"
+                )
+            first, last = created_ids[0], created_ids[-1]
+            order = "" if first <= last else " (note: IDs run opposite to coordinates)"
             return (
-                f"Created {count} nodes (IDs {start_id}–{start_id + count - 1}), "
-                f"from ({start_x},{start_y},{start_z}) to ({end_x:.3f},{end_y:.3f},{end_z:.3f}) "
-                f"(成功批量创建 {count} 个等间距节点)"
+                f"Created/resolved {len(created_ids)} nodes at IDs {id_desc}, {span}"
+                f"{order} (成功创建 {len(created_ids)} 个等间距节点){note}"
             )
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
