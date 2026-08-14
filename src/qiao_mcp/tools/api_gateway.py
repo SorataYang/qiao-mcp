@@ -38,6 +38,12 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
         Returns the status, a human-readable message, the recommended action,
         and the client/server versions involved.
+
+        IMPORTANT: If connected=False and the active_url contains 'localhost',
+        recommend trying 127.0.0.1 instead — some platforms resolve localhost
+        to IPv6 ::1 while QiaoTong binds to IPv4 0.0.0.0, causing connection
+        failures even when the software is running.
+        （localhost 可能被解析为 IPv6 ::1 导致连接失败，建议改用 127.0.0.1）
         """
         try:
             status = provider.get_connection_status()
@@ -63,6 +69,18 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         server = status.get("server") or {}
         if server.get("api_version"):
             lines.append(f"QiaoTong API (server): {server['api_version']}")
+
+        # 如果连接失败且 URL 用的是 localhost，给出 127.0.0.1 的提示
+        if not status.get("connected"):
+            active_url = client.get("active_url", "")
+            if "localhost" in active_url:
+                lines.append(
+                    "\n⚠️  Hint: Your URL contains 'localhost', which may resolve to "
+                    "IPv6 ::1 on some systems while QiaoTong binds to IPv4. "
+                    "Try setting QIAOTONG_HTTP_URL=http://127.0.0.1:5000 instead."
+                    "\n   （localhost 可能被解析为 IPv6 导致连接失败，"
+                    "建议设置 QIAOTONG_HTTP_URL=http://127.0.0.1:5000）"
+                )
 
         return "\n".join(lines)
 
