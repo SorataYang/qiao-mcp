@@ -1913,7 +1913,9 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             ids: Node/Element IDs to query (查询的节点/单元编号)
             stage_id: Construction stage (施工阶段): -1=operation(运营), 0=envelope(包络),
                       n=stage n (第n阶段)
-            case_name: Load case name for operation stage (运营阶段荷载工况名)
+            case_name: Load case name for operation stage (运营阶段荷载工况名).
+                       For stage_id=-1, the tool automatically adds "ST:" prefix if missing.
+                       (运营阶段查询时工具会自动添加 "ST:" 前缀)
             limit: Max items per page, default 100 (单页条数上限)
             offset: Pagination offset (翻页偏移)
         """
@@ -1922,7 +1924,12 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
             kwargs: dict[str, Any] = {}
             if case_name:
-                kwargs["case_name"] = case_name
+                # 运营阶段查询：qtmodel 要求工况名加 "ST:" 前缀
+                # Operation stage queries require "ST:" prefix in qtmodel
+                if stage_id == -1 and not case_name.startswith("ST:"):
+                    kwargs["case_name"] = f"ST:{case_name}"
+                else:
+                    kwargs["case_name"] = case_name
 
             if result_type == "deformation":
                 result = provider.get_deformation(ids=ids, stage_id=stage_id, **kwargs)
