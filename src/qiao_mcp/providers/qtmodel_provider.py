@@ -268,6 +268,21 @@ class QtModelProvider(BridgeProvider):
         "体系温度荷载" | "梯度温度荷载"
         "长轨伸缩挠曲力荷载" | "脱轨荷载" | "长轨断轨力荷载"
         "船舶撞击荷载" | "汽车撞击荷载" | "用户定义荷载"
+
+        ### Result Query (结果查询) — operation stage load case naming
+        When querying operation stage results (stage_id=-1), the load case name is
+        automatically prefixed with "ST:" by get_analysis_results tool. You only need
+        to provide the original load case name when you created it.
+
+        Example:
+        • Create load case: add_load_case(name='荷载1', case_type='恒载')
+        • Query results: get_analysis_results(result_type='deformation', case_name='荷载1', stage_id=-1)
+          (The tool converts it to 'ST:荷载1' automatically)
+
+        Result field structure:
+        • Deformation: {node_id, dx, dy, dz, rx, ry, rz} — lowercase, meters/radians
+        • Force: {element_id, force_i: {Fx,Fy,Fz,Mx,My,Mz}, force_j: {...}} — nested, kN/kN·m
+        • Access fields like: result['dz'] for displacement, result['force_i']['My'] for moment
         """
 
 
