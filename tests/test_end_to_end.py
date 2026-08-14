@@ -4,7 +4,6 @@
 跳过条件：qtmodel 未安装或桥通软件未启动。
 """
 
-import os
 
 import pytest
 
@@ -117,6 +116,6 @@ def test_simple_beam_solve_and_query(skip_if_unavailable):
     assert my_i > 0, "I端弯矩应非零"
     assert my_j > 0, "J端弯矩应非零"
 
-    print(f"✅ 测试通过")
+    print("✅ 测试通过")
     print(f"  跨中位移 dz = {dz:.6f} m")
     print(f"  单元1弯矩: I端 {my_i:.2f} kN·m, J端 {my_j:.2f} kN·m")
