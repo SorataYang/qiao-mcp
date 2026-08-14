@@ -214,6 +214,8 @@ reference-docs/*
 examples/*
 !examples/.gitkeep
 
+# Repository-maintained utility scripts live in scripts/ and are committed normally.
+
 # Reference codes for AI learning
 reference_codes/*
 !reference_codes/.gitkeep

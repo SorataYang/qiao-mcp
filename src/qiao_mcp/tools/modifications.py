@@ -1,6 +1,6 @@
 """
 MCP Modification Tools — update/modify existing model entities.
-桥梁模型修改类工具 (基于 qtmodel 2.3.3 API)
+桥梁模型修改类工具 (基于 qtmodel 2.5.0 API)
 
 Provides tools to modify existing nodes, elements, materials,
 sections, boundaries, and structure groups.

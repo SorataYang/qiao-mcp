@@ -20,6 +20,75 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     """Register the qtmodel API discovery + call gateway."""
 
     @mcp.tool()
+    def check_qiaotong_connection() -> str:
+        """
+        Diagnose the connection to QiaoTong software (诊断桥通软件连接状态).
+
+        CALL THIS FIRST when any tool reports the backend is unavailable.
+        It distinguishes the three failure modes, which need different fixes:
+        （任一工具报后端不可用时先调用本工具，它区分三种需要不同处置的状态）
+
+        - connected (已连接): ready to model.
+        - version_mismatch (版本不匹配): the QiaoTong API version and the
+          installed qtmodel differ. qtmodel pins an exact version, so the
+          user must upgrade QiaoTong (or install a matching qtmodel).
+          （桥通与 qtmodel 版本必须精确一致，需升级桥通软件）
+        - software_not_running (软件未启动): start QiaoTong and wait for the
+          main window, then retry. （启动桥通并等待主界面加载）
+
+        Returns the status, a human-readable message, the recommended action,
+        and the client/server versions involved.
+
+        IMPORTANT: when connecting through a port forward (e.g. an SSH tunnel to
+        QiaoTong on another machine), the URL host must be `localhost`, not
+        `127.0.0.1`. Windows HTTP.sys validates the Host header and rejects the
+        bare IP with "400 Invalid Hostname" even though the port is reachable.
+        （经端口转发访问时必须用 localhost；Windows HTTP.sys 会以
+        400 Invalid Hostname 拒绝 127.0.0.1 的 Host 头）
+        """
+        try:
+            status = provider.get_connection_status()
+        except Exception as e:
+            raise ToolError(f"Error checking connection (连接诊断失败): {e}") from e
+
+        lines = [
+            f"status: {status.get('status', 'unknown')}",
+            f"connected: {status.get('connected')}",
+        ]
+        if status.get("compatible") is not None:
+            lines.append(f"compatible: {status['compatible']}")
+        for key in ("message", "action"):
+            if status.get(key):
+                lines.append(f"{key}: {status[key]}")
+
+        client = status.get("client") or {}
+        if client.get("qtmodel_version"):
+            lines.append(f"qtmodel (client): {client['qtmodel_version']}")
+        if client.get("active_url"):
+            lines.append(f"active url: {client['active_url']}")
+
+        server = status.get("server") or {}
+        if server.get("api_version"):
+            lines.append(f"QiaoTong API (server): {server['api_version']}")
+
+        # 未连上且配置里用了裸 IP：Windows HTTP.sys 会以 400 Invalid Hostname
+        # 拒绝 127.0.0.1 的 Host 头，端口通也连不上，必须改用 localhost。
+        # 实测于 SSH 端口转发访问远端桥通的场景。
+        if not status.get("connected"):
+            configured = str(client.get("configured_url") or "")
+            active = str(client.get("active_url") or "")
+            if "127.0.0.1" in configured or "127.0.0.1" in active:
+                lines.append(
+                    "hint: the URL uses 127.0.0.1 — Windows HTTP.sys rejects that "
+                    "Host header with '400 Invalid Hostname' even when the port is "
+                    "reachable. Set QIAOTONG_HTTP_URL to use localhost instead, "
+                    "e.g. http://localhost:55125/pythonForQt/ "
+                    "（请改用 localhost，而非 127.0.0.1）"
+                )
+
+        return "\n".join(lines)
+
+    @mcp.tool()
     def list_qtmodel_api(api_object: str, pattern: str = "") -> str:
         """
         Discover qtmodel API methods and their real signatures (检索 qtmodel API 方法及签名).
