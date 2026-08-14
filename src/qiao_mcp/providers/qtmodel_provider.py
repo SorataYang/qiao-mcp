@@ -9,6 +9,7 @@ the BridgeProvider interface.
 
 import ast
 import json
+import time
 from typing import Any
 
 from qiao_mcp.providers import BridgeProvider
@@ -26,20 +27,42 @@ class QtModelProvider(BridgeProvider):
     桥通软件 qtmodel API 适配器。
     """
 
+    # 连通性探测结果的缓存时长（秒）。探测要走 HTTP，不能每次调用都发；
+    # 但也不能永久缓存——用户常常先起 MCP、后开桥通，缓存必须能自愈。
+    _PROBE_TTL = 3.0
+
+    # 类级默认值：测试普遍用 __new__ 跳过 __init__ 注入假 mdb/odb/cdb，
+    # 没有这两个默认值，那些实例一调 is_available() 就 AttributeError。
+    _probe_cache: dict[str, Any] | None = None
+    _probe_at: float = 0.0
+
     def __init__(self):
-        """Initialize the qtmodel provider and check availability."""
+        """Initialize the qtmodel provider and bind the qtmodel API objects.
+
+        只做 import 与绑定，**不做**网络探测：MCP server 在 import 期就构造
+        provider，而探测最坏要枚举 461 个候选端口（psutil 在 macOS 上常因
+        AccessDenied 回退到逐端口连接），不能让 server 启动同步等待。
+        真实连通性由 is_available() 惰性探测并缓存。
+        """
         self._mdb = None
         self._odb = None
         self._cdb = None
         self._available = False
         self._unavailable_reason = ""
+        self._probe_cache: dict[str, Any] | None = None
+        self._probe_at = 0.0
         self._try_import()
 
     def _try_import(self):
-        """Attempt to import qtmodel and connect to QiaoTong software."""
+        """Import qtmodel and bind mdb/odb/cdb.
+
+        注意：绑定 qtmodel.mdb/odb/cdb **不会**因桥通未启动而抛错——这三个
+        对象是惰性的，只有真正调用其方法时才发 HTTP。因此下面的 except 分支
+        实际只拦得住 import 期的异常（如依赖缺失），"软件没启动"走不到这里，
+        由 is_available() / get_connection_status() 负责识别。
+        """
         try:
             import qtmodel
-            # Accessing mdb/odb/cdb will raise if the software is not running
             self._mdb = qtmodel.mdb
             self._odb = qtmodel.odb
             self._cdb = qtmodel.cdb
@@ -51,13 +74,84 @@ class QtModelProvider(BridgeProvider):
                 "(qtmodel 包未安装，请运行: uv add qtmodel)"
             )
         except Exception as e:
-            # qtmodel is installed but QiaoTong software is likely not running
+            # qtmodel is installed but QiaoTong software is likely not running.
+            # qtmodel 2.6 起能区分"软件未启动"与"桥通 API 版本不匹配"，
+            # 后者要求用户升级软件而非启动软件，必须分开告知。
             self._available = False
-            self._unavailable_reason = (
+            detail = self._handshake_detail()
+            self._unavailable_reason = detail or (
                 f"qtmodel imported but connection failed ({type(e).__name__}: {e}). "
                 "Please ensure QiaoTong software is running. "
                 "(qtmodel 已安装，但连接失败，请确保桥通软件已启动)"
             )
+
+    @staticmethod
+    def _handshake_detail() -> str:
+        """Return a precise reason from qtmodel's version handshake, or "" if unavailable."""
+        try:
+            from qtmodel.core.qt_server import QtServer
+
+            probe = getattr(QtServer, "get_connection_status", None)
+            if probe is None:
+                return ""
+            status = probe()
+        except Exception:
+            return ""
+        if not isinstance(status, dict) or status.get("status") == "connected":
+            return ""
+        message = str(status.get("message", "")).strip()
+        action = str(status.get("action", "")).strip()
+        return " ".join(p for p in (message, action) if p)
+
+    def get_connection_status(self) -> dict[str, Any]:
+        """Probe QiaoTong and return an actionable, structured connection status.
+
+        qtmodel 2.6 起提供 QtServer.get_connection_status()，它区分三种状态：
+        connected / version_mismatch（桥通 API 版本与 qtmodel 精确不符）/
+        software_not_running，并各自带 message 与 action。
+
+        这比 is_available() 的布尔值有用得多——后者把"软件没启动"和
+        "版本不匹配"混为一谈，而这两者的处置完全不同（启动软件 vs 升级软件）。
+
+        qtmodel 未安装或该 API 不存在时降级为本地推断的状态，保证工具永不抛错。
+        """
+        try:
+            from qtmodel.core.qt_server import QtServer
+        except ImportError:
+            return {
+                "status": "qtmodel_not_installed",
+                "connected": False,
+                "compatible": None,
+                "message": "qtmodel 包未安装。",
+                "action": "运行 uv add qtmodel 或重装 qiao-mcp。",
+            }
+
+        probe = getattr(QtServer, "get_connection_status", None)
+        if probe is None:
+            # qtmodel < 2.6：无握手 API，只能回报本地探测结果
+            return {
+                "status": "unknown",
+                "connected": self._available,
+                "compatible": None,
+                "message": (
+                    f"当前 qtmodel {self.version} 不提供连接状态查询"
+                    "（2.6 起可用）。"
+                ),
+                "action": self._unavailable_reason or "无需处理。",
+                "client": {"qtmodel_version": self.version},
+            }
+
+        try:
+            return probe()
+        except Exception as e:
+            return {
+                "status": "probe_failed",
+                "connected": False,
+                "compatible": None,
+                "message": f"探测桥通服务失败（{type(e).__name__}: {e}）。",
+                "action": "确认桥通软件已启动，并检查 QIAOTONG_HTTP_URL 是否指向正确端口。",
+                "client": {"qtmodel_version": self.version},
+            }
 
     @property
     def name(self) -> str:
@@ -71,8 +165,70 @@ class QtModelProvider(BridgeProvider):
         except ImportError:
             return "not installed"
 
+    def _probe_connection(self, force: bool = False) -> dict[str, Any] | None:
+        """Probe QiaoTong's HTTP service, caching the result for _PROBE_TTL seconds.
+
+        返回 qtmodel 的结构化状态字典；无法探测时返回 None（qtmodel 未安装，
+        或 qtmodel < 2.6 没有握手 API）——"探不到"与"不可用"是两回事，
+        调用方需自行决定降级策略。
+
+        缓存是必需的：探测要发 HTTP，而 is_available() 可能被频繁调用；
+        但缓存必须过期，因为用户常常先起 MCP server、后开桥通软件。
+        """
+        now = time.monotonic()
+        cache = self._probe_cache
+        if not force and cache is not None and now - self._probe_at < self._PROBE_TTL:
+            return cache
+        try:
+            from qtmodel.core.qt_server import QtServer
+
+            probe = getattr(QtServer, "get_connection_status", None)
+            if probe is None:
+                return None
+            status = probe()
+        except Exception:
+            return None
+        if not isinstance(status, dict):
+            return None
+        self._probe_cache = status
+        self._probe_at = now
+        return status
+
     def is_available(self) -> bool:
-        return self._available
+        """Report whether the backend is usable **right now**.
+
+        绑定 qtmodel 对象成功不等于后端可用：桥通未启动、或桥通 API 版本与
+        qtmodel 不精确匹配时，绑定照样成功（mdb/odb/cdb 是惰性的），直到真正
+        调用方法才失败。此前本方法只回报 import 结果，于是无论桥通是否运行
+        都返回 True，server 启动日志也总是打印"✅ loaded successfully"。
+
+        因此在 import 成功的基础上再做一次连通性探测，结果缓存 _PROBE_TTL 秒。
+        无法探测时（qtmodel < 2.6 无握手 API）退回 import 结果——缺少判定手段
+        不等于后端不可用，此时保持原有的乐观行为。
+
+        注意：探测会发 HTTP，故本方法不适合放在 import 期的热路径上。
+        """
+        if not self._available:
+            return False
+        status = self._probe_connection()
+        if status is None:
+            return True  # 无从判断，保持乐观
+        # version_mismatch 时 connected=True 但 compatible=False，同样不可用
+        usable = bool(status.get("connected")) and status.get("compatible") is not False
+        if not usable:
+            # server.py 与 _require_available 都会展示这条原因，必须填上探测结论，
+            # 否则用户只看到"不可用"却不知道该启动软件还是升级软件
+            detail = " ".join(
+                p
+                for p in (
+                    str(status.get("message", "")).strip(),
+                    str(status.get("action", "")).strip(),
+                )
+                if p
+            )
+            if detail:
+                self._unavailable_reason = detail
+        return usable
 
     def get_software_name(self) -> str:
         return "QiaoTong (桥通)"
@@ -112,6 +268,21 @@ class QtModelProvider(BridgeProvider):
         "体系温度荷载" | "梯度温度荷载"
         "长轨伸缩挠曲力荷载" | "脱轨荷载" | "长轨断轨力荷载"
         "船舶撞击荷载" | "汽车撞击荷载" | "用户定义荷载"
+
+        ### Result Query (结果查询) — operation stage load case naming
+        When querying operation stage results (stage_id=-1), the load case name is
+        automatically prefixed with "ST:" by get_analysis_results tool. You only need
+        to provide the original load case name when you created it.
+
+        Example:
+        • Create load case: add_load_case(name='荷载1', case_type='恒载')
+        • Query results: get_analysis_results(result_type='deformation', case_name='荷载1', stage_id=-1)
+          (The tool converts it to 'ST:荷载1' automatically)
+
+        Result field structure:
+        • Deformation: {node_id, dx, dy, dz, rx, ry, rz} — lowercase, meters/radians
+        • Force: {element_id, force_i: {Fx,Fy,Fz,Mx,My,Mz}, force_j: {...}} — nested, kN/kN·m
+        • Access fields like: result['dz'] for displacement, result['force_i']['My'] for moment
         """
 
 
@@ -291,9 +462,19 @@ class QtModelProvider(BridgeProvider):
     def _to_dicts(result: Any) -> list[dict]:
         """Normalize a query result to a list of plain dicts.
 
-        qtmodel 的 get_node_data/get_element_data 返回 Node/Element 对象，
-        其 __repr__/__str__ 返回 dict（非字符串），直接 JSON 序列化会崩溃；
-        此处统一用对象的 to_dict() 拍平为普通 dict。
+        qtmodel 的查询返回自定义数据对象（Node/Element/Material/…），必须拍平
+        为普通 dict，否则工具层 json.dumps(default=str) 会把整个对象变成
+        **字符串化的 Python dict**（单引号、外层再套双引号），LLM 拿到的不是
+        结构化数据，取 node_ids 之类的字段还要二次解析。
+
+        qtmodel 的这批类只有 Node 提供 to_dict()，Element/Material/ElasticLink
+        等一律没有（实测 2.6.3：40+ 个数据类缺失），故按以下顺序降级：
+
+        1. 已经是 dict —— 原样；
+        2. 有 to_dict() —— 调用它（Node 等，尊重上游的字段命名）；
+        3. 有 __dict__ —— 取实例属性。实测这批类无 property、无 __slots__，
+           __dict__ 即字段全集（如 Element 的 8 个 __init__ 参数全在）；
+        4. 其余标量（str/int/如结构组名列表）—— 原样，由调用方处理。
         """
         if result is None:
             return []
@@ -307,6 +488,12 @@ class QtModelProvider(BridgeProvider):
                 out.append(item)
             elif hasattr(item, "to_dict"):
                 out.append(item.to_dict())
+            elif hasattr(item, "__dict__") and not isinstance(
+                item, (str, bytes, int, float, bool)
+            ):
+                # vars() 拷贝一份，避免调用方改动泄漏回 qtmodel 的对象
+                flat = {k: v for k, v in vars(item).items() if not k.startswith("_")}
+                out.append(flat if flat else item)
             else:
                 out.append(item)
         return out
@@ -421,12 +608,153 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_nodes(node_data=node_data, **kwargs)
         self._mdb.update_model()
 
+    def add_nodes_returning_ids(
+        self, node_data: list[list[float]], **kwargs
+    ) -> list[int]:
+        """Add nodes and return the ID occupying each requested coordinate.
+
+        qtmodel 的 add_nodes 返回 None，而后端**不保证**采用调用方期望的编号：
+        - numbering_type=0/1 时 start_id 被完全忽略（仅 2=用户定义号码才读它）；
+        - start_id 被占用时后端自行改派（实测请求 500 得到 502）；
+        - 坐标与最终 ID 的对应关系是倒序的（实测 x=10/20/30 -> 102/101/100）；
+        - is_merged 生效时，新节点会被**合并到已存在的旧节点**上，该旧 ID 不属于
+          "新增"，仅靠前后集合差会漏掉它。
+
+        因此这里按坐标匹配：对每个请求坐标，回查落在容差内的节点 ID。这样无论
+        后端是新建还是复用了旧节点，调用方得到的都是"该坐标处真实可用的编号"
+        —— 这正是 LLM 建单元时需要的东西。
+
+        返回的 ID 按请求坐标的顺序排列（不是按 ID 大小），未能匹配到的坐标跳过。
+        代价是一次额外的 get_node_data 往返（实测约 20ms）。查询失败时返回空
+        列表，由调用方降级为不声明 ID，而不是让整个写入操作失败。
+        """
+        self._require_available()
+        if not node_data:
+            raise ValueError("node_data cannot be empty")
+
+        self._mdb.add_nodes(node_data=node_data, **kwargs)
+        self._mdb.update_model()
+
+        rows = self._safe_get("get_node_data")
+        if rows is None:
+            return []
+
+        # 容差取 merge_error 的量级，略放宽以吸收浮点往返误差
+        tol = max(float(kwargs.get("merge_error", 1e-3)), 1e-6) * 10
+        existing = []
+        for row in self._to_dicts(rows):
+            node_id = row.get("node_id", row.get("id"))
+            if not isinstance(node_id, int):
+                continue
+            try:
+                existing.append(
+                    (node_id, float(row["x"]), float(row["y"]), float(row["z"]))
+                )
+            except (KeyError, TypeError, ValueError):
+                continue
+
+        found: list[int] = []
+        seen: set[int] = set()
+        for coord in node_data:
+            # node_data 可能是 [x,y,z] 或 [id,x,y,z]
+            xyz = coord[1:4] if len(coord) >= 4 else coord[0:3]
+            if len(xyz) < 3:
+                continue
+            try:
+                tx, ty, tz = (float(v) for v in xyz)
+            except (TypeError, ValueError):
+                continue
+            for node_id, x, y, z in existing:
+                if (
+                    abs(x - tx) <= tol
+                    and abs(y - ty) <= tol
+                    and abs(z - tz) <= tol
+                    and node_id not in seen
+                ):
+                    found.append(node_id)
+                    seen.add(node_id)
+                    break
+        return found
+
     def add_elements(self, ele_data: list[list], **kwargs) -> None:
         self._require_available()
         if not ele_data:
             raise ValueError("ele_data cannot be empty")
         self._mdb.add_elements(ele_data=ele_data, **kwargs)
         self._mdb.update_model()
+
+    def get_node_coords(self, node_ids: list[int]) -> dict[int, tuple[float, float, float]]:
+        """Return {node_id: (x, y, z)} for the requested IDs that actually exist.
+
+        用于建单元前校验节点几何。缺失的编号不出现在返回值中，调用方据此
+        识别无效引用；查询失败时返回空字典，由调用方决定是否降级放行。
+        """
+        self._require_available()
+        rows = self._safe_get("get_node_data")
+        if rows is None:
+            return {}
+        wanted = set(node_ids)
+        out: dict[int, tuple[float, float, float]] = {}
+        for row in self._to_dicts(rows):
+            node_id = row.get("node_id", row.get("id"))
+            if not isinstance(node_id, int) or node_id not in wanted:
+                continue
+            try:
+                out[node_id] = (float(row["x"]), float(row["y"]), float(row["z"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+        return out
+
+    def check_node_chain_geometry(self, node_ids: list[int]) -> dict[str, Any]:
+        """Verify a node chain forms a monotonic polyline before building elements.
+
+        后端会接受任意有效编号的连线，即使几何上来回折返——单元长度忽长忽短、
+        方向正负交替，求解器照样计算，只是算的是另一座桥。实测在编号乱序的
+        节点批上按编号递推建梁，得到长度 [3, 12, 3, 3] 的折返链且无任何报错。
+
+        判定标准：相邻节点的位移向量方向一致（点积为正）。这允许折线桥（曲线
+        梁、变坡），只拒绝真正的往回折返。
+
+        返回 {ok, reason, total_length, missing}。查询不可用时 ok=True——
+        校验能力缺失不应阻断建模，宁可放行也不误拒。
+        """
+        coords = self.get_node_coords(node_ids)
+        if not coords:
+            return {"ok": True, "reason": "coordinates unavailable, check skipped"}
+
+        missing = [n for n in node_ids if n not in coords]
+        if missing:
+            return {
+                "ok": False,
+                "reason": f"node(s) not found in model: {missing}",
+                "missing": missing,
+            }
+
+        total = 0.0
+        prev_vec: tuple[float, float, float] | None = None
+        for a, b in zip(node_ids, node_ids[1:], strict=False):
+            xa, ya, za = coords[a]
+            xb, yb, zb = coords[b]
+            vec = (xb - xa, yb - ya, zb - za)
+            length = (vec[0] ** 2 + vec[1] ** 2 + vec[2] ** 2) ** 0.5
+            if length < 1e-9:
+                return {
+                    "ok": False,
+                    "reason": f"nodes {a} and {b} are coincident (zero-length element)",
+                }
+            total += length
+            if prev_vec is not None:
+                dot = sum(p * c for p, c in zip(prev_vec, vec, strict=False))
+                if dot < 0:
+                    return {
+                        "ok": False,
+                        "reason": (
+                            f"chain folds back at node {a}: segment to {b} reverses "
+                            f"direction (元素在此折返)"
+                        ),
+                    }
+            prev_vec = vec
+        return {"ok": True, "reason": "monotonic", "total_length": total}
 
     def add_material(
         self,
@@ -899,10 +1227,23 @@ class QtModelProvider(BridgeProvider):
         self._mdb.update_model()
 
     def run_analysis(self, read_timeout: int = 3600) -> None:
-        self._require_available()
-        # qtmodel 的 do_solve 是阻塞式 HTTP 调用，最长阻塞 read_timeout 秒
-        self._mdb.do_solve(read_timeout=read_timeout)
+        """启动求解并阻塞至后台任务真正结束。
 
+        2.5.0 起 do_solve 默认 wait=False——只启动后台求解便立即返回（内部
+        sleep(3)）。若不显式等待，调用方会在求解仍在进行时就去取结果。
+        这里用 wait=True 让 qtmodel 轮询 GET-PROJECT-SOLVE-STATUS 直到收敛，
+        并把 read_timeout 作为求解总时限（而非单次 HTTP 超时）。
+
+        求解失败/取消时 qtmodel 抛 RuntimeError，超时抛 TimeoutError，
+        均由上层转为 ToolError。
+        """
+        self._require_available()
+        self._mdb.do_solve(
+            wait=True,
+            poll_interval=2.0,
+            max_wait=read_timeout,
+            status_read_timeout=30,
+        )
 
     def add_node_tandem(self, *args, **kwargs):
         self._require_available()
@@ -1215,14 +1556,38 @@ class QtModelProvider(BridgeProvider):
     # ── Structural Checking ────────────────────────────────────────────
 
     def add_check_load_combine(
-        self, name: str, standard: int, kind: int, **kwargs
+        self, name: str, standard: int, combine_type: int, combine_method: int, **kwargs
     ) -> None:
         self._require_available()
-        self._cdb.add_check_load_combine(name=name, standard=standard, kind=kind, **kwargs)
+        # 2.5.0 起：旧 kind → combine_type（组合类型：基本/偶然/标准…），
+        # 旧 combine_type → combine_method（组合方式：1-相加并判别 2-包络），index 已移除
+        self._cdb.add_check_load_combine(
+            name=name,
+            standard=standard,
+            combine_type=combine_type,
+            combine_method=combine_method,
+            **kwargs,
+        )
 
-    def solve_concrete_check(self, name: str) -> None:
+    def solve_concrete_check(
+        self,
+        name: str,
+        wait: bool = True,
+        max_wait: float | None = None,
+        poll_interval: float = 5.0,
+    ) -> None:
+        """同步指定检算工况后启动检算；wait=True 时轮询至后台任务结束。
+
+        2.5.0 起 solve_concrete_check 不再接受 name，改为对"当前检算数据"求解，
+        故先用 import_concrete_check_case 把目标工况同步为当前 CSAN 检算数据。
+        """
         self._require_available()
-        self._cdb.solve_concrete_check(name=name)
+        self._cdb.import_concrete_check_case(case_name=name)
+        self._cdb.solve_concrete_check(
+            wait=wait,
+            poll_interval=poll_interval,
+            max_wait=max_wait,
+        )
 
     def add_concrete_check_case(
         self, name: str, standard: int, structure_type: int, group_name: str
@@ -1234,17 +1599,211 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         self._cdb.add_parameter_reinforcement(sec_id=sec_id, **kwargs)
 
-    def add_steel_hoop(self, **kwargs) -> None:
-        self._require_available()
-        self._cdb.add_steel_hoop(**kwargs)
+    def add_check_stirrup(
+        self,
+        stirrup_id: int,
+        name: str,
+        stirrup_type: int = 1,
+        rebar_material_id: int = 1,
+        limbs_number: int = 2,
+        loops_number: int = 2,
+        diameter_m: float = 0.020,
+        spacing_m: float = 0.2,
+        core_diameter_m: float = 0.0,
+    ) -> None:
+        """添加检算箍筋定义（2.5.0 起取代 add_steel_hoop）。
 
-    def update_vertical_steel_hoop(self, **kwargs) -> None:
+        入参统一用 SI（米），此处换算为 qtmodel 2.5.0 要求的单位：
+        箍筋直径 m → mm；间距与核心直径仍为 m。
+        """
         self._require_available()
-        self._cdb.update_vertical_steel_hoop(**kwargs)
+        self._cdb.add_check_stirrup(
+            stirrup_id=stirrup_id,
+            name=name,
+            stirrup_type=stirrup_type,
+            rebar_material_id=rebar_material_id,
+            limbs_number=limbs_number,
+            loops_number=loops_number,
+            stirrup_diameter=diameter_m * 1000.0,  # m → mm
+            stirrup_spacing=spacing_m,
+            core_diameter=core_diameter_m,
+        )
+
+    def update_vertical_steel_tendon(
+        self,
+        limbs_number: int = 0,
+        area_m2: float = 0.000804,
+        spacing_m: float = 0.2,
+        effective_prestress_pa: float = 8.0e8,
+        fpd_pa: float = 9.0e8,
+    ) -> None:
+        """修改竖向钢束设置（2.5.0 起取代 update_vertical_steel_hoop）。
+
+        入参统一用 SI（m²/Pa），此处换算为 qtmodel 2.5.0 要求的单位：
+        面积 m² → mm²（×1e6）；应力 Pa → MPa（÷1e6）。
+        """
+        self._require_available()
+        self._cdb.update_vertical_steel_tendon(
+            limbs_number=limbs_number,
+            single_limb_area=area_m2 * 1.0e6,  # m² → mm²
+            spacing=spacing_m,
+            effective_prestress=effective_prestress_pa / 1.0e6,  # Pa → MPa
+            strength_design_value=fpd_pa / 1.0e6,  # Pa → MPa
+        )
 
     def get_reinforcement_data(self) -> dict[str, Any]:
         self._require_available()
         return self._cdb.get_reinforcement_data()
+
+    # ── Concrete Check: 2.5.0 新增能力 ─────────────────────────────────
+    #
+    # 说明：cdb 的检算设置类接口（*_analysis_setting）在 qtmodel 源码与官方
+    # 文档中均未标注量纲，但从默认值可判定为 mm/MPa（如保护层 30.0=30mm、
+    # 钢筋疲劳限值 145.0=145MPa）。因未见权威单位说明，此处**不做换算**，
+    # 按原生单位透传，由工具层 docstring 明确告知调用方。
+
+    # 查询：全部为读操作，直接透传 qtmodel 返回值
+    _CHECK_QUERY_METHODS = {
+        "case": "get_concrete_check_case",
+        "basic_info": "get_check_case_basic_info",
+        "materials": "get_check_case_material_infos",
+        "vertical_prestress": "get_check_case_vertical_prestress_info",
+        "stirrups": "get_check_case_stirrup_infos",
+        "reinforcement": "get_check_case_reinforcement_data",
+        "tendon_section": "get_check_case_prestress_tendon_sec_info",
+        "section_property": "get_check_case_section_property",
+        "element_table": "get_element_table_info",
+        "solve_status": "get_concrete_check_solve_status",
+        "normal_section_bearing_setting": "get_normal_section_bearing_analysis_setting",
+        "oblique_shear_bearing_setting": "get_oblique_section_shear_bearing_analysis_setting",
+        "limit_state_setting": "get_limit_state_method_analysis_setting",
+        "normal_stress_setting": "get_normal_stress_analysis_setting",
+        "crack_width_setting": "get_crack_width_analysis_setting",
+        "moment_curvature_setting": "get_moment_curvature_curve_analysis_setting",
+        "bearing_curve_setting": "get_bearing_curve_analysis_setting",
+    }
+
+    def get_check_data(self, kind: str, **kwargs) -> Any:
+        """按 kind 读取检算数据；kind 到 qtmodel 方法的映射见 _CHECK_QUERY_METHODS。"""
+        self._require_available()
+        if kind in self._CHECK_QUERY_METHODS:
+            method = getattr(self._cdb, self._CHECK_QUERY_METHODS[kind])
+            return method(**{k: v for k, v in kwargs.items() if v is not None})
+        # 需要参数的查询单独分派
+        if kind == "stress":
+            return self._cdb.get_concrete_check_stress_info(
+                stress_type=kwargs.get("stress_type", 1),
+                specific_load_type_name=kwargs.get("name", ""),
+            )
+        if kind == "load_table":
+            return self._cdb.get_check_case_load_table_info(
+                combine_type=kwargs.get("combine_type", 1),
+                specific_load_type_name=kwargs.get("name", ""),
+            )
+        if kind == "shear_stirrup":
+            ele_id = kwargs.get("element_id")
+            return self._cdb.get_element_shear_stirrup_data(
+                ele_id=-1 if ele_id is None else ele_id
+            )
+        if kind == "torsion_stirrup":
+            ele_id = kwargs.get("element_id")
+            return self._cdb.get_element_torsion_stirrup_data(
+                ele_id=-1 if ele_id is None else ele_id
+            )
+        raise ValueError(f"unknown check data kind: {kind}")
+
+    # 分析设置：kind → qtmodel update 方法；参数原样透传（原生 mm/MPa）
+    _CHECK_SETTING_METHODS = {
+        "normal_section_bearing": "update_normal_section_bearing_analysis_setting",
+        "oblique_shear_bearing": "update_oblique_section_shear_bearing_analysis_setting",
+        "limit_state": "update_limit_state_method_analysis_setting",
+        "normal_stress": "update_normal_stress_analysis_setting",
+        "crack_width": "update_crack_width_analysis_setting",
+        "moment_curvature": "update_moment_curvature_curve_analysis_setting",
+        "bearing_curve": "update_bearing_curve_analysis_setting",
+    }
+
+    def configure_check_analysis(self, kind: str, settings: dict[str, Any]) -> None:
+        """更新某一类检算分析设置；settings 按 qtmodel 原生参数名与单位传入。"""
+        self._require_available()
+        if kind not in self._CHECK_SETTING_METHODS:
+            raise ValueError(f"unknown analysis setting kind: {kind}")
+        getattr(self._cdb, self._CHECK_SETTING_METHODS[kind])(**settings)
+
+    def update_check_stirrup(
+        self,
+        stirrup_id: int,
+        name: str,
+        stirrup_type: int = 1,
+        rebar_material_id: int = 1,
+        limbs_number: int = 2,
+        loops_number: int = 2,
+        diameter_m: float = 0.020,
+        spacing_m: float = 0.2,
+        core_diameter_m: float = 0.0,
+    ) -> None:
+        """修改检算箍筋定义；直径由 m 换算为 qtmodel 要求的 mm。"""
+        self._require_available()
+        self._cdb.update_check_stirrup(
+            stirrup_id=stirrup_id,
+            name=name,
+            stirrup_type=stirrup_type,
+            rebar_material_id=rebar_material_id,
+            limbs_number=limbs_number,
+            loops_number=loops_number,
+            stirrup_diameter=diameter_m * 1000.0,  # m → mm
+            stirrup_spacing=spacing_m,
+            core_diameter=core_diameter_m,
+        )
+
+    def remove_check_stirrup(self, stirrup_id: int = -1, name: str = "") -> None:
+        self._require_available()
+        self._cdb.remove_check_stirrup(stirrup_id=stirrup_id, name=name)
+
+    def set_element_shear_stirrup(
+        self,
+        element_id: int,
+        stirrup_i_y: int = 1,
+        stirrup_i_x: int = 1,
+        stirrup_j_y: int = 1,
+        stirrup_j_x: int = 1,
+    ) -> None:
+        self._require_available()
+        self._cdb.add_element_shear_stirrup(
+            ele_id=element_id,
+            stirrup_i_y=stirrup_i_y,
+            stirrup_i_x=stirrup_i_x,
+            stirrup_j_y=stirrup_j_y,
+            stirrup_j_x=stirrup_j_x,
+        )
+
+    def set_element_torsion_stirrup(
+        self, element_id: int, stirrup_i: int = 1, stirrup_j: int = 1
+    ) -> None:
+        self._require_available()
+        self._cdb.add_element_torsion_stirrup(
+            ele_id=element_id, stirrup_i=stirrup_i, stirrup_j=stirrup_j
+        )
+
+    def remove_element_stirrup(
+        self, element_id: int = -1, remove_shear: bool = True, remove_torsion: bool = True
+    ) -> None:
+        """删除单元箍筋设置；element_id<=0 表示删除全部。"""
+        self._require_available()
+        self._cdb.remove_element_stirrup(
+            ele_id=element_id, remove_shear=remove_shear, remove_torsion=remove_torsion
+        )
+
+    def open_check_case(self, name: str = "", file_path: str = "") -> Any:
+        self._require_available()
+        return self._cdb.open_concrete_check_case(name=name, file_path=file_path)
+
+    def save_check_case(self, file_path: str = "") -> Any:
+        """保存当前检算工况；给出 file_path 时另存为该路径。"""
+        self._require_available()
+        if file_path:
+            return self._cdb.save_as_check_case(file_path=file_path)
+        return self._cdb.save_check_case()
 
     # ── Group Management ───────────────────────────────────────────────
 
