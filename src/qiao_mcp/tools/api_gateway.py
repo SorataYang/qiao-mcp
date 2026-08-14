@@ -39,11 +39,12 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Returns the status, a human-readable message, the recommended action,
         and the client/server versions involved.
 
-        IMPORTANT: If connected=False and the active_url contains 'localhost',
-        recommend trying 127.0.0.1 instead — some platforms resolve localhost
-        to IPv6 ::1 while QiaoTong binds to IPv4 0.0.0.0, causing connection
-        failures even when the software is running.
-        （localhost 可能被解析为 IPv6 ::1 导致连接失败，建议改用 127.0.0.1）
+        IMPORTANT: when connecting through a port forward (e.g. an SSH tunnel to
+        QiaoTong on another machine), the URL host must be `localhost`, not
+        `127.0.0.1`. Windows HTTP.sys validates the Host header and rejects the
+        bare IP with "400 Invalid Hostname" even though the port is reachable.
+        （经端口转发访问时必须用 localhost；Windows HTTP.sys 会以
+        400 Invalid Hostname 拒绝 127.0.0.1 的 Host 头）
         """
         try:
             status = provider.get_connection_status()
@@ -70,16 +71,19 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         if server.get("api_version"):
             lines.append(f"QiaoTong API (server): {server['api_version']}")
 
-        # 如果连接失败且 URL 用的是 localhost，给出 127.0.0.1 的提示
+        # 未连上且配置里用了裸 IP：Windows HTTP.sys 会以 400 Invalid Hostname
+        # 拒绝 127.0.0.1 的 Host 头，端口通也连不上，必须改用 localhost。
+        # 实测于 SSH 端口转发访问远端桥通的场景。
         if not status.get("connected"):
-            active_url = client.get("active_url", "")
-            if "localhost" in active_url:
+            configured = str(client.get("configured_url") or "")
+            active = str(client.get("active_url") or "")
+            if "127.0.0.1" in configured or "127.0.0.1" in active:
                 lines.append(
-                    "\n⚠️  Hint: Your URL contains 'localhost', which may resolve to "
-                    "IPv6 ::1 on some systems while QiaoTong binds to IPv4. "
-                    "Try setting QIAOTONG_HTTP_URL=http://127.0.0.1:5000 instead."
-                    "\n   （localhost 可能被解析为 IPv6 导致连接失败，"
-                    "建议设置 QIAOTONG_HTTP_URL=http://127.0.0.1:5000）"
+                    "hint: the URL uses 127.0.0.1 — Windows HTTP.sys rejects that "
+                    "Host header with '400 Invalid Hostname' even when the port is "
+                    "reachable. Set QIAOTONG_HTTP_URL to use localhost instead, "
+                    "e.g. http://localhost:55125/pythonForQt/ "
+                    "（请改用 localhost，而非 127.0.0.1）"
                 )
 
         return "\n".join(lines)

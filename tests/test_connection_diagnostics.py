@@ -135,6 +135,51 @@ def test_tool_distinguishes_not_running_from_mismatch(provider, patch_status):
     assert "version_mismatch" not in text
 
 
+def test_tool_hints_localhost_when_configured_with_bare_ip(provider, patch_status):
+    """配置用了 127.0.0.1 且未连上时，必须提示改用 localhost。
+
+    经端口转发（如 SSH 隧道）访问远端桥通时，Windows HTTP.sys 会校验 Host 头，
+    对裸 IP 回 "400 Invalid Hostname"——端口明明是通的，却连不上，
+    没有这条提示极难定位。
+    """
+    status = dict(NOT_RUNNING)
+    status["client"] = {
+        "qtmodel_version": "2.6.3",
+        "configured_url": "http://127.0.0.1:45125/pythonForQt/",
+        "active_url": None,
+    }
+    patch_status(status)
+    out = _check(provider)()
+    text = out["message"] if isinstance(out, dict) else str(out)
+    assert "localhost" in text, "应提示改用 localhost"
+    assert "Invalid Hostname" in text, "应点明后端的拒绝原因"
+
+
+def test_tool_survives_null_active_url(provider, patch_status):
+    """回归：software_not_running 时 active_url 为 None，
+    提示逻辑若直接对它做子串判断会抛 TypeError。"""
+    status = dict(NOT_RUNNING)
+    status["client"] = {"qtmodel_version": "2.6.3", "active_url": None}
+    patch_status(status)
+    out = _check(provider)()  # 不应抛错
+    text = out["message"] if isinstance(out, dict) else str(out)
+    assert "software_not_running" in text
+
+
+def test_tool_omits_localhost_hint_when_connected(provider, patch_status):
+    """已连上时不该再提示换 host——即使配置里就是裸 IP。"""
+    status = dict(CONNECTED)
+    status["client"] = {
+        "qtmodel_version": "2.6.3",
+        "configured_url": "http://127.0.0.1:45125/pythonForQt/",
+        "active_url": "http://127.0.0.1:45125/pythonForQt/",
+    }
+    patch_status(status)
+    out = _check(provider)()
+    text = out["message"] if isinstance(out, dict) else str(out)
+    assert "Invalid Hostname" not in text
+
+
 def test_tool_reports_connected_state(provider, patch_status):
     patch_status(CONNECTED)
     out = _check(provider)()
