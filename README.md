@@ -224,23 +224,26 @@ This MCP server wraps the `qtmodel` Python API which provides access to:
 
 ## Versioning
 
-The version number mirrors the `qtmodel` release it is verified against:
+Qiao-MCP versions independently from `qtmodel` — the project iterates on its own
+(bug fixes, new tools, docs) without waiting for a backend release, and a backend
+release does not force a version bump here. The backend requirement is expressed
+where it belongs: in the dependency constraint.
 
-```
-0 . 2 . 63
-│   │   └── qtmodel minor + patch concatenated (qtmodel 次版本+补丁拼接, 5.0 -> 50)
-│   └────── qtmodel major (qtmodel 主版本, 2)
-└────────── pre-1.0 (1.0 = stable API)
-```
+### Compatibility
 
-So `0.2.63` corresponds to `qtmodel 2.6.3`; an earlier `0.2.50` corresponded to
-`qtmodel 2.5.0`. Releases track qtmodel one-to-one. The dependency is constrained to
-the verified compatibility line (`qtmodel>=2.6.3,<2.7`); bump both the project version
-and the dependency bound together when moving to a new qtmodel release.
+| Qiao-MCP | qtmodel       | QiaoTong software |
+|----------|---------------|-------------------|
+| 0.3.x    | 2.6.3 – 2.6.x | 2.6.3             |
+| 0.2.x    | 2.5.0 – 2.5.x | 2.5.0             |
 
-> Note: the encoding assumes single-digit qtmodel minor/patch (e.g. `2.3.3` -> `33`).
-> qtmodel versions with two-digit segments (e.g. `2.3.10`) would break sort order and
-> require a scheme revision before use.
+The QiaoTong software API version and the installed `qtmodel` must match
+**exactly** — qtmodel 2.6+ performs a precise version handshake and refuses to
+connect otherwise. Run `check_qiaotong_connection` to see both versions and what
+to do when they differ.
+
+`0.x` signals the API is still free to change; it is not a statement about
+release quality. When moving to a new qtmodel minor line, raise the dependency
+bound and add a row to the table above.
 
 ## License
 
