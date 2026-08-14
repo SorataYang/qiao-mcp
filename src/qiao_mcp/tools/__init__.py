@@ -1918,6 +1918,14 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                        (运营阶段查询时工具会自动添加 "ST:" 前缀)
             limit: Max items per page, default 100 (单页条数上限)
             offset: Pagination offset (翻页偏移)
+
+        Returns:
+            Deformation results (变形): List of dicts with keys
+                {node_id, dx, dy, dz, rx, ry, rz} (lowercase, in meters/radians)
+            Force results (内力): List of dicts with keys
+                {element_id, force_i: {Fx, Fy, Fz, Mx, My, Mz}, force_j: {...}}
+                (nested structure, forces in kN, moments in kN·m)
+            Stress/Reaction: Similar nested dict structures
         """
         try:
             from qiao_mcp.tools.queries import _paginate
