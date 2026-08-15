@@ -216,9 +216,32 @@ export LOG_LEVEL=DEBUG
 # 结果图片保存目录
 export RESULT_IMAGE_DIR=/path/to/images
 
-# Provider 类型 (默认 qtmodel)
+# 后端适配器 (默认 qtmodel)
 export BRIDGE_PROVIDER=qtmodel
 ```
+
+### 后端选择 Backend Selection
+
+`BRIDGE_PROVIDER` 决定连接哪套桥梁分析软件。取值不区分大小写，忽略首尾空白。
+
+| 取值 | 后端软件 | 状态 |
+|------|----------|------|
+| `qtmodel` | QiaoTong 桥通 | 可用（默认） |
+
+取值无效时服务器**启动即失败**并列出可选项，不会静默回落到默认后端——选错后端却连上另一套软件，问题要到建模结果出错时才会暴露。
+
+```
+ValueError: Unknown bridge provider 'midas'. Available: qtmodel.
+Set the BRIDGE_PROVIDER environment variable to one of these.
+```
+
+### 新增后端 Adding a Backend
+
+工具层（132 个工具）与后端解耦，接入新软件不需要改动工具代码：
+
+1. 实现 `qiao_mcp.providers.BridgeProvider` 的抽象方法，外加工具层实际调用的建模/查询/分析方法；
+2. 在 `providers/__init__.py` 的 `_PROVIDERS` 中登记一行（模块路径 + 类名，惰性导入，某后端依赖缺失不会影响其它后端）；
+3. 在 `get_llm_instructions()` 里写明该软件的专有约定——自重如何计入、荷载工况类型取值、危险操作等。LLM 据此调整行为，因此换后端无需改提示词。
 
 ---
 
