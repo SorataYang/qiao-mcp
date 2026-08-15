@@ -70,8 +70,13 @@ qiao-mcp/
 └── reference-docs/            # Review notes and project documentation
 ```
 
-The **Provider pattern** allows future support for multiple bridge analysis backends. Currently supports:
-- **QTModel** — [桥通 (QiaoTong)](https://www.qt-model.com/) bridge analysis software
+The **Provider pattern** keeps the 132 tools decoupled from any single backend. Select one with
+`BRIDGE_PROVIDER`; each provider declares its own software-specific rules, so the LLM adapts
+without prompt changes. Currently supports:
+- **QTModel** (`qtmodel`, default) — [桥通 (QiaoTong)](https://www.qt-model.com/) bridge analysis software
+
+Adding a backend means implementing `BridgeProvider` and registering one line — no tool-layer
+changes. See [Backend Selection](./INTEGRATION_GUIDE.md#后端选择-backend-selection).
 
 ## Quick Start
 
