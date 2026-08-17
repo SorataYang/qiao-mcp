@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-08-15
+
+### Added
+
+- **Backend selection via `BRIDGE_PROVIDER`** — the 132 tools are now decoupled from
+  any single backend. `create_provider()` dispatches by name with lazy imports, so a
+  missing dependency in one backend does not break the others. Adding a backend means
+  implementing `BridgeProvider` and registering one line — no tool-layer changes.
+  QiaoTong (`qtmodel`) remains the default.
+  - Unknown values fail at startup and list the valid choices, rather than silently
+    falling back to the default. Selecting the wrong backend and connecting to a
+    different application would only surface as incorrect analysis results.
+- **MCP Registry metadata** (`server.json`) for publication to the
+  [official registry](https://registry.modelcontextprotocol.io/), including the
+  `mcp-name` ownership marker required for PyPI verification.
+
+### Fixed
+
+- **Abstraction leak in the startup path** — the server log read
+  `QtModelProvider._unavailable_reason`, a backend-private attribute. Any second
+  backend that did not happen to use the same attribute name would raise
+  `AttributeError` during import, before any tool could run. `unavailable_reason()`
+  is now part of the `BridgeProvider` contract, with a default implementation that
+  stays compatible with the existing attribute.
+
+### Documentation
+
+- Corrected the QiaoTong links: official page is
+  <https://www.brdi.com.cn/Software.html>; the user manual is at
+  <https://soratayang.github.io/>.
+- Added a "Backend Selection" section and a three-step guide for adding a backend.
+
+---
+
 ## [0.3.0] - 2026-08-14
 
 ### ⚠️ BREAKING CHANGES

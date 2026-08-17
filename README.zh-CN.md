@@ -2,8 +2,8 @@
 
 [English](./README.md) · **简体中文**
 
-> 桥梁智能设计 MCP 服务器  
-> MCP server for intelligent bridge structural design and analysis
+> 桥梁全过程结构分析 MCP 服务器 — 建模、施工阶段、规范验算  
+> Full-lifecycle bridge structural analysis — modeling, staging, code checks
 
 Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 的服务器，让 AI 助手能够与桥梁结构分析软件交互。它提供了创建桥梁模型、施加荷载、运行结构分析和查看结果的工具。
 
