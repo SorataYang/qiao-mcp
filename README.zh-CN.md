@@ -67,7 +67,7 @@ qiao-mcp/
 ```
 
 **Provider 模式**让 132 个工具与具体后端解耦。用 `BRIDGE_PROVIDER` 选择后端；每个后端自己声明软件专有规则，因此换后端无需改提示词。当前支持：
-- **QTModel**（`qtmodel`，默认）— [桥通 (QiaoTong)](https://www.qt-model.com/) 桥梁分析软件
+- **QTModel**（`qtmodel`，默认）— [桥通 (QiaoTong)](https://www.brdi.com.cn/Software.html) 桥梁分析软件（[用户手册](https://soratayang.github.io/)）
 
 接入新后端只需实现 `BridgeProvider` 并登记一行，不改工具层代码。详见 [后端选择](./INTEGRATION_GUIDE.md#后端选择-backend-selection)。
 
