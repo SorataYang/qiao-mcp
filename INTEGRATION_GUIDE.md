@@ -398,5 +398,6 @@ uv sync
 - [MCP 官方文档](https://modelcontextprotocol.io/)
 - [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
-- [QiaoTong 软件](https://www.qt-model.com/)
+- [桥通软件官方页面](https://www.brdi.com.cn/Software.html)
+- [桥通用户手册](https://soratayang.github.io/)
 - [qtmodel PyPI](https://pypi.org/project/qtmodel/)
