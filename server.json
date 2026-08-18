@@ -1,0 +1,39 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.SorataYang/qiao-mcp",
+  "title": "Qiao-MCP — Bridge Engineering (桥梁工程)",
+  "description": "Full-lifecycle bridge structural analysis — modeling, staging, code checks.",
+  "version": "0.3.1",
+  "websiteUrl": "https://github.com/SorataYang/qiao-mcp",
+  "repository": {
+    "url": "https://github.com/SorataYang/qiao-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "qiao-mcp",
+      "version": "0.3.1",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "BRIDGE_PROVIDER",
+          "description": "Backend adapter to use. Currently only 'qtmodel' (QiaoTong) is implemented; more backends are planned.",
+          "default": "qtmodel",
+          "choices": ["qtmodel"],
+          "isRequired": false
+        },
+        {
+          "name": "QIAOTONG_HTTP_URL",
+          "description": "Override the QiaoTong HTTP endpoint. Only needed when the software runs on another machine or a non-default port — must use the host 'localhost' rather than 127.0.0.1.",
+          "placeholder": "http://localhost:55125/pythonForQt/",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}

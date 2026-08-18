@@ -14,6 +14,7 @@ BridgeProvider 定义所有后端适配器都必须实现的**稳定契约**—�
 工具层实际调用的那些建模/查询/分析方法即可。
 """
 
+import os
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any
@@ -40,6 +41,17 @@ class BridgeProvider(ABC):
     def is_available(self) -> bool:
         """Check if the backend software is available and properly configured."""
         ...
+
+    def unavailable_reason(self) -> str:
+        """Actionable reason the backend is unusable, or "" when it is usable.
+
+        属于稳定契约：server 启动日志与工具层都要向用户解释"为什么用不了"，
+        不能去读某个 Provider 的私有属性——那样换后端就会 AttributeError。
+
+        默认实现兼容以 `_unavailable_reason` 记录原因的适配器；新后端可以
+        直接覆写本方法，无需沿用那个属性名。
+        """
+        return getattr(self, "_unavailable_reason", "") or ""
 
     @abstractmethod
     def get_software_name(self) -> str:
@@ -81,3 +93,64 @@ class BridgeProvider(ABC):
     # 该存根让类型检查器接受 provider.<any_method>(...) 的转发式调用。
     if False:  # 仅供静态分析；运行时由具体 Provider 的真实方法提供
         def __getattr__(self, name: str) -> Callable[..., Any]: ...
+
+
+# ── Provider 选择 ──────────────────────────────────────────────────────
+
+#: 环境变量名：选择后端适配器。
+PROVIDER_ENV = "BRIDGE_PROVIDER"
+
+#: 默认后端。改动前请确认 README 与 INTEGRATION_GUIDE 的说明同步更新。
+DEFAULT_PROVIDER = "qtmodel"
+
+#: 已注册的后端：{取值: (模块路径, 类名)}。
+#:
+#: 用惰性导入的字符串而非直接 import 类，这样一个后端的依赖缺失
+#: 不会连带拖垮其它后端——例如未装 qtmodel 的环境仍能选用别的适配器。
+#: 新增后端只需在此登记一行，并让该类实现 BridgeProvider。
+_PROVIDERS: dict[str, tuple[str, str]] = {
+    "qtmodel": ("qiao_mcp.providers.qtmodel_provider", "QtModelProvider"),
+}
+
+
+def available_providers() -> list[str]:
+    """Return the registered provider keys (已注册的后端取值列表)."""
+    return sorted(_PROVIDERS)
+
+
+def create_provider(name: str | None = None) -> "BridgeProvider":
+    """Instantiate a backend adapter by name (按名称构造后端适配器).
+
+    name 为 None 时读取 BRIDGE_PROVIDER 环境变量，未设置则用 DEFAULT_PROVIDER。
+    取值不区分大小写并忽略首尾空白，因为它多半来自 shell 配置或 MCP 客户端的
+    JSON，那里最容易混进大写和空格。
+
+    未知取值直接抛 ValueError 并列出可选项——**不静默回落到默认后端**。
+    回落会让写错名字的人以为连上了自己想用的软件，实际连的是另一个，
+    这种误解要到建模结果出错时才会暴露。
+    """
+    requested = name if name is not None else os.environ.get(PROVIDER_ENV, "")
+    key = (requested or DEFAULT_PROVIDER).strip().lower()
+
+    if key not in _PROVIDERS:
+        raise ValueError(
+            f"Unknown bridge provider {key!r}. "
+            f"Available: {', '.join(available_providers())}. "
+            f"Set the {PROVIDER_ENV} environment variable to one of these "
+            f"(未知的后端名称，请设置 {PROVIDER_ENV} 为上述取值之一)."
+        )
+
+    module_path, class_name = _PROVIDERS[key]
+    try:
+        module = __import__(module_path, fromlist=[class_name])
+    except ImportError as e:
+        # 后端自身的依赖缺失（如未安装 qtmodel）——区别于"名字写错"，
+        # 这里要点明是依赖问题，否则用户会去改 BRIDGE_PROVIDER 而非装包。
+        raise ImportError(
+            f"Provider {key!r} is registered but its dependencies are missing "
+            f"({type(e).__name__}: {e}). Install the backend package, or select "
+            f"another provider via {PROVIDER_ENV} "
+            f"(后端依赖缺失，请安装对应包或改用其它后端)."
+        ) from e
+
+    return getattr(module, class_name)()

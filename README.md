@@ -1,9 +1,11 @@
 # 🌉 Qiao-MCP
 
+<!-- mcp-name: io.github.SorataYang/qiao-mcp -->
+
 **English** · [简体中文](./README.zh-CN.md)
 
-> MCP server for intelligent bridge structural design and analysis  
-> 桥梁智能设计 MCP 服务器
+> Full-lifecycle bridge structural analysis — modeling, staging, code checks  
+> 桥梁全过程结构分析 MCP 服务器 — 建模、施工阶段、规范验算
 
 Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI assistants to interact with bridge structural analysis software. It provides tools for creating bridge models, applying loads, running structural analysis, and reviewing results.
 
@@ -70,8 +72,13 @@ qiao-mcp/
 └── reference-docs/            # Review notes and project documentation
 ```
 
-The **Provider pattern** allows future support for multiple bridge analysis backends. Currently supports:
-- **QTModel** — [桥通 (QiaoTong)](https://www.qt-model.com/) bridge analysis software
+The **Provider pattern** keeps the 132 tools decoupled from any single backend. Select one with
+`BRIDGE_PROVIDER`; each provider declares its own software-specific rules, so the LLM adapts
+without prompt changes. Currently supports:
+- **QTModel** (`qtmodel`, default) — [QiaoTong (桥通)](https://www.brdi.com.cn/Software.html) bridge analysis software ([user manual](https://soratayang.github.io/))
+
+Adding a backend means implementing `BridgeProvider` and registering one line — no tool-layer
+changes. See [Backend Selection](./INTEGRATION_GUIDE.md#后端选择-backend-selection).
 
 ## Quick Start
 
