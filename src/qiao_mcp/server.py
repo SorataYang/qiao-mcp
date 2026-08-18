@@ -20,7 +20,7 @@ if sys.platform == "win32":
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.prompts import register_prompts
-from qiao_mcp.providers.qtmodel_provider import QtModelProvider
+from qiao_mcp.providers import PROVIDER_ENV, create_provider
 from qiao_mcp.resources import register_resources
 
 # Phase 1 modules
@@ -53,13 +53,19 @@ logger = logging.getLogger("qiao-mcp")
 
 # ── Initialize Provider first (needed to build dynamic instructions) ──
 
-provider = QtModelProvider()
+# 后端由 BRIDGE_PROVIDER 选择（默认 qtmodel）。构造失败直接向上抛：
+# 选错后端时启动失败远好于连上另一套软件、事后才在建模结果里暴露。
+provider = create_provider()
 
 if provider.is_available():
-    logger.info(f"✅ {provider.get_software_name()} provider loaded successfully")
+    logger.info(
+        f"✅ {provider.get_software_name()} provider loaded successfully "
+        f"({PROVIDER_ENV}={provider.name})"
+    )
 else:
     logger.warning(
-        f"⚠️  {provider.get_software_name()} provider not available — {provider._unavailable_reason}"
+        f"⚠️  {provider.get_software_name()} provider not available "
+        f"({PROVIDER_ENV}={provider.name}) — {provider.unavailable_reason()}"
     )
 
 # ── Build MCP instructions dynamically from the active provider ───────
