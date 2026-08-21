@@ -71,6 +71,18 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         if server.get("api_version"):
             lines.append(f"QiaoTong API (server): {server['api_version']}")
 
+        model_state = status.get("model_state") or server.get("model_state")
+        if isinstance(model_state, dict):
+            lines.extend(
+                [
+                    f"model opened: {model_state.get('model_opened')}",
+                    f"phase: {model_state.get('phase')}",
+                    f"stage: {model_state.get('stage_name')}",
+                    f"base stage: {model_state.get('is_base_stage')}",
+                    f"has result data: {model_state.get('has_result_data')}",
+                ]
+            )
+
         # 未连上且配置里用了裸 IP：Windows HTTP.sys 会以 400 Invalid Hostname
         # 拒绝 127.0.0.1 的 Host 头，端口通也连不上，必须改用 localhost。
         # 实测于 SSH 端口转发访问远端桥通的场景。
@@ -87,6 +99,23 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 )
 
         return "\n".join(lines)
+
+    @mcp.tool()
+    def get_model_status() -> dict[str, Any]:
+        """Get QiaoTong's current model lifecycle and operation capabilities.
+
+        获取桥通当前是否打开模型、前处理/求解/后处理阶段、当前显示阶段是否
+        为基本阶段、是否存在结果，以及 MCP 当前可执行的读模型、改模型、
+        修改施工阶段、结果查询、分析和视图操作能力。
+
+        Call this before starting a model workflow and whenever an operation is
+        rejected. This tool only observes state; it never switches stages,
+        deletes results, or changes the model.
+        """
+        try:
+            return provider.get_model_state()
+        except Exception as e:
+            raise ToolError(f"Error checking model status (模型状态查询失败): {e}") from e
 
     @mcp.tool()
     def list_qtmodel_api(api_object: str, pattern: str = "") -> str:

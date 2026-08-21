@@ -19,6 +19,7 @@ from qiao_mcp.tools.advanced_boundary import register_advanced_boundary_tools
 from qiao_mcp.tools.envelope import register_tools_with_envelope
 from qiao_mcp.tools.moving_load import register_moving_load_tools
 from qiao_mcp.tools.tendon import register_tendon_tools
+from conftest import ready_model_state
 
 
 class RecordingQtServer:
@@ -62,6 +63,7 @@ def _real_provider():
     p._mdb = qtmodel.mdb
     p._odb = qtmodel.odb
     p._cdb = qtmodel.cdb
+    p.get_model_state = ready_model_state
     return p
 
 

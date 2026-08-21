@@ -153,6 +153,95 @@ class QtModelProvider(BridgeProvider):
                 "client": {"qtmodel_version": self.version},
             }
 
+    def get_model_state(self) -> dict[str, Any]:
+        """Return the bridge-owned lifecycle and operation-capability snapshot."""
+        try:
+            from qtmodel.core.qt_server import QtServer
+        except ImportError:
+            return {
+                "status": "qtmodel_not_installed",
+                "connected": False,
+                "compatible": None,
+                "message": "qtmodel 包未安装。",
+                "action": "运行 uv add qtmodel 或重装 qiao-mcp。",
+            }
+
+        probe = getattr(QtServer, "get_model_state", None)
+        if probe is None:
+            return {
+                "status": "state_unknown",
+                "connected": self._available,
+                "compatible": None,
+                "message": "当前 qtmodel 不提供模型状态查询。",
+                "action": "请升级 qtmodel 和桥通软件。",
+            }
+        try:
+            result = probe()
+            return result if isinstance(result, dict) else {
+                "status": "state_unknown",
+                "message": "qtmodel 返回了无效的模型状态。",
+                "action": "请升级 qtmodel 和桥通软件。",
+            }
+        except Exception as e:
+            return {
+                "status": "probe_failed",
+                "connected": False,
+                "compatible": None,
+                "message": f"探测模型状态失败（{type(e).__name__}: {e}）。",
+                "action": "确认桥通软件已启动并重试。",
+            }
+
+    def ensure_operation_allowed(self, operation: str) -> None:
+        """Fail closed when the current bridge state rejects an MCP operation."""
+        if operation == "connection":
+            return
+
+        result = self.get_model_state()
+        state = result.get("model_state")
+        if not isinstance(state, dict):
+            message = str(result.get("message") or "桥通未提供模型状态快照。").strip()
+            action = str(result.get("action") or "请先调用 get_model_status。").strip()
+            raise RuntimeError(f"模型状态不可用：{message} {action}".strip())
+
+        if operation == "lifecycle":
+            if state.get("is_solving") is not False:
+                raise RuntimeError(
+                    "桥通当前正在求解，不能初始化模型或打开模型文件。"
+                    "或当前求解状态未知，请等待求解结束并刷新状态后重试。"
+                )
+            return
+
+        capability_by_operation = {
+            "model_read": "read_model",
+            "model_write": "modify_model",
+            "stage_write": "modify_stage_data",
+            "result_read": "query_results",
+            "check_read": "check_model",
+            "check_write": "check_model",
+            "check_run": "run_check",
+            "analysis_run": "run_analysis",
+            "view": "view_model",
+        }
+        capability = capability_by_operation.get(operation)
+        if capability is None:
+            raise RuntimeError(f"未知的模型操作类型：{operation}")
+
+        capabilities = state.get("capabilities")
+        allowed = isinstance(capabilities, dict) and capabilities.get(capability) is True
+        if allowed:
+            return
+
+        raise RuntimeError(
+            "桥通当前状态不允许该操作："
+            f"operation={operation}, capability={capability}, "
+            f"model_opened={state.get('model_opened')}, "
+            f"phase={state.get('phase')}, stage_name={state.get('stage_name')}, "
+            f"is_base_stage={state.get('is_base_stage')}, "
+            f"is_solving={state.get('is_solving')}, "
+            f"has_result_data={state.get('has_result_data')}。"
+            "请先调用 get_model_status，并由用户在桥通中切换到满足条件的状态。"
+        )
+
     @property
     def name(self) -> str:
         return "qtmodel"
@@ -235,6 +324,15 @@ class QtModelProvider(BridgeProvider):
 
     def get_llm_instructions(self) -> str:
         return """
+        ### Model lifecycle and operation state (模型生命周期与操作状态)
+        Before starting or resuming a workflow, call `get_model_status`.
+        The bridge is the source of truth for whether a model is open, whether
+        the UI is in preprocessing, solving, or postprocessing, whether the
+        selected display stage is the base stage, and which operations are
+        currently allowed. Do not switch stages or delete results automatically
+        to work around a rejected operation; report the returned reason and ask
+        the user to change the bridge state.
+
         ### Self-Weight (自重) — QiaoTong (桥通) computes it automatically from geometry
         Self-weight in QiaoTong is NOT a load case and NOT an element load. The solver
         computes it from section area × material unit weight × gravity. What you control
@@ -343,6 +441,26 @@ class QtModelProvider(BridgeProvider):
                 f"{api_object} has no method '{method}' "
                 f"(方法不存在，可用 list 模式按关键字检索)"
             )
+
+        if api_object == "mdb":
+            operation = "model_write"
+        elif api_object == "cdb":
+            operation = "check_run" if method.startswith(("solve", "run", "do_")) else "check_write"
+        elif method.startswith(("set_", "save_", "plot_", "change_", "display_", "reset_")):
+            operation = "view"
+        elif any(
+            token in method
+            for token in (
+                "result", "force", "stress", "reaction", "displacement",
+                "modal", "eigen", "period", "vibration", "buckling",
+                "concurrent",
+            )
+        ):
+            operation = "result_read"
+        else:
+            operation = "model_read"
+        self.ensure_operation_allowed(operation)
+
         kwargs = kwargs or {}
         sig = inspect.signature(fn)
         try:

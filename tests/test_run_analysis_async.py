@@ -5,7 +5,7 @@ import threading
 import time
 
 import pytest
-from conftest import FakeDb, tool_text
+from conftest import FakeDb, ready_model_state, tool_text
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.tools import register_modeling_tools
@@ -31,6 +31,7 @@ def _provider_with_solve(solve_fn):
     p._mdb = FakeDb()
     p._odb = FakeDb()
     p._cdb = FakeDb()
+    p.get_model_state = ready_model_state
     p._mdb.do_solve = solve_fn
     return p
 
