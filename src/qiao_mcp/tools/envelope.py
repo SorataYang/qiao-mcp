@@ -26,7 +26,7 @@ class ToolInputError(ToolError):
 
 
 # 只读工具前缀：不改变模型状态，可安全重复调用
-_READONLY_PREFIXES = ("get_", "list_", "find_", "calc_")
+_READONLY_PREFIXES = ("get_", "list_", "find_", "calc_", "calculate_")
 # 破坏性工具前缀/名称：删除或清空模型数据
 _DESTRUCTIVE_PREFIXES = ("remove_", "delete_")
 _DESTRUCTIVE_NAMES = {
@@ -37,6 +37,73 @@ _DESTRUCTIVE_NAMES = {
 }
 # 逃生舱：可调用任意 qtmodel 方法，对外部世界开放
 _OPEN_WORLD_NAMES = {"call_qtmodel_api"}
+
+_CONNECTION_NAMES = {
+    "check_qiaotong_connection",
+    "get_model_status",
+    "list_qtmodel_api",
+    "call_qtmodel_api",  # 具体 mdb/odb/cdb 权限由 provider.call_api 再判断
+}
+_LIFECYCLE_NAMES = {"initialize_model", "open_model_file"}
+_STAGE_WRITE_NAMES = {
+    "add_construction_stage",
+    "merge_operation_stage",
+    "remove_construction_stage",
+    "update_construction_stage",
+    "set_self_weight_stage",
+    "configure_analysis",
+}
+_RESULT_NAMES = {
+    "get_analysis_results",
+    "plot_analysis_result",
+    "get_special_results",
+    "get_live_load_results",
+}
+_VIEW_NAMES = {
+    "switch_display_stage",
+    "set_view_angle",
+    "save_model_screenshot",
+    "activate_structure",
+    "set_render",
+    "reset_display",
+    "set_unit",
+    "change_construct_stage",
+}
+_CHECK_READ_NAMES = {
+    "get_check_data",
+}
+_CHECK_RUN_NAMES = {
+    "run_concrete_check",
+}
+
+
+def _operation_for(name: str) -> str:
+    """Map every MCP tool to the bridge capability it requires."""
+    if name in _CONNECTION_NAMES:
+        return "connection"
+    if name in _LIFECYCLE_NAMES:
+        return "lifecycle"
+    if name == "run_analysis":
+        return "analysis_run"
+    if name in _CHECK_RUN_NAMES:
+        return "check_run"
+    if name in _CHECK_READ_NAMES:
+        return "check_read"
+    if name in _STAGE_WRITE_NAMES:
+        return "stage_write"
+    if name in _RESULT_NAMES:
+        return "result_read"
+    if any(token in name for token in ("result", "results")):
+        return "result_read"
+    if any(token in name for token in ("check", "stirrup", "reinforcement")):
+        return "check_write"
+    if name in _VIEW_NAMES or name.startswith(("plot_", "display_", "set_view_")):
+        return "view"
+    if name == "save_model_file":
+        return "model_read"
+    if name.startswith(_READONLY_PREFIXES) or name == "validate_model":
+        return "model_read"
+    return "model_write"
 
 
 def _annotations_for(name: str) -> ToolAnnotations:
@@ -65,7 +132,7 @@ def _normalize(result: Any) -> Any:
     return result
 
 
-def _wrap(fn: Callable) -> Callable:
+def _wrap(fn: Callable, provider: Any = None, operation: str = "connection") -> Callable:
     """Preserve the tool signature; normalize the return to structured content.
 
     - dict 原样返回（结构化）；
@@ -77,16 +144,31 @@ def _wrap(fn: Callable) -> Callable:
     """
     sig = inspect.signature(fn)
 
+    def ensure_allowed() -> None:
+        if provider is None:
+            return
+        guard = getattr(provider, "ensure_operation_allowed", None)
+        if guard is None:
+            return
+        try:
+            guard(operation)
+        except ToolError:
+            raise
+        except Exception as e:
+            raise ToolError(f"Operation blocked by QiaoTong state (桥通状态禁止操作): {e}") from e
+
     if inspect.iscoroutinefunction(fn):
 
         @functools.wraps(fn)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            ensure_allowed()
             return _normalize(await fn(*args, **kwargs))
 
     else:
 
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            ensure_allowed()
             return _normalize(fn(*args, **kwargs))
 
     # 覆盖返回注解为 dict，让 FastMCP 生成结构化输出；参数签名保持不变。
@@ -117,7 +199,7 @@ def register_tools_with_envelope(mcp, register_fn, provider) -> None:
             if "annotations" not in t_kwargs:
                 t_kwargs["annotations"] = _annotations_for(name)
             decorator = original_tool(*t_args, **t_kwargs)
-            return decorator(_wrap(fn))
+            return decorator(_wrap(fn, provider, _operation_for(name)))
 
         return apply
 

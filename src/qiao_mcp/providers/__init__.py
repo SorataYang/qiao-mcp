@@ -53,6 +53,21 @@ class BridgeProvider(ABC):
         """
         return getattr(self, "_unavailable_reason", "") or ""
 
+    def get_model_state(self) -> dict[str, Any]:
+        """Return the backend-owned model lifecycle state when supported."""
+        return {
+            "status": "state_unsupported",
+            "message": f"{self.get_software_name()} does not expose model state.",
+        }
+
+    def ensure_operation_allowed(self, operation: str) -> None:
+        """Reject an operation that is incompatible with the current backend state.
+
+        Backends without state-awareness keep the historical behavior. Providers
+        that expose lifecycle state override this method and fail closed.
+        """
+        return None
+
     @abstractmethod
     def get_software_name(self) -> str:
         """Human-readable backend name (e.g., 'QiaoTong (桥通)')."""

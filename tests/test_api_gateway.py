@@ -1,7 +1,7 @@
 """逃生舱工具行为测试：方法发现、签名先验校验、危险方法拦截。"""
 
 import pytest
-from conftest import tool_fns, tool_text
+from conftest import ready_model_state, tool_fns, tool_text
 
 from qiao_mcp.providers.qtmodel_provider import QtModelProvider
 from qiao_mcp.tools.api_gateway import register_api_gateway_tools
@@ -32,6 +32,7 @@ def gateway_provider():
     p._mdb = RealSigMdb()
     p._odb = None
     p._cdb = None
+    p.get_model_state = ready_model_state
     return p
 
 

@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-from conftest import FakeDb, tool_text
+from conftest import FakeDb, ready_model_state, tool_text
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.tools import register_modeling_tools
@@ -37,6 +37,7 @@ def provider():
     p._mdb = FakeDb()
     p._odb = FakeDb()
     p._cdb = FakeDb()
+    p.get_model_state = ready_model_state
     return p
 
 

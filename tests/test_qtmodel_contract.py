@@ -168,7 +168,7 @@ def _qt_target(call: ast.Call) -> tuple[str, str] | None:
 
 
 def parse_provider() -> dict[str, ProviderMethod]:
-    tree = ast.parse(PROVIDER_FILE.read_text())
+    tree = ast.parse(PROVIDER_FILE.read_text(encoding="utf-8"))
     cls = next(
         n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "QtModelProvider"
     )
@@ -208,7 +208,7 @@ class ToolCall:
 def parse_tools() -> list[ToolCall]:
     calls: list[ToolCall] = []
     for path in sorted(TOOLS_DIR.glob("*.py")):
-        tree = ast.parse(path.read_text())
+        tree = ast.parse(path.read_text(encoding="utf-8"))
         for fn in ast.walk(tree):
             if not isinstance(fn, ast.FunctionDef):
                 continue
