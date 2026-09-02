@@ -106,12 +106,18 @@ class QtModelProvider(BridgeProvider):
     def get_connection_status(self) -> dict[str, Any]:
         """Probe QiaoTong and return an actionable, structured connection status.
 
-        qtmodel 2.6 起提供 QtServer.get_connection_status()，它区分三种状态：
-        connected / version_mismatch（桥通 API 版本与 qtmodel 精确不符）/
-        software_not_running，并各自带 message 与 action。
+        qtmodel 2.6 起提供 QtServer.get_connection_status()，返回带 message 与
+        action 的结构化状态，比 is_available() 的布尔值有用得多。
 
-        这比 is_available() 的布尔值有用得多——后者把"软件没启动"和
-        "版本不匹配"混为一谈，而这两者的处置完全不同（启动软件 vs 升级软件）。
+        注意各版本可返回的状态并不相同：
+        - 2.6/2.7：connected / version_mismatch（桥通 API 版本与 qtmodel 不精确
+          相符）/ software_not_running。
+        - 2.8.2 起：**version_mismatch 已被移除**，探测到桥通即返回
+          connected 且 compatible 恒为 True，只余 connected /
+          software_not_running 两态。跨版本混用不再被拦下。
+
+        故调用方不可假定 version_mismatch 仍会出现；判定可用性请用
+        is_available() 的 connected + compatible 组合，它对两代行为都成立。
 
         qtmodel 未安装或该 API 不存在时降级为本地推断的状态，保证工具永不抛错。
         """
@@ -154,7 +160,19 @@ class QtModelProvider(BridgeProvider):
             }
 
     def get_model_state(self) -> dict[str, Any]:
-        """Return the bridge-owned lifecycle and operation-capability snapshot."""
+        """Return the bridge-owned lifecycle and operation-capability snapshot.
+
+        状态不可得有两种成因，处置完全不同，故用两个 status 区分：
+
+        - ``guard_unavailable``：**qtmodel 侧**没有 get_model_state（<2.8）。
+          守卫这项能力根本不存在，谈不上"状态未知"——沿用 2.6.x 时代的行为
+          放行即可，否则一升级 qiao-mcp 就把旧 qtmodel 用户的全部工具锁死。
+        - ``state_unknown``：qtmodel 有该 API，但**桥通**没在握手里给 model_state
+          （桥通版本偏旧）。此时守卫可用而状态确实未知，必须 fail closed：
+          2.8.2 已删除版本握手，这条阻断是"桥通太旧"的唯一信号。
+
+        判定由 ensure_operation_allowed 消费，见其 guard_unavailable 分支。
+        """
         try:
             from qtmodel.core.qt_server import QtServer
         except ImportError:
@@ -169,11 +187,14 @@ class QtModelProvider(BridgeProvider):
         probe = getattr(QtServer, "get_model_state", None)
         if probe is None:
             return {
-                "status": "state_unknown",
+                "status": "guard_unavailable",
                 "connected": self._available,
                 "compatible": None,
-                "message": "当前 qtmodel 不提供模型状态查询。",
-                "action": "请升级 qtmodel 和桥通软件。",
+                "message": (
+                    f"当前 qtmodel {self.version} 不提供模型状态查询"
+                    "（2.8 起可用），已跳过状态守卫。"
+                ),
+                "action": "如需状态感知保护，请升级 qtmodel 至 2.8 及以上并同步升级桥通。",
             }
         try:
             result = probe()
@@ -192,11 +213,19 @@ class QtModelProvider(BridgeProvider):
             }
 
     def ensure_operation_allowed(self, operation: str) -> None:
-        """Fail closed when the current bridge state rejects an MCP operation."""
+        """Fail closed when the current bridge state rejects an MCP operation.
+
+        唯一的放行例外是 guard_unavailable——qtmodel <2.8 没有 get_model_state，
+        守卫能力缺失不等于状态危险，按 2.6.x 的旧行为放行（否则旧 qtmodel 用户
+        升级 qiao-mcp 后每个工具都会被锁死）。桥通侧的 state_unknown 仍 fail closed。
+        """
         if operation == "connection":
             return
 
         result = self.get_model_state()
+        if result.get("status") == "guard_unavailable":
+            return
+
         state = result.get("model_state")
         if not isinstance(state, dict):
             message = str(result.get("message") or "桥通未提供模型状态快照。").strip()
@@ -302,7 +331,9 @@ class QtModelProvider(BridgeProvider):
         status = self._probe_connection()
         if status is None:
             return True  # 无从判断，保持乐观
-        # version_mismatch 时 connected=True 但 compatible=False，同样不可用
+        # compatible is False 只可能来自 2.6/2.7 的 version_mismatch（connected=True
+        # 但版本不符，同样不可用）；2.8.2 起该状态已不存在，compatible 恒为 True，
+        # 此处的 `is not False` 对两代都成立，故无需按版本分支。
         usable = bool(status.get("connected")) and status.get("compatible") is not False
         if not usable:
             # server.py 与 _require_available 都会展示这条原因，必须填上探测结论，
