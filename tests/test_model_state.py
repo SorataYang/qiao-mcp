@@ -3,6 +3,7 @@
 import pytest
 from conftest import ready_model_state, tool_fns
 
+from qiao_mcp.providers.qtmodel_provider import QtModelProvider
 from qiao_mcp.tools import register_modeling_tools
 from qiao_mcp.tools.api_gateway import register_api_gateway_tools
 from qiao_mcp.tools.checking import register_checking_tools
@@ -161,3 +162,84 @@ def test_lifecycle_requires_known_state(fake_provider):
         fns["initialize_model"](confirm=True)
 
     assert "状态不可用" in str(exc.value)
+
+
+# ── 分层降级：守卫缺失 vs 状态未知 ──────────────────────────────────
+#
+# 两者都"拿不到状态"，但成因不同，处置必须不同：
+# - guard_unavailable：qtmodel <2.8 没有 get_model_state，守卫能力不存在。
+#   若在此 fail closed，旧 qtmodel 用户一升级 qiao-mcp 就会被锁死全部工具。
+# - state_unknown：qtmodel 有 API 而桥通没给 model_state（桥通偏旧）。
+#   2.8.2 已删除版本握手，这条阻断是"桥通太旧"的唯一信号，必须保留。
+
+
+def test_guard_unavailable_allows_operations(fake_provider):
+    """qtmodel 缺少 get_model_state 时放行，保持 2.6.x 的既有行为。"""
+    fake_provider.get_model_state = lambda: {
+        "status": "guard_unavailable",
+        "connected": True,
+        "message": "当前 qtmodel 不提供模型状态查询（2.8 起可用），已跳过状态守卫。",
+        "action": "如需状态感知保护，请升级 qtmodel 至 2.8 及以上并同步升级桥通。",
+    }
+    fns = tool_fns(register_modeling_tools, fake_provider)
+
+    fns["create_nodes"](node_data=[[0.0, 0.0, 0.0]])
+    assert fake_provider._mdb.last("add_nodes") is not None
+
+
+def test_guard_unavailable_allows_lifecycle(fake_provider):
+    """lifecycle 分支同样放行——守卫缺失不等于正在求解。"""
+    fake_provider.get_model_state = lambda: {
+        "status": "guard_unavailable",
+        "connected": True,
+        "message": "守卫不可用",
+        "action": "升级 qtmodel",
+    }
+    fns = tool_fns(register_modification_tools, fake_provider)
+
+    fns["initialize_model"](confirm=True)
+    assert fake_provider._mdb.last("initial") is not None
+
+
+def test_real_provider_degrades_when_api_absent(monkeypatch):
+    """真实 provider 在 QtServer 缺 get_model_state 时报 guard_unavailable 并放行。
+
+    这条守着真实降级路径：上面两条用假 provider 断言语义，这条断言
+    provider 自己能正确识别 qtmodel 侧的能力缺失。
+    """
+    from qtmodel.core.qt_server import QtServer
+
+    monkeypatch.delattr(QtServer, "get_model_state", raising=False)
+    provider = QtModelProvider.__new__(QtModelProvider)
+    provider._available = True
+    provider._unavailable_reason = ""
+
+    assert provider.get_model_state()["status"] == "guard_unavailable"
+    # 不抛错即为放行
+    provider.ensure_operation_allowed("model_write")
+    provider.ensure_operation_allowed("lifecycle")
+
+
+def test_real_provider_fails_closed_when_bridge_state_missing(monkeypatch):
+    """qtmodel 有 API 但桥通没给 model_state 时必须 fail closed。"""
+    from qtmodel.core.qt_server import QtServer
+
+    monkeypatch.setattr(
+        QtServer,
+        "get_model_state",
+        classmethod(
+            lambda cls: {
+                "status": "state_unknown",
+                "message": "桥通服务未提供模型状态快照。",
+                "action": "请升级桥通软件以支持状态感知。",
+            }
+        ),
+        raising=False,
+    )
+    provider = QtModelProvider.__new__(QtModelProvider)
+    provider._available = True
+    provider._unavailable_reason = ""
+
+    assert provider.get_model_state()["status"] == "state_unknown"
+    with pytest.raises(RuntimeError, match="模型状态不可用"):
+        provider.ensure_operation_allowed("model_write")

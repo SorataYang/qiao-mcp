@@ -26,9 +26,12 @@ dependencies = [
     "pandas>=3.0.1",
     # qtmodel 自身未声明任何依赖，但 import 时需要 psutil/requests 等，须在此代为声明
     "psutil>=5.9",
-    # 2.6.x 起 qtmodel 对桥通做精确版本握手（QT_VERSION 硬编码，不匹配即拒连），
-    # 故上界收在 <2.7：跨次版本必然要求用户同步升级桥通软件
-    "qtmodel>=2.6.3,<2.7",
+    # 2.6.x 曾对桥通做精确版本握手（QT_VERSION 硬编码，不匹配即拒连），故上界一度收在
+    # <2.7。2.8.2 起该握手被移除（get_connection_status 恒返回 compatible=True），
+    # 跨次版本不再强制用户同步升级桥通，上界因此放宽到 <2.9。
+    # 下界保持 2.6.3：模型状态守卫在 <2.8（无 get_model_state API）时自动降级放行，
+    # 详见 QtModelProvider.get_model_state 的分层降级说明。
+    "qtmodel>=2.6.3,<2.9",
     "requests>=2.32.5",
 ]
 
@@ -43,6 +46,12 @@ Issues = "https://github.com/SorataYang/qiao-mcp/issues"
 [build-system]
 requires = ["uv_build>=0.9.28,<0.12"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+# reference_codes/ 下是嵌套的上游仓库（非 submodule），自带 tests/ 与 pyproject.toml。
+# 不限定 testpaths 时裸跑 pytest 会递归收集它，并与本仓库同名的 test_model_state.py
+# 撞出 "import file mismatch"。本仓库的测试只在 tests/ 下。
+testpaths = ["tests"]
 
 [tool.ruff]
 target-version = "py311"
