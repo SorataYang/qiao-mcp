@@ -200,8 +200,9 @@ An SSH tunnel is an alternative that does not expose the API port on the LAN:
 ssh -N -L 45125:127.0.0.1:55125 <user>@<qiaotong-machine-LAN-IP>
 ```
 
-Use `http://127.0.0.1:45125/pythonForQt/` in the client machine while the tunnel
-is running.
+Use `http://localhost:45125/pythonForQt/` in the client machine while the tunnel
+is running. Windows HTTP.sys validates the `Host` header and rejects
+`127.0.0.1` with `400 Invalid Hostname` in this setup.
 
 ## Development
 

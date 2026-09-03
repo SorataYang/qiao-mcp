@@ -164,9 +164,10 @@ class QtModelProvider(BridgeProvider):
 
         状态不可得有两种成因，处置完全不同，故用两个 status 区分：
 
-        - ``guard_unavailable``：**qtmodel 侧**没有 get_model_state（<2.8）。
+        - ``guard_unavailable``：**qtmodel 侧**没有 get_model_state API。该接口曾在
+          67e2f03 中添加，但在 340e94e 中被移除，因此 qtmodel 2.8.2 中不存在。
           守卫这项能力根本不存在，谈不上"状态未知"——沿用 2.6.x 时代的行为
-          放行即可，否则一升级 qiao-mcp 就把旧 qtmodel 用户的全部工具锁死。
+          放行即可，否则一升级 qiao-mcp 就把所有用户的工具全部锁死。
         - ``state_unknown``：qtmodel 有该 API，但**桥通**没在握手里给 model_state
           （桥通版本偏旧）。此时守卫可用而状态确实未知，必须 fail closed：
           2.8.2 已删除版本握手，这条阻断是"桥通太旧"的唯一信号。
@@ -191,10 +192,10 @@ class QtModelProvider(BridgeProvider):
                 "connected": self._available,
                 "compatible": None,
                 "message": (
-                    f"当前 qtmodel {self.version} 不提供模型状态查询"
-                    "（2.8 起可用），已跳过状态守卫。"
+                    f"当前 qtmodel {self.version} 不提供模型状态查询 API，"
+                    "已跳过状态守卫。"
                 ),
-                "action": "如需状态感知保护，请升级 qtmodel 至 2.8 及以上并同步升级桥通。",
+                "action": "模型状态守卫功能需要上游 qtmodel 添加 get_model_state 接口。",
             }
         try:
             result = probe()

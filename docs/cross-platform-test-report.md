@@ -126,7 +126,7 @@ qtmodel 返回的结果字段与文档不完全一致：
 LLM 创建工况用原名（`'荷载1'`），查询时工具自动添加 `"ST:"` 前缀 → LLM 无需感知桥通内部约定
 
 ### 主动诊断提示
-连接失败时，`check_qiaotong_connection` 检测 URL 中的 `localhost` 并主动建议 `127.0.0.1`
+连接失败时，`check_qiaotong_connection` 检测 URL 中的 `127.0.0.1` 并主动建议 `localhost`
 
 ### 精确字段文档
 工具 docstring 和 LLM instructions 明确说明嵌套结构（`result['force_i']['My']`），LLM 能正确提取
