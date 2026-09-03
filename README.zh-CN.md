@@ -185,7 +185,9 @@ mdb.set_url("http://<代理机器局域网IP>:45125/pythonForQt/")
 ssh -N -L 45125:127.0.0.1:55125 <用户名>@<桥通机器局域网IP>
 ```
 
-隧道运行期间，客户端使用 `http://127.0.0.1:45125/pythonForQt/`。
+隧道运行期间，客户端使用 `http://localhost:45125/pythonForQt/`。此场景下
+Windows HTTP.sys 会校验 `Host` 请求头，并以 `400 Invalid Hostname` 拒绝
+`127.0.0.1`。
 
 ## 开发
 
