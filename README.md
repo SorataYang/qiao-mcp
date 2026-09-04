@@ -25,11 +25,11 @@ Tools are organized by workflow area. Highlights per group:
 | **Tendons** | `create_tendon_property`, `create_tendon_2d`, `apply_prestress`, `get_tendon_info` |
 | **Traffic (moving load)** | `add_node_tandem`, `add_influence_plane`, `add_traffic_lane`, `add_standard_vehicle`, `create_live_load_case` |
 | **Checking** | `setup_concrete_check`, `add_check_load_combination`, `add_parametric_reinforcement`, `run_concrete_check`, `get_check_data` |
-| **Queries** | `get_model_info`, `get_model_data` (by kind), `find_entities`, `calc_section_property`, `get_special_results` (paginated where applicable) |
+| **Queries** | `get_model_info`, `get_model_data` (by kind, incl. qtmodel 2.8 overview kinds `summary` / `analysis_context` / `project_metadata` / `check_context`), `find_entities`, `calc_section_property`, `get_special_results` (paginated where applicable) |
 | **Modification** | `initialize_model`, `save_model_file`, `open_model_file`, `update_node`, `move_nodes`, `update_element`, `remove_nodes`, `remove_elements` |
 | **Visualization** | `save_model_screenshot`, `plot_analysis_result` (optionally return viewable images), `set_view_angle`, `display_ids` |
 | **Workflows** | `create_simple_beam_bridge`, `create_continuous_beam_bridge` |
-| **Gateway & diagnostics** | `check_qiaotong_connection`, `list_qtmodel_api`, `call_qtmodel_api` — diagnose the bridge connection or discover and call long-tail qtmodel methods with signature validation |
+| **Gateway & diagnostics** | `check_qiaotong_connection`, `get_model_status`, `list_qtmodel_api`, `call_qtmodel_api` — diagnose the bridge connection and model state, or discover and call long-tail qtmodel methods with signature validation |
 
 Tool responses are normalized to structured content (`{status, ...}`), while image
 tools can return MCP image content directly. Tool failures use typed MCP errors, and
@@ -85,11 +85,14 @@ changes. See [Backend Selection](./INTEGRATION_GUIDE.md#后端选择-backend-sel
 ### Prerequisites
 - Python >= 3.11
 - [uv](https://docs.astral.sh/uv/) package manager
-- `qtmodel` 2.6.3 (installed by `uv sync`)
-- QiaoTong software 2.6.3 running when calling backend model, analysis, or visualization operations
+- `qtmodel` 2.6.3 – 2.8.x (installed by `uv sync`; 2.8.2 is the current lock)
+- QiaoTong software running when calling backend model, analysis, or visualization operations
+  (see [Compatibility](#compatibility) for which versions pair with which)
 
 The MCP server can start without QiaoTong. Use `check_qiaotong_connection` to
-distinguish a connected server, a version mismatch, and software that is not running.
+distinguish a connected server from software that is not running, and
+`get_model_status` to see whether a model is open and which operations the
+current QiaoTong state allows.
 
 ### Install & Run
 
@@ -239,15 +242,28 @@ where it belongs: in the dependency constraint.
 
 ### Compatibility
 
-| Qiao-MCP | qtmodel       | QiaoTong software |
-|----------|---------------|-------------------|
-| 0.3.x    | 2.6.3 – 2.6.x | 2.6.3             |
-| 0.2.x    | 2.5.0 – 2.5.x | 2.5.0             |
+| Qiao-MCP           | qtmodel       | QiaoTong software                          |
+|--------------------|---------------|--------------------------------------------|
+| 0.3.2 (unreleased) | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
+| 0.3.0 – 0.3.1      | 2.6.3 – 2.6.x | 2.6.3 (exact match enforced by qtmodel)    |
+| 0.2.x              | 2.5.0 – 2.5.x | 2.5.0                                      |
 
-The QiaoTong software API version and the installed `qtmodel` must match
-**exactly** — qtmodel 2.6+ performs a precise version handshake and refuses to
-connect otherwise. Run `check_qiaotong_connection` to see both versions and what
-to do when they differ.
+How the two sides are matched changed in qtmodel 2.8.2:
+
+- **qtmodel 2.6 / 2.7** perform a strict version handshake — the QiaoTong API
+  version and the installed `qtmodel` must match exactly, otherwise
+  `check_qiaotong_connection` reports `version_mismatch` and refuses to connect.
+- **qtmodel 2.8.2** removed that handshake. Any QiaoTong that exposes the Python
+  API connects, so `version_mismatch` no longer occurs. The trade-off is that an
+  older QiaoTong may simply lack newer commands; `get_model_status` surfaces that
+  as `state_unknown` (the software predates the model-state handshake) so tools
+  fail closed instead of writing blind.
+
+Two builds of qtmodel 2.8.2 exist: the PyPI wheel (2026-08-20) does not include
+`QtServer.get_model_state`, while the upstream source at the same version does.
+Qiao-MCP detects the capability rather than the version — without it the
+model-state guard is skipped (`guard_unavailable`) and tools behave as in 0.3.1;
+with it, every tool is gated on the state QiaoTong reports.
 
 `0.x` signals the API is still free to change; it is not a statement about
 release quality. When moving to a new qtmodel minor line, raise the dependency

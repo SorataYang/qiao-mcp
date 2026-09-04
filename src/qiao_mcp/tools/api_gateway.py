@@ -25,16 +25,19 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Diagnose the connection to QiaoTong software (诊断桥通软件连接状态).
 
         CALL THIS FIRST when any tool reports the backend is unavailable.
-        It distinguishes the three failure modes, which need different fixes:
-        （任一工具报后端不可用时先调用本工具，它区分三种需要不同处置的状态）
+        It distinguishes the failure modes, which need different fixes:
+        （任一工具报后端不可用时先调用本工具，它区分需要不同处置的状态）
 
         - connected (已连接): ready to model.
-        - version_mismatch (版本不匹配): the QiaoTong API version and the
-          installed qtmodel differ. qtmodel pins an exact version, so the
-          user must upgrade QiaoTong (or install a matching qtmodel).
-          （桥通与 qtmodel 版本必须精确一致，需升级桥通软件）
         - software_not_running (软件未启动): start QiaoTong and wait for the
           main window, then retry. （启动桥通并等待主界面加载）
+        - version_mismatch (版本不匹配): only with qtmodel 2.6/2.7, which pinned
+          an exact QiaoTong API version — the user must upgrade QiaoTong (or
+          install a matching qtmodel). qtmodel 2.8.2 removed that handshake, so
+          this status no longer occurs there; mismatched pairs connect, and an
+          older QiaoTong instead shows up as `state_unknown` in get_model_status.
+          （仅 qtmodel 2.6/2.7 会出现：两侧版本须精确一致，需升级桥通；2.8.2 起
+          已取消该握手，桥通偏旧时改由 get_model_status 报 state_unknown）
 
         Returns the status, a human-readable message, the recommended action,
         and the client/server versions involved.

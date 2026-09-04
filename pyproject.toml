@@ -29,8 +29,9 @@ dependencies = [
     # 2.6.x 曾对桥通做精确版本握手（QT_VERSION 硬编码，不匹配即拒连），故上界一度收在
     # <2.7。2.8.2 起该握手被移除（get_connection_status 恒返回 compatible=True），
     # 跨次版本不再强制用户同步升级桥通，上界因此放宽到 <2.9。
-    # 下界保持 2.6.3：qtmodel 2.8.2 移除了 get_model_state API（该接口曾短暂存在于
-    # 67e2f03 但在 340e94e 中被移除），模型状态守卫检测到 API 缺失时自动降级放行，
+    # 下界保持 2.6.3：模型状态守卫按能力探测而非版本判断——PyPI 的 2.8.2 wheel 打包自
+    # 上游 340e94e，早于 get_model_state 特性（67e2f03）合入，故没有该方法；上游源码
+    # HEAD（fb19a6a）同样标 2.8.2 却已带上它。守卫检测到 API 缺失时自动降级放行，
     # 详见 QtModelProvider.get_model_state 的分层降级说明。
     "qtmodel>=2.6.3,<2.9",
     "requests>=2.32.5",

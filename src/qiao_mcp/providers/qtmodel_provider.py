@@ -164,10 +164,13 @@ class QtModelProvider(BridgeProvider):
 
         状态不可得有两种成因，处置完全不同，故用两个 status 区分：
 
-        - ``guard_unavailable``：**qtmodel 侧**没有 get_model_state API。该接口曾在
-          67e2f03 中添加，但在 340e94e 中被移除，因此 qtmodel 2.8.2 中不存在。
-          守卫这项能力根本不存在，谈不上"状态未知"——沿用 2.6.x 时代的行为
-          放行即可，否则一升级 qiao-mcp 就把所有用户的工具全部锁死。
+        - ``guard_unavailable``：**qtmodel 侧**没有 get_model_state API。注意这与
+          版本号无关：PyPI 上的 2.8.2 wheel（2026-08-20）是从上游 340e94e 打包的，
+          该分支早于模型状态特性（67e2f03，2026-08-21）合入（5f4f4eb），因此没有
+          这个方法；而上游源码 HEAD（fb19a6a）仍标 2.8.2 却已带上它。同一个版本号
+          下两种 qtmodel 并存，只能按能力探测、不能按版本判断。守卫能力不存在
+          谈不上"状态未知"——沿用 2.6.x 的行为放行即可，否则装着 PyPI wheel 的
+          用户一升级 qiao-mcp 就把全部工具锁死。
         - ``state_unknown``：qtmodel 有该 API，但**桥通**没在握手里给 model_state
           （桥通版本偏旧）。此时守卫可用而状态确实未知，必须 fail closed：
           2.8.2 已删除版本握手，这条阻断是"桥通太旧"的唯一信号。
@@ -192,10 +195,13 @@ class QtModelProvider(BridgeProvider):
                 "connected": self._available,
                 "compatible": None,
                 "message": (
-                    f"当前 qtmodel {self.version} 不提供模型状态查询 API，"
+                    f"当前安装的 qtmodel {self.version} 不提供模型状态查询 API，"
                     "已跳过状态守卫。"
                 ),
-                "action": "模型状态守卫功能需要上游 qtmodel 添加 get_model_state 接口。",
+                "action": (
+                    "如需状态感知保护，请安装带 get_model_state 的 qtmodel 构建"
+                    "（上游源码 ≥ 5f4f4eb，或 2.8.2 之后的正式发布）并同步升级桥通。"
+                ),
             }
         try:
             result = probe()
@@ -216,9 +222,10 @@ class QtModelProvider(BridgeProvider):
     def ensure_operation_allowed(self, operation: str) -> None:
         """Fail closed when the current bridge state rejects an MCP operation.
 
-        唯一的放行例外是 guard_unavailable——qtmodel <2.8 没有 get_model_state，
-        守卫能力缺失不等于状态危险，按 2.6.x 的旧行为放行（否则旧 qtmodel 用户
-        升级 qiao-mcp 后每个工具都会被锁死）。桥通侧的 state_unknown 仍 fail closed。
+        唯一的放行例外是 guard_unavailable——所装 qtmodel 没有 get_model_state
+        （PyPI 2.8.2 wheel 及更早版本），守卫能力缺失不等于状态危险，按 2.6.x 的
+        旧行为放行（否则这些用户升级 qiao-mcp 后每个工具都会被锁死）。
+        桥通侧的 state_unknown 仍 fail closed。
         """
         if operation == "connection":
             return
@@ -607,6 +614,31 @@ class QtModelProvider(BridgeProvider):
             "structure_group_count": self._count(self._safe_get("get_structure_group_names")),
             "boundary_group_count":  self._count(self._safe_get("get_boundary_group_names")),
         }
+
+    # qtmodel 2.8 新增的轻量概览接口（odb_model_overview / odb_model_structure），
+    # 专为 Agent 设计：一次往返拿到摘要，不必像 get_model_summary 那样拉全量再计数。
+    # 返回结构由桥通 C# 端定义、未在 qtmodel 中声明，故原样透传不做字段映射。
+    _OVERVIEW_METHODS = {
+        "summary": "get_model_summary",
+        "analysis_context": "get_analysis_context",
+        "project_metadata": "get_project_metadata",
+        "check_context": "get_code_check_context",
+        "structure_group_summaries": "get_structure_group_summaries",
+    }
+
+    def get_model_overview(self, kind: str) -> Any:
+        """Return one of qtmodel 2.8's lightweight overview payloads, or None.
+
+        2.6.3 没有这些方法：_safe_get 会退回按 header 直发，旧桥通不认识该命令
+        时抛错被吞掉，最终返回 None——由工具层报"无数据"，不阻断其它查询。
+        """
+        self._require_available()
+        method = self._OVERVIEW_METHODS.get(kind)
+        if method is None:
+            raise ValueError(
+                f"unknown overview kind: {kind}. Use: {', '.join(self._OVERVIEW_METHODS)}"
+            )
+        return self._safe_get(method)
 
     @staticmethod
     def _to_dicts(result: Any) -> list[dict]:
@@ -1377,12 +1409,22 @@ class QtModelProvider(BridgeProvider):
         self._mdb.update_model()
 
     def run_analysis(self, read_timeout: int = 3600) -> None:
-        """启动求解并阻塞至后台任务真正结束。
+        """启动后台求解并轮询至任务真正结束。
 
-        2.5.0 起 do_solve 默认 wait=False——只启动后台求解便立即返回（内部
-        sleep(3)）。若不显式等待，调用方会在求解仍在进行时就去取结果。
-        这里用 wait=True 让 qtmodel 轮询 GET-PROJECT-SOLVE-STATUS 直到收敛，
-        并把 read_timeout 作为求解总时限（而非单次 HTTP 超时）。
+        do_solve 有两条互斥路径，由 sync 选择：
+
+        - sync=True：C# 在**本次 HTTP 请求内**阻塞到求解完成，此时 wait /
+          poll_interval / max_wait 全部被忽略（源码 ``if wait and not sync``），
+          实际时限退化为该请求的 read_timeout（默认 600 s）。2.6.3 起 sync 默认
+          为 True，因此只传 wait=True 并不会进入轮询——调用方以为给了 3600 s
+          预算，实则 600 s 一到就报"请求超时"，而求解仍在桥通后台继续。
+        - sync=False：立即返回启动状态，再由 wait=True 轮询
+          GET-PROJECT-SOLVE-STATUS，max_wait 才是真正的求解总时限。2.8.2 的
+          docstring 也明确 sync=True "大型模型可能超过代理/网络超时"。
+
+        本方法要的正是后一条：MCP 工具承诺 read_timeout 是总时限、且求解期间
+        连接保持响应（工作线程 + 进度心跳），只有轮询路径能兑现。sync 参数在
+        2.5.0–2.8.2 全部支持范围内都存在，可无条件传入。
 
         求解失败/取消时 qtmodel 抛 RuntimeError，超时抛 TimeoutError，
         均由上层转为 ToolError。
@@ -1390,6 +1432,7 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         self._mdb.do_solve(
             wait=True,
+            sync=False,
             poll_interval=2.0,
             max_wait=read_timeout,
             status_read_timeout=30,

@@ -82,7 +82,7 @@ _SERVER_INSTRUCTIONS = (
     "Groups:   create_structure_group, update_structure_group_name, remove_structure_group, create_boundary_group, add_to_structure_group, remove_from_structure_group, list_group_members\n"
     "Stages:   add_construction_stage, merge_operation_stage, configure_analysis, run_analysis, get_analysis_results, plot_analysis_result\n"
     "Workflow: create_simple_beam_bridge, create_continuous_beam_bridge\n"
-    "Queries:  get_model_info, get_model_data(kind=nodes|elements|materials|sections|load_cases|stages|structure_groups|...), find_entities, calc_section_property, get_special_results\n"
+    "Queries:  get_model_info, get_model_data(kind=nodes|elements|materials|sections|load_cases|stages|structure_groups|summary|analysis_context|project_metadata|check_context|structure_group_summaries|...), find_entities, calc_section_property, get_special_results\n"
     "Tendons:  create_tendon_property, create_tendon_2d, apply_prestress, get_tendon_info\n"
     "Traffic:  add_node_tandem, add_influence_plane, add_traffic_lane, add_standard_vehicle, create_live_load_case, get_live_load_results\n"
     "Checking: setup_concrete_check, add_check_load_combination, add_parametric_reinforcement, run_concrete_check, get_check_data(kind=stress|materials|stirrups|reinforcement|*_setting|...), configure_check_analysis(kind=crack_width|limit_state|normal_stress|...), add_check_stirrup, manage_check_stirrup, assign_element_stirrup, update_vertical_steel_tendon, manage_check_case_file\n"
