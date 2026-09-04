@@ -22,6 +22,11 @@ from qiao_mcp.tools.envelope import ToolError, ToolInputError
 # 输出保护：单次返回的最大条数上限
 MAX_LIMIT = 500
 
+# qtmodel 2.8 新增的轻量概览接口；2.6.3 没有对应方法，provider 会返回 None
+_OVERVIEW_KINDS = frozenset(
+    {"summary", "analysis_context", "project_metadata", "check_context", "structure_group_summaries"}
+)
+
 
 def _fmt(obj: Any) -> str:
     """Pretty-print any object as compact JSON for MCP responses."""
@@ -91,6 +96,10 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 ── 施工阶段 Stages ──
                 "stages" (施工阶段名), "stage_elements" (阶段内单元, 需 stage_id),
                 "stage_nodes" (阶段内节点, 需 stage_id), "stage_groups" (阶段内组, 需 stage_id)
+                ── 概览 Overview (qtmodel 2.8+, 单次往返的轻量摘要; 旧版本返回无数据) ──
+                "summary" (模型状态与实体数量), "analysis_context" (分析设置与已求解阶段),
+                "project_metadata" (工程名称/单位/人员/日期), "check_context" (设计活载与检算上下文),
+                "structure_group_summaries" (各结构组的节点/单元数量, 不展开成员)
             ids: Entity IDs for nodes/elements, int/list/range string "1to10" (编号)
             name: Group name, for group_elements/group_nodes (结构组名)
             sec_id: Section ID, for section_detail/section_shape/section_property (截面号)
@@ -180,11 +189,20 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 if stage_id is None:
                     raise ToolInputError("stage_groups requires stage_id (需要提供 stage_id)")
                 data = provider.get_groups_of_stage(stage_id)
+            elif kind in _OVERVIEW_KINDS:
+                data = provider.get_model_overview(kind)
             else:
                 raise ToolInputError(f"Unknown kind '{kind}'. See tool description for the full list "
                     f"(未知查询类型，请查阅工具说明)")
 
             if data is None or data == [] or data == {}:
+                if kind in _OVERVIEW_KINDS:
+                    return (
+                        f"No data for kind='{kind}' (无数据). These overview kinds need "
+                        "qtmodel 2.8+ and a QiaoTong build that serves them; on older "
+                        "versions fall back to nodes/elements/… kinds "
+                        "(概览接口需 qtmodel 2.8+ 与对应桥通版本，旧版本请改用具体实体类型)."
+                    )
                 return f"No data for kind='{kind}' (无数据). Model may be empty or analysis not run."
             return f"{kind}:\n{_paginate(data, limit, offset)}"
         except ToolError:

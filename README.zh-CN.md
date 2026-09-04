@@ -23,11 +23,11 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 | **预应力钢束** | `create_tendon_property`、`create_tendon_2d`、`apply_prestress`、`get_tendon_info` |
 | **移动荷载** | `add_node_tandem`、`add_influence_plane`、`add_traffic_lane`、`add_standard_vehicle`、`create_live_load_case` |
 | **结构验算** | `setup_concrete_check`、`add_check_load_combination`、`add_parametric_reinforcement`、`run_concrete_check`、`get_check_data` |
-| **查询** | `get_model_info`、`get_model_data`、`find_entities`、`calc_section_property`、`get_special_results`（适用时支持分页） |
+| **查询** | `get_model_info`、`get_model_data`（按 kind 查询，含 qtmodel 2.8 概览类型 `summary` / `analysis_context` / `project_metadata` / `check_context`）、`find_entities`、`calc_section_property`、`get_special_results`（适用时支持分页） |
 | **模型修改** | `initialize_model`、`save_model_file`、`open_model_file`、`update_node`、`move_nodes`、`update_element`、`remove_nodes`、`remove_elements` |
 | **可视化** | `save_model_screenshot`、`plot_analysis_result`（可直接返回图像）、`set_view_angle`、`display_ids` |
 | **工作流** | `create_simple_beam_bridge`、`create_continuous_beam_bridge` |
-| **网关与诊断** | `check_qiaotong_connection`、`list_qtmodel_api`、`call_qtmodel_api`（连接诊断、长尾 API 检索与签名校验调用） |
+| **网关与诊断** | `check_qiaotong_connection`、`get_model_status`、`list_qtmodel_api`、`call_qtmodel_api`（连接与模型状态诊断、长尾 API 检索与签名校验调用） |
 
 工具返回会统一规范为结构化内容（`{status, ...}`）；图像工具可以直接返回 MCP 图像内容。工具失败会使用类型化 MCP 错误；只读、破坏性和开放世界操作带有 MCP 工具注解。调用网关中的未封装 API 前，请先使用 `list_qtmodel_api` 查询真实签名。
 
@@ -76,10 +76,10 @@ qiao-mcp/
 ### 前置要求
 - Python >= 3.11
 - [uv](https://docs.astral.sh/uv/) 包管理器
-- `qtmodel` 2.6.3（`uv sync` 会自动安装）
-- 调用建模、分析或可视化工具时，需要运行兼容的桥通软件 2.6.3
+- `qtmodel` 2.6.3 – 2.8.x（`uv sync` 会自动安装，当前锁定 2.8.2）
+- 调用建模、分析或可视化工具时，需要运行桥通软件（版本搭配见下文[兼容性对照](#兼容性对照)）
 
-桥通未启动时 MCP 服务器仍可启动。调用 `check_qiaotong_connection` 可以区分已连接、版本不匹配和软件未启动三种状态。
+桥通未启动时 MCP 服务器仍可启动。调用 `check_qiaotong_connection` 可以区分已连接与软件未启动；调用 `get_model_status` 可以查看是否已打开模型、以及当前桥通状态允许哪些操作。
 
 ### 安装与运行
 
@@ -219,12 +219,18 @@ Qiao-MCP 的版本号独立于 `qtmodel`：本项目可以自行迭代（修 bug
 
 ### 兼容性对照
 
-| Qiao-MCP | qtmodel       | 桥通软件 |
-|----------|---------------|----------|
-| 0.3.x    | 2.6.3 – 2.6.x | 2.6.3    |
-| 0.2.x    | 2.5.0 – 2.5.x | 2.5.0    |
+| Qiao-MCP        | qtmodel       | 桥通软件                               |
+|-----------------|---------------|----------------------------------------|
+| 0.3.2（未发布） | 2.6.3 – 2.8.x | 2.6.3+；2.8.x 不再要求两侧版本精确一致 |
+| 0.3.0 – 0.3.1   | 2.6.3 – 2.6.x | 2.6.3（qtmodel 强制精确匹配）          |
+| 0.2.x           | 2.5.0 – 2.5.x | 2.5.0                                  |
 
-桥通软件的 API 版本与已安装的 `qtmodel` 必须**精确一致**——qtmodel 2.6 起会做精确版本握手，不一致直接拒绝连接。调用 `check_qiaotong_connection` 可以同时看到两侧版本，并给出对应的处置建议。
+两侧版本的匹配方式在 qtmodel 2.8.2 发生了变化：
+
+- **qtmodel 2.6 / 2.7** 做精确版本握手——桥通 API 版本与已安装的 `qtmodel` 必须完全一致，否则 `check_qiaotong_connection` 报 `version_mismatch` 并拒绝连接。
+- **qtmodel 2.8.2** 取消了该握手。任何暴露 Python API 的桥通都能连上，`version_mismatch` 不再出现。代价是偏旧的桥通可能缺少新命令；`get_model_status` 会把这种情况报为 `state_unknown`（桥通早于模型状态握手），工具据此 fail closed，而不是盲写。
+
+qtmodel 2.8.2 存在两种构建：PyPI 上的 wheel（2026-08-20）不含 `QtServer.get_model_state`，而同版本号的上游源码已带上它。Qiao-MCP 按能力而非版本号探测——没有该方法时跳过模型状态守卫（`guard_unavailable`），行为与 0.3.1 一致；有该方法时，每个工具都会按桥通上报的状态放行或拦截。
 
 第一位 `0` 表示 API 仍可能变化，与发布质量无关。升级到新的 qtmodel 次版本线时，同步提高依赖上界并在上表增加一行。
 
