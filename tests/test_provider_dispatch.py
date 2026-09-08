@@ -60,7 +60,7 @@ class StubProvider(BridgeProvider):
     def validate_model(self) -> dict:
         return {}
 
-    def run_analysis(self, read_timeout: int = 3600) -> None: ...
+    def run_analysis(self, read_timeout: int = 3600, show_view: bool = False) -> None: ...
 
 
 # ── 注册表 ────────────────────────────────────────────────────────────

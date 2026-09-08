@@ -8,17 +8,23 @@ QtServer.send_command，拦截并断言真正下发的 header 与 JSON payload�
 且完全离线——不需要桥通软件。
 """
 
+import asyncio
+import inspect
 import json
+from unittest.mock import Mock
 
 import pytest
 from conftest import ready_model_state
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers.qtmodel_provider import QtModelProvider
+from qiao_mcp.resources import register_resources
 from qiao_mcp.tools import register_modeling_tools
 from qiao_mcp.tools.advanced_boundary import register_advanced_boundary_tools
-from qiao_mcp.tools.envelope import register_tools_with_envelope
+from qiao_mcp.tools.api_gateway import register_api_gateway_tools
+from qiao_mcp.tools.envelope import ToolError, register_tools_with_envelope
 from qiao_mcp.tools.moving_load import register_moving_load_tools
+from qiao_mcp.tools.queries import register_query_tools
 from qiao_mcp.tools.tendon import register_tendon_tools
 
 
@@ -192,3 +198,134 @@ def test_node_objects_are_normalized_to_dicts(wire, monkeypatch):
     assert data == [{"node_id": 1, "x": 1.0, "y": 2.0, "z": 3.0}]
     # 必须可被 json 序列化（工具层 _fmt 依赖此）
     _json.dumps(data)
+
+
+@pytest.mark.parametrize(("kind", "header", "row"), [
+    ("materials", "GET-MATERIAL-DATA", {
+        "index": 7, "name": "C50", "mat_type": 1, "future_server_field": "kept",
+    }),
+    ("thickness", "GET-THICKNESS-DATA", {"thick_id": 1, "name": "顶板", "t": 0.3}),
+    ("nodal_force_loads", "GET-NODAL-FORCE-LOAD", {
+        "index": 2, "node_id": 1, "case_name": "恒载", "load_info": [0, 0, -10, 0, 0, 0],
+    }),
+    ("tendon_properties", "GET-TENDON-PROPERTY-DATA", {"name": "15-12", "tendon_type": 1}),
+    ("pre_stress_loads", "GET-PRE-STRESS-LOAD", {
+        "case_name": "预应力", "tendon_name": "T1", "tendon_type": 2, "force": 1200.0,
+    }),
+    ("node_masses", "GET-NODE-MASS-DATA", {"node_id": 1, "mass_info": [10, 1, 1, 1]}),
+    ("constraint_equations", "GET-CONSTRAINT-EQUATION-DATA", {
+        "index": 6, "name": "CE1", "sec_node": 15, "sec_dof": 1,
+        "master_info": [[16, 1, 1.0]],
+    }),
+    ("structure_group_summaries", "GET-STRUCTURE-GROUP-SUMMARIES", {
+        "group_id": 1, "name": "主梁", "node_count": 4, "element_count": 3,
+    }),
+])
+def test_typed_model_queries_preserve_wire_fields_in_tool_json(wire, kind, header, row):
+    wire._response = json.dumps([row])
+    functions = _tools(register_query_tools, _real_provider())
+    result = functions["get_model_data"](kind=kind)
+    assert json.loads(result["message"].split("\n", 2)[2]) == [row]
+    assert wire.requests == [(header, None)]
+
+
+def test_material_resource_serializes_typed_records(wire):
+    row = {"index": 7, "name": "C50", "mat_type": 1, "future_server_field": "kept"}
+    wire._response = json.dumps([row])
+    server = FastMCP("resource-test")
+    register_resources(server, _real_provider())
+    contents = list(asyncio.run(server.read_resource("bridge://model/materials")))
+    assert json.loads(contents[0].content) == [row]
+
+
+def test_model_section_shape_keeps_wire_command(wire):
+    wire._response = json.dumps({"section_type": "矩形", "parts": []})
+    result = _real_provider().get_section_shape(12)
+    assert isinstance(result, dict)
+    json.dumps(result)
+    assert len(wire.requests) == 1
+    assert wire.by_header("GET-SECTION-SHAPE")[0]["sec_id"] == 12
+
+
+def test_gateway_serializes_real_typed_model_records(wire):
+    row = {"index": 7, "name": "C50", "mat_type": 1}
+    wire._response = json.dumps([row])
+    provider = _real_provider()
+    api_object = "mdb" if hasattr(provider._mdb, "get_material_data") else "odb"
+    functions = _tools(register_api_gateway_tools, provider)
+    result = functions["call_qtmodel_api"](api_object=api_object, method="get_material_data")
+    assert json.loads(result["message"].split("\n", 1)[1]) == [row]
+    assert wire.requests == [("GET-MATERIAL-DATA", None)]
+
+
+@pytest.mark.parametrize("t_out", [None, 0.0, 0.4])
+def test_thickness_option_uses_real_signature_and_wire_payload(wire, t_out):
+    provider = _real_provider()
+    functions = _tools(register_modeling_tools, provider)
+    supported = "t_out" in inspect.signature(provider._mdb.add_thickness).parameters
+    if t_out is not None and not supported:
+        with pytest.raises(ToolError, match="does not support.*t_out"):
+            functions["add_thickness"](name="桥面板", t=0.2, t_out=t_out)
+        assert wire.requests == []
+        return
+
+    functions["add_thickness"](name="桥面板", t=0.2, t_out=t_out)
+    payload = wire.by_header("ADD-THICKNESS")[0]
+    assert payload["t"] == 0.2
+    assert payload["thick_type"] == 0
+    if t_out is None:
+        assert "t_out" not in payload
+    else:
+        assert payload["t_out"] == t_out
+
+
+@pytest.mark.parametrize("show_view", [False, True])
+def test_solve_window_option_preserves_real_background_protocol(wire, monkeypatch, show_view):
+    from qtmodel.mdb.mdb_project import MdbProject
+
+    provider = _real_provider()
+    wait = Mock(return_value={"state": "succeeded"})
+    monkeypatch.setattr(MdbProject, "wait_solve", wait)
+    supported = "show_view" in inspect.signature(provider._mdb.do_solve).parameters
+    if show_view and not supported:
+        with pytest.raises(ValueError, match="does not support.*show_view"):
+            provider.run_analysis(read_timeout=120, show_view=show_view)
+        assert wire.requests == []
+        wait.assert_not_called()
+        return
+
+    provider.run_analysis(read_timeout=120, show_view=show_view)
+    payload = wire.by_header("DO-SOLVE")[0] or {}
+    assert payload.get("sync", False) is False
+    if supported:
+        assert payload["show_view"] is show_view
+    else:
+        assert "show_view" not in payload
+    wait.assert_called_once_with(poll_interval=2.0, max_wait=120, read_timeout=30)
+
+
+@pytest.mark.parametrize("method", [
+    "reset_global_setting", "reset_construction_stage_setting", "reset_operation_stage_setting",
+    "reset_self_vibration_setting", "reset_live_load_setting", "reset_elastic_buckling_setting",
+    "reset_non_linear_setting", "reset_track_geometry_setting", "reset_dynamic_analysis_setting",
+    "reset_time_history_setting", "reset_response_spectrum_setting", "reset_all_setting",
+    "copy_thicknesses", "arrange_thickness_ids", "remove_thicknesses",
+])
+def test_new_management_apis_are_discoverable_and_callable_through_gateway(wire, method):
+    provider = _real_provider()
+    functions = _tools(register_api_gateway_tools, provider)
+    kwargs = {"ids": [5, 2, 5]} if method in {"copy_thicknesses", "remove_thicknesses"} else {}
+    listed = {entry["method"] for entry in provider.list_api_methods("mdb")}
+    if not hasattr(provider._mdb, method):
+        assert method not in listed
+        with pytest.raises(ToolError, match="has no method"):
+            functions["call_qtmodel_api"](api_object="mdb", method=method, kwargs=kwargs)
+        assert wire.requests == []
+        return
+
+    assert method in listed
+    functions["call_qtmodel_api"](api_object="mdb", method=method, kwargs=kwargs)
+    payloads = wire.by_header(method.replace("_", "-").upper())
+    assert len(payloads) == 1
+    if kwargs:
+        assert payloads[0]["ids"] == [5, 2]

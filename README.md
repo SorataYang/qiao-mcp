@@ -17,11 +17,11 @@ Tools are organized by workflow area. Highlights per group:
 
 | Group | Representative tools |
 |-------|----------------------|
-| **Core modeling** | `create_nodes_linear`, `create_beam_elements_linear`, `create_material`, `create_section` (all parametric section types), `create_polygon_section` |
+| **Core modeling** | `create_nodes_linear`, `create_beam_elements_linear`, `create_material`, `create_section` (all parametric section types), `create_polygon_section`, `add_thickness` (optional out-of-plane thickness) |
 | **Loads** | `create_load_group`, `create_load_case`, `set_self_weight_stage`, `set_gravity`, `apply_nodal_force`, `apply_beam_distributed_load`, temperature/settlement loads |
 | **Boundary** | `set_support`, `add_elastic_link`, `add_master_slave_link`, `add_elastic_support`, `add_beam_constraint` |
 | **Groups** | `create_structure_group`, `add_to_structure_group`, `merge_operation_stage` |
-| **Stages & analysis** | `add_construction_stage`, `merge_operation_stage`, `configure_analysis`, `run_analysis` (async, progress-reporting), `get_analysis_results` |
+| **Stages & analysis** | `add_construction_stage`, `merge_operation_stage`, `configure_analysis`, `run_analysis` (async, progress-reporting, optional `show_view`), `get_analysis_results` |
 | **Tendons** | `create_tendon_property`, `create_tendon_2d`, `apply_prestress`, `get_tendon_info` |
 | **Traffic (moving load)** | `add_node_tandem`, `add_influence_plane`, `add_traffic_lane`, `add_standard_vehicle`, `create_live_load_case` |
 | **Checking** | `setup_concrete_check`, `add_check_load_combination`, `add_parametric_reinforcement`, `run_concrete_check`, `get_check_data` |
@@ -216,20 +216,22 @@ uv sync
 # Run directly
 uv run python -m qiao_mcp.server
 
-# Quality gate (same checks as CI)
+# Quality checks and offline regression tests
 uv run ruff check src/ tests/
 uv run mypy src/qiao_mcp/
-uv run pytest tests/ -q
+uv run pytest tests/ --ignore=tests/test_end_to_end.py -q
 ```
 
-The test suite is designed to run offline — it does not require the QiaoTong software.
+The command above runs offline — it does not require the QiaoTong software.
 Provider/tool calls are validated against the installed `qtmodel` API signatures
 (contract tests) and dispatched against an in-process fake backend.
+The excluded end-to-end test requires a disposable QiaoTong model: it clears and
+rebuilds the active model before solving.
 
 ## Backend: QTModel (桥通)
 
 This MCP server wraps the `qtmodel` Python API which provides access to:
-- **mdb** — Model database: building & modifying bridge models
+- **mdb** — Model database: querying, building & modifying bridge models
 - **odb** — Output database: querying analysis results & visualization
 - **cdb** — Check database: structural verification & code checking
 
@@ -259,11 +261,66 @@ How the two sides are matched changed in qtmodel 2.8.2:
   as `state_unknown` (the software predates the model-state handshake) so tools
   fail closed instead of writing blind.
 
-Two builds of qtmodel 2.8.2 exist: the PyPI wheel (2026-08-20) does not include
+Different builds report qtmodel 2.8.2: the PyPI wheel (2026-08-20) does not include
 `QtServer.get_model_state`, while the upstream source at the same version does.
 Qiao-MCP detects the capability rather than the version — without it the
 model-state guard is skipped (`guard_unavailable`) and tools behave as in 0.3.1;
 with it, every tool is gated on the state QiaoTong reports.
+
+### Upstream Source Changes (2026-09-04–08)
+
+The reference repository is synced through `2316654`, still labeled `2.8.2`:
+
+- `ac4dbad` moves model queries from `odb` to `mdb`. Qiao-MCP prefers the new
+  namespace and falls back to `odb` when the method is absent. Existing-model
+  section geometry uses `mdb.get_model_section_shape`; `mdb.get_section_shape`
+  remains the local geometry builder. Analysis results and views stay on `odb`.
+- `bc1ee99` returns typed model records supporting `to_dict()` and `Mapping`.
+  The provider recursively converts them to plain JSON data for tools, resources
+  and the API gateway, preserving original server fields. MDB query calls use
+  read permission, not model-write permission, and never refresh the model.
+  State-changing calls such as `calculate_section_property` still require
+  model-write permission.
+- `6821413` splits model objects into domain modules and keeps `core.model_db`
+  as a compatibility export. The adapter does not depend on those internal paths.
+- The September 7–8 updates add `t_out` to thickness definitions, `show_view` to
+  solving, twelve analysis-setting reset APIs and three batch thickness APIs.
+  Qiao-MCP exposes the two new options on its existing tools; the fifteen
+  management APIs are available through the discover-then-call gateway.
+
+**Build compatibility:** `2316654` restores the `core/data_helper.py` missing in
+`6821413`, and the latest source passes the offline tests. The PyPI 2.8.2 build
+(August 20) still lacks these new options and management APIs. Dependencies and
+the lock remain unchanged (`qtmodel>=2.6.3,<2.9`). Default tool calls keep working;
+explicit `t_out` or `show_view=True` requests fail before writing or starting a
+solve if the installed API does not accept them. A matching version label alone
+does not establish feature support.
+
+MCP tool-call examples with a supporting qtmodel build:
+
+```text
+add_thickness(name="Deck", t=0.20, t_out=0.30, thick_type=0)
+run_analysis(read_timeout=3600, show_view=True)
+list_qtmodel_api(api_object="mdb", pattern="thickness")
+call_qtmodel_api(api_object="mdb", method="copy_thicknesses", kwargs={"ids": [1, 2]})
+list_qtmodel_api(api_object="mdb", pattern="reset_")
+```
+
+`thick_type` means **0 = ordinary plate, 1 = ribbed plate**, not equal/unequal
+in-plane and out-of-plane thickness. Omitting `t_out` uses `t` for both.
+`show_view` controls the QiaoTong progress window only: solving still uses
+background execution, polling and MCP progress heartbeats.
+
+Batch thickness APIs accept positive integer IDs or lists, not range strings.
+`remove_thicknesses([])` deletes nothing. Analysis resets delete settings, and
+`arrange_thickness_ids` changes IDs and references; discover the intended method
+and confirm the intended change before calling these write APIs.
+
+To test the reference source without replacing the installed package (macOS/Linux):
+
+```bash
+PYTHONPATH=reference_codes/qtmodel-release/packages/qtmodel/src:src uv run pytest tests/ --ignore=tests/test_end_to_end.py -q
+```
 
 `0.x` signals the API is still free to change; it is not a statement about
 release quality. When moving to a new qtmodel minor line, raise the dependency

@@ -115,3 +115,30 @@ def test_success_message_only_after_solve_returns(run_analysis, provider):
     result = asyncio.run(run_analysis(ctx=_Ctx()))
     assert "completed" in tool_text(result).lower()
     assert provider._mdb.count("do_solve") == 1
+
+
+def test_show_view_is_independent_of_background_solve_options(run_analysis, provider):
+    asyncio.run(run_analysis(ctx=_Ctx(), read_timeout=120, show_view=True))
+    kwargs = provider._mdb.last("do_solve")[2]
+    assert kwargs["show_view"] is True
+    assert kwargs["sync"] is False
+    assert kwargs["wait"] is True
+    assert kwargs["max_wait"] == 120
+    assert kwargs["status_read_timeout"] == 30
+
+
+@pytest.mark.parametrize("show_view", [False, True])
+def test_legacy_solve_rejects_window_request_before_starting(provider, run_analysis, show_view):
+    calls = []
+
+    def legacy_solve(wait, sync, poll_interval, max_wait, status_read_timeout):
+        calls.append({"wait": wait, "sync": sync, "max_wait": max_wait})
+
+    provider._mdb.do_solve = legacy_solve
+    if show_view:
+        with pytest.raises(ToolError, match="does not support.*show_view"):
+            asyncio.run(run_analysis(ctx=_Ctx(), read_timeout=120, show_view=show_view))
+        assert calls == []
+    else:
+        asyncio.run(run_analysis(ctx=_Ctx(), read_timeout=120, show_view=show_view))
+        assert calls == [{"wait": True, "sync": False, "max_wait": 120}]

@@ -26,7 +26,7 @@ class ToolInputError(ToolError):
 
 
 # 只读工具前缀：不改变模型状态，可安全重复调用
-_READONLY_PREFIXES = ("get_", "list_", "find_", "calc_", "calculate_")
+_READONLY_PREFIXES = ("get_", "list_", "find_", "calc_")
 # 破坏性工具前缀/名称：删除或清空模型数据
 _DESTRUCTIVE_PREFIXES = ("remove_", "delete_")
 _DESTRUCTIVE_NAMES = {

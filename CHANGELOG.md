@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Optional `t_out` on `add_thickness` and `show_view` on `run_analysis`.**
+  Separate in-plane/out-of-plane thickness and the QiaoTong solver progress
+  window are exposed without changing existing defaults. Real API signatures
+  are checked before opt-in calls, so unsupported builds fail before any write
+  or solve rather than silently ignoring the option. The window does not alter
+  background execution, polling or the total solve budget.
+- **Offline coverage and usage guidance for fifteen new MDB management APIs:**
+  twelve analysis-setting resets plus `copy_thicknesses`,
+  `arrange_thickness_ids` and `remove_thicknesses`, using the existing gateway.
 - **`get_model_status` tool and a model-state guard on every tool.** qtmodel 2.8
   exposes `QtServer.get_model_state()`, a snapshot QiaoTong owns: whether a model
   is open, whether the UI is in preprocessing / solving / postprocessing, whether
@@ -32,6 +41,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Sync qtmodel source through `2316654` (2026-09-08), including the query
+  migration (`ac4dbad`, `bc1ee99`, `6821413`).** Model queries now prefer `mdb`, with capability-based fallback
+  to legacy `odb` builds. Existing-model section geometry maps to
+  `mdb.get_model_section_shape`, not the local `get_section_shape` builder.
+  Analysis results and visualization remain on `odb`. MDB `get_`, `query_` and
+  `calc_` gateway calls require read permission and do not refresh the model;
+  state-changing calls such as `calculate_section_property` retain the write guard.
+- **Keep the published qtmodel dependency and lock unchanged.** Upstream still
+  labels these commits 2.8.2. Source revision `2316654` restores the helper
+  deleted by `6821413`; offline compatibility checks now cover this latest
+  source and the PyPI 2.8.2 build. The published wheel does not yet include the
+  new options or management APIs; support is detected by capability, not version.
 - **Dependency bound widened to `qtmodel>=2.6.3,<2.9`.** qtmodel 2.8.2 removed
   the strict version handshake (`get_connection_status` now always reports
   `compatible=True` once connected), so a qtmodel minor bump no longer forces a
@@ -45,6 +66,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Correct the plate-thickness type description:** `thick_type=0` is an ordinary
+  plate and `1` is a ribbed plate; unequal thickness is controlled by `t_out`.
+- **Section-property recalculation retains model-write protection.** Both the
+  dedicated tool and API gateway now require `modify_model`; the gateway no
+  longer treats every `calculate_*` MDB method as a read-only query.
+- **Typed query records stay structured.** Recursively normalize `to_dict()` /
+  `Mapping` objects, including nested records and section properties, before
+  MCP serialization. Materials, loads, boundaries, tendons, overviews, resources
+  and gateway responses no longer become Python object representations.
+  Public-attribute fallback remains for older qtmodel classes.
+- **Import diagnostics distinguish an absent qtmodel package from a broken
+  installation.** Missing internal modules or dependencies are reported with
+  their original exception instead of misleadingly asking to install qtmodel.
 - **`run_analysis` ignored its `read_timeout` budget on qtmodel 2.6.3+.** Since
   2.6.3 `mdb.do_solve` defaults to `sync=True`, under which QiaoTong blocks
   inside the HTTP request and `wait` / `max_wait` / `poll_interval` are never

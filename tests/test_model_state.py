@@ -39,7 +39,7 @@ def state_with(**updates):
         ("run_concrete_check", "check_run"),
         ("get_tendon_loss_results", "result_read"),
         ("get_tendon_position_result", "result_read"),
-        ("calculate_section_property", "model_read"),
+        ("calculate_section_property", "model_write"),
         ("set_render", "view"),
         ("reset_display", "view"),
         ("set_unit", "view"),
@@ -87,6 +87,18 @@ def test_model_write_is_blocked_in_postprocessing(fake_provider):
 
     with pytest.raises(ToolError):
         fns["create_nodes"](node_data=[[0.0, 0.0, 0.0]])
+
+    assert fake_provider._mdb.calls == []
+
+
+def test_section_recalculation_is_blocked_without_modify_permission(fake_provider):
+    fake_provider.get_model_state = lambda: state_with(
+        capabilities={"read_model": True, "modify_model": False},
+    )
+    fns = tool_fns(register_modeling_tools, fake_provider)
+
+    with pytest.raises(ToolError, match="modify_model"):
+        fns["calculate_section_property"]()
 
     assert fake_provider._mdb.calls == []
 

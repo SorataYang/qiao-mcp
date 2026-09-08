@@ -3,7 +3,7 @@ MCP escape-hatch tool — controlled access to the full qtmodel API.
 逃生舱工具：受控访问 qtmodel 全量 API
 
 The curated tools cover common bridge workflows. For the long tail of
-qtmodel's 240+ mdb / 90+ odb / 60+ cdb methods, this gateway exposes a
+qtmodel's mdb / odb / cdb methods, this gateway exposes a
 single discover-then-call surface instead of one wrapper tool per method.
 """
 
@@ -130,9 +130,17 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         signature here before calling — do not guess parameter names.
         （先用本工具查到真实签名，再用 call_qtmodel_api 调用，切勿臆测参数名。）
 
+        New qtmodel builds expose model queries on mdb; older releases use odb.
+        For existing-model section geometry use mdb.get_model_section_shape,
+        not mdb.get_section_shape (the local geometry builder).
+
+        Updated source builds also expose reset_*_setting analysis resets and
+        copy_thicknesses / arrange_thickness_ids / remove_thicknesses through mdb.
+        Search "reset_" or "thickness" to check availability in the installed build.
+
         Args:
             api_object: Which database to inspect (数据库对象):
-                "mdb" (建模), "odb" (结果/查询), "cdb" (检算)
+                "mdb" (模型查询/建模), "odb" (结果/视图；旧版模型查询), "cdb" (检算)
             pattern: Case-insensitive substring filter on method name
                      (方法名关键字过滤，如 "tendon"、"spectrum")
         """
@@ -170,6 +178,16 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Destructive/long-running methods (initial 清空模型, do_solve 求解) are
         blocked here — use initialize_model / run_analysis instead.
         （清空模型、求解等危险或长耗时操作已禁止经此调用，请用对应专用工具。）
+
+        MDB get_/query_/calc_ methods are read-only model operations; other MDB
+        methods, including calculate_section_property, require model-write permission.
+
+        New MDB management APIs are available here without additional wrapper tools.
+        copy_thicknesses / remove_thicknesses accept positive integer IDs or lists,
+        not range strings; remove_thicknesses([]) deletes nothing. Analysis resets
+        delete settings, and arrange_thickness_ids renumbers thickness references;
+        only call them when that change is intended.
+        （板厚批量操作不接受区间字符串；重置会删除分析设置，整理板厚会更改编号。）
 
         Args:
             api_object: Database object (数据库对象): "mdb", "odb", "cdb"

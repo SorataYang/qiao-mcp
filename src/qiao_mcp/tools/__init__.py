@@ -858,19 +858,32 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         t: float = 0.1,
         thick_type: int = 0,
         index: int = -1,
+        t_out: float | None = None,
     ) -> str:
         """
         Add a plate thickness property (添加板厚度).
 
         Args:
             name: Thickness name (厚度名称)
-            t: Thickness in meters (板厚 m)
-            thick_type: Thickness type (厚度类型): 0=平面内及平面外等厚, 1=平面内及平面外不等厚
+            t: In-plane/base thickness in meters (面内/基板厚度 m)
+            thick_type: Thickness type (厚度类型): 0=普通板, 1=加劲肋板
             index: ID index, -1 for auto (编号，-1自动生成)
+            t_out: Out-of-plane thickness in meters; omitted means the same as t.
+                   Requires a qtmodel build exposing t_out; older builds reject
+                   an explicit value before creating anything.
+                   (面外厚度 m；省略时与 t 相同，旧版不支持时明确报错)
+
+        For rib geometry and other advanced properties, discover add_thickness
+        with list_qtmodel_api and use call_qtmodel_api.
+        （加劲肋尺寸等完整参数请先检索签名，再通过 API 网关调用。）
         """
         try:
-            provider.add_thickness(name=name, t=t, thick_type=thick_type, index=index)
-            return f"Successfully added thickness '{name}' (成功添加板厚度)"
+            kwargs: dict[str, Any] = {"name": name, "t": t, "thick_type": thick_type, "index": index}
+            if t_out is not None:
+                kwargs["t_out"] = t_out
+            provider.add_thickness(**kwargs)
+            detail = f" (t={t} m, t_out={t_out} m)" if t_out is not None else ""
+            return f"Successfully added thickness '{name}' (成功添加板厚度){detail}"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
@@ -1783,7 +1796,9 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             raise ToolError(f"Error configuring analysis (配置分析失败): {e}") from e
 
     @mcp.tool()
-    async def run_analysis(ctx: Context, read_timeout: int = 3600) -> str:
+    async def run_analysis(
+        ctx: Context, read_timeout: int = 3600, show_view: bool = False
+    ) -> str:
         """
         Run the structural analysis calculation (执行结构分析计算).
 
@@ -1795,11 +1810,19 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Args:
             read_timeout: Max total solve time in seconds, default 3600
                           (求解总时限秒数；超时抛错，求解本身在后台继续)
+            show_view: Request the QiaoTong analysis progress window, default False.
+                       Does not change background solving, polling or MCP progress.
+                       True requires a qtmodel build exposing this option; older
+                       builds reject it before starting the solve.
+                       (是否显示桥通分析进度窗口；不影响异步求解，旧版不支持开启时明确报错)
         """
         try:
+            kwargs: dict[str, Any] = {"read_timeout": read_timeout}
+            if show_view:
+                kwargs["show_view"] = True
             loop = asyncio.get_running_loop()
             solve = loop.run_in_executor(
-                None, lambda: provider.run_analysis(read_timeout=read_timeout)
+                None, lambda: provider.run_analysis(**kwargs)
             )
             elapsed = 0
             # 每 5 秒发一次进度心跳，直到求解线程返回

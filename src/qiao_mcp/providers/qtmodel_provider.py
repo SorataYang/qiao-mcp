@@ -10,6 +10,7 @@ the BridgeProvider interface.
 import ast
 import json
 import time
+from collections.abc import Mapping
 from typing import Any
 
 from qiao_mcp.providers import BridgeProvider
@@ -20,7 +21,7 @@ class QtModelProvider(BridgeProvider):
     Provider for QiaoTong bridge analysis software via the `qtmodel` Python API.
 
     The qtmodel API exposes three main objects:
-    - mdb: Model database (building / modifying the model)
+    - mdb: Model database (querying / building / modifying the model)
     - odb: Output database (querying results and visualization)
     - cdb: Check database (structural verification)
 
@@ -67,12 +68,19 @@ class QtModelProvider(BridgeProvider):
             self._odb = qtmodel.odb
             self._cdb = qtmodel.cdb
             self._available = True
-        except ImportError:
+        except ImportError as exc:
             self._available = False
-            self._unavailable_reason = (
-                "qtmodel package not found. Run: uv add qtmodel "
-                "(qtmodel 包未安装，请运行: uv add qtmodel)"
-            )
+            if exc.name == "qtmodel":
+                self._unavailable_reason = (
+                    "qtmodel package not found. Run: uv add qtmodel "
+                    "(qtmodel 包未安装，请运行: uv add qtmodel)"
+                )
+            else:
+                self._unavailable_reason = (
+                    f"qtmodel import failed ({type(exc).__name__}: {exc}). "
+                    "Install a complete qtmodel release and its dependencies. "
+                    "(qtmodel 导入失败，请安装完整发行版并检查缺失的模块或依赖)"
+                )
         except Exception as e:
             # qtmodel is installed but QiaoTong software is likely not running.
             # qtmodel 2.6 起能区分"软件未启动"与"桥通 API 版本不匹配"，
@@ -167,7 +175,7 @@ class QtModelProvider(BridgeProvider):
         - ``guard_unavailable``：**qtmodel 侧**没有 get_model_state API。注意这与
           版本号无关：PyPI 上的 2.8.2 wheel（2026-08-20）是从上游 340e94e 打包的，
           该分支早于模型状态特性（67e2f03，2026-08-21）合入（5f4f4eb），因此没有
-          这个方法；而上游源码 HEAD（fb19a6a）仍标 2.8.2 却已带上它。同一个版本号
+          这个方法；而上游源码（如 fb19a6a）仍标 2.8.2 却已带上它。同一个版本号
           下两种 qtmodel 并存，只能按能力探测、不能按版本判断。守卫能力不存在
           谈不上"状态未知"——沿用 2.6.x 的行为放行即可，否则装着 PyPI wheel 的
           用户一升级 qiao-mcp 就把全部工具锁死。
@@ -430,6 +438,27 @@ class QtModelProvider(BridgeProvider):
                 f"qtmodel provider unavailable: {self._unavailable_reason}"
             )
 
+    def _optional_mdb_parameter(
+        self, method: str, parameter: str, value: Any
+    ) -> dict[str, Any]:
+        """Validate opt-in parameters without relying on qtmodel's version label."""
+        import inspect
+
+        if value is None:
+            return {}
+        options = {parameter: value}
+        try:
+            inspect.signature(getattr(self._mdb, method)).bind_partial(**options)
+        except TypeError as exc:
+            raise ValueError(
+                f"Installed qtmodel does not support {method} parameter '{parameter}'. "
+                "Use a qtmodel source build or release that exposes this parameter, "
+                "or omit the option to keep legacy behavior. "
+                f"(当前 qtmodel 不支持 {method} 的 {parameter} 参数；"
+                "请使用包含此功能的新版源码或发行版，或省略该选项)"
+            ) from exc
+        return options
+
     # ── Generic API gateway (逃生舱) ───────────────────────────────────
 
     # 危险/长耗时操作必须走各自带防护的专用工具，禁止经逃生舱直呼
@@ -482,7 +511,11 @@ class QtModelProvider(BridgeProvider):
             )
 
         if api_object == "mdb":
-            operation = "model_write"
+            operation = (
+                "model_read"
+                if method.startswith(("get_", "query_", "calc_"))
+                else "model_write"
+            )
         elif api_object == "cdb":
             operation = "check_run" if method.startswith(("solve", "run", "do_")) else "check_write"
         elif method.startswith(("set_", "save_", "plot_", "change_", "display_", "reset_")):
@@ -517,26 +550,39 @@ class QtModelProvider(BridgeProvider):
 
     @staticmethod
     def _parse(result: Any) -> Any:
-        """Parse string result from qtmodel API into Python object."""
+        """Parse qtmodel strings and normalize typed query objects recursively."""
         if isinstance(result, str):
             cleaned = result.strip()
             if not cleaned:
                 return cleaned
-                
-            # Fallback to standard JSON parsing first (handles true/false/null)
             try:
-                return json.loads(cleaned)
-            except Exception:
-                pass
+                result = json.loads(cleaned)
+            except ValueError:
+                try:
+                    result = ast.literal_eval(cleaned)
+                except (ValueError, SyntaxError):
+                    return result
+        return QtModelProvider._normalize_result(result)
 
-            # QtModel sometimes returns Python string representations (e.g., single quotes for strings)
-            # which json.loads fails to parse. ast.literal_eval handles these robustly.
-            try:
-                parsed = ast.literal_eval(cleaned)
-                return parsed
-            except Exception:
-                pass
-                
+    @staticmethod
+    def _normalize_result(result: Any) -> Any:
+        """Keep HTTP fields from to_dict/Mapping objects, including nested records.
+
+        Older qtmodel releases lack to_dict on many model classes, so their
+        public instance attributes remain a compatibility fallback. Nested
+        strings are data, not another JSON document to decode.
+        """
+        to_dict = getattr(result, "to_dict", None)
+        if callable(to_dict):
+            result = to_dict()
+        elif not isinstance(result, (Mapping, type)) and hasattr(result, "__dict__"):
+            fields = {key: value for key, value in vars(result).items() if not key.startswith("_")}
+            if fields:
+                result = fields
+        if isinstance(result, Mapping):
+            return {key: QtModelProvider._normalize_result(value) for key, value in result.items()}
+        if isinstance(result, (list, tuple)):
+            return [QtModelProvider._normalize_result(item) for item in result]
         return result
 
 
@@ -577,9 +623,26 @@ class QtModelProvider(BridgeProvider):
             
         raise ValueError(f"Unsupported ids type: {type(ids)}. Expected int, list, or string.")
 
+    def _model_query_method(self, fn_name: str):
+        """Prefer MDB model queries, falling back to pre-migration ODB releases.
+
+        MDB's local get_section_shape builder must not be confused with the
+        existing-model query, which moved to get_model_section_shape.
+        """
+        mdb_name = "get_model_section_shape" if fn_name == "get_section_shape" else fn_name
+        method = getattr(self._mdb, mdb_name, None)
+        return method if callable(method) else getattr(self._odb, fn_name, None)
+
+    def _query_model(self, fn_name: str, *args, **kwargs) -> Any:
+        """Dispatch a model query and return plain, JSON-compatible data."""
+        method = self._model_query_method(fn_name)
+        if not callable(method):
+            raise AttributeError(f"qtmodel has no model query '{fn_name}'")
+        return self._parse(method(*args, **kwargs))
+
     def _safe_get(self, fn_name: str, *args, **kwargs) -> Any:
-        """Call an odb method by name, auto-parse JSON, return None on error."""
-        fn = getattr(self._odb, fn_name, None)
+        """Call an optional model query, returning None on error."""
+        fn = self._model_query_method(fn_name)
         if fn is None:
             # Fallback: if this python version of qtmodel wrapper is missing the method, 
             # attempt to send it directly as a REST command header to the running QT Server.
@@ -615,9 +678,9 @@ class QtModelProvider(BridgeProvider):
             "boundary_group_count":  self._count(self._safe_get("get_boundary_group_names")),
         }
 
-    # qtmodel 2.8 新增的轻量概览接口（odb_model_overview / odb_model_structure），
+    # qtmodel 2.8 新增的轻量概览接口（现位于 mdb_model_overview / mdb_model_structure），
     # 专为 Agent 设计：一次往返拿到摘要，不必像 get_model_summary 那样拉全量再计数。
-    # 返回结构由桥通 C# 端定义、未在 qtmodel 中声明，故原样透传不做字段映射。
+    # 以桥通 HTTP 返回字段为准，类型化对象统一转为普通字典，不做额外字段映射。
     _OVERVIEW_METHODS = {
         "summary": "get_model_summary",
         "analysis_context": "get_analysis_context",
@@ -644,68 +707,36 @@ class QtModelProvider(BridgeProvider):
     def _to_dicts(result: Any) -> list[dict]:
         """Normalize a query result to a list of plain dicts.
 
-        qtmodel 的查询返回自定义数据对象（Node/Element/Material/…），必须拍平
-        为普通 dict，否则工具层 json.dumps(default=str) 会把整个对象变成
-        **字符串化的 Python dict**（单引号、外层再套双引号），LLM 拿到的不是
-        结构化数据，取 node_ids 之类的字段还要二次解析。
-
-        qtmodel 的这批类只有 Node 提供 to_dict()，Element/Material/ElasticLink
-        等一律没有（实测 2.6.3：40+ 个数据类缺失），故按以下顺序降级：
-
-        1. 已经是 dict —— 原样；
-        2. 有 to_dict() —— 调用它（Node 等，尊重上游的字段命名）；
-        3. 有 __dict__ —— 取实例属性。实测这批类无 property、无 __slots__，
-           __dict__ 即字段全集（如 Element 的 8 个 __init__ 参数全在）；
-        4. 其余标量（str/int/如结构组名列表）—— 原样，由调用方处理。
+        新版类型化对象使用 to_dict/Mapping 保留服务端原始字段；旧版对象回退
+        到公开属性。列表中的标量（如结构组名）不做转换。
         """
-        if result is None:
-            return []
+        result = QtModelProvider._normalize_result(result)
         if isinstance(result, dict):
-            result = [result]
-        if not isinstance(result, list):
-            return []
-        out = []
-        for item in result:
-            if isinstance(item, dict):
-                out.append(item)
-            elif hasattr(item, "to_dict"):
-                out.append(item.to_dict())
-            elif hasattr(item, "__dict__") and not isinstance(
-                item, (str, bytes, int, float, bool)
-            ):
-                # vars() 拷贝一份，避免调用方改动泄漏回 qtmodel 的对象
-                flat = {k: v for k, v in vars(item).items() if not k.startswith("_")}
-                out.append(flat if flat else item)
-            else:
-                out.append(item)
-        return out
+            return [result]
+        return result if isinstance(result, list) else []
 
     def get_node_data(self, ids: Any = None) -> list[dict]:
         self._require_available()
         if ids is not None:
             ids = self._validate_ids(ids)
-        result = self._parse(
-            self._odb.get_node_data(ids=ids) if ids is not None else self._odb.get_node_data()
-        )
+        result = self._query_model("get_node_data", ids=ids)
         return self._to_dicts(result)
 
     def get_element_data(self, ids: Any = None) -> list[dict]:
         self._require_available()
         if ids is not None:
             ids = self._validate_ids(ids)
-        result = self._parse(
-            self._odb.get_element_data(ids=ids) if ids is not None else self._odb.get_element_data()
-        )
+        result = self._query_model("get_element_data", ids=ids)
         return self._to_dicts(result)
 
     def get_material_data(self) -> list[dict]:
         self._require_available()
-        result = self._parse(self._odb.get_material_data())
+        result = self._query_model("get_material_data")
         return result if isinstance(result, list) else []
 
     def get_section_data(self, sec_id: int, position: int = 0) -> dict:
         self._require_available()
-        result = self._parse(self._odb.get_section_data(sec_id, position=position))
+        result = self._query_model("get_section_data", sec_id, position=position)
         return result if isinstance(result, dict) else {}
 
     def get_section_names(self) -> dict[str, str] | list:
@@ -969,9 +1000,10 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_shrink_function(name=name, shrink_data=shrink_data, scale_factor=scale_factor)
         self._mdb.update_model()
 
-    def add_thickness(self, **kwargs) -> None:
+    def add_thickness(self, *, t_out: float | None = None, **kwargs) -> None:
         self._require_available()
-        self._mdb.add_thickness(**kwargs)
+        options = self._optional_mdb_parameter("add_thickness", "t_out", t_out)
+        self._mdb.add_thickness(**kwargs, **options)
         self._mdb.update_model()
 
     def add_effective_width(self, element_ids, **kwargs) -> None:
@@ -1408,7 +1440,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_time_history_case(**kwargs)
         self._mdb.update_model()
 
-    def run_analysis(self, read_timeout: int = 3600) -> None:
+    def run_analysis(self, read_timeout: int = 3600, show_view: bool = False) -> None:
         """启动后台求解并轮询至任务真正结束。
 
         do_solve 有两条互斥路径，由 sync 选择：
@@ -1428,14 +1460,21 @@ class QtModelProvider(BridgeProvider):
 
         求解失败/取消时 qtmodel 抛 RuntimeError，超时抛 TimeoutError，
         均由上层转为 ToolError。
+
+        show_view=True 请求桥通显示分析进度窗口，不改变后台求解和轮询语义。
+        旧版 do_solve 没有该参数时拒绝显式开启；默认调用保持旧版兼容。
         """
         self._require_available()
+        options = self._optional_mdb_parameter(
+            "do_solve", "show_view", True if show_view else None
+        )
         self._mdb.do_solve(
             wait=True,
             sync=False,
             poll_interval=2.0,
             max_wait=read_timeout,
             status_read_timeout=30,
+            **options,
         )
 
     def add_node_tandem(self, *args, **kwargs):
@@ -1483,127 +1522,127 @@ class QtModelProvider(BridgeProvider):
 
     def get_thickness_data(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_thickness_data(*args, **kwargs)
+        return self._query_model("get_thickness_data", *args, **kwargs)
 
     def get_node_id(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_node_id(*args, **kwargs)
+        return self._query_model("get_node_id", *args, **kwargs)
 
     def get_group_nodes(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_group_nodes(*args, **kwargs)
+        return self._query_model("get_group_nodes", *args, **kwargs)
 
     def get_elements_by_point(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_elements_by_point(*args, **kwargs)
+        return self._query_model("get_elements_by_point", *args, **kwargs)
 
     def get_elements_by_material(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_elements_by_material(*args, **kwargs)
+        return self._query_model("get_elements_by_material", *args, **kwargs)
 
     def get_elements_by_section(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_elements_by_section(*args, **kwargs)
+        return self._query_model("get_elements_by_section", *args, **kwargs)
 
     def get_element_type(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_element_type(*args, **kwargs)
+        return self._query_model("get_element_type", *args, **kwargs)
 
     def get_element_weight(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_element_weight(*args, **kwargs)
+        return self._query_model("get_element_weight", *args, **kwargs)
 
     def get_span_supports(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_span_supports(*args, **kwargs)
+        return self._query_model("get_span_supports", *args, **kwargs)
 
     def get_span_elements(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_span_elements(*args, **kwargs)
+        return self._query_model("get_span_elements", *args, **kwargs)
 
     def get_section_shape(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_section_shape(*args, **kwargs)
+        return self._query_model("get_section_shape", *args, **kwargs)
 
     def get_section_property(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_section_property(*args, **kwargs)
+        return self._query_model("get_section_property", *args, **kwargs)
 
     def get_section_property_by_loops(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_section_property_by_loops(*args, **kwargs)
+        return self._query_model("get_section_property_by_loops", *args, **kwargs)
 
     def get_section_property_by_lines(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_section_property_by_lines(*args, **kwargs)
+        return self._query_model("get_section_property_by_lines", *args, **kwargs)
 
     def get_node_local_axis_data(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_node_local_axis_data(*args, **kwargs)
+        return self._query_model("get_node_local_axis_data", *args, **kwargs)
 
     def get_constraint_equation_data(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_constraint_equation_data(*args, **kwargs)
+        return self._query_model("get_constraint_equation_data", *args, **kwargs)
 
     def get_effective_width_data(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_effective_width_data(*args, **kwargs)
+        return self._query_model("get_effective_width_data", *args, **kwargs)
 
     def get_tendon_property_data(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_tendon_property_data(*args, **kwargs)
+        return self._query_model("get_tendon_property_data", *args, **kwargs)
 
     def get_pre_stress_load_data(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_pre_stress_load_data(*args, **kwargs)
+        return self._query_model("get_pre_stress_load_data", *args, **kwargs)
 
     def get_node_mass_data(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_node_mass_data(*args, **kwargs)
+        return self._query_model("get_node_mass_data", *args, **kwargs)
 
     def get_nodal_force_load_data(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_nodal_force_load_data(*args, **kwargs)
+        return self._query_model("get_nodal_force_load_data", *args, **kwargs)
 
     def get_nodal_displacement_load_data(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_nodal_displacement_load_data(*args, **kwargs)
+        return self._query_model("get_nodal_displacement_load_data", *args, **kwargs)
 
     def get_beam_element_load_data(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_beam_element_load_data(*args, **kwargs)
+        return self._query_model("get_beam_element_load_data", *args, **kwargs)
 
     def get_plate_element_load_data(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_plate_element_load_data(*args, **kwargs)
+        return self._query_model("get_plate_element_load_data", *args, **kwargs)
 
     def get_initial_tension_load_data(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_initial_tension_load_data(*args, **kwargs)
+        return self._query_model("get_initial_tension_load_data", *args, **kwargs)
 
     def get_cable_length_load_data(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_cable_length_load_data(*args, **kwargs)
+        return self._query_model("get_cable_length_load_data", *args, **kwargs)
 
     def get_deviation_parameters(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_deviation_parameters(*args, **kwargs)
+        return self._query_model("get_deviation_parameters", *args, **kwargs)
 
     def get_deviation_load_data(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_deviation_load_data(*args, **kwargs)
+        return self._query_model("get_deviation_load_data", *args, **kwargs)
 
     def get_elements_of_stage(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_elements_of_stage(*args, **kwargs)
+        return self._query_model("get_elements_of_stage", *args, **kwargs)
 
     def get_nodes_of_stage(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_nodes_of_stage(*args, **kwargs)
+        return self._query_model("get_nodes_of_stage", *args, **kwargs)
 
     def get_groups_of_stage(self, *args, **kwargs):
         self._require_available()
-        return self._odb.get_groups_of_stage(*args, **kwargs)
+        return self._query_model("get_groups_of_stage", *args, **kwargs)
 
     def get_self_concurrent_reaction(self, *args, **kwargs):
         self._require_available()
@@ -1715,7 +1754,7 @@ class QtModelProvider(BridgeProvider):
         warnings = []
 
         # Check for overlapping nodes
-        overlap_nodes = self._odb.get_overlap_nodes()
+        overlap_nodes = self._query_model("get_overlap_nodes")
         if overlap_nodes:
             warnings.append(
                 f"Found {len(overlap_nodes)} groups of overlapping nodes "
@@ -1723,7 +1762,7 @@ class QtModelProvider(BridgeProvider):
             )
 
         # Check for overlapping elements
-        overlap_elements = self._odb.get_overlap_elements()
+        overlap_elements = self._query_model("get_overlap_elements")
         if overlap_elements:
             warnings.append(
                 f"Found {len(overlap_elements)} groups of overlapping elements "
@@ -2034,7 +2073,7 @@ class QtModelProvider(BridgeProvider):
     def get_structure_group_elements(self, name: str) -> list:
         self._require_available()
         # qtmodel 的参数名为 group_name
-        return self._odb.get_group_elements(group_name=name) or []
+        return self._query_model("get_group_elements", group_name=name) or []
 
     def add_boundary_group(self, name: str) -> None:
         self._require_available()
@@ -2122,7 +2161,7 @@ class QtModelProvider(BridgeProvider):
 
     def get_tendon_data(self) -> list[dict]:
         self._require_available()
-        return self._odb.get_tendon_data() or []
+        return self._query_model("get_tendon_data") or []
 
     # ── Visualization Control ──────────────────────────────────────────
 
@@ -2131,4 +2170,3 @@ class QtModelProvider(BridgeProvider):
         self._odb.set_view_direction(
             horizontal_degree=horizontal, vertical_degree=vertical
         )
-
