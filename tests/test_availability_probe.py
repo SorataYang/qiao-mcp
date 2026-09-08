@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import builtins
 from typing import Any
 
 import pytest
@@ -246,6 +247,26 @@ def test_fake_provider_fixture_still_works(fake_provider):
     """conftest 的 fake_provider 走 __new__ 路径，必须不受本次改动影响。"""
     assert fake_provider._available is True
     assert fake_provider.is_available() in (True, False)  # 不抛错即可
+
+
+@pytest.mark.parametrize("missing_module", ["qtmodel", "qtmodel.core.data_helper", "requests"])
+def test_import_failure_distinguishes_missing_package_from_broken_release(monkeypatch, missing_module):
+    original_import = builtins.__import__
+
+    def import_with_missing_module(name, *args, **kwargs):
+        if name == "qtmodel":
+            raise ModuleNotFoundError(f"No module named '{missing_module}'", name=missing_module)
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", import_with_missing_module)
+    provider = QtModelProvider()
+    assert not provider.is_available()
+    if missing_module == "qtmodel":
+        assert "qtmodel package not found" in provider.unavailable_reason()
+    else:
+        assert "qtmodel import failed" in provider.unavailable_reason()
+        assert missing_module in provider.unavailable_reason()
+        assert "package not found" not in provider.unavailable_reason()
 
 
 if __name__ == "__main__":

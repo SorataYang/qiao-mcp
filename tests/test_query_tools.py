@@ -60,6 +60,7 @@ def test_required_param_guards(fake_provider):
     for kind in ("section_detail", "group_elements", "stage_elements"):
         with pytest.raises(ToolInputError):
             fns["get_model_data"](kind=kind)
+    assert fake_provider._mdb.calls == [], "缺必填参数时不得发起查询"
     assert fake_provider._odb.calls == [], "缺必填参数时不得发起查询"
 
 
@@ -101,7 +102,7 @@ def test_special_results_modal_dispatch(fake_provider, monkeypatch):
     assert "1.23" in text
 
 
-# ── qtmodel 2.8 概览接口（odb_model_overview / get_structure_group_summaries）──
+# ── qtmodel 2.8 概览接口（mdb_model_overview / get_structure_group_summaries）──
 
 
 def test_overview_kinds_pass_through_provider(fake_provider, monkeypatch):
@@ -126,7 +127,7 @@ def test_overview_kind_degrades_on_old_qtmodel(fake_provider, monkeypatch):
 
 
 def test_provider_overview_maps_kind_to_qtmodel_method(fake_provider):
-    """provider 把每个 kind 落到 2.8 的真实 odb 方法名；未知 kind 拒绝。"""
+    """provider 把每个 kind 落到新版 mdb 查询；未知 kind 拒绝。"""
     for kind, method in (
         ("summary", "get_model_summary"),
         ("analysis_context", "get_analysis_context"),
@@ -135,6 +136,6 @@ def test_provider_overview_maps_kind_to_qtmodel_method(fake_provider):
         ("structure_group_summaries", "get_structure_group_summaries"),
     ):
         fake_provider.get_model_overview(kind)
-        assert fake_provider._odb.last(method) is not None
+        assert fake_provider._mdb.last(method) is not None
     with pytest.raises(ValueError):
         fake_provider.get_model_overview("bogus")

@@ -12,6 +12,9 @@ qtmodel 的查询返回自定义数据对象，工具层最终走 json.dumps(def
 from __future__ import annotations
 
 import json
+from collections import UserDict
+
+import pytest
 
 from qiao_mcp.providers.qtmodel_provider import QtModelProvider
 
@@ -151,15 +154,12 @@ def test_object_with_empty_dict_is_left_alone():
 # ── 与真实 qtmodel 类型的对照 ─────────────────────────────────────────
 
 
-def test_real_qtmodel_element_lacks_to_dict():
-    """守住本修复的前提：一旦上游给 Element 加了 to_dict()，此断言会失败，
-    提示复核 _to_dicts 的降级顺序是否仍然必要。"""
-    from qtmodel.core.model_db import Element, Node
+def test_real_qtmodel_node_respects_public_serialization():
+    """兼容性取决于序列化行为，而不是断言上游一定缺少 to_dict。"""
+    from qtmodel.core.model_db import Node
 
-    assert not hasattr(Element, "to_dict"), (
-        "qtmodel 已为 Element 提供 to_dict()，请复核 _to_dicts 的兜底逻辑"
-    )
-    assert hasattr(Node, "to_dict"), "Node 一直提供 to_dict()，若消失需同步调整"
+    node = Node(node_id=1, x=2.0, y=3.0, z=4.0)
+    assert _to_dicts([node]) == [node.to_dict()]
 
 
 def test_real_element_instance_is_flattened():
@@ -172,3 +172,41 @@ def test_real_element_instance_is_flattened():
     for field in ("index", "ele_type", "node_ids", "mat_id", "sec_id", "beta_angle"):
         assert field in out[0], f"拍平结果缺字段 {field}"
     assert out[0]["node_ids"] == [3, 2]
+
+
+def test_parse_normalizes_nested_records_and_mappings_without_decoding_text():
+    payload = UserDict({
+        "items": (FakeNode(1, 2.0), {"element": FakeElement(3, [1, 2])}),
+        "name": "123",
+        "notes": '{"literal": true}',
+    })
+    result = QtModelProvider._parse(payload)
+    assert json.loads(json.dumps(result)) == {
+        "items": [
+            {"node_id": 1, "x": 2.0, "y": 0.0, "z": 0.0},
+            {"element": {
+                "index": 3, "ele_type": "BEAM", "node_ids": [1, 2],
+                "mat_id": 1, "sec_id": 1, "beta_angle": 0.0,
+            }},
+        ],
+        "name": "123",
+        "notes": '{"literal": true}',
+    }
+
+
+@pytest.mark.parametrize("payload", [
+    '[{"name": "123", "active": true, "value": null}]',
+    "[{'name': '123', 'active': True, 'value': None}]",
+])
+def test_parse_keeps_legacy_json_and_python_literal_support(payload):
+    assert QtModelProvider._parse(payload) == [{"name": "123", "active": True, "value": None}]
+
+
+def test_real_tapered_section_property_is_normalized_recursively():
+    from qtmodel.core.section_db import SectionProperty
+
+    property_data = SectionProperty.from_dict({"sec_begin": {"Ax": 1.0}, "sec_end": {"Ax": 2.0}})
+    result = QtModelProvider._parse(property_data)
+    assert json.loads(json.dumps(result)) == property_data.to_dict()
+    assert result["sec_begin"]["Ax"] == 1.0
+    assert result["sec_end"]["Ax"] == 2.0
