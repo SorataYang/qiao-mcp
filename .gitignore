@@ -219,3 +219,6 @@ examples/*
 # Reference codes for AI learning
 reference_codes/*
 !reference_codes/.gitkeep
+
+# 本仓库有意追踪 CLAUDE.md（项目级例外，覆盖全局 gitignore）
+!CLAUDE.md
