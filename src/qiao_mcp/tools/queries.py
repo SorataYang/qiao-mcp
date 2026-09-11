@@ -237,7 +237,9 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 "element_weight" (查单元重量, 需 ids),
                 "span_supports" (跨径支承信息, 需 span_info_name),
                 "span_elements" (跨径单元信息, 需 span_info_name)
-            x, y, z: Coordinates for point search (坐标)
+            x: X coordinate, used by the point-search modes (点查找坐标X)
+            y: Y coordinate, used by the point-search modes (点查找坐标Y)
+            z: Z coordinate, used by the point-search modes (点查找坐标Z)
             tolerance: Search tolerance (容差)
             name: Material name (材料名)
             index: Section ID (截面号)
@@ -295,7 +297,9 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Compute section properties from raw geometry, without creating a section
         (按几何直接计算截面特性，不创建截面).
 
-        Provide EXACTLY ONE of:
+        Provide EXACTLY ONE of loop_segments or sec_lines (二者恰选其一).
+
+        Args:
             loop_segments: Polygon loops [{"main": [[x,y],...], "sub": ...}, ...]
                            (多边形环定义)
             sec_lines: Line-width segments [[x1,y1,x2,y2,width], ...] (线宽定义)
