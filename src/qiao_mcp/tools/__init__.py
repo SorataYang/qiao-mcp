@@ -1210,7 +1210,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply system temperature load (体系温度/整体升降温荷载).
+        Apply a uniform whole-element temperature change (体系温度/整体升降温荷载).
+
+        Adds one temperature load to load case case_name for the given
+        element(s) and refreshes the model; create the load case first. The
+        whole section changes by the same amount (no gradient).
+        (向工况 case_name 的指定单元添加温度荷载并刷新模型；需先建好工况。整截面等量升降温、无梯度。)
+
+        When to use vs. siblings: uniform ΔT here; linear gradient →
+        add_gradient_temperature; code-based section temperature →
+        add_beam_section_temperature; arbitrary profile → add_custom_temperature.
+        (选型：均匀升降温用本工具；线性梯度用 add_gradient_temperature；规范梁截面温度用 add_beam_section_temperature；任意分布用 add_custom_temperature。)
 
         Args:
             element_id: Element ID(s) (单元编号)
@@ -1241,7 +1251,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply gradient temperature load (梯度温度荷载).
+        Apply a linear temperature gradient through the section (梯度温度荷载).
+
+        Adds a gradient temperature load to load case case_name for the given
+        element(s) and refreshes the model; create the load case first.
+        Temperature varies linearly through the section depth.
+        (向工况 case_name 的指定单元添加梯度温度并刷新模型；需先建好工况。温度沿截面高度线性变化。)
+
+        When to use vs. siblings: linear gradient here; uniform ΔT →
+        add_system_temperature; code-based section temperature →
+        add_beam_section_temperature; arbitrary profile → add_custom_temperature.
+        (选型：线性梯度用本工具；均匀升降温用 add_system_temperature；规范梁截面温度用 add_beam_section_temperature；任意分布用 add_custom_temperature。)
 
         Args:
             element_id: Element ID(s) (单元编号，支持范围字符串)
@@ -1277,7 +1297,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply custom temperature load (自定义温度荷载).
+        Apply an arbitrary temperature profile over the section (自定义温度荷载).
+
+        Adds a custom temperature load to load case case_name for the given
+        element(s) and refreshes the model; create the load case first. The
+        profile is defined by [distance, temp_diff] points along the section.
+        (向工况 case_name 的指定单元添加自定义温度并刷新模型；需先建好工况。分布由 [距离, 温差] 数据点沿截面给出。)
+
+        When to use vs. siblings: arbitrary/measured profile here; uniform ΔT →
+        add_system_temperature; linear gradient → add_gradient_temperature;
+        code-based section temperature → add_beam_section_temperature.
+        (选型：任意/实测分布用本工具；均匀用 add_system_temperature；线性梯度用 add_gradient_temperature；规范梁截面温度用 add_beam_section_temperature。)
 
         Args:
             element_id: Element ID(s) (单元编号)
@@ -1313,7 +1343,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply beam section temperature load (梁截面温度荷载).
+        Apply code-based beam section temperatures (梁截面温度荷载，按规范).
+
+        Adds a code-defined section temperature load to load case case_name
+        for the given element(s) and refreshes the model; create the load case
+        first. Uses standard design-code parameters (t1–t4 at code depths).
+        (向工况 case_name 的指定单元添加规范梁截面温度并刷新模型；需先建好工况。按规范用 t1–t4 等标准参数。)
+
+        When to use vs. siblings: design-code section temperatures here;
+        uniform ΔT → add_system_temperature; linear gradient →
+        add_gradient_temperature; arbitrary profile → add_custom_temperature.
+        (选型：规范梁截面温度用本工具；均匀用 add_system_temperature；线性梯度用 add_gradient_temperature；任意分布用 add_custom_temperature。)
 
         Args:
             element_id: Element ID(s) (单元编号)
