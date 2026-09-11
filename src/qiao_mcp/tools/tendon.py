@@ -241,14 +241,33 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def assign_tendon_elements(ids: int | list[int] | str) -> str:
         """
-        Assign elements to a tendon (为钢束分配单元).
+        Declare which elements contain tendons, i.e. are prestressed-concrete
+        members (标记预应力单元：声明哪些单元内有钢束穿过).
+
+        Despite the name, this does NOT bind elements to one particular tendon:
+        the underlying qtmodel API takes element IDs only, no tendon name. It is
+        a model-wide declaration so tendon area and prestress losses are
+        accounted for in those elements.
+
+        Ordering: create tendons (create_tendon_2d / add_tendon_3d) → call this
+        ONCE with the union of every element any tendon passes through →
+        apply_prestress. Writes to the model and refreshes it; not a query.
+
+        (不把单元绑定到某根钢束——底层 API 只收单元号、不收钢束名，属全模型级声明，
+        使这些单元计入钢束面积与预应力损失。顺序：先建钢束 → 一次性传入所有钢束
+        经过的单元并集 → 再施加预应力。写模型并刷新，非查询。)
 
         Args:
-            ids: Element IDs (单元编号)
+            ids: IDs of the elements that tendons pass through — int, list, or
+                 "XtoYbyN" range string, e.g. "1to10 15to62 236to293"
+                 (有钢束穿过的单元编号；支持整数、列表或 "XtoYbyN" 范围字符串)
         """
         try:
             provider.add_tendon_elements(ids=ids)
-            return f"Successfully assigned elements {ids} to tendon (成功为钢束分配单元)"
+            return (
+                f"Elements {ids} marked as containing tendons "
+                f"(已将单元 {ids} 标记为预应力单元)"
+            )
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
