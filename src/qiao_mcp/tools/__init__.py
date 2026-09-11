@@ -1392,16 +1392,36 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply initial tension load (初拉力荷载).
+        Apply an initial tension to cable/truss elements (初始拉力).
+
+        Adds one initial-tension load to load case case_name for the given
+        element(s) and refreshes the model; create the load case first with
+        create_load_case. Typically used to set cable forces in cable-stayed
+        and suspension models.
+
+        When to use vs. siblings: prescribe a FORCE here; prescribe an
+        unstressed cable LENGTH instead → add_cable_length_load (equivalently,
+        set application_type=3 to convert this force into a length tensioning).
+
+        (向工况 case_name 的指定单元添加初始拉力并刷新模型；需先用 create_load_case
+        建好工况。常用于斜拉桥/悬索桥索力。选型：给定"力"用本工具，给定"无应力索长"
+        用 add_cable_length_load，或将 application_type 设为 3 由本工具转为索长张拉。)
 
         Args:
-            element_id: Element ID(s) (单元编号)
-            case_name: Load case name (荷载工况名)
-            tension: Tension force (拉力值)
-            tension_type: Type of tension (初拉力类型)
-            application_type: Application type (施加方式)
-            stiffness: Stiffness reduction (刚度参数)
-            group_name: Load group name (荷载组名)
+            element_id: Element ID(s) — int, list, or "XtoYbyN" range string
+                        (单元编号，支持整数、列表或 "XtoYbyN" 范围字符串)
+            case_name: Load case name, must already exist (荷载工况名，须已存在)
+            tension: Initial tension force in N (初始拉力，单位N)
+            tension_type: How `tension` is interpreted (张拉类型):
+                          0=increment(增量，叠加到现有索力)
+                          1=total(全量，直接指定最终索力，默认)
+            application_type: How the tension is applied (计算方式):
+                              1=external force(体外力，默认)
+                              2=internal force(体内力)
+                              3=convert to cable-length tensioning(转为索长张拉)
+            stiffness: Cable stiffness participation factor (索刚度参与系数)
+            group_name: Load group name, empty for the default group
+                        (荷载组名，空则用默认荷载组)
         """
         try:
             kwargs: dict[str, Any] = {
@@ -1426,14 +1446,30 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply cable length adjustment load (索长误差荷载).
+        Tension a cable by prescribing its length (索长张拉).
+
+        Adds one cable-length tensioning load to load case case_name for the
+        given element(s) and refreshes the model; create the load case first
+        with create_load_case. The resulting cable force is whatever the
+        prescribed length produces — you control length, not force.
+
+        When to use vs. siblings: prescribe a LENGTH here; prescribe a FORCE
+        instead → add_initial_tension_load.
+
+        (向工况 case_name 的指定单元添加索长张拉并刷新模型；需先用 create_load_case
+        建好工况。索力由给定长度反算得出——本工具控制长度而非力。选型：给定"长度"用
+        本工具，给定"力"用 add_initial_tension_load。)
 
         Args:
-            element_id: Element ID(s) (单元编号)
-            case_name: Load case name (荷载工况名)
-            length: Length difference (长度误差量)
-            tension_type: Tension type (拉力类型)
-            group_name: Load group name (荷载组名)
+            element_id: Element ID(s) — int, list, or "XtoYbyN" range string
+                        (单元编号，支持整数、列表或 "XtoYbyN" 范围字符串)
+            case_name: Load case name, must already exist (荷载工况名，须已存在)
+            length: Cable length value in m (索长，单位m)
+            tension_type: How `length` is interpreted (张拉类型):
+                          0=increment(增量，相对现有索长的变化量)
+                          1=total(全量，直接指定目标索长，默认)
+            group_name: Load group name, empty for the default group
+                        (荷载组名，空则用默认荷载组)
         """
         try:
             kwargs: dict[str, Any] = {"length": length, "tension_type": tension_type}
@@ -1458,17 +1494,49 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply plate element load (板单元面上荷载).
+        Apply a force or moment to plate elements, on a face or an edge
+        (板单元荷载：集中/分布力或弯矩，可加在面上或边上).
+
+        Adds one plate load to load case case_name for the given element(s)
+        and refreshes the model; create the load case first with
+        create_load_case. Which optional arguments are needed depends on
+        load_type: concentrated loads (1, 2) need list_xy; distributed loads
+        (3, 4) need load_place.
+
+        When to use vs. siblings: per-element plate loads here; a load
+        pattern spread over a plane and distributed onto many plates →
+        add_distribute_plane_load. Beam elements → apply_beam_distributed_load.
+
+        (向工况 case_name 的指定板单元添加荷载并刷新模型；需先用 create_load_case
+        建好工况。可选参数取决于 load_type：集中荷载(1、2)需 list_xy；分布荷载(3、4)
+        需 load_place。选型：逐单元加板荷载用本工具；按平面荷载图式分配到多个板单元
+        用 add_distribute_plane_load；梁单元用 apply_beam_distributed_load。)
 
         Args:
-            element_id: Element ID(s) (单元编号)
-            case_name: Load case name (荷载工况名)
-            load_type: Load type (荷载类型)
-            load_place: Application place (施加位置)
-            coord_system: Coordinate system (坐标系: 3为整体)
-            list_load: Load values (荷载值)
-            list_xy: Location coords (位置坐标)
-            group_name: Load group name (荷载组名)
+            element_id: Plate element ID(s) — int or list (板单元编号，整数或列表)
+            case_name: Load case name, must already exist (荷载工况名，须已存在)
+            load_type: What is applied (荷载类型):
+                       1=concentrated force(集中力，默认)
+                       2=concentrated moment(集中弯矩)
+                       3=distributed force(分布力)
+                       4=distributed moment(分布弯矩)
+            load_place: Where a DISTRIBUTED load acts; only needed for
+                        load_type 3 and 4 (分布荷载的作用位置，仅分布荷载需要):
+                        0=face IJKL(面IJKL) | 1=edge IJ(边IJ) | 2=edge JK(边JK)
+                        3=edge KL(边KL) | 4=edge LI(边LI)
+            coord_system: Direction of the load (荷载方向坐标系):
+                          1=global X(整体X) | 2=global Y(整体Y)
+                          3=global Z(整体Z，默认) | 4=local X(局部X)
+                          5=local Y(局部Y) | 6=local Z(局部Z)
+            list_load: Load magnitude(s) — a single value or a list, e.g.
+                       [1000] for one concentrated force
+                       (荷载值，单值或列表，如集中力 [1000])
+            list_xy: Position of a CONCENTRATED load as absolute distances
+                     [x along IJ, y along IL]; only needed for load_type 1 and 2
+                     (集中荷载的位置，[IJ方向绝对距离x, IL方向绝对距离y]，
+                     仅集中荷载需要)
+            group_name: Load group name, empty for the default group
+                        (荷载组名，空则用默认荷载组)
         """
         try:
             kwargs: dict[str, Any] = {"load_type": load_type, "load_place": load_place, "coord_system": coord_system}
@@ -1498,18 +1566,52 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply arbitrary distributed plane load (任意分布面荷载).
+        Place a predefined plane load pattern and distribute it onto plate
+        elements (放置分配面荷载图式，并分配到板单元).
+
+        Adds one distributed plane load to load case case_name and refreshes
+        the model. Two things must exist first: the load case
+        (create_load_case) and the load PATTERN named by type_name.
+
+        Creating the pattern has no dedicated tool — use the escape hatch:
+        call_qtmodel_api(api_object="mdb",
+                         method="add_distribute_plane_load_type", kwargs={...}).
+
+        point1/point2/point3 are not three arbitrary coplanar points: they
+        define the pattern's local axes — origin, a point on the local x-axis,
+        and a point on the local y-axis. Swapping them rotates the pattern.
+
+        When to use vs. siblings: a reusable pattern spread over an area here;
+        loads applied element by element → add_plate_element_load.
+
+        (向工况 case_name 添加分配面荷载并刷新模型。需先有两样东西：荷载工况
+        (create_load_case) 和 type_name 指向的荷载图式。图式没有专用工具，需经逃生舱
+        call_qtmodel_api(api_object="mdb", method="add_distribute_plane_load_type") 创建。
+        point1/2/3 不是任意三个共面点，而是图式的局部坐标系：原点、局部x轴上一点、
+        局部y轴上一点，顺序颠倒会导致图式旋转。选型：可复用的面荷载图式用本工具；
+        逐个单元施加用 add_plate_element_load。)
 
         Args:
-            index: Load ID (编号)
-            case_name: Load case name (荷载工况名)
-            type_name: Load type name (分布面荷载类型名)
-            point1: 1st point defining the plane [x,y,z] (定义面的点1)
-            point2: 2nd point defining the plane [x,y,z] (定义面的点2)
-            point3: 3rd point defining the plane [x,y,z] (定义面的点3)
-            plate_ids: Optional plate elements to load (指定板单元)
-            coord_system: Coordinate system (坐标系)
-            group_name: Load group name (荷载组名)
+            index: Load ID; pass -1 to auto-assign
+                   (荷载编号，传 -1 由程序自动编号)
+            case_name: Load case name, must already exist (荷载工况名，须已存在)
+            type_name: Name of an existing plane-load pattern, created via
+                       add_distribute_plane_load_type
+                       (已存在的分配面荷载类型名，经 add_distribute_plane_load_type 创建)
+            point1: Local origin [x,y,z] (局部坐标系原点)
+            point2: A point on the local x-axis [x,y,z] (局部x轴上一点)
+            point3: A point on the local y-axis [x,y,z] (局部y轴上一点)
+            plate_ids: Plate elements to receive the load; omit to load ALL
+                       plate elements in the model
+                       (承受该荷载的板单元；不传则作用于模型中全部板单元)
+            coord_system: Direction of the load, default 3 (global Z). Upstream
+                          leaves the enum undocumented for this API;
+                          add_plate_element_load uses 1–3=global X/Y/Z and
+                          4–6=local X/Y/Z.
+                          (荷载方向坐标系，默认 3(整体Z)。上游未对本 API 记录取值表；
+                          add_plate_element_load 的约定是 1–3 整体X/Y/Z、4–6 局部X/Y/Z。)
+            group_name: Load group name, empty for the default group
+                        (荷载组名，空则用默认荷载组)
         """
         try:
             kwargs: dict[str, Any] = {"coord_system": coord_system}
