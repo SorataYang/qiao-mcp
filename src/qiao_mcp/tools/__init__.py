@@ -1134,18 +1134,45 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply forces/moments at nodes (施加节点荷载).
+        Apply a concentrated force and/or moment at nodes (施加节点集中荷载).
+
+        Adds one nodal load to load case case_name for every listed node and
+        refreshes the model; create the load case first with create_load_case.
+        All six components act along the GLOBAL axes, so a downward load is a
+        NEGATIVE fz (real models use e.g. fz=-14550000 for 14550 kN down).
+
+        Each call adds a new load rather than replacing an earlier one, so
+        calling twice on the same node in the same case superposes. There is no
+        tool to edit or delete one afterwards — use the escape hatch
+        call_qtmodel_api(api_object="mdb", method="update_nodal_force", ...),
+        which needs the load's index.
+
+        When to use vs. siblings: point loads on nodes here; loads spread along
+        a beam → apply_beam_distributed_load; a prescribed settlement instead of
+        a force → add_support_settlement; structural self-weight → set_gravity
+        plus a load case named 自重.
+
+        (向工况 case_name 的每个指定节点添加集中荷载并刷新模型；需先用
+        create_load_case 建好工况。六个分量都沿整体坐标轴，因此向下的荷载 fz 取负
+        （真实模型如 fz=-14550000 表示向下 14550 kN）。每次调用是新增而非替换，同一节点
+        同一工况调两次会叠加；事后没有修改/删除的专用工具，需经逃生舱调 update_nodal_force
+        并给出荷载编号。选型：节点集中力用本工具；沿梁分布用 apply_beam_distributed_load；
+        给定沉降而非力用 add_support_settlement；结构自重用 set_gravity 配合名为
+        自重的工况。)
 
         Args:
-            node_id: Node ID(s) (节点编号)
-            case_name: Load case name (荷载工况名)
-            fx: Force in X direction (X方向力)
-            fy: Force in Y direction (Y方向力)
-            fz: Force in Z direction (Z方向力)
-            mx: Moment about X axis (绕X轴弯矩)
-            my: Moment about Y axis (绕Y轴弯矩)
-            mz: Moment about Z axis (绕Z轴弯矩)
-            group_name: Load group name (荷载组名)
+            node_id: Node ID(s) — int, list, or "XtoYbyN" range string
+                     (节点编号，支持整数、列表或 "XtoYbyN" 范围字符串)
+            case_name: Load case name, must already exist (荷载工况名，须已存在)
+            fx: Force along global X in N (整体X向力，单位N)
+            fy: Force along global Y in N (整体Y向力，单位N)
+            fz: Force along global Z in N; negative is downward
+                (整体Z向力，单位N；向下为负)
+            mx: Moment about global X in N·m (绕整体X轴弯矩，单位N·m)
+            my: Moment about global Y in N·m (绕整体Y轴弯矩，单位N·m)
+            mz: Moment about global Z in N·m (绕整体Z轴弯矩，单位N·m)
+            group_name: Load group name, empty for the default group
+                        (荷载组名，空则用默认荷载组)
         """
         try:
             load_info = [fx, fy, fz, mx, my, mz]
@@ -1681,14 +1708,43 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         mass_rm: float = 0.0,
     ) -> str:
         """
-        Add nodal mass for dynamic analysis (添加节点质量).
+        Attach a lumped mass to nodes for dynamic analysis (添加节点集中质量).
+
+        Writes to the model and refreshes it. This is a MASS property, not a
+        load: it belongs to no load case and contributes inertia only, never
+        static force. Mass is per-direction, so a mass that should resist
+        vertical motion must be given in mass_z — setting only mass_x leaves
+        the vertical direction massless.
+
+        Only matters once an eigenvalue run exists: enable it with
+        configure_analysis(do_vibration=True). Mass from dead load is usually
+        supplied separately by add_load_to_mass; use this tool for discrete
+        items the model does not carry as load (equipment, ballast blocks).
+
+        When to use vs. siblings: a discrete mass at a node here; converting an
+        existing load case into mass → add_load_to_mass; a static downward
+        force → apply_nodal_force.
+
+        (写模型并刷新。这是质量属性、不是荷载：不属于任何荷载工况，只贡献惯性、
+        不产生静力。质量按方向给出，要抵抗竖向运动的质量必须写在 mass_z——只填 mass_x
+        会让竖向没有质量。仅在有自振分析时起作用，用 configure_analysis(do_vibration=True)
+        开启。恒载的质量通常由 add_load_to_mass 单独提供；本工具用于模型未按荷载计入的
+        离散物件（设备、压重块）。选型：节点离散质量用本工具；把已有工况折算为质量用
+        add_load_to_mass；静力向下的力用 apply_nodal_force。)
 
         Args:
-            node_id: Node ID(s) (节点编号)
-            mass_x: Mass in X direction (X向质量)
-            mass_y: Mass in Y direction (Y向质量)
-            mass_z: Mass in Z direction (Z向质量)
-            mass_rm: Rotational mass (转动质量)
+            node_id: Node ID(s) — int, list, or "XtoYbyN" range string
+                     (节点编号，支持整数、列表或 "XtoYbyN" 范围字符串)
+            mass_x: Translational mass acting along global X (整体X向平动质量)
+            mass_y: Translational mass acting along global Y (整体Y向平动质量)
+            mass_z: Translational mass acting along global Z — the vertical
+                    direction in a normal model (整体Z向平动质量，常规模型中即竖向)
+            mass_rm: Rotational mass moment of inertia. Upstream passes this as
+                     the fourth component and labels it as being about X, while
+                     flagging its own list as indicative — verify against your
+                     QiaoTong version before relying on it.
+                     (转动质量惯矩。上游按第四个分量下发并标注为绕X，但其 docstring
+                     自称取值表仅为示例，依赖前请对照所用桥通版本核实。)
         """
         try:
             mass_info = (mass_x, mass_y, mass_z, mass_rm)
