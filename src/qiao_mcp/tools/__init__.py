@@ -517,15 +517,43 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         index: int = -1,
     ) -> str:
         """
-        Add time-dependent material parameters (添加时间依存材料参数).
+        Define a named creep-and-shrinkage material, either by a design code
+        or by custom functions (添加收缩徐变材料).
+
+        Writes to the model and refreshes it. This is a named DEFINITION that
+        other materials then reference; it applies no load by itself. Creep
+        analysis must also be turned on with configure_analysis(do_creep=True).
+
+        When using custom functions, create them first with add_creep_function
+        and add_shrink_function, then pass their NAMES here. creep_data is
+        NOT a time-value table — that format belongs to add_creep_function.
+
+        (写模型并刷新。这是一个命名定义，由其它材料引用，自身不施加荷载。徐变分析
+        还需用 configure_analysis(do_creep=True) 打开。自定义函数须先用
+        add_creep_function / add_shrink_function 建好，再把"函数名"传进来。
+        creep_data 不是时间-数值表——那种格式属于 add_creep_function。)
 
         Args:
-            name: Parameter name (参数名称)
-            code_index: Code index (规范号)
-            time_parameter: Code specific parameters (规范关联的材料参数)
-            creep_data: Custom creep data [[time, value], ...] (自定义徐变数据)
-            shrink_data: Custom shrinkage data string (自定义收缩数据)
-            index: ID index, -1 for auto (编号，-1自动生成)
+            name: Creep-and-shrinkage material name (收缩徐变材料名)
+            code_index: Design code used when no custom functions are given
+                        (未给自定义函数时采用的规范):
+                        1=JTG 3362-2018(公规，默认) | 2=JTG D62-2004(公规)
+                        3=JTJ 023-85(公规) | 4=TB 10092-2017(铁规)
+                        5=GB 50157-2013(地铁) | 6=ageing theory(老化理论)
+                        7=BS 5400-4-1990 | 8=AASHTO LRFD 2017
+                        1000=AASHTO LRFD 2017 (same as 8; listed by upstream)
+            time_parameter: Code-specific extra parameters; omit to keep the
+                            code's defaults
+                            (规范关联的额外参数列表，省略则用规范默认值)
+            creep_data: Custom creep functions as [[function_name, age], ...],
+                        where function_name is from add_creep_function and age
+                        is the loading age in days. NOT [[time, value]].
+                        (自定义徐变：[[函数名, 加载龄期(天)], ...]；函数名来自
+                        add_creep_function。不是 [[时间, 数值]]。)
+            shrink_data: Name of a shrinkage function from add_shrink_function;
+                         empty string means none
+                         (收缩函数名，来自 add_shrink_function；空字符串表示不用)
+            index: Material ID, -1 to auto-assign (材料编号，-1 自动生成)
         """
         try:
             kwargs: dict[str, Any] = {
@@ -722,11 +750,35 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         sec_lines: list[list[float]]
     ) -> str:
         """
-        Create a line-width cross-section (创建线宽截面).
+        Create a section from thin-walled centreline segments (创建线宽截面).
+
+        Writes to the model. The shape is described as a skeleton: each segment
+        is a centreline with a wall thickness, which suits thin-walled steel
+        box and I-shapes. Segments should connect end-to-end to form a closed
+        or open wall path — they are not independent plates.
+
+        Section properties are not computed on creation. Call
+        calculate_section_property afterwards so Area / Iy / Iz / J are current.
+
+        When to use vs. siblings: thin-walled centreline shapes here; a solid
+        outline given as polygon loops → create_polygon_section; properties you
+        already know → create_section_from_properties; only inspecting the
+        properties of a shape without adding a section → calc_section_property.
+
+        (写模型。用"骨架"描述截面：每段是一条中心线加壁厚，适合薄壁钢箱、工字形等。
+        各段应首尾相连构成开口或闭口壁路径，不是彼此独立的板。创建时不计算截面特性，
+        之后需调 calculate_section_property 使面积/惯性矩等为最新。选型：薄壁中心线
+        形状用本工具；实体轮廓按多边形环给出用 create_polygon_section；已知特性值直接
+        建用 create_section_from_properties；只想算某形状的特性而不建截面用
+        calc_section_property。)
 
         Args:
             name: Section name (截面名称)
-            sec_lines: List of line segments with thickness. Format: [[y1, z1, y2, z2, thickness], ...]
+            sec_lines: Centreline segments with wall thickness, as
+                       [[y1, z1, y2, z2, thickness], ...] — the two endpoints of
+                       each segment in section coordinates, then its thickness
+                       (中心线段与壁厚，[[y1, z1, y2, z2, 壁厚], ...]，前四个为该段
+                       在截面坐标系中的两个端点，最后为壁厚)
         """
         try:
             provider.add_section(
@@ -821,17 +873,46 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         dis_h: float = 0,
     ) -> str:
         """
-        Add a tapered section group (添加变截面组).
+        Group elements so their sections vary continuously along the group
+        (添加变截面组，使组内单元截面沿纵向连续变化).
+
+        Writes to the model and refreshes it. The elements must already exist
+        and carry tapered sections (create_tapered_section); this tool defines
+        the LAW by which the section interpolates across them, not the sections
+        themselves.
+
+        factor_w / factor_h are variation ORDERS (exponents), not scale factors:
+        1.0 gives a linear taper, any other value gives a power-law taper. They
+        never multiply the section dimensions.
+
+        Only the simple power-law form is exposed here. Parametric groups —
+        per-parameter laws keyed by the UI parameter name, supporting nonlinear
+        / piecewise-custom / circular-arc variation — need the escape hatch:
+        call_qtmodel_api(api_object="mdb", method="add_tapper_section_group",
+                         kwargs={..., "parameter_info": {"梁高(H)": "1,2,I,0"}}).
+
+        (写模型并刷新。单元须已存在且已赋变截面(create_tapered_section)；本工具定义的是
+        截面沿组内插值的"变化规律"，不是截面本身。factor_w / factor_h 是变化阶数(指数)
+        而非缩放系数：1.0 为线性变化，其它值为幂次非线性变化，它们不会去乘截面尺寸。
+        本工具只暴露简单的幂次形式；参数化变截面组（按 UI 参数名分别指定规律，支持
+        非线性/自定义分段/圆弧三种）需经逃生舱传 parameter_info。)
 
         Args:
             name: Group name (变截面组名称)
-            ids: Element IDs in the group (变截面组内的单元编号)
-            factor_w: Width variation factor (宽度变化系数)
-            factor_h: Height variation factor (高度变化系数)
-            ref_w: Width reference point (宽度参考点: 0=i, 1=j)
-            ref_h: Height reference point (高度参考点: 0=i, 1=j)
-            dis_w: Width variation distance (宽度变化距离)
-            dis_h: Height variation distance (高度变化距离)
+            ids: Element IDs in the group — list or "XtoYbyN" range string
+                 (变截面组内的单元编号，支持列表或 "XtoYbyN" 范围字符串)
+            factor_w: Variation ORDER in the width direction; 1.0=linear,
+                      other=nonlinear power law
+                      (宽度方向变化阶数；1.0 为线性，其它为幂次非线性)
+            factor_h: Variation ORDER in the height direction; 1.0=linear,
+                      other=nonlinear power law
+                      (高度方向变化阶数；1.0 为线性，其它为幂次非线性)
+            ref_w: Which end the width variation is measured from
+                   (宽度方向参考点): 0=I-end(i端) | 1=J-end(j端)
+            ref_h: Which end the height variation is measured from
+                   (高度方向参考点): 0=I-end(i端) | 1=J-end(j端)
+            dis_w: Distance along the width direction (宽度方向距离)
+            dis_h: Distance along the height direction (高度方向距离)
         """
         try:
             kwargs: dict[str, Any] = {
@@ -899,15 +980,44 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Add effective width to beam elements (添加截面有效宽度).
+        Reduce beam bending stiffness to model effective flange width
+        (添加有效宽度系数，用折减刚度体现翼缘有效宽度).
+
+        Writes to the model and refreshes it. Despite the name it applies no
+        width: it scales the section's Iy at each element end and can shift the
+        centroid, which is how a reduced effective flange width is represented.
+
+        This is a BOUNDARY-GROUP entry, not a section property. It therefore
+        follows the boundary group's activation in construction-stage analysis —
+        the group must exist (create_boundary_group) and be activated by a stage
+        (add_construction_stage's active_boundaries) to take effect.
+
+        Only the Iy/centroid-z pair is exposed. Upstream also accepts z-direction
+        factors, y-direction centroid shifts and axial factors, but its own
+        docstring labels all six identically, so their meaning is unverified —
+        reach them via call_qtmodel_api(api_object="mdb",
+        method="add_effective_width", ...) only after confirming against your
+        QiaoTong build.
+
+        (写模型并刷新。名字虽叫有效宽度，实际不施加任何宽度：它按单元两端折减截面 Iy、
+        并可平移形心，以此体现翼缘有效宽度的折减。本项属于边界组、不是截面属性，因此在
+        施工阶段分析中随边界组激活生效——边界组须已建立，且被某阶段的 active_boundaries
+        激活。本工具只暴露 Iy 与形心 z 这一对；上游另有 z 向系数、y 向形心平移与轴向系数，
+        但其 docstring 把这六个参数的说明写成了同一句，含义无法确证，需先对照所用桥通版本
+        核实后再经逃生舱调用。)
 
         Args:
-            element_ids: Element ID(s) (单元编号)
-            factor_i: I-end factor (I端系数)
-            factor_j: J-end factor (J端系数)
-            dz_i: I-end Dz offset (I端 Dz 偏移)
-            dz_j: J-end Dz offset (J端 Dz 偏移)
-            group_name: Boundary group name (边界组名)
+            element_ids: Element ID(s) — int, list, or "XtoYbyN" range string
+                         (单元编号，支持整数、列表或 "XtoYbyN" 范围字符串)
+            factor_i: Reduction factor applied to Iy at the I-end; a value below
+                      1.0 softens the element in bending
+                      (I端截面 Iy 折减系数；小于 1.0 即削弱抗弯刚度)
+            factor_j: Reduction factor applied to Iy at the J-end
+                      (J端截面 Iy 折减系数)
+            dz_i: Centroid shift in z at the I-end (I端截面形心 z 向变换量)
+            dz_j: Centroid shift in z at the J-end (J端截面形心 z 向变换量)
+            group_name: Boundary group name, empty for the default boundary
+                        group (边界组名，空则用默认边界组)
         """
         try:
             kwargs: dict[str, Any] = {
@@ -2002,12 +2112,39 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         stage_id: int = -1,
     ) -> str:
         """
-        Configure buckling analysis settings (屈曲分析设定).
+        Configure linear buckling analysis (屈曲分析设定；方法名 bulking 为历史拼写).
+
+        Writes to the model. Enabling analysis does not run it — call
+        run_analysis afterwards. The misspelling "bulking" is the upstream
+        method name; renaming it would break existing callers.
+
+        LIMITATION — this tool exposes only the three basic switches. The
+        load-case assignment (constant_cases / variable_cases), whether
+        self-weight is treated as constant or variable, and whether the
+        prestressed or unstressed geometry is used, are reachable only via
+        the escape hatch:
+        call_qtmodel_api(api_object="mdb", method="update_bulking_setting",
+                         kwargs={"variable_cases": ["工况1"], "calculate_kind": 1,
+                                 "stressed": True, ...}).
+        Without at least one variable_cases name, a buckling run typically has
+        nothing to vary.
+
+        (写模型。打开分析开关并不求解——之后还要调 run_analysis。"bulking" 是上游
+        方法名的历史拼写，改名会破坏已有调用。局限：本工具只暴露三个基本开关；
+        荷载工况分配(constant_cases / variable_cases)、恒载归为不变还是可变、
+        以及采用预应力还是无应力几何，都需经逃生舱设置。不指定 variable_cases
+        时屈曲分析通常没有可变荷载。)
 
         Args:
-            do_analysis: Enable buckling analysis (是否进行屈曲分析)
-            mode_count: Number of modes to calculate (计算模态数)
-            stage_id: Construction stage ID for base state, -1 for base model (施工阶段号)
+            do_analysis: Enable linear buckling analysis (是否进行线性屈曲分析)
+            mode_count: Number of buckling modes to compute, must be positive
+                        (屈曲模态数，须为正整数)
+            stage_id: Construction-stage number used as the base state
+                      (作为基准状态的施工阶段号):
+                      -1 or non-positive = the LAST construction stage
+                      (最后施工阶段，不是基本模型);
+                      a positive integer must already exist
+                      (正整数必须对应已有阶段)
         """
         try:
             provider.update_bulking_setting(
