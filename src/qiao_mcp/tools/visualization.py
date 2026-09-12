@@ -204,7 +204,16 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         element_ids: list[int] | None = None,
     ) -> str:
         """
-        Activate only specific nodes/elements for display (仅激活显示指定节点/单元).
+        Show only the given nodes/elements in the view, hiding all others
+        (仅在视图中激活显示指定节点/单元，其余隐藏).
+
+        Display-only: changes what is drawn, not model data or results.
+        Call reset_display to bring the full model back afterwards.
+        (纯显示操作，不改模型或计算结果；用完调 reset_display 恢复全图。)
+
+        When to use: isolate a subregion before a screenshot; prefer this
+        over re-reading the model when you only need a visual check.
+        (截图前隔离局部时用；只需目视检查时用它，而非重新读模型。)
 
         Args:
             node_ids: Node IDs to activate (要激活的节点号)
@@ -226,7 +235,11 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def set_render(flag: bool = True) -> str:
         """
-        Toggle solid rendering mode (开关实体渲染模式).
+        Toggle solid (rendered) vs wireframe display (开关实体渲染/线框显示).
+
+        Display-only: affects how the model is drawn, not model data or
+        results. Pair with save_model_screenshot for solid-shaded captures.
+        (纯显示操作，不改模型或结果；配合 save_model_screenshot 出实体图。)
 
         Args:
             flag: True for rendered view, False for wireframe (是否渲染)
@@ -242,7 +255,12 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def reset_display() -> str:
         """
-        Reset display view (恢复默认显示/全显).
+        Restore the default full-model view (恢复默认显示/全显).
+
+        Display-only: undoes view filters such as activate_structure and
+        brings every node/element back into view. Does not change model
+        data or results.
+        (纯显示操作：撤销 activate_structure 等视图过滤、恢复显示所有节点/单元；不改模型或结果。)
         """
         try:
             provider.reset_display()
@@ -255,7 +273,13 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def set_unit(unit_force: str = "KN", unit_length: str = "MM") -> str:
         """
-        Set display units (设置显示单位).
+        Set the force/length units used for display and reporting
+        (设置显示与报告所用的力/长度单位).
+
+        Display setting only: it changes the units values are shown in and
+        does NOT rescale model geometry, section properties, or stored data.
+        Set it before taking screenshots or reading displayed quantities.
+        (仅显示设置：只改数值显示单位，不缩放模型几何/截面特性/已存数据；读数或截图前先设好。)
 
         Args:
             unit_force: Force unit (力单位, 例如: KN, N, TONF)
@@ -272,10 +296,26 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def change_construct_stage(stage: int = 0) -> str:
         """
-        Change current construction stage in view (切换当前显示的施工阶段).
+        Change the construction stage of the results view, BY INDEX
+        (按阶段号切换结果视图的施工阶段).
+
+        Display-only: it changes which stage the current window shows and does
+        NOT re-run the analysis. Use it to step through stages when reading
+        results or taking screenshots.
+
+        When to use vs. switch_display_stage: this one takes an integer stage
+        INDEX and drives the results/post-processing view (odb).
+        switch_display_stage takes the stage NAME and drives the modelling view
+        (mdb). The index here is not a name — passing a string fails.
+
+        (纯显示操作：切换当前窗口显示的阶段，不重新求解；逐阶段读结果或截图时用它。
+        选型：本工具收阶段"号"、作用于结果/后处理视图(odb)；switch_display_stage 收阶段
+        "名"、作用于建模视图(mdb)。此处只接受整数，传字符串阶段名会失败。)
 
         Args:
-            stage: Stage ID, 0 for Base stage (施工阶段号，0为成桥阶段)
+            stage: Stage number — 0 = the base model (not the completed-bridge
+                   stage), a positive integer = that construction stage
+                   (施工阶段号：0 为基本模型（不是成桥阶段），正整数为对应施工阶段)
         """
         try:
             provider.change_construct_stage(stage=stage)

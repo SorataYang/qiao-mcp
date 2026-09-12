@@ -146,10 +146,32 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         element_ids: list[int] | str,
     ) -> str:
         """
-        Add elements to an existing structure group (向已有结构组添加单元).
+        Add elements to an existing structure group — elements only
+        (向已有结构组添加单元，仅单元).
+
+        Writes to the model and refreshes it. Adds to the group's existing
+        members rather than replacing them; the group must already exist
+        (create_structure_group).
+
+        When to use vs. siblings: this is a convenience wrapper — it forwards to
+        the same underlying call as add_to_structure_group with only
+        element_ids. Use add_to_structure_group when you also have nodes to add,
+        or to do nodes and elements in one call.
+
+        Neither tool can take members out. remove_structure_group deletes the
+        whole group; to drop individual members use the escape hatch:
+        call_qtmodel_api(api_object="mdb",
+                         method="remove_structure_from_group", kwargs={...}).
+
+        (写模型并刷新。是向组内现有成员追加、而非替换；结构组须已存在。选型：本工具是便捷
+        封装，底层与 add_to_structure_group 走同一个调用、只是仅传 element_ids。需要同时
+        加节点、或一次加节点+单元时用 add_to_structure_group。两者都不能移除成员；
+        remove_structure_group 是删掉整个组，要移除单个成员需经逃生舱调
+        remove_structure_from_group。)
 
         Args:
-            group_name: Structure group name (结构组名称)
+            group_name: Structure group name, must already exist
+                        (结构组名称，须已存在)
             element_ids: Element IDs to add (单元编号，支持列表或范围字符串 '1to20')
         """
         try:
@@ -269,13 +291,25 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def switch_display_stage(stage_name: str) -> str:
         """
-        Switch the view to a specific construction stage (切换显示阶段).
+        Switch the modelling view to a construction stage, BY NAME
+        (按阶段名切换建模视图的施工阶段).
 
-        Updates the software UI to display the model at the specified stage.
-        (更新软件界面，显示指定施工阶段的模型状态)
+        Display-only: changes which stage the software shows, and refreshes the
+        model view. It does not re-run the analysis and does not change results.
+        The stage must already exist (add_construction_stage).
+
+        When to use vs. change_construct_stage: this one takes the stage NAME
+        and drives the modelling view (mdb). change_construct_stage takes an
+        integer stage INDEX and drives the results/post-processing view (odb) —
+        use that when stepping through stages to read results.
+
+        (纯显示操作：切换软件显示的阶段并刷新视图，不重新求解、不改变结果；阶段须已存在。
+        选型：本工具收阶段"名"、作用于建模视图(mdb)；change_construct_stage 收阶段"号"、
+        作用于结果/后处理视图(odb)，逐阶段读结果时用它。)
 
         Args:
-            stage_name: Name of the stage to display (要显示的阶段名称)
+            stage_name: Name of the stage to display, must already exist
+                        (要显示的阶段名称，须已存在)
         """
         try:
             provider.switch_display_stage(stage_name=stage_name)

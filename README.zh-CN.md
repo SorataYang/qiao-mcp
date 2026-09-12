@@ -15,19 +15,19 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 
 | 分组 | 代表工具 |
 |------|----------|
-| **核心建模** | `create_nodes_linear`、`create_beam_elements_linear`、`create_material`、`create_section`（支持参数化截面）、`create_polygon_section` |
+| **核心建模** | `create_nodes_linear`、`create_beam_elements_linear`、`create_material`、`create_section`（支持参数化截面）、`create_polygon_section`、`add_thickness`（支持独立面外厚度） |
 | **荷载** | `create_load_group`、`create_load_case`、`set_self_weight_stage`、`set_gravity`、`apply_nodal_force`、`apply_beam_distributed_load`、温度/沉降荷载 |
 | **边界条件** | `set_support`、`add_elastic_link`、`add_master_slave_link`、`add_elastic_support`、`add_beam_constraint` |
 | **分组与阶段** | `create_structure_group`、`add_elements_to_group`、`merge_operation_stage`、`add_construction_stage` |
-| **分析** | `configure_analysis`、`run_analysis`（异步并报告进度）、`get_analysis_results` |
+| **分析** | `configure_analysis`、`run_analysis`（异步并报告进度，可选 `show_view`）、`get_analysis_results` |
 | **预应力钢束** | `create_tendon_property`、`create_tendon_2d`、`apply_prestress`、`get_tendon_info` |
 | **移动荷载** | `add_node_tandem`、`add_influence_plane`、`add_traffic_lane`、`add_standard_vehicle`、`create_live_load_case` |
 | **结构验算** | `setup_concrete_check`、`add_check_load_combination`、`add_parametric_reinforcement`、`run_concrete_check`、`get_check_data` |
-| **查询** | `get_model_info`、`get_model_data`、`find_entities`、`calc_section_property`、`get_special_results`（适用时支持分页） |
+| **查询** | `get_model_info`、`get_model_data`（按 kind 查询，含 qtmodel 2.8 概览类型 `summary` / `analysis_context` / `project_metadata` / `check_context`）、`find_entities`、`calc_section_property`、`get_special_results`（适用时支持分页） |
 | **模型修改** | `initialize_model`、`save_model_file`、`open_model_file`、`update_node`、`move_nodes`、`update_element`、`remove_nodes`、`remove_elements` |
 | **可视化** | `save_model_screenshot`、`plot_analysis_result`（可直接返回图像）、`set_view_angle`、`display_ids` |
 | **工作流** | `create_simple_beam_bridge`、`create_continuous_beam_bridge` |
-| **网关与诊断** | `check_qiaotong_connection`、`list_qtmodel_api`、`call_qtmodel_api`（连接诊断、长尾 API 检索与签名校验调用） |
+| **网关与诊断** | `check_qiaotong_connection`、`get_model_status`、`list_qtmodel_api`、`call_qtmodel_api`（连接与模型状态诊断、长尾 API 检索与签名校验调用） |
 
 工具返回会统一规范为结构化内容（`{status, ...}`）；图像工具可以直接返回 MCP 图像内容。工具失败会使用类型化 MCP 错误；只读、破坏性和开放世界操作带有 MCP 工具注解。调用网关中的未封装 API 前，请先使用 `list_qtmodel_api` 查询真实签名。
 
@@ -76,10 +76,10 @@ qiao-mcp/
 ### 前置要求
 - Python >= 3.11
 - [uv](https://docs.astral.sh/uv/) 包管理器
-- `qtmodel` 2.6.3（`uv sync` 会自动安装）
-- 调用建模、分析或可视化工具时，需要运行兼容的桥通软件 2.6.3
+- `qtmodel` 2.6.3 – 2.8.x（`uv sync` 会自动安装，当前锁定 2.8.2）
+- 调用建模、分析或可视化工具时，需要运行桥通软件（版本搭配见下文[兼容性对照](#兼容性对照)）
 
-桥通未启动时 MCP 服务器仍可启动。调用 `check_qiaotong_connection` 可以区分已连接、版本不匹配和软件未启动三种状态。
+桥通未启动时 MCP 服务器仍可启动。调用 `check_qiaotong_connection` 可以区分已连接与软件未启动；调用 `get_model_status` 可以查看是否已打开模型、以及当前桥通状态允许哪些操作。
 
 ### 安装与运行
 
@@ -185,7 +185,9 @@ mdb.set_url("http://<代理机器局域网IP>:45125/pythonForQt/")
 ssh -N -L 45125:127.0.0.1:55125 <用户名>@<桥通机器局域网IP>
 ```
 
-隧道运行期间，客户端使用 `http://127.0.0.1:45125/pythonForQt/`。
+隧道运行期间，客户端使用 `http://localhost:45125/pythonForQt/`。此场景下
+Windows HTTP.sys 会校验 `Host` 请求头，并以 `400 Invalid Hostname` 拒绝
+`127.0.0.1`。
 
 ## 开发
 
@@ -199,7 +201,7 @@ uv run python -m qiao_mcp.server
 # 质量检查
 uv run ruff check src/ tests/
 uv run mypy src/qiao_mcp/
-uv run pytest tests/ -q
+uv run pytest tests/ --ignore=tests/test_end_to_end.py -q
 ```
 
 测试设计为离线运行，不要求桥通软件。Provider/tool 调用会根据已安装的 `qtmodel` 真实 API 签名进行契约校验，并通过进程内 fake backend 验证分发逻辑。
@@ -207,7 +209,7 @@ uv run pytest tests/ -q
 ## 后端软件：QTModel（桥通）
 
 本 MCP 服务器封装了 `qtmodel` Python API，提供以下功能：
-- **mdb** — 模型数据库：构建和修改桥梁模型
+- **mdb** — 模型数据库：查询、构建和修改桥梁模型
 - **odb** — 输出数据库：查询分析结果和可视化
 - **cdb** — 验算数据库：结构验算和规范检查
 
@@ -217,12 +219,51 @@ Qiao-MCP 的版本号独立于 `qtmodel`：本项目可以自行迭代（修 bug
 
 ### 兼容性对照
 
-| Qiao-MCP | qtmodel       | 桥通软件 |
-|----------|---------------|----------|
-| 0.3.x    | 2.6.3 – 2.6.x | 2.6.3    |
-| 0.2.x    | 2.5.0 – 2.5.x | 2.5.0    |
+| Qiao-MCP        | qtmodel       | 桥通软件                               |
+|-----------------|---------------|----------------------------------------|
+| 0.3.2（未发布） | 2.6.3 – 2.8.x | 2.6.3+；2.8.x 不再要求两侧版本精确一致 |
+| 0.3.0 – 0.3.1   | 2.6.3 – 2.6.x | 2.6.3（qtmodel 强制精确匹配）          |
+| 0.2.x           | 2.5.0 – 2.5.x | 2.5.0                                  |
 
-桥通软件的 API 版本与已安装的 `qtmodel` 必须**精确一致**——qtmodel 2.6 起会做精确版本握手，不一致直接拒绝连接。调用 `check_qiaotong_connection` 可以同时看到两侧版本，并给出对应的处置建议。
+两侧版本的匹配方式在 qtmodel 2.8.2 发生了变化：
+
+- **qtmodel 2.6 / 2.7** 做精确版本握手——桥通 API 版本与已安装的 `qtmodel` 必须完全一致，否则 `check_qiaotong_connection` 报 `version_mismatch` 并拒绝连接。
+- **qtmodel 2.8.2** 取消了该握手。任何暴露 Python API 的桥通都能连上，`version_mismatch` 不再出现。代价是偏旧的桥通可能缺少新命令；`get_model_status` 会把这种情况报为 `state_unknown`（桥通早于模型状态握手），工具据此 fail closed，而不是盲写。
+
+不同构建可能都标记为 qtmodel 2.8.2：PyPI 上的 wheel（2026-08-20）不含 `QtServer.get_model_state`，而同版本号的上游源码已带上它。Qiao-MCP 按能力而非版本号探测——没有该方法时跳过模型状态守卫（`guard_unavailable`），行为与 0.3.1 一致；有该方法时，每个工具都会按桥通上报的状态放行或拦截。
+
+### 2026-09-04 至 09-08 上游源码变更
+
+参考仓库已同步至 `2316654`，版本号仍为 `2.8.2`：
+
+- `ac4dbad`：模型查询由 `odb` 迁移至 `mdb`。本项目优先使用新接口，方法不存在时回退至旧版 `odb`；查询已有截面几何使用 `mdb.get_model_section_shape`，不会误调用本地几何生成器 `mdb.get_section_shape`。分析结果与视图仍使用 `odb`。
+- `bc1ee99`：模型查询改为返回支持 `to_dict()` / `Mapping` 的类型化对象。本项目统一递归转换为普通 JSON 数据，覆盖工具、资源和 API 网关，保留服务端原始字段。MDB 查询按只读权限检查，不再要求修改模型权限，也不会触发模型刷新；`calculate_section_property` 等会改变模型的调用仍要求修改权限。
+- `6821413`：模型对象按结构、材料、荷载等领域拆分，`core.model_db` 保留兼容导出；本项目适配层不依赖这些内部类型路径。
+- 9 月 7–8 日：新增板厚 `t_out`、求解 `show_view`、12 个分析设置重置接口和 3 个板厚批量管理接口。本项目在现有工具中增加这两个参数，15 个管理接口继续通过 API 网关检索和调用，无需增加重复封装工具。
+
+**构建兼容性：** `2316654` 已恢复 `6821413` 缺失的 `core/data_helper.py`，最新源码可正常导入并通过离线测试。PyPI 上 8 月 20 日发布的 2.8.2 仍不含这些新参数和管理接口。依赖范围 `qtmodel>=2.6.3,<2.9` 和锁文件保持不变；默认调用兼容旧版，显式指定 `t_out` 或 `show_view=True` 时，会先检查真实签名，不支持则在写入或启动求解之前明确报错，不能仅凭版本号判断功能是否可用。
+
+使用支持这些功能的 qtmodel 构建时，MCP 工具调用示例：
+
+```text
+add_thickness(name="桥面板", t=0.20, t_out=0.30, thick_type=0)
+run_analysis(read_timeout=3600, show_view=True)
+list_qtmodel_api(api_object="mdb", pattern="thickness")
+call_qtmodel_api(api_object="mdb", method="copy_thicknesses", kwargs={"ids": [1, 2]})
+list_qtmodel_api(api_object="mdb", pattern="reset_")
+```
+
+`thick_type` 的实际语义是 **0=普通板、1=加劲肋板**，不是面内/面外等厚或不等厚；省略 `t_out` 时面外厚度与 `t` 相同。`show_view` 仅控制桥通的分析进度窗口，不改变后台求解、轮询等待和 MCP 进度心跳。
+
+板厚批量接口仅接受正整数或整数列表，不接受 `"1to3"` 这类区间字符串；`remove_thicknesses([])` 不删除任何板厚。分析重置会删除对应设置，`arrange_thickness_ids` 会修改编号及引用，调用前应检索真实签名并确认修改目标。
+
+不替换已安装包，直接对参考源码运行离线测试（macOS/Linux）：
+
+```bash
+PYTHONPATH=reference_codes/qtmodel-release/packages/qtmodel/src:src uv run pytest tests/ --ignore=tests/test_end_to_end.py -q
+```
+
+上述开发测试命令排除了 `test_end_to_end.py`；该测试会清空并重建桥通当前模型，只能在可丢弃的模型环境中单独运行。
 
 第一位 `0` 表示 API 仍可能变化，与发布质量无关。升级到新的 qtmodel 次版本线时，同步提高依赖上界并在上表增加一行。
 

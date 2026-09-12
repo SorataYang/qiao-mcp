@@ -4,7 +4,7 @@
 用 inspect.signature().bind() 验证参数可绑定，拦截两类回归：
 
 1. provider 层：QtModelProvider 方法内对 self._mdb/_odb/_cdb 的直接调用
-   （含 getattr(self._mdb, "name")(...) 形式）；
+   （含 getattr(self._mdb, "name")(...) 与 _query_model("name", ...) 形式）；
 2. tools 层：@mcp.tool() 函数对 provider.<method>(...) 的调用，
    经 provider 方法体解析出最终落到的 qtmodel 方法后合并校验。
 
@@ -22,6 +22,8 @@ from dataclasses import dataclass, field
 
 import pytest
 import qtmodel
+
+from qiao_mcp.providers.qtmodel_provider import QtModelProvider
 
 SRC = pathlib.Path(__file__).resolve().parent.parent / "src" / "qiao_mcp"
 PROVIDER_FILE = SRC / "providers" / "qtmodel_provider.py"
@@ -43,7 +45,7 @@ KNOWN_FAILURES: dict[str, str] = {}
 class QtCall:
     """一次对 qtmodel 数据库对象方法的调用点。"""
 
-    db: str  # "_mdb" / "_odb" / "_cdb"
+    db: str  # "_mdb" / "_odb" / "_cdb" / "_model"
     qt_name: str
     pos_count: int = 0
     kw_names: set[str] = field(default_factory=set)
@@ -139,8 +141,18 @@ def _extract_call_args(
 
 
 def _qt_target(call: ast.Call) -> tuple[str, str] | None:
-    """识别 self._mdb.foo(...) 或 getattr(self._mdb, "foo")(...)，返回 (db, 方法名)。"""
+    """识别数据库直调、getattr 调用及 MDB/ODB 兼容查询，返回 (db, 方法名)。"""
     f = call.func
+    if (
+        isinstance(f, ast.Attribute)
+        and isinstance(f.value, ast.Name)
+        and f.value.id == "self"
+        and f.attr == "_query_model"
+        and call.args
+        and isinstance(call.args[0], ast.Constant)
+        and isinstance(call.args[0].value, str)
+    ):
+        return "_model", call.args[0].value
     # self._mdb.foo(...)
     if (
         isinstance(f, ast.Attribute)
@@ -168,7 +180,7 @@ def _qt_target(call: ast.Call) -> tuple[str, str] | None:
 
 
 def parse_provider() -> dict[str, ProviderMethod]:
-    tree = ast.parse(PROVIDER_FILE.read_text())
+    tree = ast.parse(PROVIDER_FILE.read_text(encoding="utf-8"))
     cls = next(
         n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "QtModelProvider"
     )
@@ -186,6 +198,8 @@ def parse_provider() -> dict[str, ProviderMethod]:
                 if target is None:
                     continue
                 pos, kws, star, dyn, fwd = _extract_call_args(node, fn, own_kwargs)
+                if target[0] == "_model":
+                    pos -= 1
                 pm.qt_calls.append(
                     QtCall(target[0], target[1], pos, kws, star, dyn, fwd)
                 )
@@ -208,7 +222,7 @@ class ToolCall:
 def parse_tools() -> list[ToolCall]:
     calls: list[ToolCall] = []
     for path in sorted(TOOLS_DIR.glob("*.py")):
-        tree = ast.parse(path.read_text())
+        tree = ast.parse(path.read_text(encoding="utf-8"))
         for fn in ast.walk(tree):
             if not isinstance(fn, ast.FunctionDef):
                 continue
@@ -255,6 +269,15 @@ def _bind(qt_fn, pos_count: int, kw_names: set[str], strict: bool) -> str | None
     return None
 
 
+def _qt_method(call: QtCall):
+    if call.db == "_model":
+        provider = QtModelProvider.__new__(QtModelProvider)
+        provider._mdb = qtmodel.mdb
+        provider._odb = qtmodel.odb
+        return provider._model_query_method(call.qt_name)
+    return getattr(DB_OBJECTS[call.db], call.qt_name, None)
+
+
 PROVIDER_METHODS = parse_provider()
 TOOL_CALLS = parse_tools()
 
@@ -288,8 +311,7 @@ def _check_known(key: str, error: str | None):
 @pytest.mark.parametrize("pm,qc", list(_provider_cases()))
 def test_provider_calls_bind_to_qtmodel(pm: ProviderMethod, qc: QtCall):
     key = f"provider::{pm.name}::{qc.db}.{qc.qt_name}"
-    db = DB_OBJECTS[qc.db]
-    qt_fn = getattr(db, qc.qt_name, None)
+    qt_fn = _qt_method(qc)
     if qt_fn is None:
         _check_known(key, f"qtmodel 中不存在 {qc.db}.{qc.qt_name}")
         return
@@ -305,8 +327,6 @@ def test_provider_calls_bind_to_qtmodel(pm: ProviderMethod, qc: QtCall):
 
 @pytest.mark.parametrize("tc", list(_tool_cases()))
 def test_tool_calls_bind_through_provider(tc: ToolCall):
-    from qiao_mcp.providers.qtmodel_provider import QtModelProvider
-
     key = f"tools::{tc.module}.{tc.tool_name}::{tc.provider_method}"
 
     # (a) provider 方法必须存在，且 tool 调用能绑定其签名
@@ -331,8 +351,7 @@ def test_tool_calls_bind_through_provider(tc: ToolCall):
     errors = []
     for qc in pm.qt_calls:
         qkey = f"tools::{tc.module}.{tc.tool_name}::{qc.db}.{qc.qt_name}"
-        db = DB_OBJECTS[qc.db]
-        qt_fn = getattr(db, qc.qt_name, None)
+        qt_fn = _qt_method(qc)
         if qt_fn is None:
             errors.append((qkey, f"qtmodel 中不存在 {qc.db}.{qc.qt_name}"))
             continue

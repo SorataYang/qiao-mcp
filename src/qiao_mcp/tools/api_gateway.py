@@ -3,7 +3,7 @@ MCP escape-hatch tool — controlled access to the full qtmodel API.
 逃生舱工具：受控访问 qtmodel 全量 API
 
 The curated tools cover common bridge workflows. For the long tail of
-qtmodel's 240+ mdb / 90+ odb / 60+ cdb methods, this gateway exposes a
+qtmodel's mdb / odb / cdb methods, this gateway exposes a
 single discover-then-call surface instead of one wrapper tool per method.
 """
 
@@ -25,16 +25,19 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Diagnose the connection to QiaoTong software (诊断桥通软件连接状态).
 
         CALL THIS FIRST when any tool reports the backend is unavailable.
-        It distinguishes the three failure modes, which need different fixes:
-        （任一工具报后端不可用时先调用本工具，它区分三种需要不同处置的状态）
+        It distinguishes the failure modes, which need different fixes:
+        （任一工具报后端不可用时先调用本工具，它区分需要不同处置的状态）
 
         - connected (已连接): ready to model.
-        - version_mismatch (版本不匹配): the QiaoTong API version and the
-          installed qtmodel differ. qtmodel pins an exact version, so the
-          user must upgrade QiaoTong (or install a matching qtmodel).
-          （桥通与 qtmodel 版本必须精确一致，需升级桥通软件）
         - software_not_running (软件未启动): start QiaoTong and wait for the
           main window, then retry. （启动桥通并等待主界面加载）
+        - version_mismatch (版本不匹配): only with qtmodel 2.6/2.7, which pinned
+          an exact QiaoTong API version — the user must upgrade QiaoTong (or
+          install a matching qtmodel). qtmodel 2.8.2 removed that handshake, so
+          this status no longer occurs there; mismatched pairs connect, and an
+          older QiaoTong instead shows up as `state_unknown` in get_model_status.
+          （仅 qtmodel 2.6/2.7 会出现：两侧版本须精确一致，需升级桥通；2.8.2 起
+          已取消该握手，桥通偏旧时改由 get_model_status 报 state_unknown）
 
         Returns the status, a human-readable message, the recommended action,
         and the client/server versions involved.
@@ -71,6 +74,18 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         if server.get("api_version"):
             lines.append(f"QiaoTong API (server): {server['api_version']}")
 
+        model_state = status.get("model_state") or server.get("model_state")
+        if isinstance(model_state, dict):
+            lines.extend(
+                [
+                    f"model opened: {model_state.get('model_opened')}",
+                    f"phase: {model_state.get('phase')}",
+                    f"stage: {model_state.get('stage_name')}",
+                    f"base stage: {model_state.get('is_base_stage')}",
+                    f"has result data: {model_state.get('has_result_data')}",
+                ]
+            )
+
         # 未连上且配置里用了裸 IP：Windows HTTP.sys 会以 400 Invalid Hostname
         # 拒绝 127.0.0.1 的 Host 头，端口通也连不上，必须改用 localhost。
         # 实测于 SSH 端口转发访问远端桥通的场景。
@@ -89,6 +104,23 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         return "\n".join(lines)
 
     @mcp.tool()
+    def get_model_status() -> dict[str, Any]:
+        """Get QiaoTong's current model lifecycle and operation capabilities.
+
+        获取桥通当前是否打开模型、前处理/求解/后处理阶段、当前显示阶段是否
+        为基本阶段、是否存在结果，以及 MCP 当前可执行的读模型、改模型、
+        修改施工阶段、结果查询、分析和视图操作能力。
+
+        Call this before starting a model workflow and whenever an operation is
+        rejected. This tool only observes state; it never switches stages,
+        deletes results, or changes the model.
+        """
+        try:
+            return provider.get_model_state()
+        except Exception as e:
+            raise ToolError(f"Error checking model status (模型状态查询失败): {e}") from e
+
+    @mcp.tool()
     def list_qtmodel_api(api_object: str, pattern: str = "") -> str:
         """
         Discover qtmodel API methods and their real signatures (检索 qtmodel API 方法及签名).
@@ -98,9 +130,17 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         signature here before calling — do not guess parameter names.
         （先用本工具查到真实签名，再用 call_qtmodel_api 调用，切勿臆测参数名。）
 
+        New qtmodel builds expose model queries on mdb; older releases use odb.
+        For existing-model section geometry use mdb.get_model_section_shape,
+        not mdb.get_section_shape (the local geometry builder).
+
+        Updated source builds also expose reset_*_setting analysis resets and
+        copy_thicknesses / arrange_thickness_ids / remove_thicknesses through mdb.
+        Search "reset_" or "thickness" to check availability in the installed build.
+
         Args:
             api_object: Which database to inspect (数据库对象):
-                "mdb" (建模), "odb" (结果/查询), "cdb" (检算)
+                "mdb" (模型查询/建模), "odb" (结果/视图；旧版模型查询), "cdb" (检算)
             pattern: Case-insensitive substring filter on method name
                      (方法名关键字过滤，如 "tendon"、"spectrum")
         """
@@ -138,6 +178,16 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Destructive/long-running methods (initial 清空模型, do_solve 求解) are
         blocked here — use initialize_model / run_analysis instead.
         （清空模型、求解等危险或长耗时操作已禁止经此调用，请用对应专用工具。）
+
+        MDB get_/query_/calc_ methods are read-only model operations; other MDB
+        methods, including calculate_section_property, require model-write permission.
+
+        New MDB management APIs are available here without additional wrapper tools.
+        copy_thicknesses / remove_thicknesses accept positive integer IDs or lists,
+        not range strings; remove_thicknesses([]) deletes nothing. Analysis resets
+        delete settings, and arrange_thickness_ids renumbers thickness references;
+        only call them when that change is intended.
+        （板厚批量操作不接受区间字符串；重置会删除分析设置，整理板厚会更改编号。）
 
         Args:
             api_object: Database object (数据库对象): "mdb", "odb", "cdb"
