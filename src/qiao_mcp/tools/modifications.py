@@ -526,11 +526,31 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         element_ids: Any = None,
     ) -> str:
         """
-        Add nodes and/or elements to an existing structure group
-        (向已有结构组中添加节点和/或单元).
+        Add nodes and/or elements to an existing structure group — the general
+        one (向已有结构组中添加节点和/或单元，通用).
+
+        Writes to the model and refreshes it. Adds to the group's existing
+        members rather than replacing them; the group must already exist
+        (create_structure_group). Pass either or both of node_ids/element_ids.
+
+        When to use vs. siblings: prefer this tool — it is the general form.
+        add_elements_to_group is a convenience wrapper that reaches the same
+        underlying call with only element_ids, so it can do nothing this cannot.
+
+        This tool cannot take members out. remove_structure_group deletes the
+        whole group; to drop individual members use the escape hatch:
+        call_qtmodel_api(api_object="mdb",
+                         method="remove_structure_from_group", kwargs={...}).
+
+        (写模型并刷新。是向组内现有成员追加、而非替换；结构组须已存在。node_ids 与
+        element_ids 可只传一个或都传。选型：优先用本工具，它是通用形式；
+        add_elements_to_group 只是仅传 element_ids 的便捷封装，能做的事本工具都能做。
+        本工具不能移除成员；remove_structure_group 是删掉整个组，移除单个成员需经逃生舱调
+        remove_structure_from_group。)
 
         Args:
-            group_name: Name of the structure group (结构组名称)
+            group_name: Name of the structure group, must already exist
+                        (结构组名称，须已存在)
             node_ids: Node ID(s) to add. Supports int, list, or range string '1to10'.
                       (要添加的节点编号)
             element_ids: Element ID(s) to add. Supports int, list, or range string.
