@@ -88,6 +88,46 @@ def test_update_element_fills_unspecified_fields(provider, monkeypatch):
     assert kwargs["initial_value"] == 5.0
 
 
+def test_update_element_preserves_thick_plate(provider, monkeypatch):
+    """板单元的 plate_type 必须回填，否则厚板会被 qtmodel 默认值 0 静默改成薄板。"""
+    element = SimpleNamespace(
+        index=7,
+        ele_type="PLATE",
+        node_ids=[1, 2, 3, 4],
+        beta_angle=0.0,
+        mat_id=1,
+        sec_id=2,
+        initial_type=1,
+        initial_value=0.0,
+        plate_type=1,  # 1=厚板
+    )
+    monkeypatch.setattr(provider, "get_element_data", lambda ids: [element])
+    provider.update_element(7, mat_id=5)
+
+    _, _, kwargs = provider._mdb.last("update_element")
+    assert kwargs["mat_id"] == 5
+    assert kwargs["plate_type"] == 1, "厚板必须保持，不能被默认值 0(薄板) 覆盖"
+
+
+def test_update_element_omits_plate_type_when_query_lacks_it(provider, monkeypatch):
+    """旧版查询模型不返回 plate_type 时不得凭空下发，保持既有行为。"""
+    element = SimpleNamespace(
+        index=8,
+        ele_type="BEAM",
+        node_ids=[1, 2],
+        beta_angle=0.0,
+        mat_id=1,
+        sec_id=2,
+        initial_type=1,
+        initial_value=0.0,
+    )
+    monkeypatch.setattr(provider, "get_element_data", lambda ids: [element])
+    provider.update_element(8, mat_id=5)
+
+    _, _, kwargs = provider._mdb.last("update_element")
+    assert "plate_type" not in kwargs
+
+
 def test_update_element_missing_element_raises(provider, monkeypatch):
     monkeypatch.setattr(provider, "get_element_data", lambda ids: [])
     with pytest.raises(ValueError, match="not found"):
