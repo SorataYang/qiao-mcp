@@ -270,9 +270,7 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         out. That costs one extra model query, and it fails if the element does
         not exist.
 
-        Two caveats. It handles ONE element (old_id is a single ID, not a range),
-        and it does not preserve a plate element's thin/thick setting — prefer
-        the narrow tools below for plates.
+        One caveat: it handles ONE element — old_id is a single ID, not a range.
 
         When to use vs. siblings: several properties of one element at once
         here; ONE property across MANY elements → update_element_material /
@@ -282,8 +280,8 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
         (写模型并刷新。部分更新是安全的：底层 qtmodel API 每次都整体覆盖全部字段，
         因此本工具会先读回单元当前数据补齐——代价是多一次模型查询，单元不存在时失败。
-        两点注意：一次只处理一个单元(old_id 是单个编号、不支持区间)；且不保留板单元的
-        薄板/厚板设置，板单元请优先用下面的窄工具。选型：一次改一个单元的多个属性用
+        一点注意：一次只处理一个单元(old_id 是单个编号、不支持区间)。
+        选型：一次改一个单元的多个属性用
         本工具；对大批单元改同一个属性用 update_element_material /
         update_element_section / update_element_beta（支持列表与 "1to50" 区间串）；
         只改连接用 update_element_nodes；只改编号用 update_element_id。)

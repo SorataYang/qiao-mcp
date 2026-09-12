@@ -1097,10 +1097,12 @@ class QtModelProvider(BridgeProvider):
     def update_element(self, old_id: int, **kwargs) -> None:
         self._require_available()
         # 同 update_node：qtmodel 的 update_element 整体下发全部字段，
-        # 未指定字段会被默认值覆盖（如 ele_type→1、beta_angle→0），
-        # 先读回当前单元数据补齐（plate_type 查询模型不含，无法回填）。
+        # 未指定字段会被默认值覆盖（如 ele_type→1、beta_angle→0、plate_type→0 薄板），
+        # 先读回当前单元数据补齐。plate_type 由较新的查询模型提供（wheel 侧
+        # core/model_db.py 的 Element.to_dict 含该字段）；旧版查询不返回时
+        # _field 得到 None，下面的判空会跳过它，行为与不回填时一致。
         fields = ("ele_type", "node_ids", "beta_angle", "mat_id", "sec_id",
-                  "initial_type", "initial_value")
+                  "initial_type", "initial_value", "plate_type")
         missing = [f for f in fields if f not in kwargs]
         if missing:
             elements = self.get_element_data(ids=old_id)
