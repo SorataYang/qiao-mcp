@@ -2028,19 +2028,59 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         active_loads: list[list] | None = None,
     ) -> str:
         """
-        Add a construction stage (添加施工阶段).
+        Add a construction stage and say what becomes active in it
+        (添加施工阶段并指定其激活内容).
+
+        Appends a stage after the existing ones and refreshes the model. Every
+        group named here must already exist (create_structure_group /
+        create_boundary_group / create_load_case). Stages are cumulative: what a
+        stage activates stays active in later stages unless deactivated.
+
+        LIMITATION — this tool can only ACTIVATE. Deactivation (钝化) of
+        structure, boundary and load groups, temporary loads, and the two
+        release-behaviour settings are not exposed, so falsework removal or
+        temporary-support release cannot be modelled through it. Use the escape
+        hatch for those: call_qtmodel_api(api_object="mdb",
+        method="add_construction_stage", kwargs={..., "delete_structures": [...],
+        "delete_boundaries": [...], "delete_loads": [...], "temp_loads": [...]}).
+
+        When to use vs. siblings: creating a stage here; editing one that exists
+        → update_construction_stage; deleting → remove_construction_stage;
+        collapsing all stages into a final operation stage →
+        merge_operation_stage. Construction-stage analysis must also be turned
+        on with configure_analysis(do_construction_stage=True).
+
+        (在已有阶段之后追加一个阶段并刷新模型。此处引用的每个组都须已存在。阶段是累积的：
+        某阶段激活的内容在后续阶段保持激活，除非被钝化。局限：本工具只能"激活"。结构组/
+        边界组/荷载组的钝化、临时荷载、以及两个释放行为设置都未暴露，因此支架拆除、
+        临时支座释放无法经本工具表达，需经逃生舱调 add_construction_stage 并传
+        delete_structures / delete_boundaries / delete_loads / temp_loads。
+        选型：建阶段用本工具；改已有阶段用 update_construction_stage；删用
+        remove_construction_stage；合并为运营阶段用 merge_operation_stage。
+        还须用 configure_analysis(do_construction_stage=True) 打开施工阶段分析。)
 
         Args:
             name: Stage name (施工阶段名称)
-            duration: Stage duration in days (时长，单位：天)
-            active_structures: Activated structure groups (激活结构组):
-                               [[group_name, age, install_method, weight_stage_id], ...]
-                               install_method: 1=deformation, 2=unstressed, 3=tangent, 4=tangent
-                               (安装方法: 1=变形法, 2=无应力法, 3=接线法, 4=切线法)
-            active_boundaries: Activated boundary groups (激活边界组):
-                               [[group_name, position], ...], position: 0=before, 1=after deformation
-            active_loads: Activated load groups (激活荷载组):
-                          [[group_name, time], ...], time: 0=start, 1=end
+            duration: Stage duration in days. Upstream stores this as an
+                      integer, so a fractional value is truncated
+                      (时长，单位天；上游按整数存储，小数会被截断)
+            active_structures: Structure groups to activate (激活结构组):
+                [[group_name, age, install_method, weight_stage_id], ...]
+                age: concrete age in days at activation (激活时龄期，天)
+                install_method: 1=deformation(变形法) | 2=unstressed(无应力法)
+                                3=connection(接线法) | 4=tangent(切线法)
+                weight_stage_id: which stage carries the self-weight
+                                 (计自重的施工阶段): 0=no self-weight(不计自重)
+                                 | 1=this stage(本阶段) | n=stage n(第n阶段).
+                                 Referencing a stage that does not exist yet
+                                 requires adding that stage first
+                                 (若引用尚未建立的阶段，需先建该阶段)
+            active_boundaries: Boundary groups to activate (激活边界组):
+                [[group_name, position], ...]
+                position: 0=before deformation(变形前) | 1=after deformation(变形后)
+            active_loads: Load groups to activate (激活荷载组):
+                [[group_name, time], ...]
+                time: 0=at stage start(阶段开始) | 1=at stage end(阶段结束)
         """
         try:
             kwargs: dict[str, Any] = {}
