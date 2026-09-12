@@ -241,14 +241,33 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def assign_tendon_elements(ids: int | list[int] | str) -> str:
         """
-        Assign elements to a tendon (为钢束分配单元).
+        Declare which elements contain tendons, i.e. are prestressed-concrete
+        members (标记预应力单元：声明哪些单元内有钢束穿过).
+
+        Despite the name, this does NOT bind elements to one particular tendon:
+        the underlying qtmodel API takes element IDs only, no tendon name. It is
+        a model-wide declaration so tendon area and prestress losses are
+        accounted for in those elements.
+
+        Ordering: create tendons (create_tendon_2d / add_tendon_3d) → call this
+        ONCE with the union of every element any tendon passes through →
+        apply_prestress. Writes to the model and refreshes it; not a query.
+
+        (不把单元绑定到某根钢束——底层 API 只收单元号、不收钢束名，属全模型级声明，
+        使这些单元计入钢束面积与预应力损失。顺序：先建钢束 → 一次性传入所有钢束
+        经过的单元并集 → 再施加预应力。写模型并刷新，非查询。)
 
         Args:
-            ids: Element IDs (单元编号)
+            ids: IDs of the elements that tendons pass through — int, list, or
+                 "XtoYbyN" range string, e.g. "1to10 15to62 236to293"
+                 (有钢束穿过的单元编号；支持整数、列表或 "XtoYbyN" 范围字符串)
         """
         try:
             provider.add_tendon_elements(ids=ids)
-            return f"Successfully assigned elements {ids} to tendon (成功为钢束分配单元)"
+            return (
+                f"Elements {ids} marked as containing tendons "
+                f"(已将单元 {ids} 标记为预应力单元)"
+            )
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
@@ -257,11 +276,36 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def get_tendon_loss_results(name: str, stage_id: int = 1) -> str:
         """
-        Get tendon prestress loss results (获取预应力损失结果).
+        Get prestress-loss distribution along one tendon at one construction
+        stage (获取一根钢束在指定施工阶段的应力/损失分布).
+
+        Read-only: it does not change the model. Returns a list of points along
+        the tendon / its host beam, each with tendon_name, beam_id, position,
+        effective_s (effective stress), instance_s (instantaneous stress),
+        except_s (target / control stress) and ratio (effective-stress ratio).
+        Stress units follow the current project unit system. An empty list
+        means the name did not match or that stage has no results.
+
+        Preconditions: the tendon must exist, the named stage must have
+        activated it, and a construction-stage analysis must already have been
+        run (run_analysis after configure_analysis(do_construction_stage=True)).
+
+        When to use vs. siblings: loss distribution at a stage here; geometry
+        and a summary of losses → get_tendon_info; coordinates along the
+        tendon → get_tendon_position_result; unstressed length →
+        get_tendon_length_result.
+
+        (只读，不改模型。返回沿钢束/所属梁单元分点的列表，每项含 tendon_name、
+        beam_id、position、effective_s(有效应力)、instance_s(瞬时应力)、
+        except_s(期望/控制应力)、ratio(有效应力比)。应力量纲跟随当前工程单位制。
+        空列表表示未匹配到钢束或该阶段无结果。前置：钢束须存在、该阶段须已激活
+        此钢束、且已跑过施工阶段分析。选型：某阶段的损失分布用本工具；几何与损失
+        摘要用 get_tendon_info；沿程坐标用 get_tendon_position_result；无应力长度
+        用 get_tendon_length_result。)
 
         Args:
-            name: Tendon name (钢束名)
-            stage_id: Construction stage ID (施工阶段编号)
+            name: Tendon name, must match the model exactly (钢束名，须与模型中完全一致)
+            stage_id: Construction stage number, starting from 1 (施工阶段编号，从 1 开始)
         """
         try:
             data = provider.get_tendon_loss_results(name=name, stage_id=stage_id)

@@ -35,7 +35,7 @@ def _provider(coords: dict[int, tuple[float, float, float]] | None = None):
             {"node_id": nid, "x": x, "y": y, "z": z}
             for nid, (x, y, z) in coords.items()
         ]
-        p._odb.get_node_data = lambda *a, **k: rows
+        p._mdb.get_node_data = lambda *args, **kwargs: rows
     return p
 
 

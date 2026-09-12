@@ -22,6 +22,11 @@ from qiao_mcp.tools.envelope import ToolError, ToolInputError
 # 输出保护：单次返回的最大条数上限
 MAX_LIMIT = 500
 
+# qtmodel 2.8 新增的轻量概览接口；2.6.3 没有对应方法，provider 会返回 None
+_OVERVIEW_KINDS = frozenset(
+    {"summary", "analysis_context", "project_metadata", "check_context", "structure_group_summaries"}
+)
+
 
 def _fmt(obj: Any) -> str:
     """Pretty-print any object as compact JSON for MCP responses."""
@@ -91,6 +96,10 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 ── 施工阶段 Stages ──
                 "stages" (施工阶段名), "stage_elements" (阶段内单元, 需 stage_id),
                 "stage_nodes" (阶段内节点, 需 stage_id), "stage_groups" (阶段内组, 需 stage_id)
+                ── 概览 Overview (qtmodel 2.8+, 单次往返的轻量摘要; 旧版本返回无数据) ──
+                "summary" (模型状态与实体数量), "analysis_context" (分析设置与已求解阶段),
+                "project_metadata" (工程名称/单位/人员/日期), "check_context" (设计活载与检算上下文),
+                "structure_group_summaries" (各结构组的节点/单元数量, 不展开成员)
             ids: Entity IDs for nodes/elements, int/list/range string "1to10" (编号)
             name: Group name, for group_elements/group_nodes (结构组名)
             sec_id: Section ID, for section_detail/section_shape/section_property (截面号)
@@ -180,11 +189,20 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 if stage_id is None:
                     raise ToolInputError("stage_groups requires stage_id (需要提供 stage_id)")
                 data = provider.get_groups_of_stage(stage_id)
+            elif kind in _OVERVIEW_KINDS:
+                data = provider.get_model_overview(kind)
             else:
                 raise ToolInputError(f"Unknown kind '{kind}'. See tool description for the full list "
                     f"(未知查询类型，请查阅工具说明)")
 
             if data is None or data == [] or data == {}:
+                if kind in _OVERVIEW_KINDS:
+                    return (
+                        f"No data for kind='{kind}' (无数据). These overview kinds need "
+                        "qtmodel 2.8+ and a QiaoTong build that serves them; on older "
+                        "versions fall back to nodes/elements/… kinds "
+                        "(概览接口需 qtmodel 2.8+ 与对应桥通版本，旧版本请改用具体实体类型)."
+                    )
                 return f"No data for kind='{kind}' (无数据). Model may be empty or analysis not run."
             return f"{kind}:\n{_paginate(data, limit, offset)}"
         except ToolError:
@@ -219,7 +237,9 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 "element_weight" (查单元重量, 需 ids),
                 "span_supports" (跨径支承信息, 需 span_info_name),
                 "span_elements" (跨径单元信息, 需 span_info_name)
-            x, y, z: Coordinates for point search (坐标)
+            x: X coordinate, used by the point-search modes (点查找坐标X)
+            y: Y coordinate, used by the point-search modes (点查找坐标Y)
+            z: Z coordinate, used by the point-search modes (点查找坐标Z)
             tolerance: Search tolerance (容差)
             name: Material name (材料名)
             index: Section ID (截面号)
@@ -277,7 +297,9 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Compute section properties from raw geometry, without creating a section
         (按几何直接计算截面特性，不创建截面).
 
-        Provide EXACTLY ONE of:
+        Provide EXACTLY ONE of loop_segments or sec_lines (二者恰选其一).
+
+        Args:
             loop_segments: Polygon loops [{"main": [[x,y],...], "sub": ...}, ...]
                            (多边形环定义)
             sec_lines: Line-width segments [[x1,y1,x2,y2,width], ...] (线宽定义)

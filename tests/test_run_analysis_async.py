@@ -5,7 +5,7 @@ import threading
 import time
 
 import pytest
-from conftest import FakeDb, tool_text
+from conftest import FakeDb, ready_model_state, tool_text
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.tools import register_modeling_tools
@@ -31,6 +31,7 @@ def _provider_with_solve(solve_fn):
     p._mdb = FakeDb()
     p._odb = FakeDb()
     p._cdb = FakeDb()
+    p.get_model_state = ready_model_state
     p._mdb.do_solve = solve_fn
     return p
 
@@ -41,20 +42,23 @@ def _run_analysis_fn(provider):
     return {t.name: t.fn for t in mcp._tool_manager.list_tools()}["run_analysis"]
 
 
-def test_solve_runs_in_worker_thread_not_event_loop():
+@pytest.mark.parametrize("show_view", [False, True])
+def test_solve_runs_in_worker_thread_not_event_loop(show_view):
     solve_thread = {}
 
     def solve(**kwargs):
         solve_thread["name"] = threading.current_thread().name
+        solve_thread["show_view"] = kwargs.get("show_view", False)
         time.sleep(0.05)
 
     provider = _provider_with_solve(solve)
     fn = _run_analysis_fn(provider)
-    result = asyncio.run(fn(ctx=RecordingContext()))
+    result = asyncio.run(fn(ctx=RecordingContext(), show_view=show_view))
     assert tool_text(result).startswith("Analysis successfully completed")
     assert solve_thread["name"] != threading.current_thread().name, (
         "求解必须在工作线程执行，不得阻塞事件循环"
     )
+    assert solve_thread["show_view"] is show_view
 
 
 def test_read_timeout_forwarded_to_solve():

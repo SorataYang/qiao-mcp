@@ -79,7 +79,9 @@ def test_simple_beam_solve_and_query(skip_if_unavailable):
     qtmodel.mdb.update_model()
 
     # 7. 求解
-    result = qtmodel.mdb.do_solve(wait=True, read_timeout=120, max_wait=300)
+    # sync=False 才会进入轮询路径，max_wait 才是真正的时限；2.6.3 起默认 sync=True
+    # 会让 C# 在 HTTP 请求内阻塞并忽略 max_wait（与 provider.run_analysis 同一处理）
+    result = qtmodel.mdb.do_solve(wait=True, sync=False, read_timeout=120, max_wait=300)
     assert result["ok"], f"求解失败: {result.get('message')}"
     assert result["state"] == "succeeded"
 

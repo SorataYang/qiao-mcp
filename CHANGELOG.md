@@ -5,6 +5,93 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Optional `t_out` on `add_thickness` and `show_view` on `run_analysis`.**
+  Separate in-plane/out-of-plane thickness and the QiaoTong solver progress
+  window are exposed without changing existing defaults. Real API signatures
+  are checked before opt-in calls, so unsupported builds fail before any write
+  or solve rather than silently ignoring the option. The window does not alter
+  background execution, polling or the total solve budget.
+- **Offline coverage and usage guidance for fifteen new MDB management APIs:**
+  twelve analysis-setting resets plus `copy_thicknesses`,
+  `arrange_thickness_ids` and `remove_thicknesses`, using the existing gateway.
+- **`get_model_status` tool and a model-state guard on every tool.** qtmodel 2.8
+  exposes `QtServer.get_model_state()`, a snapshot QiaoTong owns: whether a model
+  is open, whether the UI is in preprocessing / solving / postprocessing, whether
+  the displayed stage is the base stage, and a `capabilities` map. Each tool is
+  now classified (`model_read`, `model_write`, `stage_write`, `result_read`,
+  `check_*`, `analysis_run`, `view`, `lifecycle`) and refused up-front when the
+  bridge says that operation is not allowed, instead of failing half-way through
+  a write.
+  - Two "state unavailable" cases are deliberately handled differently:
+    `guard_unavailable` (the installed qtmodel has no `get_model_state`) passes
+    through, preserving 0.3.1 behaviour; `state_unknown` (qtmodel has the API but
+    QiaoTong did not send `model_state`, i.e. the software is too old) fails
+    closed, because with the 2.8.2 handshake gone this is the only signal that
+    the software predates the feature.
+- **qtmodel 2.8 overview kinds in `get_model_data`** — `summary`,
+  `analysis_context`, `project_metadata`, `check_context`,
+  `structure_group_summaries`. These are the single-round-trip, agent-oriented
+  endpoints upstream added in 2.8 (`odb_model_overview`). Payloads are passed
+  through unmapped (their schema is defined server-side); on qtmodel 2.6.3 they
+  return an explicit "requires 2.8+" message rather than an error.
+
+### Changed
+
+- **Sync qtmodel source through `2316654` (2026-09-08), including the query
+  migration (`ac4dbad`, `bc1ee99`, `6821413`).** Model queries now prefer `mdb`, with capability-based fallback
+  to legacy `odb` builds. Existing-model section geometry maps to
+  `mdb.get_model_section_shape`, not the local `get_section_shape` builder.
+  Analysis results and visualization remain on `odb`. MDB `get_`, `query_` and
+  `calc_` gateway calls require read permission and do not refresh the model;
+  state-changing calls such as `calculate_section_property` retain the write guard.
+- **Keep the published qtmodel dependency and lock unchanged.** Upstream still
+  labels these commits 2.8.2. Source revision `2316654` restores the helper
+  deleted by `6821413`; offline compatibility checks now cover this latest
+  source and the PyPI 2.8.2 build. The published wheel does not yet include the
+  new options or management APIs; support is detected by capability, not version.
+- **Dependency bound widened to `qtmodel>=2.6.3,<2.9`.** qtmodel 2.8.2 removed
+  the strict version handshake (`get_connection_status` now always reports
+  `compatible=True` once connected), so a qtmodel minor bump no longer forces a
+  matching QiaoTong upgrade. `version_mismatch` can therefore only appear with
+  qtmodel 2.6/2.7; docs and the `check_qiaotong_connection` description say so.
+- **Compatibility table rewritten** to describe the pre- and post-2.8.2 matching
+  rules, and to note that two builds of "2.8.2" exist: the PyPI wheel
+  (2026-08-20, built from upstream `340e94e`) lacks `get_model_state`, while the
+  upstream source at the same version (merged in `5f4f4eb`) has it. Qiao-MCP
+  detects the capability, not the version.
+
+### Fixed
+
+- **Correct the plate-thickness type description:** `thick_type=0` is an ordinary
+  plate and `1` is a ribbed plate; unequal thickness is controlled by `t_out`.
+- **Section-property recalculation retains model-write protection.** Both the
+  dedicated tool and API gateway now require `modify_model`; the gateway no
+  longer treats every `calculate_*` MDB method as a read-only query.
+- **Typed query records stay structured.** Recursively normalize `to_dict()` /
+  `Mapping` objects, including nested records and section properties, before
+  MCP serialization. Materials, loads, boundaries, tendons, overviews, resources
+  and gateway responses no longer become Python object representations.
+  Public-attribute fallback remains for older qtmodel classes.
+- **Import diagnostics distinguish an absent qtmodel package from a broken
+  installation.** Missing internal modules or dependencies are reported with
+  their original exception instead of misleadingly asking to install qtmodel.
+- **`run_analysis` ignored its `read_timeout` budget on qtmodel 2.6.3+.** Since
+  2.6.3 `mdb.do_solve` defaults to `sync=True`, under which QiaoTong blocks
+  inside the HTTP request and `wait` / `max_wait` / `poll_interval` are never
+  read (`if wait and not sync`). The provider passed `wait=True, max_wait=3600`
+  believing it was polling; the effective limit was the request's default
+  600-second read timeout, after which the tool reported a timeout while the
+  solve carried on in the background. The provider now passes `sync=False`,
+  restoring the background-task + poll path so `read_timeout` is the real total
+  budget — the path upstream itself recommends for large models. Guarded by a
+  new semantics test.
+
+---
+
 ## [0.3.1] - 2026-08-15
 
 ### Added
@@ -99,6 +186,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
+[Unreleased]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.1...develop
+[0.3.1]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/SorataYang/qiao-mcp/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/SorataYang/qiao-mcp/releases/tag/v0.2.0

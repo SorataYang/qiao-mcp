@@ -60,6 +60,7 @@ def test_required_param_guards(fake_provider):
     for kind in ("section_detail", "group_elements", "stage_elements"):
         with pytest.raises(ToolInputError):
             fns["get_model_data"](kind=kind)
+    assert fake_provider._mdb.calls == [], "缺必填参数时不得发起查询"
     assert fake_provider._odb.calls == [], "缺必填参数时不得发起查询"
 
 
@@ -99,3 +100,42 @@ def test_special_results_modal_dispatch(fake_provider, monkeypatch):
     fns = _fns(fake_provider)
     text = tool_text(fns["get_special_results"](kind="vibration_modal", mode=2))
     assert "1.23" in text
+
+
+# ── qtmodel 2.8 概览接口（mdb_model_overview / get_structure_group_summaries）──
+
+
+def test_overview_kinds_pass_through_provider(fake_provider, monkeypatch):
+    """概览 kind 原样透传：返回结构由桥通 C# 端定义，工具层不做字段映射。"""
+    seen = []
+    monkeypatch.setattr(
+        fake_provider, "get_model_overview",
+        lambda kind: seen.append(kind) or {"node_count": 3, "phase": "preprocessing"},
+    )
+    fns = _fns(fake_provider)
+    text = tool_text(fns["get_model_data"](kind="summary"))
+    assert seen == ["summary"]
+    assert "node_count" in text and "preprocessing" in text
+
+
+def test_overview_kind_degrades_on_old_qtmodel(fake_provider, monkeypatch):
+    """2.6.3 没有概览方法时 provider 返回 None，工具给出版本提示而不是抛错。"""
+    monkeypatch.setattr(fake_provider, "get_model_overview", lambda kind: None)
+    fns = _fns(fake_provider)
+    text = tool_text(fns["get_model_data"](kind="analysis_context"))
+    assert "2.8" in text
+
+
+def test_provider_overview_maps_kind_to_qtmodel_method(fake_provider):
+    """provider 把每个 kind 落到新版 mdb 查询；未知 kind 拒绝。"""
+    for kind, method in (
+        ("summary", "get_model_summary"),
+        ("analysis_context", "get_analysis_context"),
+        ("project_metadata", "get_project_metadata"),
+        ("check_context", "get_code_check_context"),
+        ("structure_group_summaries", "get_structure_group_summaries"),
+    ):
+        fake_provider.get_model_overview(kind)
+        assert fake_provider._mdb.last(method) is not None
+    with pytest.raises(ValueError):
+        fake_provider.get_model_overview("bogus")

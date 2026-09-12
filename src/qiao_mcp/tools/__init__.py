@@ -517,15 +517,43 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         index: int = -1,
     ) -> str:
         """
-        Add time-dependent material parameters (添加时间依存材料参数).
+        Define a named creep-and-shrinkage material, either by a design code
+        or by custom functions (添加收缩徐变材料).
+
+        Writes to the model and refreshes it. This is a named DEFINITION that
+        other materials then reference; it applies no load by itself. Creep
+        analysis must also be turned on with configure_analysis(do_creep=True).
+
+        When using custom functions, create them first with add_creep_function
+        and add_shrink_function, then pass their NAMES here. creep_data is
+        NOT a time-value table — that format belongs to add_creep_function.
+
+        (写模型并刷新。这是一个命名定义，由其它材料引用，自身不施加荷载。徐变分析
+        还需用 configure_analysis(do_creep=True) 打开。自定义函数须先用
+        add_creep_function / add_shrink_function 建好，再把"函数名"传进来。
+        creep_data 不是时间-数值表——那种格式属于 add_creep_function。)
 
         Args:
-            name: Parameter name (参数名称)
-            code_index: Code index (规范号)
-            time_parameter: Code specific parameters (规范关联的材料参数)
-            creep_data: Custom creep data [[time, value], ...] (自定义徐变数据)
-            shrink_data: Custom shrinkage data string (自定义收缩数据)
-            index: ID index, -1 for auto (编号，-1自动生成)
+            name: Creep-and-shrinkage material name (收缩徐变材料名)
+            code_index: Design code used when no custom functions are given
+                        (未给自定义函数时采用的规范):
+                        1=JTG 3362-2018(公规，默认) | 2=JTG D62-2004(公规)
+                        3=JTJ 023-85(公规) | 4=TB 10092-2017(铁规)
+                        5=GB 50157-2013(地铁) | 6=ageing theory(老化理论)
+                        7=BS 5400-4-1990 | 8=AASHTO LRFD 2017
+                        1000=AASHTO LRFD 2017 (same as 8; listed by upstream)
+            time_parameter: Code-specific extra parameters; omit to keep the
+                            code's defaults
+                            (规范关联的额外参数列表，省略则用规范默认值)
+            creep_data: Custom creep functions as [[function_name, age], ...],
+                        where function_name is from add_creep_function and age
+                        is the loading age in days. NOT [[time, value]].
+                        (自定义徐变：[[函数名, 加载龄期(天)], ...]；函数名来自
+                        add_creep_function。不是 [[时间, 数值]]。)
+            shrink_data: Name of a shrinkage function from add_shrink_function;
+                         empty string means none
+                         (收缩函数名，来自 add_shrink_function；空字符串表示不用)
+            index: Material ID, -1 to auto-assign (材料编号，-1 自动生成)
         """
         try:
             kwargs: dict[str, Any] = {
@@ -722,11 +750,35 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         sec_lines: list[list[float]]
     ) -> str:
         """
-        Create a line-width cross-section (创建线宽截面).
+        Create a section from thin-walled centreline segments (创建线宽截面).
+
+        Writes to the model. The shape is described as a skeleton: each segment
+        is a centreline with a wall thickness, which suits thin-walled steel
+        box and I-shapes. Segments should connect end-to-end to form a closed
+        or open wall path — they are not independent plates.
+
+        Section properties are not computed on creation. Call
+        calculate_section_property afterwards so Area / Iy / Iz / J are current.
+
+        When to use vs. siblings: thin-walled centreline shapes here; a solid
+        outline given as polygon loops → create_polygon_section; properties you
+        already know → create_section_from_properties; only inspecting the
+        properties of a shape without adding a section → calc_section_property.
+
+        (写模型。用"骨架"描述截面：每段是一条中心线加壁厚，适合薄壁钢箱、工字形等。
+        各段应首尾相连构成开口或闭口壁路径，不是彼此独立的板。创建时不计算截面特性，
+        之后需调 calculate_section_property 使面积/惯性矩等为最新。选型：薄壁中心线
+        形状用本工具；实体轮廓按多边形环给出用 create_polygon_section；已知特性值直接
+        建用 create_section_from_properties；只想算某形状的特性而不建截面用
+        calc_section_property。)
 
         Args:
             name: Section name (截面名称)
-            sec_lines: List of line segments with thickness. Format: [[y1, z1, y2, z2, thickness], ...]
+            sec_lines: Centreline segments with wall thickness, as
+                       [[y1, z1, y2, z2, thickness], ...] — the two endpoints of
+                       each segment in section coordinates, then its thickness
+                       (中心线段与壁厚，[[y1, z1, y2, z2, 壁厚], ...]，前四个为该段
+                       在截面坐标系中的两个端点，最后为壁厚)
         """
         try:
             provider.add_section(
@@ -821,17 +873,46 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         dis_h: float = 0,
     ) -> str:
         """
-        Add a tapered section group (添加变截面组).
+        Group elements so their sections vary continuously along the group
+        (添加变截面组，使组内单元截面沿纵向连续变化).
+
+        Writes to the model and refreshes it. The elements must already exist
+        and carry tapered sections (create_tapered_section); this tool defines
+        the LAW by which the section interpolates across them, not the sections
+        themselves.
+
+        factor_w / factor_h are variation ORDERS (exponents), not scale factors:
+        1.0 gives a linear taper, any other value gives a power-law taper. They
+        never multiply the section dimensions.
+
+        Only the simple power-law form is exposed here. Parametric groups —
+        per-parameter laws keyed by the UI parameter name, supporting nonlinear
+        / piecewise-custom / circular-arc variation — need the escape hatch:
+        call_qtmodel_api(api_object="mdb", method="add_tapper_section_group",
+                         kwargs={..., "parameter_info": {"梁高(H)": "1,2,I,0"}}).
+
+        (写模型并刷新。单元须已存在且已赋变截面(create_tapered_section)；本工具定义的是
+        截面沿组内插值的"变化规律"，不是截面本身。factor_w / factor_h 是变化阶数(指数)
+        而非缩放系数：1.0 为线性变化，其它值为幂次非线性变化，它们不会去乘截面尺寸。
+        本工具只暴露简单的幂次形式；参数化变截面组（按 UI 参数名分别指定规律，支持
+        非线性/自定义分段/圆弧三种）需经逃生舱传 parameter_info。)
 
         Args:
             name: Group name (变截面组名称)
-            ids: Element IDs in the group (变截面组内的单元编号)
-            factor_w: Width variation factor (宽度变化系数)
-            factor_h: Height variation factor (高度变化系数)
-            ref_w: Width reference point (宽度参考点: 0=i, 1=j)
-            ref_h: Height reference point (高度参考点: 0=i, 1=j)
-            dis_w: Width variation distance (宽度变化距离)
-            dis_h: Height variation distance (高度变化距离)
+            ids: Element IDs in the group — list or "XtoYbyN" range string
+                 (变截面组内的单元编号，支持列表或 "XtoYbyN" 范围字符串)
+            factor_w: Variation ORDER in the width direction; 1.0=linear,
+                      other=nonlinear power law
+                      (宽度方向变化阶数；1.0 为线性，其它为幂次非线性)
+            factor_h: Variation ORDER in the height direction; 1.0=linear,
+                      other=nonlinear power law
+                      (高度方向变化阶数；1.0 为线性，其它为幂次非线性)
+            ref_w: Which end the width variation is measured from
+                   (宽度方向参考点): 0=I-end(i端) | 1=J-end(j端)
+            ref_h: Which end the height variation is measured from
+                   (高度方向参考点): 0=I-end(i端) | 1=J-end(j端)
+            dis_w: Distance along the width direction (宽度方向距离)
+            dis_h: Distance along the height direction (高度方向距离)
         """
         try:
             kwargs: dict[str, Any] = {
@@ -858,19 +939,32 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         t: float = 0.1,
         thick_type: int = 0,
         index: int = -1,
+        t_out: float | None = None,
     ) -> str:
         """
         Add a plate thickness property (添加板厚度).
 
         Args:
             name: Thickness name (厚度名称)
-            t: Thickness in meters (板厚 m)
-            thick_type: Thickness type (厚度类型): 0=平面内及平面外等厚, 1=平面内及平面外不等厚
+            t: In-plane/base thickness in meters (面内/基板厚度 m)
+            thick_type: Thickness type (厚度类型): 0=普通板, 1=加劲肋板
             index: ID index, -1 for auto (编号，-1自动生成)
+            t_out: Out-of-plane thickness in meters; omitted means the same as t.
+                   Requires a qtmodel build exposing t_out; older builds reject
+                   an explicit value before creating anything.
+                   (面外厚度 m；省略时与 t 相同，旧版不支持时明确报错)
+
+        For rib geometry and other advanced properties, discover add_thickness
+        with list_qtmodel_api and use call_qtmodel_api.
+        （加劲肋尺寸等完整参数请先检索签名，再通过 API 网关调用。）
         """
         try:
-            provider.add_thickness(name=name, t=t, thick_type=thick_type, index=index)
-            return f"Successfully added thickness '{name}' (成功添加板厚度)"
+            kwargs: dict[str, Any] = {"name": name, "t": t, "thick_type": thick_type, "index": index}
+            if t_out is not None:
+                kwargs["t_out"] = t_out
+            provider.add_thickness(**kwargs)
+            detail = f" (t={t} m, t_out={t_out} m)" if t_out is not None else ""
+            return f"Successfully added thickness '{name}' (成功添加板厚度){detail}"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
@@ -886,15 +980,44 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Add effective width to beam elements (添加截面有效宽度).
+        Reduce beam bending stiffness to model effective flange width
+        (添加有效宽度系数，用折减刚度体现翼缘有效宽度).
+
+        Writes to the model and refreshes it. Despite the name it applies no
+        width: it scales the section's Iy at each element end and can shift the
+        centroid, which is how a reduced effective flange width is represented.
+
+        This is a BOUNDARY-GROUP entry, not a section property. It therefore
+        follows the boundary group's activation in construction-stage analysis —
+        the group must exist (create_boundary_group) and be activated by a stage
+        (add_construction_stage's active_boundaries) to take effect.
+
+        Only the Iy/centroid-z pair is exposed. Upstream also accepts z-direction
+        factors, y-direction centroid shifts and axial factors, but its own
+        docstring labels all six identically, so their meaning is unverified —
+        reach them via call_qtmodel_api(api_object="mdb",
+        method="add_effective_width", ...) only after confirming against your
+        QiaoTong build.
+
+        (写模型并刷新。名字虽叫有效宽度，实际不施加任何宽度：它按单元两端折减截面 Iy、
+        并可平移形心，以此体现翼缘有效宽度的折减。本项属于边界组、不是截面属性，因此在
+        施工阶段分析中随边界组激活生效——边界组须已建立，且被某阶段的 active_boundaries
+        激活。本工具只暴露 Iy 与形心 z 这一对；上游另有 z 向系数、y 向形心平移与轴向系数，
+        但其 docstring 把这六个参数的说明写成了同一句，含义无法确证，需先对照所用桥通版本
+        核实后再经逃生舱调用。)
 
         Args:
-            element_ids: Element ID(s) (单元编号)
-            factor_i: I-end factor (I端系数)
-            factor_j: J-end factor (J端系数)
-            dz_i: I-end Dz offset (I端 Dz 偏移)
-            dz_j: J-end Dz offset (J端 Dz 偏移)
-            group_name: Boundary group name (边界组名)
+            element_ids: Element ID(s) — int, list, or "XtoYbyN" range string
+                         (单元编号，支持整数、列表或 "XtoYbyN" 范围字符串)
+            factor_i: Reduction factor applied to Iy at the I-end; a value below
+                      1.0 softens the element in bending
+                      (I端截面 Iy 折减系数；小于 1.0 即削弱抗弯刚度)
+            factor_j: Reduction factor applied to Iy at the J-end
+                      (J端截面 Iy 折减系数)
+            dz_i: Centroid shift in z at the I-end (I端截面形心 z 向变换量)
+            dz_j: Centroid shift in z at the J-end (J端截面形心 z 向变换量)
+            group_name: Boundary group name, empty for the default boundary
+                        group (边界组名，空则用默认边界组)
         """
         try:
             kwargs: dict[str, Any] = {
@@ -1121,18 +1244,45 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply forces/moments at nodes (施加节点荷载).
+        Apply a concentrated force and/or moment at nodes (施加节点集中荷载).
+
+        Adds one nodal load to load case case_name for every listed node and
+        refreshes the model; create the load case first with create_load_case.
+        All six components act along the GLOBAL axes, so a downward load is a
+        NEGATIVE fz (real models use e.g. fz=-14550000 for 14550 kN down).
+
+        Each call adds a new load rather than replacing an earlier one, so
+        calling twice on the same node in the same case superposes. There is no
+        tool to edit or delete one afterwards — use the escape hatch
+        call_qtmodel_api(api_object="mdb", method="update_nodal_force", ...),
+        which needs the load's index.
+
+        When to use vs. siblings: point loads on nodes here; loads spread along
+        a beam → apply_beam_distributed_load; a prescribed settlement instead of
+        a force → add_support_settlement; structural self-weight → set_gravity
+        plus a load case named 自重.
+
+        (向工况 case_name 的每个指定节点添加集中荷载并刷新模型；需先用
+        create_load_case 建好工况。六个分量都沿整体坐标轴，因此向下的荷载 fz 取负
+        （真实模型如 fz=-14550000 表示向下 14550 kN）。每次调用是新增而非替换，同一节点
+        同一工况调两次会叠加；事后没有修改/删除的专用工具，需经逃生舱调 update_nodal_force
+        并给出荷载编号。选型：节点集中力用本工具；沿梁分布用 apply_beam_distributed_load；
+        给定沉降而非力用 add_support_settlement；结构自重用 set_gravity 配合名为
+        自重的工况。)
 
         Args:
-            node_id: Node ID(s) (节点编号)
-            case_name: Load case name (荷载工况名)
-            fx: Force in X direction (X方向力)
-            fy: Force in Y direction (Y方向力)
-            fz: Force in Z direction (Z方向力)
-            mx: Moment about X axis (绕X轴弯矩)
-            my: Moment about Y axis (绕Y轴弯矩)
-            mz: Moment about Z axis (绕Z轴弯矩)
-            group_name: Load group name (荷载组名)
+            node_id: Node ID(s) — int, list, or "XtoYbyN" range string
+                     (节点编号，支持整数、列表或 "XtoYbyN" 范围字符串)
+            case_name: Load case name, must already exist (荷载工况名，须已存在)
+            fx: Force along global X in N (整体X向力，单位N)
+            fy: Force along global Y in N (整体Y向力，单位N)
+            fz: Force along global Z in N; negative is downward
+                (整体Z向力，单位N；向下为负)
+            mx: Moment about global X in N·m (绕整体X轴弯矩，单位N·m)
+            my: Moment about global Y in N·m (绕整体Y轴弯矩，单位N·m)
+            mz: Moment about global Z in N·m (绕整体Z轴弯矩，单位N·m)
+            group_name: Load group name, empty for the default group
+                        (荷载组名，空则用默认荷载组)
         """
         try:
             load_info = [fx, fy, fz, mx, my, mz]
@@ -1197,7 +1347,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply system temperature load (体系温度/整体升降温荷载).
+        Apply a uniform whole-element temperature change (体系温度/整体升降温荷载).
+
+        Adds one temperature load to load case case_name for the given
+        element(s) and refreshes the model; create the load case first. The
+        whole section changes by the same amount (no gradient).
+        (向工况 case_name 的指定单元添加温度荷载并刷新模型；需先建好工况。整截面等量升降温、无梯度。)
+
+        When to use vs. siblings: uniform ΔT here; linear gradient →
+        add_gradient_temperature; code-based section temperature →
+        add_beam_section_temperature; arbitrary profile → add_custom_temperature.
+        (选型：均匀升降温用本工具；线性梯度用 add_gradient_temperature；规范梁截面温度用 add_beam_section_temperature；任意分布用 add_custom_temperature。)
 
         Args:
             element_id: Element ID(s) (单元编号)
@@ -1228,7 +1388,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply gradient temperature load (梯度温度荷载).
+        Apply a linear temperature gradient through the section (梯度温度荷载).
+
+        Adds a gradient temperature load to load case case_name for the given
+        element(s) and refreshes the model; create the load case first.
+        Temperature varies linearly through the section depth.
+        (向工况 case_name 的指定单元添加梯度温度并刷新模型；需先建好工况。温度沿截面高度线性变化。)
+
+        When to use vs. siblings: linear gradient here; uniform ΔT →
+        add_system_temperature; code-based section temperature →
+        add_beam_section_temperature; arbitrary profile → add_custom_temperature.
+        (选型：线性梯度用本工具；均匀升降温用 add_system_temperature；规范梁截面温度用 add_beam_section_temperature；任意分布用 add_custom_temperature。)
 
         Args:
             element_id: Element ID(s) (单元编号，支持范围字符串)
@@ -1264,7 +1434,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply custom temperature load (自定义温度荷载).
+        Apply an arbitrary temperature profile over the section (自定义温度荷载).
+
+        Adds a custom temperature load to load case case_name for the given
+        element(s) and refreshes the model; create the load case first. The
+        profile is defined by [distance, temp_diff] points along the section.
+        (向工况 case_name 的指定单元添加自定义温度并刷新模型；需先建好工况。分布由 [距离, 温差] 数据点沿截面给出。)
+
+        When to use vs. siblings: arbitrary/measured profile here; uniform ΔT →
+        add_system_temperature; linear gradient → add_gradient_temperature;
+        code-based section temperature → add_beam_section_temperature.
+        (选型：任意/实测分布用本工具；均匀用 add_system_temperature；线性梯度用 add_gradient_temperature；规范梁截面温度用 add_beam_section_temperature。)
 
         Args:
             element_id: Element ID(s) (单元编号)
@@ -1300,7 +1480,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply beam section temperature load (梁截面温度荷载).
+        Apply code-based beam section temperatures (梁截面温度荷载，按规范).
+
+        Adds a code-defined section temperature load to load case case_name
+        for the given element(s) and refreshes the model; create the load case
+        first. Uses standard design-code parameters (t1–t4 at code depths).
+        (向工况 case_name 的指定单元添加规范梁截面温度并刷新模型；需先建好工况。按规范用 t1–t4 等标准参数。)
+
+        When to use vs. siblings: design-code section temperatures here;
+        uniform ΔT → add_system_temperature; linear gradient →
+        add_gradient_temperature; arbitrary profile → add_custom_temperature.
+        (选型：规范梁截面温度用本工具；均匀用 add_system_temperature；线性梯度用 add_gradient_temperature；任意分布用 add_custom_temperature。)
 
         Args:
             element_id: Element ID(s) (单元编号)
@@ -1339,16 +1529,36 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply initial tension load (初拉力荷载).
+        Apply an initial tension to cable/truss elements (初始拉力).
+
+        Adds one initial-tension load to load case case_name for the given
+        element(s) and refreshes the model; create the load case first with
+        create_load_case. Typically used to set cable forces in cable-stayed
+        and suspension models.
+
+        When to use vs. siblings: prescribe a FORCE here; prescribe an
+        unstressed cable LENGTH instead → add_cable_length_load (equivalently,
+        set application_type=3 to convert this force into a length tensioning).
+
+        (向工况 case_name 的指定单元添加初始拉力并刷新模型；需先用 create_load_case
+        建好工况。常用于斜拉桥/悬索桥索力。选型：给定"力"用本工具，给定"无应力索长"
+        用 add_cable_length_load，或将 application_type 设为 3 由本工具转为索长张拉。)
 
         Args:
-            element_id: Element ID(s) (单元编号)
-            case_name: Load case name (荷载工况名)
-            tension: Tension force (拉力值)
-            tension_type: Type of tension (初拉力类型)
-            application_type: Application type (施加方式)
-            stiffness: Stiffness reduction (刚度参数)
-            group_name: Load group name (荷载组名)
+            element_id: Element ID(s) — int, list, or "XtoYbyN" range string
+                        (单元编号，支持整数、列表或 "XtoYbyN" 范围字符串)
+            case_name: Load case name, must already exist (荷载工况名，须已存在)
+            tension: Initial tension force in N (初始拉力，单位N)
+            tension_type: How `tension` is interpreted (张拉类型):
+                          0=increment(增量，叠加到现有索力)
+                          1=total(全量，直接指定最终索力，默认)
+            application_type: How the tension is applied (计算方式):
+                              1=external force(体外力，默认)
+                              2=internal force(体内力)
+                              3=convert to cable-length tensioning(转为索长张拉)
+            stiffness: Cable stiffness participation factor (索刚度参与系数)
+            group_name: Load group name, empty for the default group
+                        (荷载组名，空则用默认荷载组)
         """
         try:
             kwargs: dict[str, Any] = {
@@ -1373,14 +1583,30 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply cable length adjustment load (索长误差荷载).
+        Tension a cable by prescribing its length (索长张拉).
+
+        Adds one cable-length tensioning load to load case case_name for the
+        given element(s) and refreshes the model; create the load case first
+        with create_load_case. The resulting cable force is whatever the
+        prescribed length produces — you control length, not force.
+
+        When to use vs. siblings: prescribe a LENGTH here; prescribe a FORCE
+        instead → add_initial_tension_load.
+
+        (向工况 case_name 的指定单元添加索长张拉并刷新模型；需先用 create_load_case
+        建好工况。索力由给定长度反算得出——本工具控制长度而非力。选型：给定"长度"用
+        本工具，给定"力"用 add_initial_tension_load。)
 
         Args:
-            element_id: Element ID(s) (单元编号)
-            case_name: Load case name (荷载工况名)
-            length: Length difference (长度误差量)
-            tension_type: Tension type (拉力类型)
-            group_name: Load group name (荷载组名)
+            element_id: Element ID(s) — int, list, or "XtoYbyN" range string
+                        (单元编号，支持整数、列表或 "XtoYbyN" 范围字符串)
+            case_name: Load case name, must already exist (荷载工况名，须已存在)
+            length: Cable length value in m (索长，单位m)
+            tension_type: How `length` is interpreted (张拉类型):
+                          0=increment(增量，相对现有索长的变化量)
+                          1=total(全量，直接指定目标索长，默认)
+            group_name: Load group name, empty for the default group
+                        (荷载组名，空则用默认荷载组)
         """
         try:
             kwargs: dict[str, Any] = {"length": length, "tension_type": tension_type}
@@ -1405,17 +1631,49 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply plate element load (板单元面上荷载).
+        Apply a force or moment to plate elements, on a face or an edge
+        (板单元荷载：集中/分布力或弯矩，可加在面上或边上).
+
+        Adds one plate load to load case case_name for the given element(s)
+        and refreshes the model; create the load case first with
+        create_load_case. Which optional arguments are needed depends on
+        load_type: concentrated loads (1, 2) need list_xy; distributed loads
+        (3, 4) need load_place.
+
+        When to use vs. siblings: per-element plate loads here; a load
+        pattern spread over a plane and distributed onto many plates →
+        add_distribute_plane_load. Beam elements → apply_beam_distributed_load.
+
+        (向工况 case_name 的指定板单元添加荷载并刷新模型；需先用 create_load_case
+        建好工况。可选参数取决于 load_type：集中荷载(1、2)需 list_xy；分布荷载(3、4)
+        需 load_place。选型：逐单元加板荷载用本工具；按平面荷载图式分配到多个板单元
+        用 add_distribute_plane_load；梁单元用 apply_beam_distributed_load。)
 
         Args:
-            element_id: Element ID(s) (单元编号)
-            case_name: Load case name (荷载工况名)
-            load_type: Load type (荷载类型)
-            load_place: Application place (施加位置)
-            coord_system: Coordinate system (坐标系: 3为整体)
-            list_load: Load values (荷载值)
-            list_xy: Location coords (位置坐标)
-            group_name: Load group name (荷载组名)
+            element_id: Plate element ID(s) — int or list (板单元编号，整数或列表)
+            case_name: Load case name, must already exist (荷载工况名，须已存在)
+            load_type: What is applied (荷载类型):
+                       1=concentrated force(集中力，默认)
+                       2=concentrated moment(集中弯矩)
+                       3=distributed force(分布力)
+                       4=distributed moment(分布弯矩)
+            load_place: Where a DISTRIBUTED load acts; only needed for
+                        load_type 3 and 4 (分布荷载的作用位置，仅分布荷载需要):
+                        0=face IJKL(面IJKL) | 1=edge IJ(边IJ) | 2=edge JK(边JK)
+                        3=edge KL(边KL) | 4=edge LI(边LI)
+            coord_system: Direction of the load (荷载方向坐标系):
+                          1=global X(整体X) | 2=global Y(整体Y)
+                          3=global Z(整体Z，默认) | 4=local X(局部X)
+                          5=local Y(局部Y) | 6=local Z(局部Z)
+            list_load: Load magnitude(s) — a single value or a list, e.g.
+                       [1000] for one concentrated force
+                       (荷载值，单值或列表，如集中力 [1000])
+            list_xy: Position of a CONCENTRATED load as absolute distances
+                     [x along IJ, y along IL]; only needed for load_type 1 and 2
+                     (集中荷载的位置，[IJ方向绝对距离x, IL方向绝对距离y]，
+                     仅集中荷载需要)
+            group_name: Load group name, empty for the default group
+                        (荷载组名，空则用默认荷载组)
         """
         try:
             kwargs: dict[str, Any] = {"load_type": load_type, "load_place": load_place, "coord_system": coord_system}
@@ -1445,18 +1703,52 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply arbitrary distributed plane load (任意分布面荷载).
+        Place a predefined plane load pattern and distribute it onto plate
+        elements (放置分配面荷载图式，并分配到板单元).
+
+        Adds one distributed plane load to load case case_name and refreshes
+        the model. Two things must exist first: the load case
+        (create_load_case) and the load PATTERN named by type_name.
+
+        Creating the pattern has no dedicated tool — use the escape hatch:
+        call_qtmodel_api(api_object="mdb",
+                         method="add_distribute_plane_load_type", kwargs={...}).
+
+        point1/point2/point3 are not three arbitrary coplanar points: they
+        define the pattern's local axes — origin, a point on the local x-axis,
+        and a point on the local y-axis. Swapping them rotates the pattern.
+
+        When to use vs. siblings: a reusable pattern spread over an area here;
+        loads applied element by element → add_plate_element_load.
+
+        (向工况 case_name 添加分配面荷载并刷新模型。需先有两样东西：荷载工况
+        (create_load_case) 和 type_name 指向的荷载图式。图式没有专用工具，需经逃生舱
+        call_qtmodel_api(api_object="mdb", method="add_distribute_plane_load_type") 创建。
+        point1/2/3 不是任意三个共面点，而是图式的局部坐标系：原点、局部x轴上一点、
+        局部y轴上一点，顺序颠倒会导致图式旋转。选型：可复用的面荷载图式用本工具；
+        逐个单元施加用 add_plate_element_load。)
 
         Args:
-            index: Load ID (编号)
-            case_name: Load case name (荷载工况名)
-            type_name: Load type name (分布面荷载类型名)
-            point1: 1st point defining the plane [x,y,z] (定义面的点1)
-            point2: 2nd point defining the plane [x,y,z] (定义面的点2)
-            point3: 3rd point defining the plane [x,y,z] (定义面的点3)
-            plate_ids: Optional plate elements to load (指定板单元)
-            coord_system: Coordinate system (坐标系)
-            group_name: Load group name (荷载组名)
+            index: Load ID; pass -1 to auto-assign
+                   (荷载编号，传 -1 由程序自动编号)
+            case_name: Load case name, must already exist (荷载工况名，须已存在)
+            type_name: Name of an existing plane-load pattern, created via
+                       add_distribute_plane_load_type
+                       (已存在的分配面荷载类型名，经 add_distribute_plane_load_type 创建)
+            point1: Local origin [x,y,z] (局部坐标系原点)
+            point2: A point on the local x-axis [x,y,z] (局部x轴上一点)
+            point3: A point on the local y-axis [x,y,z] (局部y轴上一点)
+            plate_ids: Plate elements to receive the load; omit to load ALL
+                       plate elements in the model
+                       (承受该荷载的板单元；不传则作用于模型中全部板单元)
+            coord_system: Direction of the load, default 3 (global Z). Upstream
+                          leaves the enum undocumented for this API;
+                          add_plate_element_load uses 1–3=global X/Y/Z and
+                          4–6=local X/Y/Z.
+                          (荷载方向坐标系，默认 3(整体Z)。上游未对本 API 记录取值表；
+                          add_plate_element_load 的约定是 1–3 整体X/Y/Z、4–6 局部X/Y/Z。)
+            group_name: Load group name, empty for the default group
+                        (荷载组名，空则用默认荷载组)
         """
         try:
             kwargs: dict[str, Any] = {"coord_system": coord_system}
@@ -1526,14 +1818,43 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         mass_rm: float = 0.0,
     ) -> str:
         """
-        Add nodal mass for dynamic analysis (添加节点质量).
+        Attach a lumped mass to nodes for dynamic analysis (添加节点集中质量).
+
+        Writes to the model and refreshes it. This is a MASS property, not a
+        load: it belongs to no load case and contributes inertia only, never
+        static force. Mass is per-direction, so a mass that should resist
+        vertical motion must be given in mass_z — setting only mass_x leaves
+        the vertical direction massless.
+
+        Only matters once an eigenvalue run exists: enable it with
+        configure_analysis(do_vibration=True). Mass from dead load is usually
+        supplied separately by add_load_to_mass; use this tool for discrete
+        items the model does not carry as load (equipment, ballast blocks).
+
+        When to use vs. siblings: a discrete mass at a node here; converting an
+        existing load case into mass → add_load_to_mass; a static downward
+        force → apply_nodal_force.
+
+        (写模型并刷新。这是质量属性、不是荷载：不属于任何荷载工况，只贡献惯性、
+        不产生静力。质量按方向给出，要抵抗竖向运动的质量必须写在 mass_z——只填 mass_x
+        会让竖向没有质量。仅在有自振分析时起作用，用 configure_analysis(do_vibration=True)
+        开启。恒载的质量通常由 add_load_to_mass 单独提供；本工具用于模型未按荷载计入的
+        离散物件（设备、压重块）。选型：节点离散质量用本工具；把已有工况折算为质量用
+        add_load_to_mass；静力向下的力用 apply_nodal_force。)
 
         Args:
-            node_id: Node ID(s) (节点编号)
-            mass_x: Mass in X direction (X向质量)
-            mass_y: Mass in Y direction (Y向质量)
-            mass_z: Mass in Z direction (Z向质量)
-            mass_rm: Rotational mass (转动质量)
+            node_id: Node ID(s) — int, list, or "XtoYbyN" range string
+                     (节点编号，支持整数、列表或 "XtoYbyN" 范围字符串)
+            mass_x: Translational mass acting along global X (整体X向平动质量)
+            mass_y: Translational mass acting along global Y (整体Y向平动质量)
+            mass_z: Translational mass acting along global Z — the vertical
+                    direction in a normal model (整体Z向平动质量，常规模型中即竖向)
+            mass_rm: Rotational mass moment of inertia. Upstream passes this as
+                     the fourth component and labels it as being about X, while
+                     flagging its own list as indicative — verify against your
+                     QiaoTong version before relying on it.
+                     (转动质量惯矩。上游按第四个分量下发并标注为绕X，但其 docstring
+                     自称取值表仅为示例，依赖前请对照所用桥通版本核实。)
         """
         try:
             mass_info = (mass_x, mass_y, mass_z, mass_rm)
@@ -1572,13 +1893,30 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         function_info: list[list[float]] | None = None,
     ) -> str:
         """
-        Add response spectrum function (添加反应谱函数).
+        Define a response spectrum curve for later use (定义反应谱函数曲线).
+
+        Stores a named period-vs-value curve and refreshes the model. This is a
+        DEFINITION only — it applies no load until a spectrum case references it
+        by name (add_spectrum_case).
+
+        Common practice: give function_info a normalized curve and put the
+        seismic coefficient in factor, e.g. factor=0.075 for a rare earthquake.
+
+        (保存一条以名字标识的"周期-数值"曲线并刷新模型。本工具只是定义，
+        在 add_spectrum_case 按名引用前不产生任何荷载。常见做法：function_info 给
+        归一化曲线，地震系数放在 factor 里，如罕遇取 factor=0.075。)
 
         Args:
-            name: Function name (函数名称)
-            factor: Scale factor (比例系数)
-            kind: Type of spectrum (反应谱类型, 例如中国规范等)
-            function_info: User defined spectrum points [[period, value], ...] (自定义谱数据)
+            name: Function name, referenced later by add_spectrum_case
+                  (反应谱函数名，后续由 add_spectrum_case 按名引用)
+            factor: Scale factor applied to the whole curve; commonly the
+                    seismic coefficient (反应谱调整系数，作用于整条曲线，
+                    常用于放地震系数)
+            kind: What the curve's values mean (曲线数值的量纲):
+                  0=dimensionless(无量纲，默认) | 1=acceleration(加速度)
+                  2=displacement(位移)
+            function_info: Curve points [[period, value], ...]
+                           (反应谱曲线数据点 [[周期, 数值], ...])
         """
         try:
             kwargs: dict[str, Any] = {"name": name, "factor": factor, "kind": kind}
@@ -1601,15 +1939,44 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         info_z: list | None = None,
     ) -> str:
         """
-        Add response spectrum load case (添加反应谱工况).
+        Create a response spectrum case that excites the model in one or more
+        directions (创建反应谱工况，按方向施加地震作用).
+
+        Adds the case and refreshes the model. The spectrum FUNCTION named in
+        info_x/y/z must already exist (add_spectrum_function), and the model
+        needs a mass source (add_load_to_mass / add_nodal_mass) plus
+        self-vibration analysis enabled (configure_analysis with
+        do_vibration=True) for results to be meaningful.
+
+        Usual practice is one case per direction — a separate case with only
+        info_x, another with only info_y — rather than one case driving all
+        three axes at once.
+
+        Response-spectrum modal combination (SRSS/CQC) is NOT set here; it lives
+        in the global spectrum setting, reachable via
+        call_qtmodel_api(api_object="mdb",
+                         method="update_response_spectrum_setting",
+                         kwargs={"kind": 1}).
+
+        (添加工况并刷新模型。info_x/y/z 引用的反应谱函数须已由 add_spectrum_function
+        建好；模型还需有质量来源(add_load_to_mass / add_nodal_mass)并开启自振分析
+        (configure_analysis 的 do_vibration=True)，结果才有意义。惯例是一个方向一个
+        工况，而非一个工况同时驱动三个方向。振型组合方式(SRSS/CQC)不在本工具设置，
+        属全局反应谱设置，需经逃生舱 call_qtmodel_api 调
+        update_response_spectrum_setting。)
 
         Args:
             name: Case name (工况名称)
-            description: Description (描述)
-            kind: Combination method (组合方法, SRSS/CQC等)
-            info_x: X direction info [function_name, factor] (X向配置 [谱函数名, 系数])
-            info_y: Y direction info [function_name, factor] (Y向配置)
-            info_z: Z direction info [function_name, factor] (Z向配置)
+            description: Description (说明)
+            kind: How the directional components are combined (方向分量的组合方式):
+                  1=vector modulus(求模，默认) | 2=algebraic sum(求和).
+                  NOT the modal combination method — SRSS/CQC is set in the
+                  global spectrum setting
+                  (不是振型组合方式；SRSS/CQC 在全局反应谱设置里)
+            info_x: X-direction excitation [function_name, factor]; omit for no
+                    X component (X向输入 [谱函数名, 系数]，不传则该方向无输入)
+            info_y: Y-direction excitation [function_name, factor] (Y向输入)
+            info_z: Z-direction excitation [function_name, factor] (Z向输入)
         """
         try:
             kwargs: dict[str, Any] = {"name": name, "description": description, "kind": kind}
@@ -1634,13 +2001,36 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         function_info: list[list[float]] | None = None,
     ) -> str:
         """
-        Add time history function (添加时程函数).
+        Define a time-varying function for time-history analysis, e.g. a
+        ground-motion record (定义时程函数，如地震波时程曲线).
+
+        Creates a reusable named function and refreshes the model. This only
+        stores the curve — it applies nothing on its own. To use it as seismic
+        input, create a time-history case (add_time_history_case) and then bind
+        this function to a direction via the escape hatch:
+        call_qtmodel_api(api_object="mdb", method="add_ground_motion",
+                         kwargs={"case_name": ..., "info_x": [name, factor, arrival_time]}).
+
+        When to use vs. siblings: a time-domain curve here; a response spectrum
+        curve → add_spectrum_function.
+
+        (创建可复用的命名函数并刷新模型。本工具只存曲线、自身不施加任何作用。
+        要作为地震输入使用，需先建时程工况 add_time_history_case，再经逃生舱调
+        add_ground_motion 把函数绑定到某个方向。选型：时域曲线用本工具；
+        反应谱曲线用 add_spectrum_function。)
 
         Args:
-            name: Function name (函数名称)
-            factor: Scale factor (比例系数)
-            kind: Type (类型)
-            function_info: Time history points [[time, value], ...] (时程数据点)
+            name: Function name, referenced later by add_ground_motion
+                  (函数名称，后续由 add_ground_motion 引用)
+            factor: Scale factor applied to every value (整体放大系数)
+            kind: What the values represent (数值的物理量):
+                  0=dimensionless(无量纲，默认) | 1=acceleration(加速度)
+                  2=force(力) | 3=moment(力矩).
+                  Seismic ground-motion records use 1
+                  (地震波时程用 1)
+            function_info: Curve points [[time, value], ...], e.g.
+                           [[0, 0], [0.02, 0.1], [0.04, 0.3]]
+                           (曲线数据点 [[时间, 数值], ...])
         """
         try:
             kwargs: dict[str, Any] = {"name": name, "factor": factor, "kind": kind}
@@ -1662,14 +2052,47 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         index: int = -1,
     ) -> str:
         """
-        Add time history analysis case (添加时程分析工况).
+        Create a time-history analysis case: the time-integration settings for
+        one dynamic run (创建时程分析工况，即一次动力分析的时间积分设置).
+
+        Adds the case and refreshes the model. The case is a container for
+        analysis settings — it applies no load by itself. Seismic input is bound
+        separately, per direction, via the mdb method add_ground_motion (escape
+        hatch; it has no dedicated tool).
+
+        Typical order: define a mass source (add_load_to_mass / add_nodal_mass)
+        → define the wave (add_time_history_function) → this case → bind input
+        (mdb.add_ground_motion via call_qtmodel_api) → enable self-vibration
+        analysis (configure_analysis with do_vibration=True).
+
+        LIMITATION — this tool exposes only the basic settings. Cases are
+        therefore created LINEAR and UNDAMPED (upstream treats an empty damping
+        name as no damping). Damping, boundary-nonlinear analysis, convergence
+        limits and the integration scheme are reachable only via the escape
+        hatch: define damping with
+        call_qtmodel_api(api_object="mdb", method="add_dynamic_damping", ...),
+        then create the case with method="add_time_history_case" passing
+        damping=<that name> plus analysis_kind / nonlinear_groups / min_step /
+        tolerance / mode_superposition_kind as needed.
+
+        When to use vs. siblings: a time-domain run here; a response-spectrum
+        run → add_spectrum_case.
+
+        (添加工况并刷新模型。工况只是分析设置的容器，自身不施加荷载；地震输入需另经
+        add_ground_motion 按方向绑定。典型顺序：质量来源 → 时程函数 → 本工况 →
+        绑定地震动 → 开启自振分析。局限：本工具只暴露基本设置，因此建出的工况是
+        线性、无阻尼的(上游以空阻尼名表示无阻尼)；阻尼、边界非线性、收敛控制与积分
+        方法需经逃生舱先 add_dynamic_damping 定义阻尼，再调 add_time_history_case
+        并传 damping 等参数。选型：时域分析用本工具；反应谱分析用 add_spectrum_case。)
 
         Args:
-            name: Case name (工况名称)
-            duration: Total duration in seconds (总时长)
-            time_step: Output time step in seconds (输出步长)
-            description: Description (描述)
-            index: ID index (编号)
+            name: Case name, referenced by add_ground_motion
+                  (工况名称，由 add_ground_motion 引用)
+            duration: Total analysis duration in seconds (分析总时长，秒)
+            time_step: Integration time step in seconds (分析时间步长，秒)
+            description: Free-text description (描述)
+            index: Case ID; pass -1 to auto-assign
+                   (工况编号，传 -1 由程序自动编号)
         """
         try:
             provider.add_time_history_case(
@@ -1689,12 +2112,39 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         stage_id: int = -1,
     ) -> str:
         """
-        Configure buckling analysis settings (屈曲分析设定).
+        Configure linear buckling analysis (屈曲分析设定；方法名 bulking 为历史拼写).
+
+        Writes to the model. Enabling analysis does not run it — call
+        run_analysis afterwards. The misspelling "bulking" is the upstream
+        method name; renaming it would break existing callers.
+
+        LIMITATION — this tool exposes only the three basic switches. The
+        load-case assignment (constant_cases / variable_cases), whether
+        self-weight is treated as constant or variable, and whether the
+        prestressed or unstressed geometry is used, are reachable only via
+        the escape hatch:
+        call_qtmodel_api(api_object="mdb", method="update_bulking_setting",
+                         kwargs={"variable_cases": ["工况1"], "calculate_kind": 1,
+                                 "stressed": True, ...}).
+        Without at least one variable_cases name, a buckling run typically has
+        nothing to vary.
+
+        (写模型。打开分析开关并不求解——之后还要调 run_analysis。"bulking" 是上游
+        方法名的历史拼写，改名会破坏已有调用。局限：本工具只暴露三个基本开关；
+        荷载工况分配(constant_cases / variable_cases)、恒载归为不变还是可变、
+        以及采用预应力还是无应力几何，都需经逃生舱设置。不指定 variable_cases
+        时屈曲分析通常没有可变荷载。)
 
         Args:
-            do_analysis: Enable buckling analysis (是否进行屈曲分析)
-            mode_count: Number of modes to calculate (计算模态数)
-            stage_id: Construction stage ID for base state, -1 for base model (施工阶段号)
+            do_analysis: Enable linear buckling analysis (是否进行线性屈曲分析)
+            mode_count: Number of buckling modes to compute, must be positive
+                        (屈曲模态数，须为正整数)
+            stage_id: Construction-stage number used as the base state
+                      (作为基准状态的施工阶段号):
+                      -1 or non-positive = the LAST construction stage
+                      (最后施工阶段，不是基本模型);
+                      a positive integer must already exist
+                      (正整数必须对应已有阶段)
         """
         try:
             provider.update_bulking_setting(
@@ -1715,19 +2165,59 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         active_loads: list[list] | None = None,
     ) -> str:
         """
-        Add a construction stage (添加施工阶段).
+        Add a construction stage and say what becomes active in it
+        (添加施工阶段并指定其激活内容).
+
+        Appends a stage after the existing ones and refreshes the model. Every
+        group named here must already exist (create_structure_group /
+        create_boundary_group / create_load_case). Stages are cumulative: what a
+        stage activates stays active in later stages unless deactivated.
+
+        LIMITATION — this tool can only ACTIVATE. Deactivation (钝化) of
+        structure, boundary and load groups, temporary loads, and the two
+        release-behaviour settings are not exposed, so falsework removal or
+        temporary-support release cannot be modelled through it. Use the escape
+        hatch for those: call_qtmodel_api(api_object="mdb",
+        method="add_construction_stage", kwargs={..., "delete_structures": [...],
+        "delete_boundaries": [...], "delete_loads": [...], "temp_loads": [...]}).
+
+        When to use vs. siblings: creating a stage here; editing one that exists
+        → update_construction_stage; deleting → remove_construction_stage;
+        collapsing all stages into a final operation stage →
+        merge_operation_stage. Construction-stage analysis must also be turned
+        on with configure_analysis(do_construction_stage=True).
+
+        (在已有阶段之后追加一个阶段并刷新模型。此处引用的每个组都须已存在。阶段是累积的：
+        某阶段激活的内容在后续阶段保持激活，除非被钝化。局限：本工具只能"激活"。结构组/
+        边界组/荷载组的钝化、临时荷载、以及两个释放行为设置都未暴露，因此支架拆除、
+        临时支座释放无法经本工具表达，需经逃生舱调 add_construction_stage 并传
+        delete_structures / delete_boundaries / delete_loads / temp_loads。
+        选型：建阶段用本工具；改已有阶段用 update_construction_stage；删用
+        remove_construction_stage；合并为运营阶段用 merge_operation_stage。
+        还须用 configure_analysis(do_construction_stage=True) 打开施工阶段分析。)
 
         Args:
             name: Stage name (施工阶段名称)
-            duration: Stage duration in days (时长，单位：天)
-            active_structures: Activated structure groups (激活结构组):
-                               [[group_name, age, install_method, weight_stage_id], ...]
-                               install_method: 1=deformation, 2=unstressed, 3=tangent, 4=tangent
-                               (安装方法: 1=变形法, 2=无应力法, 3=接线法, 4=切线法)
-            active_boundaries: Activated boundary groups (激活边界组):
-                               [[group_name, position], ...], position: 0=before, 1=after deformation
-            active_loads: Activated load groups (激活荷载组):
-                          [[group_name, time], ...], time: 0=start, 1=end
+            duration: Stage duration in days. Upstream stores this as an
+                      integer, so a fractional value is truncated
+                      (时长，单位天；上游按整数存储，小数会被截断)
+            active_structures: Structure groups to activate (激活结构组):
+                [[group_name, age, install_method, weight_stage_id], ...]
+                age: concrete age in days at activation (激活时龄期，天)
+                install_method: 1=deformation(变形法) | 2=unstressed(无应力法)
+                                3=connection(接线法) | 4=tangent(切线法)
+                weight_stage_id: which stage carries the self-weight
+                                 (计自重的施工阶段): 0=no self-weight(不计自重)
+                                 | 1=this stage(本阶段) | n=stage n(第n阶段).
+                                 Referencing a stage that does not exist yet
+                                 requires adding that stage first
+                                 (若引用尚未建立的阶段，需先建该阶段)
+            active_boundaries: Boundary groups to activate (激活边界组):
+                [[group_name, position], ...]
+                position: 0=before deformation(变形前) | 1=after deformation(变形后)
+            active_loads: Load groups to activate (激活荷载组):
+                [[group_name, time], ...]
+                time: 0=at stage start(阶段开始) | 1=at stage end(阶段结束)
         """
         try:
             kwargs: dict[str, Any] = {}
@@ -1783,7 +2273,9 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             raise ToolError(f"Error configuring analysis (配置分析失败): {e}") from e
 
     @mcp.tool()
-    async def run_analysis(ctx: Context, read_timeout: int = 3600) -> str:
+    async def run_analysis(
+        ctx: Context, read_timeout: int = 3600, show_view: bool = False
+    ) -> str:
         """
         Run the structural analysis calculation (执行结构分析计算).
 
@@ -1795,11 +2287,19 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Args:
             read_timeout: Max total solve time in seconds, default 3600
                           (求解总时限秒数；超时抛错，求解本身在后台继续)
+            show_view: Request the QiaoTong analysis progress window, default False.
+                       Does not change background solving, polling or MCP progress.
+                       True requires a qtmodel build exposing this option; older
+                       builds reject it before starting the solve.
+                       (是否显示桥通分析进度窗口；不影响异步求解，旧版不支持开启时明确报错)
         """
         try:
+            kwargs: dict[str, Any] = {"read_timeout": read_timeout}
+            if show_view:
+                kwargs["show_view"] = True
             loop = asyncio.get_running_loop()
             solve = loop.run_in_executor(
-                None, lambda: provider.run_analysis(read_timeout=read_timeout)
+                None, lambda: provider.run_analysis(**kwargs)
             )
             elapsed = 0
             # 每 5 秒发一次进度心跳，直到求解线程返回
