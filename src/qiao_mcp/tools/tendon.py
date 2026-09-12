@@ -276,11 +276,36 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def get_tendon_loss_results(name: str, stage_id: int = 1) -> str:
         """
-        Get tendon prestress loss results (获取预应力损失结果).
+        Get prestress-loss distribution along one tendon at one construction
+        stage (获取一根钢束在指定施工阶段的应力/损失分布).
+
+        Read-only: it does not change the model. Returns a list of points along
+        the tendon / its host beam, each with tendon_name, beam_id, position,
+        effective_s (effective stress), instance_s (instantaneous stress),
+        except_s (target / control stress) and ratio (effective-stress ratio).
+        Stress units follow the current project unit system. An empty list
+        means the name did not match or that stage has no results.
+
+        Preconditions: the tendon must exist, the named stage must have
+        activated it, and a construction-stage analysis must already have been
+        run (run_analysis after configure_analysis(do_construction_stage=True)).
+
+        When to use vs. siblings: loss distribution at a stage here; geometry
+        and a summary of losses → get_tendon_info; coordinates along the
+        tendon → get_tendon_position_result; unstressed length →
+        get_tendon_length_result.
+
+        (只读，不改模型。返回沿钢束/所属梁单元分点的列表，每项含 tendon_name、
+        beam_id、position、effective_s(有效应力)、instance_s(瞬时应力)、
+        except_s(期望/控制应力)、ratio(有效应力比)。应力量纲跟随当前工程单位制。
+        空列表表示未匹配到钢束或该阶段无结果。前置：钢束须存在、该阶段须已激活
+        此钢束、且已跑过施工阶段分析。选型：某阶段的损失分布用本工具；几何与损失
+        摘要用 get_tendon_info；沿程坐标用 get_tendon_position_result；无应力长度
+        用 get_tendon_length_result。)
 
         Args:
-            name: Tendon name (钢束名)
-            stage_id: Construction stage ID (施工阶段编号)
+            name: Tendon name, must match the model exactly (钢束名，须与模型中完全一致)
+            stage_id: Construction stage number, starting from 1 (施工阶段编号，从 1 开始)
         """
         try:
             data = provider.get_tendon_loss_results(name=name, stage_id=stage_id)
