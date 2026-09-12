@@ -376,10 +376,27 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     @mcp.tool()
     def revert_local_orientation(ids: Any) -> str:
         """
-        Revert local orientation of frame elements (反转杆系单元局部方向).
+        Reverse the local x-axis of frame elements, swapping their I and J ends
+        (反转杆系单元局部方向，即对调 I/J 端).
+
+        Writes to the model and refreshes it. FRAME ELEMENTS ONLY
+        (beam/truss/cable). After the swap, "I-end" and "J-end" in every other
+        tool refer to the opposite physical ends of the member, and the sign of
+        member-end forces in results flips with them. Calling it twice restores
+        the original orientation.
+
+        When to use vs. siblings: reversing I/J here; rotating the local
+        y/z-axes around the member axis without swapping ends →
+        update_element_beta.
+
+        (写模型并刷新。仅适用于杆系单元(梁/杆/索)。对调后，其它工具中的"I端""J端"
+        指向该构件相反的物理端，结果中的杆端力符号随之翻转。调两次即恢复原方向。
+        选型：对调 I/J 用本工具；绕杆轴旋转局部 y/z 轴、不对调端点用
+        update_element_beta。)
 
         Args:
-            ids: Element ID(s) to revert (待反转方向的单元编号)
+            ids: Frame element ID(s) — int, list, or "XtoYbyN" range string
+                 (杆系单元编号，支持整数、列表或 "XtoYbyN" 范围字符串)
         """
         try:
             provider.revert_local_orientation(ids=ids)
