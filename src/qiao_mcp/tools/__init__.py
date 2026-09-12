@@ -1727,13 +1727,30 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         function_info: list[list[float]] | None = None,
     ) -> str:
         """
-        Add response spectrum function (添加反应谱函数).
+        Define a response spectrum curve for later use (定义反应谱函数曲线).
+
+        Stores a named period-vs-value curve and refreshes the model. This is a
+        DEFINITION only — it applies no load until a spectrum case references it
+        by name (add_spectrum_case).
+
+        Common practice: give function_info a normalized curve and put the
+        seismic coefficient in factor, e.g. factor=0.075 for a rare earthquake.
+
+        (保存一条以名字标识的"周期-数值"曲线并刷新模型。本工具只是定义，
+        在 add_spectrum_case 按名引用前不产生任何荷载。常见做法：function_info 给
+        归一化曲线，地震系数放在 factor 里，如罕遇取 factor=0.075。)
 
         Args:
-            name: Function name (函数名称)
-            factor: Scale factor (比例系数)
-            kind: Type of spectrum (反应谱类型, 例如中国规范等)
-            function_info: User defined spectrum points [[period, value], ...] (自定义谱数据)
+            name: Function name, referenced later by add_spectrum_case
+                  (反应谱函数名，后续由 add_spectrum_case 按名引用)
+            factor: Scale factor applied to the whole curve; commonly the
+                    seismic coefficient (反应谱调整系数，作用于整条曲线，
+                    常用于放地震系数)
+            kind: What the curve's values mean (曲线数值的量纲):
+                  0=dimensionless(无量纲，默认) | 1=acceleration(加速度)
+                  2=displacement(位移)
+            function_info: Curve points [[period, value], ...]
+                           (反应谱曲线数据点 [[周期, 数值], ...])
         """
         try:
             kwargs: dict[str, Any] = {"name": name, "factor": factor, "kind": kind}
@@ -1756,15 +1773,44 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         info_z: list | None = None,
     ) -> str:
         """
-        Add response spectrum load case (添加反应谱工况).
+        Create a response spectrum case that excites the model in one or more
+        directions (创建反应谱工况，按方向施加地震作用).
+
+        Adds the case and refreshes the model. The spectrum FUNCTION named in
+        info_x/y/z must already exist (add_spectrum_function), and the model
+        needs a mass source (add_load_to_mass / add_nodal_mass) plus
+        self-vibration analysis enabled (configure_analysis with
+        do_vibration=True) for results to be meaningful.
+
+        Usual practice is one case per direction — a separate case with only
+        info_x, another with only info_y — rather than one case driving all
+        three axes at once.
+
+        Response-spectrum modal combination (SRSS/CQC) is NOT set here; it lives
+        in the global spectrum setting, reachable via
+        call_qtmodel_api(api_object="mdb",
+                         method="update_response_spectrum_setting",
+                         kwargs={"kind": 1}).
+
+        (添加工况并刷新模型。info_x/y/z 引用的反应谱函数须已由 add_spectrum_function
+        建好；模型还需有质量来源(add_load_to_mass / add_nodal_mass)并开启自振分析
+        (configure_analysis 的 do_vibration=True)，结果才有意义。惯例是一个方向一个
+        工况，而非一个工况同时驱动三个方向。振型组合方式(SRSS/CQC)不在本工具设置，
+        属全局反应谱设置，需经逃生舱 call_qtmodel_api 调
+        update_response_spectrum_setting。)
 
         Args:
             name: Case name (工况名称)
-            description: Description (描述)
-            kind: Combination method (组合方法, SRSS/CQC等)
-            info_x: X direction info [function_name, factor] (X向配置 [谱函数名, 系数])
-            info_y: Y direction info [function_name, factor] (Y向配置)
-            info_z: Z direction info [function_name, factor] (Z向配置)
+            description: Description (说明)
+            kind: How the directional components are combined (方向分量的组合方式):
+                  1=vector modulus(求模，默认) | 2=algebraic sum(求和).
+                  NOT the modal combination method — SRSS/CQC is set in the
+                  global spectrum setting
+                  (不是振型组合方式；SRSS/CQC 在全局反应谱设置里)
+            info_x: X-direction excitation [function_name, factor]; omit for no
+                    X component (X向输入 [谱函数名, 系数]，不传则该方向无输入)
+            info_y: Y-direction excitation [function_name, factor] (Y向输入)
+            info_z: Z-direction excitation [function_name, factor] (Z向输入)
         """
         try:
             kwargs: dict[str, Any] = {"name": name, "description": description, "kind": kind}
@@ -1789,13 +1835,36 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         function_info: list[list[float]] | None = None,
     ) -> str:
         """
-        Add time history function (添加时程函数).
+        Define a time-varying function for time-history analysis, e.g. a
+        ground-motion record (定义时程函数，如地震波时程曲线).
+
+        Creates a reusable named function and refreshes the model. This only
+        stores the curve — it applies nothing on its own. To use it as seismic
+        input, create a time-history case (add_time_history_case) and then bind
+        this function to a direction via the escape hatch:
+        call_qtmodel_api(api_object="mdb", method="add_ground_motion",
+                         kwargs={"case_name": ..., "info_x": [name, factor, arrival_time]}).
+
+        When to use vs. siblings: a time-domain curve here; a response spectrum
+        curve → add_spectrum_function.
+
+        (创建可复用的命名函数并刷新模型。本工具只存曲线、自身不施加任何作用。
+        要作为地震输入使用，需先建时程工况 add_time_history_case，再经逃生舱调
+        add_ground_motion 把函数绑定到某个方向。选型：时域曲线用本工具；
+        反应谱曲线用 add_spectrum_function。)
 
         Args:
-            name: Function name (函数名称)
-            factor: Scale factor (比例系数)
-            kind: Type (类型)
-            function_info: Time history points [[time, value], ...] (时程数据点)
+            name: Function name, referenced later by add_ground_motion
+                  (函数名称，后续由 add_ground_motion 引用)
+            factor: Scale factor applied to every value (整体放大系数)
+            kind: What the values represent (数值的物理量):
+                  0=dimensionless(无量纲，默认) | 1=acceleration(加速度)
+                  2=force(力) | 3=moment(力矩).
+                  Seismic ground-motion records use 1
+                  (地震波时程用 1)
+            function_info: Curve points [[time, value], ...], e.g.
+                           [[0, 0], [0.02, 0.1], [0.04, 0.3]]
+                           (曲线数据点 [[时间, 数值], ...])
         """
         try:
             kwargs: dict[str, Any] = {"name": name, "factor": factor, "kind": kind}
@@ -1817,14 +1886,47 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         index: int = -1,
     ) -> str:
         """
-        Add time history analysis case (添加时程分析工况).
+        Create a time-history analysis case: the time-integration settings for
+        one dynamic run (创建时程分析工况，即一次动力分析的时间积分设置).
+
+        Adds the case and refreshes the model. The case is a container for
+        analysis settings — it applies no load by itself. Seismic input is bound
+        separately, per direction, via the mdb method add_ground_motion (escape
+        hatch; it has no dedicated tool).
+
+        Typical order: define a mass source (add_load_to_mass / add_nodal_mass)
+        → define the wave (add_time_history_function) → this case → bind input
+        (mdb.add_ground_motion via call_qtmodel_api) → enable self-vibration
+        analysis (configure_analysis with do_vibration=True).
+
+        LIMITATION — this tool exposes only the basic settings. Cases are
+        therefore created LINEAR and UNDAMPED (upstream treats an empty damping
+        name as no damping). Damping, boundary-nonlinear analysis, convergence
+        limits and the integration scheme are reachable only via the escape
+        hatch: define damping with
+        call_qtmodel_api(api_object="mdb", method="add_dynamic_damping", ...),
+        then create the case with method="add_time_history_case" passing
+        damping=<that name> plus analysis_kind / nonlinear_groups / min_step /
+        tolerance / mode_superposition_kind as needed.
+
+        When to use vs. siblings: a time-domain run here; a response-spectrum
+        run → add_spectrum_case.
+
+        (添加工况并刷新模型。工况只是分析设置的容器，自身不施加荷载；地震输入需另经
+        add_ground_motion 按方向绑定。典型顺序：质量来源 → 时程函数 → 本工况 →
+        绑定地震动 → 开启自振分析。局限：本工具只暴露基本设置，因此建出的工况是
+        线性、无阻尼的(上游以空阻尼名表示无阻尼)；阻尼、边界非线性、收敛控制与积分
+        方法需经逃生舱先 add_dynamic_damping 定义阻尼，再调 add_time_history_case
+        并传 damping 等参数。选型：时域分析用本工具；反应谱分析用 add_spectrum_case。)
 
         Args:
-            name: Case name (工况名称)
-            duration: Total duration in seconds (总时长)
-            time_step: Output time step in seconds (输出步长)
-            description: Description (描述)
-            index: ID index (编号)
+            name: Case name, referenced by add_ground_motion
+                  (工况名称，由 add_ground_motion 引用)
+            duration: Total analysis duration in seconds (分析总时长，秒)
+            time_step: Integration time step in seconds (分析时间步长，秒)
+            description: Free-text description (描述)
+            index: Case ID; pass -1 to auto-assign
+                   (工况编号，传 -1 由程序自动编号)
         """
         try:
             provider.add_time_history_case(
