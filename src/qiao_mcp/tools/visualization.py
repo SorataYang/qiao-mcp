@@ -296,10 +296,26 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def change_construct_stage(stage: int = 0) -> str:
         """
-        Change current construction stage in view (切换当前显示的施工阶段).
+        Change the construction stage of the results view, BY INDEX
+        (按阶段号切换结果视图的施工阶段).
+
+        Display-only: it changes which stage the current window shows and does
+        NOT re-run the analysis. Use it to step through stages when reading
+        results or taking screenshots.
+
+        When to use vs. switch_display_stage: this one takes an integer stage
+        INDEX and drives the results/post-processing view (odb).
+        switch_display_stage takes the stage NAME and drives the modelling view
+        (mdb). The index here is not a name — passing a string fails.
+
+        (纯显示操作：切换当前窗口显示的阶段，不重新求解；逐阶段读结果或截图时用它。
+        选型：本工具收阶段"号"、作用于结果/后处理视图(odb)；switch_display_stage 收阶段
+        "名"、作用于建模视图(mdb)。此处只接受整数，传字符串阶段名会失败。)
 
         Args:
-            stage: Stage ID, 0 for Base stage (施工阶段号，0为成桥阶段)
+            stage: Stage number — 0 = the base model (not the completed-bridge
+                   stage), a positive integer = that construction stage
+                   (施工阶段号：0 为基本模型（不是成桥阶段），正整数为对应施工阶段)
         """
         try:
             provider.change_construct_stage(stage=stage)
