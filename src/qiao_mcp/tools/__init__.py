@@ -209,8 +209,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Args:
             node_i: Start node ID (I端节点编号)
             node_j: End node ID (J端节点编号)
-            mat_id: Material ID — use get_materials to find valid IDs (材料编号)
-            sec_id: Section ID — use get_section_list to find valid IDs (截面编号)
+            mat_id: Material ID — query get_model_data(kind="materials") for IDs (材料编号)
+            sec_id: Section ID — query get_model_data(kind="sections") for IDs (截面编号)
             element_id: Element ID, -1 = auto-assign next available ID (单元编号，-1表示自动分配)
             beta_angle: Beta angle in degrees, controls local axis orientation (贝塔角，度)
             ele_type: Element type (单元类型): 1=Beam(梁), 2=Truss(杆), 3=Cable(索)

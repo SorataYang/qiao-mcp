@@ -418,7 +418,8 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Args:
             ids: Element ID(s). Supports int, list, or range string '1to50'.
                  (单元编号，支持整数、列表或范围字符串)
-            mat_id: New material ID (新材料编号，使用 get_materials 查询有效编号)
+            mat_id: New material ID; query get_model_data(kind="materials") for valid IDs
+                (新材料编号，先查询已有材料)
 
         Example:
             update_element_material("1to20", mat_id=2)
@@ -443,7 +444,8 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Args:
             ids: Element ID(s). Supports int, list, or range string '1to50'.
                  (单元编号，支持整数、列表或范围字符串)
-            sec_id: New section ID (新截面编号，使用 get_section_list 查询有效编号)
+            sec_id: New section ID; query get_model_data(kind="sections") for valid IDs
+                (新截面编号，先查询已有截面)
 
         Example:
             update_element_section("1to30", sec_id=2)
@@ -729,4 +731,3 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
             raise ToolError(f"Error merging nodes (合并节点失败): {e}") from e
-

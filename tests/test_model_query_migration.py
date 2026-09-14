@@ -16,6 +16,7 @@ from qiao_mcp.tools.envelope import ToolError
     ("get_node_data", (), {"ids": "1to3"}, "get_node_data", [{"node_id": 1}]),
     ("get_element_data", (), {"ids": [2]}, "get_element_data", [{"index": 2}]),
     ("get_material_data", (), {}, "get_material_data", [{"index": 3}]),
+    ("get_load_group_names", (), {}, "get_load_group_names", ["默认荷载组"]),
     ("get_section_data", (3,), {"position": 1}, "get_section_data", {"name": "主梁"}),
     ("get_section_shape", (3,), {}, "get_model_section_shape", {"parts": []}),
     ("get_section_property", (3,), {}, "get_section_property", {"Ax": 2.0}),

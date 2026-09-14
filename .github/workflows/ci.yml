@@ -30,4 +30,10 @@ jobs:
         run: uv run mypy src/qiao_mcp/
 
       - name: Pytest
-        run: uv run pytest tests/ -q
+        run: uv run pytest tests/ --ignore=tests/test_end_to_end.py -q
+
+      - name: Build distribution
+        run: uv build
+
+      - name: Check packaged MCP protocol and catalog without QiaoTong
+        run: uv run python scripts/check_mcp_package.py dist/*.whl
