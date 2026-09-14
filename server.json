@@ -3,7 +3,7 @@
   "name": "io.github.SorataYang/qiao-mcp",
   "title": "Qiao-MCP — Bridge Engineering (桥梁工程)",
   "description": "Full-lifecycle bridge structural analysis — modeling, staging, code checks.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "websiteUrl": "https://github.com/SorataYang/qiao-mcp",
   "repository": {
     "url": "https://github.com/SorataYang/qiao-mcp",
@@ -14,7 +14,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "qiao-mcp",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
