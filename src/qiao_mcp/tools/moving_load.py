@@ -7,6 +7,8 @@ node tandems (节点纵列) → influence planes (影响面) → lane lines (车
 → standard vehicles (标准车辆) → live load cases (活载工况).
 """
 
+from typing import Literal
+
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
@@ -75,7 +77,7 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         offset: float = 0.0,
         lane_width: float = 3.1,
         optimize: bool = False,
-        direction: int = 0,
+        direction: Literal[0, 1] = 0,
     ) -> str:
         """
         Define a traffic lane line for moving load analysis (添加车道线).

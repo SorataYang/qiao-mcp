@@ -14,13 +14,14 @@ from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError
+from qiao_mcp.tools.schemas import ApiObject, ConnectionResult, ModelStateResult
 
 
 def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     """Register the qtmodel API discovery + call gateway."""
 
     @mcp.tool()
-    def check_qiaotong_connection() -> str:
+    def check_qiaotong_connection() -> ConnectionResult:
         """
         Diagnose the connection to QiaoTong software (诊断桥通软件连接状态).
 
@@ -101,10 +102,15 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                     "（请改用 localhost，而非 127.0.0.1）"
                 )
 
-        return "\n".join(lines)
+        return ConnectionResult(
+            status="success", message="\n".join(lines),
+            connection_status=status.get("status", "unknown"),
+            connected=bool(status.get("connected")), compatible=status.get("compatible"),
+            client=client, server=server, action=status.get("action") or "",
+        )
 
     @mcp.tool()
-    def get_model_status() -> dict[str, Any]:
+    def get_model_status() -> ModelStateResult:
         """Get QiaoTong's current model lifecycle and operation capabilities.
 
         获取桥通当前是否打开模型、前处理/求解/后处理阶段、当前显示阶段是否
@@ -116,12 +122,12 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         deletes results, or changes the model.
         """
         try:
-            return provider.get_model_state()
+            return ModelStateResult.model_validate(provider.get_model_state())
         except Exception as e:
             raise ToolError(f"Error checking model status (模型状态查询失败): {e}") from e
 
     @mcp.tool()
-    def list_qtmodel_api(api_object: str, pattern: str = "") -> str:
+    def list_qtmodel_api(api_object: ApiObject, pattern: str = "") -> str:
         """
         Discover qtmodel API methods and their real signatures (检索 qtmodel API 方法及签名).
 
@@ -163,7 +169,7 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
     @mcp.tool()
     def call_qtmodel_api(
-        api_object: str,
+        api_object: ApiObject,
         method: str,
         kwargs: dict[str, Any] | None = None,
     ) -> str:

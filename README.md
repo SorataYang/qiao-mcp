@@ -31,11 +31,20 @@ Tools are organized by workflow area. Highlights per group:
 | **Workflows** | `create_simple_beam_bridge`, `create_continuous_beam_bridge` |
 | **Gateway & diagnostics** | `check_qiaotong_connection`, `get_model_status`, `list_qtmodel_api`, `call_qtmodel_api` — diagnose the bridge connection and model state, or discover and call long-tail qtmodel methods with signature validation |
 
-Tool responses are normalized to structured content (`{status, ...}`), while image
-tools can return MCP image content directly. Tool failures use typed MCP errors, and
+The 131 non-image tools publish output schemas and return MCP structured content
+(`{status, message, ...}`). Connection diagnostics also expose `connection_status`
+and `connected`; bridge templates return the resolved node, element and property IDs.
+`get_model_status` preserves QiaoTong's state in `status`. The two image-capable tools
+return viewable MCP image content or a text summary. Tool failures use typed MCP errors, and
 read-only, destructive, and open-world operations carry MCP tool annotations. The
 server instructions include the full tool-group overview; use `list_qtmodel_api`
 before calling an uncovered backend method through the gateway.
+
+Input schemas include parameter descriptions, closed-set selectors, pagination bounds
+and fixed-size coordinate/DOF arrays. Invalid schema inputs are rejected before a
+backend call. A beam end `release_i` / `release_j` flag means **True = release**;
+omitting an end keeps all six DOFs connected. Load combination components use
+`[case_type, case_name, factor]`, with `combine_type=3` for an envelope.
 
 ### 📦 Resources (7 resources)
 | URI | Description |
@@ -246,7 +255,7 @@ where it belongs: in the dependency constraint.
 
 | Qiao-MCP           | qtmodel       | QiaoTong software                          |
 |--------------------|---------------|--------------------------------------------|
-| 0.3.2             | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
+| 0.3.2 – 0.3.3     | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
 | 0.3.0 – 0.3.1      | 2.6.3 – 2.6.x | 2.6.3 (exact match enforced by qtmodel)    |
 | 0.2.x              | 2.5.0 – 2.5.x | 2.5.0                                      |
 

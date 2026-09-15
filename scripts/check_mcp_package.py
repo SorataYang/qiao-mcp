@@ -1,7 +1,7 @@
 """Check a built wheel over stdio without calling bridge operations.
 
 Run with the project's installed dependencies:
-    uv run python scripts/check_mcp_package.py dist/qiao_mcp-0.3.2-py3-none-any.whl
+    uv run python scripts/check_mcp_package.py dist/qiao_mcp-0.3.3-py3-none-any.whl
 """
 
 import argparse
@@ -38,6 +38,8 @@ async def inspect_package(wheel: Path, expected_tools: int, output: Path | None)
             tools = (await session.list_tools()).tools
             resources = (await session.list_resources()).resources
             prompts = (await session.list_prompts()).prompts
+            connection = await session.call_tool("check_qiaotong_connection", {})
+            invalid = await session.call_tool("create_nodes_linear", {"count": 0})
 
     assert initialized.serverInfo.name == "qiao-mcp"
     assert initialized.serverInfo.version == expected_version, initialized.serverInfo
@@ -52,6 +54,13 @@ async def inspect_package(wheel: Path, expected_tools: int, output: Path | None)
     assert not missing, f"Missing parameter descriptions: {missing}"
     assert all(name != "ctx" for _, name, _ in parameters), "Injected Context leaked into the schema"
     assert all(tool.annotations is not None for tool in tools), "Missing tool annotations"
+    image_tools = {"save_model_screenshot", "plot_analysis_result"}
+    for tool in tools:
+        assert (tool.outputSchema is None) == (tool.name in image_tools), tool.name
+    assert not connection.isError and connection.structuredContent
+    assert connection.structuredContent["connection_status"] == "software_not_running"
+    assert connection.structuredContent["connected"] is False
+    assert invalid.isError, "Invalid arguments must use the MCP error channel"
     if output:
         output.write_text(json.dumps({
             "initialize": initialized.model_dump(mode="json", exclude_none=True),
@@ -64,6 +73,9 @@ async def inspect_package(wheel: Path, expected_tools: int, output: Path | None)
         "resources": len(resources),
         "prompts": len(prompts),
         "instructions": True,
+        "output_schemas": sum(tool.outputSchema is not None for tool in tools),
+        "structured_response": True,
+        "invalid_input_is_error": True,
     }))
 
 

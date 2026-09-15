@@ -17,8 +17,13 @@ INTEGRATION_GUIDE 已经承诺了 `BRIDGE_PROVIDER=qtmodel` —— 文档写了�
 
 from __future__ import annotations
 
+import asyncio
+import runpy
+from unittest.mock import Mock
+
 import pytest
 
+import qiao_mcp.providers
 from qiao_mcp.providers import (
     DEFAULT_PROVIDER,
     PROVIDER_ENV,
@@ -187,3 +192,15 @@ def test_created_provider_satisfies_the_contract():
     assert isinstance(p, BridgeProvider)
     assert isinstance(p.name, str) and p.name
     assert isinstance(p.get_software_name(), str) and p.get_software_name()
+
+
+def test_server_catalog_initializes_without_a_connection_probe(monkeypatch):
+    stub = StubProvider()
+    probe = Mock(side_effect=AssertionError("Catalog startup must not probe the backend"))
+    monkeypatch.setattr(stub, "is_available", probe)
+    monkeypatch.setattr(qiao_mcp.providers, "create_provider", lambda: stub)
+    namespace = runpy.run_module("qiao_mcp.server", run_name="qiao_mcp._startup_test")
+    tools = asyncio.run(namespace["mcp"].list_tools())
+    assert len(tools) == 133
+    assert "check_qiaotong_connection" in {tool.name for tool in tools}
+    probe.assert_not_called()
