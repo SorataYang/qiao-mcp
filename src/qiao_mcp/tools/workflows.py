@@ -1,12 +1,14 @@
 """High-level workflows that build bridges using backend-resolved entity IDs."""
 
 import math
-from typing import Any
+from typing import Annotated
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import Field
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.schemas import BridgeWorkflowResult, PositiveInteger, PositiveNumber
 
 
 def _record_id(record: dict, *keys: str) -> int:
@@ -72,7 +74,7 @@ def _build_bridge(
     section_name: str,
     self_weight_case: str,
     rectangle: tuple[float, float] | None,
-) -> dict[str, Any]:
+) -> BridgeWorkflowResult:
     """Resolve properties first, then build from actual node IDs without clearing the model."""
     for label, value in (
         ("material_name", material_name), ("section_name", section_name),
@@ -156,7 +158,7 @@ def _build_bridge(
         provider.add_general_support(
             node_id=node_id, boundary_info=[fixed_x, True, True, False, False, False],
         )
-    return {
+    return BridgeWorkflowResult.model_validate({
         "status": "success",
         "message": (
             "Bridge geometry and load case created (桥梁几何与荷载工况已创建). "
@@ -171,7 +173,7 @@ def _build_bridge(
         "material_id": mat_id,
         "section_id": sec_id,
         "load_case": self_weight_case,
-    }
+    })
 
 
 def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -179,14 +181,14 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
 
     @mcp.tool()
     def create_simple_beam_bridge(
-        span: float = 20.0,
-        num_elements: int = 10,
+        span: PositiveNumber = 20.0,
+        num_elements: Annotated[int, Field(ge=2)] = 10,
         material_name: str = "C50",
         section_name: str = "矩形梁",
-        section_width: float = 1.0,
-        section_height: float = 1.5,
+        section_width: PositiveNumber = 1.0,
+        section_height: PositiveNumber = 1.5,
         self_weight_case: str = "SW",
-    ) -> dict[str, Any]:
+    ) -> BridgeWorkflowResult:
         """Build a straight, simply supported beam along global X (创建简支梁桥).
 
         Use this for a standard pin/roller layout. For custom geometry or supports,
@@ -237,12 +239,12 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
 
     @mcp.tool()
     def create_continuous_beam_bridge(
-        spans: list[float] | None = None,
-        num_elements_per_span: int = 8,
+        spans: Annotated[list[PositiveNumber], Field(min_length=1)] | None = None,
+        num_elements_per_span: PositiveInteger = 8,
         material_name: str = "C50",
         section_name: str = "箱梁截面",
         self_weight_case: str = "SW",
-    ) -> dict[str, Any]:
+    ) -> BridgeWorkflowResult:
         """Build a straight continuous girder along global X (创建连续梁桥).
 
         Uses rollers at abutments and X/Y/Z restraints at interior piers, with free

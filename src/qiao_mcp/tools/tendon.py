@@ -6,12 +6,13 @@ Provides tools for defining tendon properties, geometries,
 and applying prestress forces.
 """
 
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
-from qiao_mcp.tools.envelope import ToolError
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.schemas import FourNumbers, NonnegativeNumber, TendonNames, ThreeNumbers
 
 
 def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -21,9 +22,9 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
     def create_tendon_property(
         name: str,
         material_name: str,
-        tendon_type: int = 1,
-        duct_type: int = 1,
-        steel_type: int = 1,
+        tendon_type: Literal[0, 1, 2] = 1,
+        duct_type: Literal[1, 2, 3, 4, 5] = 1,
+        steel_type: Literal[1, 2] = 1,
         area: float = 0.00139,
         duct_diameter: float = 0.10,
         friction: float = 0.25,
@@ -80,12 +81,12 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
     def create_tendon_2d(
         name: str,
         property_name: str,
-        control_points: list[list[float]],
-        point_insert: list[float],
+        control_points: list[ThreeNumbers],
+        point_insert: ThreeNumbers,
         num: int = 1,
-        line_type: int = 1,
-        position_type: int = 1,
-        symmetry: int = 2,
+        line_type: Literal[1, 2] = 1,
+        position_type: Literal[1, 2] = 1,
+        symmetry: Literal[0, 1, 2] = 2,
         group_name: str = "默认钢束组",
     ) -> str:
         """
@@ -100,8 +101,10 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
             property_name: Tendon property name, must exist (钢束特性名，须已创建)
             control_points: Profile control points [[x, z, r], ...]
                             (控制点信息 [[x, z, 半径r], ...])
-            point_insert: Insertion point [x, y, z] for straight positioning
-                          (直线定位时的插入点坐标 [x, y, z])
+            point_insert: Exactly three values: [x,y,z] for straight positioning;
+                for track positioning, [end, direction, element_id] where end is
+                1=I or 2=J and direction is 1=I-to-J or 2=J-to-I
+                (直线：[x,y,z]；轨迹：[插入端1/2,方向1/2,插入单元号])
             num: Number of tendons (根数)
             line_type: Point type (线型): 1=导线点(guide), 2=折线点(polyline)
             position_type: Positioning (定位方式): 1=straight(直线), 2=track line(轨迹线)
@@ -135,13 +138,21 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def apply_prestress(
         case_name: str,
-        tendon_name: str | list[str],
-        force: float,
-        tension_type: int = 2,
+        tendon_name: TendonNames,
+        force: NonnegativeNumber,
+        tension_type: Literal[0, 1, 2] = 2,
         group_name: str = "",
     ) -> str:
         """
-        Apply prestress force to tendon(s) (施加预应力).
+        Add prestress loading to named steel tendons (给钢束施加预应力荷载).
+
+        Create tendon properties and geometry, the load case, and any named load group
+        first. Use add_initial_tension_load for cable/truss initial axial force and
+        add_cable_length_load for cable unstressed-length loading.
+        This records a load; it does not solve or query prestress losses. The wrapper
+        does not remove earlier prestress loads, and duplicate handling is determined
+        by QiaoTong. Inspect get_model_data(kind="pre_stress_loads") before retrying
+        instead of assuming the call is idempotent (先建钢束和工况；重试前查已有荷载).
 
         Args:
             case_name: Load case name for the prestress (预应力荷载工况名)
@@ -149,8 +160,15 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
             force: Prestress force in N (预应力张拉力，单位N), e.g. 3000000 = 3000kN
             tension_type: Tension end (张拉方式): 0=start(始端), 1=end(末端), 2=both(两端)
             group_name: Load group name (荷载组名)
+
+        Returns:
+            Summary of requested force, tendon count and case. Run analysis before
+            get_tendon_loss_results; successful load creation alone supplies no losses.
         """
         try:
+            names = [tendon_name] if isinstance(tendon_name, str) else tendon_name
+            if not case_name.strip() or not names or any(not name.strip() for name in names):
+                raise ToolInputError("Provide a load case and at least one nonempty tendon name")
             kwargs: dict[str, Any] = {"tension_type": tension_type}
             if group_name:
                 kwargs["group_name"] = group_name
@@ -199,11 +217,11 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_tendon_3d(
         name: str,
         property_name: str,
-        control_points: list[list[float]],
-        point_insert: list[float],
+        control_points: list[FourNumbers],
+        point_insert: ThreeNumbers,
         num: int = 1,
-        line_type: int = 1,
-        position_type: int = 1,
+        line_type: Literal[1, 2] = 1,
+        position_type: Literal[1, 2] = 1,
         group_name: str = "默认钢束组",
     ) -> str:
         """
@@ -214,8 +232,10 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
             property_name: Tendon property name, must exist (钢束特性名，须已创建)
             control_points: 3D control points [[x, y, z, r], ...], r = fillet radius
                             (三维控制点 [[x, y, z, 半径r], ...])
-            point_insert: Insertion point [x, y, z] for straight positioning
-                          (直线定位时的插入点坐标)
+            point_insert: Exactly three values: [x,y,z] for straight positioning;
+                for track positioning, [end, direction, element_id] where end is
+                1=I or 2=J and direction is 1=I-to-J or 2=J-to-I
+                (直线：[x,y,z]；轨迹：[插入端1/2,方向1/2,插入单元号])
             num: Number of tendons (钢束根数)
             line_type: Point type (线型): 1=导线点(guide), 2=折线点(polyline)
             position_type: Positioning (定位方式): 1=straight(直线), 2=track line(轨迹线)
