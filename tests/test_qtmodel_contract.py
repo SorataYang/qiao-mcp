@@ -5,7 +5,7 @@
 
 1. provider 层：QtModelProvider 方法内对 self._mdb/_odb/_cdb 的直接调用
    （含 getattr(self._mdb, "name")(...) 与 _query_model("name", ...) 形式）；
-2. tools 层：@mcp.tool() 函数对 provider.<method>(...) 的调用，
+2. tools 层：@mcp.tool() 函数及接收 provider 的辅助函数对 provider.<method>(...) 的调用，
    经 provider 方法体解析出最终落到的 qtmodel 方法后合并校验。
 
 已知尚未修复的错配登记在 KNOWN_FAILURES（对应整改任务），
@@ -224,7 +224,7 @@ def parse_tools() -> list[ToolCall]:
     for path in sorted(TOOLS_DIR.glob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for fn in ast.walk(tree):
-            if not isinstance(fn, ast.FunctionDef):
+            if not isinstance(fn, ast.FunctionDef | ast.AsyncFunctionDef):
                 continue
             is_tool = any(
                 isinstance(d, ast.Call)
@@ -232,7 +232,8 @@ def parse_tools() -> list[ToolCall]:
                 and d.func.attr == "tool"
                 for d in fn.decorator_list
             )
-            if not is_tool:
+            is_helper = any(arg.arg == "provider" for arg in fn.args.args) and not fn.name.startswith("register_")
+            if not is_tool and not is_helper:
                 continue
             for node in ast.walk(fn):
                 if not isinstance(node, ast.Call):

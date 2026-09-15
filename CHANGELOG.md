@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-09-14
+
 ### Added
 
+- **Parameter descriptions in MCP input schemas.** The registration wrapper
+  copies Google-style docstring argument descriptions into the actual JSON Schema,
+  including multiline descriptions while keeping injected Context out of inputs.
 - **Optional `t_out` on `add_thickness` and `show_view` on `run_analysis`.**
   Separate in-plane/out-of-plane thickness and the QiaoTong solver progress
   window are exposed without changing existing defaults. Real API signatures
@@ -66,6 +71,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Bridge workflows use resolved entity IDs.** Both templates build elements and
+  supports from the node IDs read back in coordinate order, reuse the requested
+  material and section by exact name, and allocate element IDs above the existing
+  maximum. Incomplete node readback or unverifiable geometry stops before elements
+  and supports are written. Missing continuous-bridge sections and invalid dimensions
+  fail before geometry creation; property creation errors are no longer swallowed.
+  Results include node, element, support, material and section IDs. Partial writes
+  are not rolled back, and repeated workflows can add duplicate elements/supports.
+- **Tool guidance matches the exposed catalog.** Material and section lookups now
+  point to `get_model_data`. Load, stage, temperature, tendon, display and modification
+  descriptions clarify units, prerequisites, tool selection and side effects.
+- **MCP initialization reports the Qiao-MCP package version**, rather than the SDK
+  version, so clients and directory inspections can identify the running release.
+- **Partial plate updates retain `plate_type`.** Updating another property no longer
+  silently changes a thick plate into a thin plate.
 - **Correct the plate-thickness type description:** `thick_type=0` is an ordinary
   plate and `1` is a ribbed plate; unequal thickness is controlled by `t_out`.
 - **Section-property recalculation retains model-write protection.** Both the
@@ -186,7 +206,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
-[Unreleased]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.1...develop
+[Unreleased]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.2...develop
+[0.3.2]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/SorataYang/qiao-mcp/compare/v0.2.0...v0.2.1

@@ -237,7 +237,7 @@ Set the BRIDGE_PROVIDER environment variable to one of these.
 
 ### 新增后端 Adding a Backend
 
-工具层（132 个工具）与后端解耦，接入新软件不需要改动工具代码：
+工具层（133 个工具）与后端解耦，接入新软件不需要改动工具代码：
 
 1. 实现 `qiao_mcp.providers.BridgeProvider` 的抽象方法，外加工具层实际调用的建模/查询/分析方法；
 2. 在 `providers/__init__.py` 的 `_PROVIDERS` 中登记一行（模块路径 + 类名，惰性导入，某后端依赖缺失不会影响其它后端）；
