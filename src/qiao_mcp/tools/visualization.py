@@ -10,6 +10,7 @@ from mcp.server.fastmcp import FastMCP, Image
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.schemas import PlotResultKind, ViewAngle, ViewSelection
 
 # Default output directory for images (图片默认保存目录)
 DEFAULT_IMAGE_DIR = os.path.join(os.path.expanduser("~"), "qiao_mcp_images")
@@ -36,10 +37,10 @@ _VIEW_PRESETS = {
 def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     """Register visualization MCP tools."""
 
-    @mcp.tool()
+    @mcp.tool(structured_output=False)
     def save_model_screenshot(
         file_path: str = "",
-        view_angle: str = "iso",
+        view_angle: ViewAngle = "iso",
         return_image: bool = True,
     ) -> str | Image:
         """
@@ -83,9 +84,9 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         except Exception as e:
             raise ToolError(f"Error saving screenshot (保存截图失败): {e}") from e
 
-    @mcp.tool()
+    @mcp.tool(structured_output=False)
     def plot_analysis_result(
-        result_type: str,
+        result_type: PlotResultKind,
         stage_id: int = -1,
         case_name: str = "",
         component: str = "",
@@ -109,7 +110,7 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
                 -1=operation(运营), 0=envelope(包络), n=stage n (第n阶段)
             case_name: Load case name for operation stage (运营阶段荷载工况名)
             component: Result component to display (显示分量), e.g.
-                'uy'(竖向位移), 'mz'(弯矩), 'fx'(轴力), 'sz'(正应力)
+                'uy'(Y向位移), 'mz'(弯矩), 'fx'(轴力), 'sz'(正应力)
                 Leave empty to use default component.
             file_path: Output file path (.png). Empty = default directory.
                        输出路径，为空则保存到默认目录
@@ -142,7 +143,7 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
 
     @mcp.tool()
     def set_view_angle(
-        angle_preset: str = "iso",
+        angle_preset: ViewSelection = "iso",
         horizontal: float | None = None,
         vertical: float | None = None,
     ) -> str:

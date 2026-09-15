@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-09-15
+
+### Added
+
+- **Real structured MCP outputs.** All 131 non-image tools publish output schemas.
+  Explicit response models cover connection diagnostics, model state and bridge
+  workflows; text tools retain the compatible `status`/`message` envelope. Images
+  remain MCP image content. The SDK no longer silently treats bare `dict` annotations
+  as unstructured output.
+- **Executable input constraints.** The catalog exposes 59 parameters containing
+  closed-set selectors and 32 parameters containing fixed-size or nonempty arrays,
+  pagination ranges, positive workflow dimensions, and fixed-size DOF/coordinate
+  rows. Node coordinates retain both `[x,y,z]` and `[id,x,y,z]` formats; tendon
+  inputs retain straight and track positioning, and boundary removal accepts both
+  English tokens and native Chinese names. Malformed schema inputs fail before
+  connection/state probes or backend dispatch. Extensible design-code
+  indices, backend-owned payloads and stage-number conventions remain documented
+  rather than being constrained to a guessed list.
+- **Protocol regression gates.** CI checks the built wheel's initialization,
+  instructions, complete parameter descriptions, output schemas, a real structured
+  response and MCP error handling without QiaoTong. The offline catalog uses the
+  same registration function as the server.
+- **Catalog startup is independent of bridge discovery.** Initializing the MCP
+  server and listing tools do not probe QiaoTong. Diagnostics and guarded operations
+  perform the connectivity checks when needed, so inspection does not wait on a
+  desktop session or a scan of candidate HTTP ports.
+
+### Fixed
+
+- **Load combinations use `[case_type, case_name, factor]`.** Correct the previously
+  reversed documentation and reject reversed/malformed rows before writing. The
+  envelope rule is `combine_type=3`; `2` is discriminant combination. Document MDB
+  versus CDB combinations and the backend's overwrite behavior.
+- **Polygon sections use the native custom-loop section type and list container.**
+  Validate finite 2D points, distinct vertices and nonzero signed area; close rings
+  without modifying caller-owned data and wrap the outline/holes in the SDK's list.
+  The payload is checked with qtmodel's actual local geometry builder.
+- **Beam-end release flags match their documented meaning.** MCP `True=released`
+  is converted to native qtmodel `False=free`; omitted ends are fully connected.
+  Previously flags were forwarded with the opposite meaning and omitted ends used
+  the SDK's all-free defaults. Tests inspect the actual SDK request payload.
+- **Prestress and file-operation guidance.** Document dependencies, retry behavior,
+  recovery queries, model-host file paths and `.bfmd` as the SDK-documented format.
+  Empty tendon selections and zero-node creation no longer report success.
+- **Additional parameter guidance.** Clarify native cable initialization modes,
+  concrete/composite section-temperature categories and track-positioned tendon
+  insertion triples, rather than describing them as strain, section shapes or XYZ
+  coordinates in every mode.
+- **Accurate operation annotations.** Connection diagnostics are read-only; generic
+  API calls, combination replacement, deletion-capable check tools and file saves disclose destructive
+  potential. Model state keeps the backend's status rather than forcing success.
+
 ## [0.3.2] - 2026-09-14
 
 ### Added
@@ -206,7 +258,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
-[Unreleased]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.2...develop
+[Unreleased]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.3...develop
+[0.3.3]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.2.1...v0.3.0

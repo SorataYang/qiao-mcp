@@ -12,12 +12,22 @@ All list outputs are paginated (limit/offset) to protect the LLM context window.
 """
 
 import json
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.schemas import (
+    EntitySearch,
+    FiveNumbers,
+    ModelDataKind,
+    NonnegativeNumber,
+    PageLimit,
+    PageOffset,
+    PositiveInteger,
+    SpecialResultKind,
+)
 
 # 输出保护：单次返回的最大条数上限
 MAX_LIMIT = 500
@@ -58,14 +68,14 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
     @mcp.tool()
     def get_model_data(
-        kind: str,
+        kind: ModelDataKind,
         ids: int | list[int] | str | None = None,
         name: str = "",
         sec_id: int | None = None,
-        position: int = 0,
+        position: Literal[0, 1] = 0,
         stage_id: int | None = None,
-        limit: int = 100,
-        offset: int = 0,
+        limit: PageLimit = 100,
+        offset: PageOffset = 0,
     ) -> str:
         """
         Query model data by kind (按类型查询模型数据) — the single read tool for
@@ -212,17 +222,17 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
     @mcp.tool()
     def find_entities(
-        by: str,
+        by: EntitySearch,
         x: float = 0.0,
         y: float = 0.0,
         z: float = 0.0,
-        tolerance: float = 1e-3,
+        tolerance: NonnegativeNumber = 1e-3,
         name: str = "",
         index: int | None = None,
         ids: int | list[int] | str | None = None,
         span_info_name: str = "",
-        limit: int = 100,
-        offset: int = 0,
+        limit: PageLimit = 100,
+        offset: PageOffset = 0,
     ) -> str:
         """
         Locate nodes/elements by coordinates or attributes (按坐标或属性定位节点/单元).
@@ -291,7 +301,7 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     @mcp.tool()
     def calc_section_property(
         loop_segments: list[dict] | None = None,
-        sec_lines: list[list[float]] | None = None,
+        sec_lines: list[FiveNumbers] | None = None,
     ) -> str:
         """
         Compute section properties from raw geometry, without creating a section
@@ -319,17 +329,17 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
     @mcp.tool()
     def get_special_results(
-        kind: str,
+        kind: SpecialResultKind,
         ids: int | list[int] | str | None = None,
         case_name: str = "",
         node_id: int | None = None,
-        mode: int = 1,
+        mode: PositiveInteger = 1,
         stage_id: int = 1,
         result_kind: int = 1,
         envelop_type: int = 1,
         increment_type: int = 1,
-        limit: int = 100,
-        offset: int = 0,
+        limit: PageLimit = 100,
+        offset: PageOffset = 0,
     ) -> str:
         """
         Get special post-analysis results (专项分析结果查询) — beyond the basic

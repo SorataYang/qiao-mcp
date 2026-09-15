@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目简介
 
-Qiao-MCP 是一个 MCP 服务器,把桥梁结构分析软件(当前仅支持桥通/QiaoTong,经 `qtmodel` Python API)的能力暴露给 AI 助手:建模、施工阶段、荷载、预应力、活载、规范验算、结果查询。共 132 个工具、7 个资源、4 个提示模板。
+Qiao-MCP 是一个 MCP 服务器,把桥梁结构分析软件(当前仅支持桥通/QiaoTong,经 `qtmodel` Python API)的能力暴露给 AI 助手:建模、施工阶段、荷载、预应力、活载、规范验算、结果查询。共 133 个工具、7 个资源、4 个提示模板。
 
 ## 常用命令
 
@@ -28,7 +28,7 @@ PYTHONPATH=reference_codes/qtmodel-release/packages/qtmodel/src:src \
 
 - 离线测试不需要桥通软件:provider 层用 `tests/conftest.py` 的 `FakeDb`(记录全部调用的假 mdb/odb/cdb)+ `__new__` 跳过 `__init__` 构造的 provider 实例。
 - `tests/test_end_to_end.py` 需要桥通运行且设置 `QIAOTONG_HTTP_URL`,会**清空并重建活动模型**——本机没有桥通时它自行 skip(CI 里就是靠 skip 通过的),但本地跑全量时仍建议 `--ignore` 它。
-- CI(`.github/workflows/ci.yml`)跑 ruff + mypy + pytest,push 到 develop/main 时触发。
+- CI(`.github/workflows/ci.yml`)跑 ruff + mypy + 离线 pytest,并构建 wheel 做真实 stdio 协议检查；push 到 develop/main 时触发。
 
 ## 架构
 
@@ -55,9 +55,11 @@ src/qiao_mcp/
 
 ### 工具返回协议(envelope)
 
-所有工具经 `register_tools_with_envelope` 包装(`server.py` 的 `_TOOL_REGISTRARS` 列表统一注册):
+所有工具经 `register_tools_with_envelope` 包装(`tools/catalog.py` 的 `TOOL_REGISTRARS` 统一注册，服务器与离线检查共用入口):
 
-- 成功:返回 dict(结构化内容)或 str(自动包裹为 `{status, message}`)
+- 成功:返回 dict、响应 BaseModel 或 str(自动包裹为 `{status, message}`)。`tools/schemas.py` 定义输入约束与响应模型；包装器保留显式响应模型，字符串/普通字典分别使用 MessageResult/ObjectResult。不要把返回注解改回裸 dict，FastMCP 1.29 无法据此生成输出 Schema。
+- 图片:两个图片工具显式 `structured_output=False`，保留 MCP Image 内容。其他 131 个工具必须有输出 Schema。
+- 启动与目录注册不探测桥通连接；连接检查由诊断工具和操作守卫按需执行。
 - 失败:`raise ToolError(...)`;输入不合法用 `ToolInputError`(`tools/envelope.py`)
 - `envelope.py` 同时把每个工具名映射到桥通能力类别(`model_read`/`model_write`/`stage_write`/`result_read`/`check_*`/`analysis_run`/`view`/`lifecycle`/`connection`),用于模型状态守卫
 
@@ -86,4 +88,4 @@ src/qiao_mcp/
 
 ## 发版注意
 
-版本号散在四处,没有一致性测试:`pyproject.toml`、`server.json` 的顶层 `version`、`server.json` packages 里的 `version`、`CHANGELOG.md`。发版时四处都要改。兼容性表格(README + CHANGELOG)在换 qtmodel minor 线时要加行。
+发版同步 `pyproject.toml`、`server.json` 顶层与 packages 里的 `version`、`uv.lock` 的本项目版本、`CHANGELOG.md` 和 README 兼容表。`qiao_mcp.__version__` 从已安装分发元数据读取，MCP 握手使用同一版本。`scripts/check_mcp_package.py` 检查构建 wheel 的实际握手、目录、结构化结果和错误通道。GitHub 的 pypi 发布环境配置了人工审批；开发分支只发布 TestPyPI，正式 PyPI 由 v* 标签触发。

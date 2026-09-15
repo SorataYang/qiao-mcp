@@ -4,12 +4,13 @@ MCP Tools for structural concrete checking and reinforcement design.
 """
 
 import json
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.schemas import CheckDataKind, CheckSettingKind, PageLimit, PageOffset
 
 MAX_LIMIT = 500
 
@@ -46,7 +47,7 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
     def setup_concrete_check(
         name: str,
         standard: int = 1,
-        structure_type: int = 3,
+        structure_type: Literal[1, 2, 3, 4] = 3,
         group_name: str = "默认结构组",
     ) -> str:
         """
@@ -87,7 +88,7 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         standard: int = 1,
         kind: int = 3,
         load_case_factors: list[list] | None = None,
-        combine_method: int = 1,
+        combine_method: Literal[1, 2] = 1,
     ) -> str:
         """
         Add a load combination for structural checking (添加检算荷载组合).
@@ -155,7 +156,7 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def add_parametric_reinforcement(
         section_id: int,
-        position: int = 0,
+        position: Literal[0, 1] = 0,
         has_outer: bool = True,
         has_inner: bool = True,
         outer_rebar_info: list[list] | None = None,
@@ -200,7 +201,7 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_check_stirrup(
         stirrup_id: int,
         name: str,
-        stirrup_type: int = 1,
+        stirrup_type: Literal[1, 2] = 1,
         material_id: int = 1,
         limbs_number: int = 2,
         loops_number: int = 2,
@@ -279,13 +280,13 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
 
     @mcp.tool()
     def get_check_data(
-        kind: str,
+        kind: CheckDataKind,
         element_id: int | None = None,
         stress_type: int = 1,
         combine_type: int = 1,
         name: str = "",
-        limit: int = 100,
-        offset: int = 0,
+        limit: PageLimit = 100,
+        offset: PageOffset = 0,
     ) -> str:
         """
         Query concrete-check data by kind (按类型查询混凝土检算数据).
@@ -349,7 +350,7 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
             raise ToolError(f"Error querying check data '{kind}' (查询检算数据失败): {e}") from e
 
     @mcp.tool()
-    def configure_check_analysis(kind: str, settings: dict[str, Any]) -> str:
+    def configure_check_analysis(kind: CheckSettingKind, settings: dict[str, Any]) -> str:
         """
         Configure a concrete-check analysis setting group (配置混凝土检算分析设置).
 
@@ -420,10 +421,10 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
 
     @mcp.tool()
     def manage_check_stirrup(
-        action: str,
+        action: Literal["update", "remove"],
         stirrup_id: int = -1,
         name: str = "",
-        stirrup_type: int = 1,
+        stirrup_type: Literal[1, 2] = 1,
         material_id: int = 1,
         limbs_number: int = 2,
         loops_number: int = 2,
@@ -481,7 +482,7 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
 
     @mcp.tool()
     def assign_element_stirrup(
-        action: str,
+        action: Literal["shear", "torsion", "remove"],
         element_id: int = -1,
         stirrup_i_y: int = 1,
         stirrup_i_x: int = 1,
@@ -538,7 +539,9 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
             raise ToolError(f"Error assigning element stirrup (指定单元箍筋失败): {e}") from e
 
     @mcp.tool()
-    def manage_check_case_file(action: str, name: str = "", file_path: str = "") -> str:
+    def manage_check_case_file(
+        action: Literal["open", "save"], name: str = "", file_path: str = "",
+    ) -> str:
         """
         Open or save a concrete check case file (打开或保存混凝土检算工况文件).
 
