@@ -1,19 +1,181 @@
-"""
-High-level workflow tools for rapid bridge model creation.
-高层工作流工具：快速桥梁建模
+"""High-level workflows that build bridges using backend-resolved entity IDs."""
 
-These tools combine multiple lower-level API calls to provide
-one-step model generation for common bridge types.
-"""
+import math
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
-from qiao_mcp.tools.envelope import ToolError
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
+
+
+def _record_id(record: dict, *keys: str) -> int:
+    for key in keys:
+        value = record.get(key)
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            return value
+        if isinstance(value, str) and value.isdecimal() and int(value) > 0:
+            return int(value)
+    raise ToolError(f"Cannot resolve a positive entity ID from {record!r} (无法读回有效编号)")
+
+
+def _material_id(provider: BridgeProvider, name: str) -> int | None:
+    matches = {
+        _record_id(row, "index", "mat_id", "material_id", "id")
+        for row in provider.get_material_data()
+        if row.get("name") == name
+    }
+    if len(matches) > 1:
+        raise ToolInputError(f"Material name {name!r} is ambiguous (材料名不唯一)")
+    return next(iter(matches), None)
+
+
+def _section_id(provider: BridgeProvider, name: str) -> int | None:
+    sections = provider.get_section_names()
+    if isinstance(sections, dict):
+        rows = [{"id": key, "name": value} for key, value in sections.items()]
+    elif isinstance(sections, list):
+        rows = []
+        for section in sections:
+            if isinstance(section, dict):
+                rows.append(section)
+            else:
+                index = _record_id({"id": section}, "id")
+                rows.append({**provider.get_section_data(index), "id": index})
+    else:
+        raise ToolError("Cannot read section names (无法读取截面名称)")
+    matches = {
+        _record_id(row, "index", "sec_id", "section_id", "id")
+        for row in rows if row.get("name") == name
+    }
+    if len(matches) > 1:
+        raise ToolInputError(f"Section name {name!r} is ambiguous (截面名不唯一)")
+    return next(iter(matches), None)
+
+
+def _positive(value: float, name: str) -> None:
+    if isinstance(value, bool) or not math.isfinite(value) or value <= 0:
+        raise ToolInputError(f"{name} must be finite and positive ({name} 必须为有限正数)")
+
+
+def _element_count(value: int, minimum: int, name: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+        raise ToolInputError(f"{name} must be an integer >= {minimum}")
+
+
+def _build_bridge(
+    provider: BridgeProvider,
+    *,
+    spans: list[float],
+    elements_per_span: int,
+    material_name: str,
+    section_name: str,
+    self_weight_case: str,
+    rectangle: tuple[float, float] | None,
+) -> dict[str, Any]:
+    """Resolve properties first, then build from actual node IDs without clearing the model."""
+    for label, value in (
+        ("material_name", material_name), ("section_name", section_name),
+        ("self_weight_case", self_weight_case),
+    ):
+        if not value.strip():
+            raise ToolInputError(f"{label} must not be empty ({label} 不能为空)")
+
+    # Read references before creating geometry; never pick an unrelated first section.
+    sec_id = _section_id(provider, section_name)
+    if sec_id is None and rectangle is None:
+        raise ToolInputError(
+            f"Section {section_name!r} must already exist; create it with create_section "
+            "before this workflow (请先创建指定截面)"
+        )
+    mat_id = _material_id(provider, material_name)
+    first_element_id = 1 + max(
+        (_record_id(row, "index", "element_id", "ele_id", "id")
+         for row in provider.get_element_data()), default=0,
+    )
+    load_groups = provider.get_load_group_names()
+    load_cases = provider.get_load_case_names()
+
+    if mat_id is None:
+        provider.add_material(
+            name=material_name, mat_type=1, standard=1, database=material_name,
+        )
+        mat_id = _material_id(provider, material_name)
+        if mat_id is None:
+            raise ToolError(f"Material {material_name!r} could not be read back after creation")
+    if sec_id is None:
+        assert rectangle is not None
+        provider.add_section(name=section_name, sec_type="矩形", sec_info=list(rectangle))
+        sec_id = _section_id(provider, section_name)
+        if sec_id is None:
+            raise ToolError(f"Section {section_name!r} could not be read back after creation")
+    if "默认荷载组" not in load_groups:
+        provider.add_load_group(name="默认荷载组")
+    if self_weight_case not in load_cases:
+        provider.add_load_case(name=self_weight_case, case_type="施工阶段荷载")
+
+    node_data: list[list[float]] = []
+    start = 0.0
+    for span in spans:
+        node_data.extend(
+            [start + span * i / elements_per_span, 0.0, 0.0]
+            for i in range(elements_per_span)
+        )
+        start += span
+    node_data.append([start, 0.0, 0.0])
+    node_ids = provider.add_nodes_returning_ids(node_data=node_data, is_merged=True)
+    if (
+        len(node_ids) != len(node_data)
+        or len(set(node_ids)) != len(node_ids)
+        or any(isinstance(n, bool) or not isinstance(n, int) or n <= 0 for n in node_ids)
+    ):
+        raise ToolError(
+            "Could not resolve one distinct node ID per coordinate; no elements or supports "
+            "were written. Inspect get_model_data(kind='nodes') before retrying "
+            "(节点编号读回不完整，尚未创建单元和支座)"
+        )
+    geometry = provider.check_node_chain_geometry(node_ids)
+    if not geometry.get("ok") or "total_length" not in geometry:
+        raise ToolError(
+            f"Node geometry could not be verified: {geometry.get('reason', 'unknown')}. "
+            "No elements or supports were written (节点几何未通过验证，尚未创建单元和支座)"
+        )
+
+    element_ids = list(range(first_element_id, first_element_id + len(node_ids) - 1))
+    provider.add_elements(ele_data=[
+        [element_id, 1, mat_id, sec_id, 0.0, node_i, node_j, 0, 0.0]
+        for element_id, node_i, node_j in zip(
+            element_ids, node_ids[:-1], node_ids[1:], strict=True,
+        )
+    ])
+    support_positions = list(range(0, len(node_ids), elements_per_span))
+    support_ids = [node_ids[position] for position in support_positions]
+    for position, node_id in zip(support_positions, support_ids, strict=True):
+        # One span uses a pin/roller. For multiple spans the piers restrain X.
+        fixed_x = position == 0 if len(spans) == 1 else 0 < position < len(node_ids) - 1
+        provider.add_general_support(
+            node_id=node_id, boundary_info=[fixed_x, True, True, False, False, False],
+        )
+    return {
+        "status": "success",
+        "message": (
+            "Bridge geometry and load case created (桥梁几何与荷载工况已创建). "
+            "Self-weight is controlled by construction-stage settings; "
+            "merge_operation_stage → apply loads → configure_analysis → run_analysis "
+            "→ get_analysis_results."
+        ),
+        "spans": spans,
+        "node_ids": node_ids,
+        "element_ids": element_ids,
+        "support_node_ids": support_ids,
+        "material_id": mat_id,
+        "section_id": sec_id,
+        "load_case": self_weight_case,
+    }
 
 
 def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
-    """Register high-level workflow MCP tools."""
+    """Register workflows for standard straight bridge layouts."""
 
     @mcp.tool()
     def create_simple_beam_bridge(
@@ -24,111 +186,54 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
         section_width: float = 1.0,
         section_height: float = 1.5,
         self_weight_case: str = "SW",
-    ) -> str:
-        """
-        One-step creation of a simple beam bridge model (一键创建简支梁桥模型).
+    ) -> dict[str, Any]:
+        """Build a straight, simply supported beam along global X (创建简支梁桥).
 
-        Creates nodes, beam elements, supports, and a self-weight load case in
-        a single step. The bridge lies along the X-axis.
-        一键完成节点、梁单元、支承和自重工况的建立，桥梁沿X轴布置。
+        Use this for a standard pin/roller layout. For custom geometry or supports,
+        use create_nodes_linear, create_beam_elements_linear and set_support.
+        Requires an open model in an editable base stage. Reuses a material and
+        section by exact name; creates missing concrete material / rectangle section.
+        Nodes at matching coordinates are reused; elements receive unused IDs.
+        Repeating the workflow can add duplicate elements and supports. It does not
+        clear the model or roll back partial writes on error; save_model_file first.
+        (复用同名属性及重合节点，追加梁和支座；失败不会自动回滚。)
 
         Args:
-            span: Span length in meters (跨径，单位m)
-            num_elements: Number of beam elements (梁单元划分数量), min 2
-            material_name: Material name (material must already exist) (材料名，须已创建)
-            section_name: Section name (section must already exist) (截面名，须已创建)
-            section_width: Section width in m for auto-creating a rectangle section
-                           (矩形截面宽度，单位m，若截面不存在则自动创建)
-            section_height: Section height in m (矩形截面高度，单位m)
-            self_weight_case: Self-weight load case name (自重工况名)
+            span: Positive span in meters (正跨径，m)
+            num_elements: Integer number of elements, at least 2 (单元数，至少2)
+            material_name: Existing material name, or concrete database grade to create
+                such as C50 (复用同名材料；缺失时按此混凝土牌号创建)
+            section_name: Existing section name, or name of a new rectangle
+                (复用同名截面；缺失时创建矩形截面)
+            section_width: Positive rectangle width in meters; used only for a new section
+                (新建矩形截面的正宽度，m)
+            section_height: Positive rectangle height in meters; used only for a new section
+                (新建矩形截面的正高度，m)
+            self_weight_case: Load case to create or reuse. Self-weight itself is enabled
+                through stage settings, not this name (荷载工况名，自重由阶段设置控制)
+
+        Returns:
+            Actual ordered node_ids, element_ids, support_node_ids, material_id,
+            section_id, spans and load_case. Finish staging with merge_operation_stage,
+            then configure_analysis and run_analysis before querying results.
         """
+        _positive(span, "span")
+        _element_count(num_elements, 2, "num_elements")
+        _positive(section_width, "section_width")
+        _positive(section_height, "section_height")
         try:
-            log = []
-
-            # 1. Create C50 concrete material if not present
-            try:
-                provider.add_material(
-                    name=material_name, mat_type=1, standard=1, database=material_name
-                )
-                log.append(f"✓ Material '{material_name}' created")
-            except Exception:
-                log.append(f"ℹ Material '{material_name}' already exists or skipped")
-
-            # 2. Create rectangular section if not present
-            try:
-                provider.add_section(
-                    name=section_name,
-                    sec_type="矩形",
-                    sec_info=[section_width, section_height],
-                )
-                log.append(f"✓ Section '{section_name}' ({section_width}×{section_height}m) created")
-            except Exception:
-                log.append(f"ℹ Section '{section_name}' already exists or skipped")
-
-            # 3. Create nodes along X-axis
-            n = num_elements + 1
-            dx = span / num_elements
-            # Create node array for simple beam
-            node_data = [[i * dx, 0.0, 0.0] for i in range(n)]
-            provider.add_nodes(node_data=node_data, is_merged=True)
-            log.append(f"✓ {n} nodes created (x=0 to {span}m)")
-
-            # 4. Get material and section IDs from model
-            materials = provider.get_material_data()
-            mat_id = next(
-                (m.get("id", 1) for m in materials if m.get("name") == material_name), 1
-            )
-            sections = provider.get_section_names()
-            sec_id = sections[0] if sections else 1
-
-            # 5. Create beam elements
-            # Generate sequential beam element array: [id, type, matId, secId, beta, nodeI, nodeJ, initType, initVal]
-            ele_data = [
-                [i + 1, 1, mat_id, sec_id, 0.0, i + 1, i + 2, 0, 0.0]
-                for i in range(num_elements)
-            ]
-            provider.add_elements(ele_data=ele_data)
-            log.append(f"✓ {num_elements} beam elements created")
-
-            # 6. Set supports: pin at node 1, roller at last node
-            provider.add_general_support(
-                node_id=1, boundary_info=[True, True, True, False, False, False]
-            )
-            provider.add_general_support(
-                node_id=n, boundary_info=[False, True, True, False, False, False]
-            )
-            log.append(f"✓ Pin support at node 1, roller at node {n}")
-
-            # 7. Load group & case for later applied loads; self-weight itself is
-            #    governed by QiaoTong stage settings, not by any load case.
-            try:
-                try:
-                    provider.add_load_group(name="默认荷载组")
-                except Exception:
-                    pass  # group likely already exists
-                try:
-                    provider.add_load_case(name=self_weight_case, case_type="施工阶段荷载")
-                except Exception:
-                    pass  # case likely already exists
-                log.append(
-                    f"✓ Load group and load case '{self_weight_case}' created. "
-                    "NOTE: self-weight enters via stage settings — call "
-                    "merge_operation_stage to finalize (自重由施工阶段计自重设置控制)"
-                )
-            except Exception as e:
-                log.append(f"ℹ Load case setup failed (error: {e})")
-
-            return (
-                "✅ Simple beam bridge created successfully! (简支梁桥模型创建成功)\n"
-                + "\n".join(log)
-                + f"\n\nSpan: {span}m | Elements: {num_elements} | "
-                f"Nodes: {n} | Material: {material_name} | Section: {section_name}\n"
-                + "Next steps: merge_operation_stage → apply_beam_distributed_load → configure_analysis → get_analysis_results"
+            return _build_bridge(
+                provider, spans=[span], elements_per_span=num_elements,
+                material_name=material_name, section_name=section_name,
+                self_weight_case=self_weight_case, rectangle=(section_width, section_height),
             )
         except ToolError:
-            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
-        except Exception as e:
-            raise ToolError(f"Error creating simple beam bridge (创建简支梁桥失败): {e}") from e
+            raise
+        except Exception as exc:
+            raise ToolError(
+                f"Could not complete simple beam bridge: {exc}. "
+                "Earlier writes may remain; inspect the model before retrying (请先检查已写入的模型)."
+            ) from exc
 
     @mcp.tool()
     def create_continuous_beam_bridge(
@@ -137,122 +242,50 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
         material_name: str = "C50",
         section_name: str = "箱梁截面",
         self_weight_case: str = "SW",
-    ) -> str:
-        """
-        One-step creation of a continuous beam bridge model (一键创建连续梁桥模型).
+    ) -> dict[str, Any]:
+        """Build a straight continuous girder along global X (创建连续梁桥).
 
-        Creates a multi-span continuous beam with fixed supports at piers
-        and appropriate end conditions.
-        创建多跨连续梁桥，中间支座为固定支承，端部为活动支承。
+        Uses rollers at abutments and X/Y/Z restraints at interior piers, with free
+        rotations. A single span uses a pin/roller. For different bearings, use the
+        individual modeling tools. Requires an editable base-stage model and the named
+        section already created. Reuses the named material, or creates concrete of that
+        database grade. Coincident nodes are reused; new element IDs follow the existing
+        maximum. Repeating adds elements/supports; failures can leave partial writes.
+        Save the model before running (复用重合节点，追加单元；不清空模型、不自动回滚).
 
         Args:
-            spans: List of span lengths in meters (各跨跨径列表，单位m),
-                   e.g. [30.0, 50.0, 30.0] means 3-span (3跨均匀布置)
-            num_elements_per_span: Elements per span (每跨单元划分数)
-            material_name: Material name (材料名，须已创建)
-            section_name: Section name (截面名，须已创建)
-            self_weight_case: Self-weight load case name (自重工况名)
+            spans: Nonempty list of positive spans in meters; None uses [30, 50, 30]
+                (正跨径列表，m；省略时为30+50+30)
+            num_elements_per_span: Positive integer elements per span (每跨正整数单元数)
+            material_name: Existing material name or concrete grade to create (材料名称/牌号)
+            section_name: Exact name of an existing section; missing section fails before
+                geometry is written (已有截面全名，缺失时在建模前报错)
+            self_weight_case: Load case to create or reuse; self-weight is controlled by
+                construction-stage settings (荷载工况名，自重由施工阶段设置控制)
+
+        Returns:
+            Actual ordered node_ids, element_ids, support_node_ids, material_id,
+            section_id, spans and load_case. Then merge_operation_stage, apply loads,
+            configure_analysis, run_analysis and get_analysis_results.
         """
         if spans is None:
             spans = [30.0, 50.0, 30.0]
-
+        if not spans:
+            raise ToolInputError("spans must not be empty (跨径列表不能为空)")
+        for span in spans:
+            _positive(span, "span")
+        _positive(sum(spans), "total span")
+        _element_count(num_elements_per_span, 1, "num_elements_per_span")
         try:
-            log = []
-            total_spans = len(spans)
-            total_length = sum(spans)
-
-            # 1. Materials and sections (attempt creation, skip if existing)
-            try:
-                provider.add_material(
-                    name=material_name, mat_type=1, standard=1, database=material_name
-                )
-                log.append(f"✓ Material '{material_name}' created")
-            except Exception:
-                log.append(f"ℹ Material '{material_name}' skipped")
-
-            # 2. Create nodes
-            node_data = []
-            x = 0.0
-            for span_len in spans:
-                dx = span_len / num_elements_per_span
-                for _ in range(num_elements_per_span):
-                    node_data.append([round(x, 6), 0.0, 0.0])
-                    x += dx
-            # Add final node
-            node_data.append([round(total_length, 6), 0.0, 0.0])
-            provider.add_nodes(node_data=node_data, is_merged=True)
-            total_nodes = len(node_data)
-            log.append(f"✓ {total_nodes} nodes created")
-
-            # 3. Create elements
-            materials = provider.get_material_data()
-            mat_id = next(
-                (m.get("id", 1) for m in materials if m.get("name") == material_name), 1
-            )
-            sections = provider.get_section_names()
-            sec_id = sections[0] if sections else 1
-
-            total_elements = total_spans * num_elements_per_span
-            
-            # Generate sequential beam element array: [id, type, matId, secId, beta, nodeI, nodeJ, initType, initVal]
-            ele_data = [
-                [i + 1, 1, mat_id, sec_id, 0.0, i + 1, i + 2, 0, 0.0]
-                for i in range(total_elements)
-            ]
-            provider.add_elements(ele_data=ele_data)
-            log.append(f"✓ {total_elements} beam elements created")
-
-            # 4. Set supports at abutments and piers
-            # Start abutment: roller (free X)
-            provider.add_general_support(
-                node_id=1, boundary_info=[False, True, True, False, False, False]
-            )
-            log.append("✓ Left abutment: roller support at node 1")
-
-            # Pier nodes at span boundaries
-            node_at_pier = 1
-            for i in range(len(spans) - 1):
-                node_at_pier += num_elements_per_span
-                provider.add_general_support(
-                    node_id=node_at_pier,
-                    boundary_info=[True, True, True, False, False, False]
-                )
-                log.append(f"✓ Pier {i+1}: fixed support at node {node_at_pier}")
-
-            # End abutment: roller
-            provider.add_general_support(
-                node_id=total_nodes,
-                boundary_info=[False, True, True, False, False, False]
-            )
-            log.append(f"✓ Right abutment: roller support at node {total_nodes}")
-
-            # 5. Load group & case; self-weight is governed by stage settings
-            try:
-                try:
-                    provider.add_load_group(name="默认荷载组")
-                except Exception:
-                    pass
-                try:
-                    provider.add_load_case(name=self_weight_case, case_type="施工阶段荷载")
-                except Exception:
-                    pass
-                log.append(
-                    f"✓ Load group and load case '{self_weight_case}' created. "
-                    "NOTE: self-weight enters via stage settings — call "
-                    "merge_operation_stage to finalize (自重由施工阶段计自重设置控制)"
-                )
-            except Exception as e:
-                log.append(f"ℹ Load case setup failed (error: {e})")
-
-            spans_str = "+".join(f"{s:.0f}" for s in spans)
-            return (
-                "✅ Continuous beam bridge created! (连续梁桥模型创建成功)\n"
-                + "\n".join(log)
-                + f"\n\nSpans: {spans_str}m | Total: {total_length:.0f}m | "
-                f"Nodes: {total_nodes} | Elements: {total_elements}\n"
-                + "Next steps: merge_operation_stage → apply loads → configure_analysis (enable creep) → get_analysis_results"
+            return _build_bridge(
+                provider, spans=spans, elements_per_span=num_elements_per_span,
+                material_name=material_name, section_name=section_name,
+                self_weight_case=self_weight_case, rectangle=None,
             )
         except ToolError:
-            raise  # 保留 ToolError/ToolInputError 的原始类型与消息
-        except Exception as e:
-            raise ToolError(f"Error creating continuous beam bridge (创建连续梁桥失败): {e}") from e
+            raise
+        except Exception as exc:
+            raise ToolError(
+                f"Could not complete continuous beam bridge: {exc}. "
+                "Earlier writes may remain; inspect the model before retrying (请先检查已写入的模型)."
+            ) from exc

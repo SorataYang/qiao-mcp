@@ -19,6 +19,7 @@ if sys.platform == "win32":
 
 from mcp.server.fastmcp import FastMCP
 
+from qiao_mcp import __version__
 from qiao_mcp.prompts import register_prompts
 from qiao_mcp.providers import PROVIDER_ENV, create_provider
 from qiao_mcp.resources import register_resources
@@ -95,6 +96,9 @@ _SERVER_INSTRUCTIONS = (
 # ── Initialize MCP Server ─────────────────────────────────────────────
 
 mcp = FastMCP("qiao-mcp", instructions=_SERVER_INSTRUCTIONS)
+# FastMCP 1.x otherwise reports the MCP SDK version in initialize.serverInfo.
+# Catalogs need the installed server version to identify a fresh inspection.
+mcp._mcp_server.version = __version__
 
 # ── Register Tools (wrapped with the structured-return envelope) ──────
 # 所有工具注册统一经 envelope 包装：成功返回结构化 dict，失败抛 ToolError。

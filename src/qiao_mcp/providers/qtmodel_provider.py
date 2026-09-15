@@ -766,6 +766,14 @@ class QtModelProvider(BridgeProvider):
             "beam_constraints": self._safe_get("get_beam_constraint_data") or [],
         }
 
+    def get_load_group_names(self) -> list[str]:
+        """Read load groups before a workflow decides whether creation is needed."""
+        self._require_available()
+        result = self._query_model("get_load_group_names")
+        if not isinstance(result, list) or any(not isinstance(name, str) for name in result):
+            raise ValueError("Cannot read load group names (无法读取荷载组名称)")
+        return result
+
     def get_load_case_names(self) -> list[str]:
         """Return load case names."""
         self._require_available()

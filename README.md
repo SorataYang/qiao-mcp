@@ -11,7 +11,7 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-### 🔧 Tools (132 tools, grouped)
+### 🔧 Tools (133 tools, grouped)
 
 Tools are organized by workflow area. Highlights per group:
 
@@ -72,7 +72,7 @@ qiao-mcp/
 └── reference-docs/            # Review notes and project documentation
 ```
 
-The **Provider pattern** keeps the 132 tools decoupled from any single backend. Select one with
+The **Provider pattern** keeps the 133 tools decoupled from any single backend. Select one with
 `BRIDGE_PROVIDER`; each provider declares its own software-specific rules, so the LLM adapts
 without prompt changes. Currently supports:
 - **QTModel** (`qtmodel`, default) — [QiaoTong (桥通)](https://www.brdi.com.cn/Software.html) bridge analysis software ([user manual](https://soratayang.github.io/))
@@ -246,7 +246,7 @@ where it belongs: in the dependency constraint.
 
 | Qiao-MCP           | qtmodel       | QiaoTong software                          |
 |--------------------|---------------|--------------------------------------------|
-| 0.3.2 (unreleased) | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
+| 0.3.2             | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
 | 0.3.0 – 0.3.1      | 2.6.3 – 2.6.x | 2.6.3 (exact match enforced by qtmodel)    |
 | 0.2.x              | 2.5.0 – 2.5.x | 2.5.0                                      |
 
