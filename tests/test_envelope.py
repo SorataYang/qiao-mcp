@@ -15,13 +15,11 @@ from qiao_mcp.tools.envelope import (
 
 
 def _call_json(mcp, name, args):
-    """调用工具并把返回的 JSON 文本解析为 dict。"""
+    """Require actual structured output, not merely JSON encoded inside text."""
     result = asyncio.run(mcp.call_tool(name, args))
-    # 结构化输出可用时返回 (content, structured)；否则返回 content 列表
-    if isinstance(result, tuple):
-        return result[1]
-    text = result[0].text
-    return json.loads(text)
+    assert isinstance(result, tuple), "FastMCP must produce structuredContent"
+    assert json.loads(result[0][0].text) == result[1]
+    return result[1]
 
 
 def _register_sample(mcp, provider):

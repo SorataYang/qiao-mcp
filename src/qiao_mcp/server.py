@@ -23,30 +23,7 @@ from qiao_mcp import __version__
 from qiao_mcp.prompts import register_prompts
 from qiao_mcp.providers import PROVIDER_ENV, create_provider
 from qiao_mcp.resources import register_resources
-
-# Phase 1 modules
-from qiao_mcp.tools import register_modeling_tools
-from qiao_mcp.tools.advanced_boundary import register_advanced_boundary_tools
-
-# Phase 5 — long-tail API gateway (逃生舱)
-from qiao_mcp.tools.api_gateway import register_api_gateway_tools
-from qiao_mcp.tools.checking import register_checking_tools
-
-# Structured-return envelope for all tool registrations
-from qiao_mcp.tools.envelope import register_tools_with_envelope
-
-# Phase 2 modules
-from qiao_mcp.tools.group_management import register_group_tools
-
-# Phase 4 — modify tools
-from qiao_mcp.tools.modifications import register_modification_tools
-from qiao_mcp.tools.moving_load import register_moving_load_tools
-
-# Phase 3 — read-only query tools
-from qiao_mcp.tools.queries import register_query_tools
-from qiao_mcp.tools.tendon import register_tendon_tools
-from qiao_mcp.tools.visualization import register_visualization_tools
-from qiao_mcp.tools.workflows import register_workflow_tools
+from qiao_mcp.tools.catalog import register_tool_catalog
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -58,22 +35,22 @@ logger = logging.getLogger("qiao-mcp")
 # 选错后端时启动失败远好于连上另一套软件、事后才在建模结果里暴露。
 provider = create_provider()
 
-if provider.is_available():
-    logger.info(
-        f"✅ {provider.get_software_name()} provider loaded successfully "
-        f"({PROVIDER_ENV}={provider.name})"
-    )
-else:
-    logger.warning(
-        f"⚠️  {provider.get_software_name()} provider not available "
-        f"({PROVIDER_ENV}={provider.name}) — {provider.unavailable_reason()}"
-    )
+# Catalog inspection must not wait for HTTP discovery or a desktop application.
+# Connection probes happen in the diagnostic tools and guarded operations.
+logger.info(
+    "Initialized %s adapter (%s=%s); use check_qiaotong_connection to check connectivity",
+    provider.get_software_name(), PROVIDER_ENV, provider.name,
+)
+if reason := provider.unavailable_reason():
+    logger.warning("Backend adapter diagnostic: %s", reason)
 
 # ── Build MCP instructions dynamically from the active provider ───────
 
 _SERVER_INSTRUCTIONS = (
     f"You are an AI assistant for bridge structural design "
-    f"connected to {provider.get_software_name()} via Qiao-MCP.\n\n"
+    f"using {provider.get_software_name()} via Qiao-MCP.\n"
+    "Start with check_qiaotong_connection; use get_model_status to confirm the "
+    "model and allowed operations before making changes.\n\n"
     "## Software-Specific Rules — Read Before Using Any Tool\n"
     + provider.get_llm_instructions()
     + "\n## Available Tool Groups\n"
@@ -103,22 +80,7 @@ mcp._mcp_server.version = __version__
 # ── Register Tools (wrapped with the structured-return envelope) ──────
 # 所有工具注册统一经 envelope 包装：成功返回结构化 dict，失败抛 ToolError。
 
-_TOOL_REGISTRARS = [
-    register_modeling_tools,       # Phase 1
-    register_group_tools,          # Phase 2
-    register_tendon_tools,
-    register_advanced_boundary_tools,
-    register_visualization_tools,
-    register_moving_load_tools,
-    register_checking_tools,
-    register_workflow_tools,
-    register_query_tools,          # Phase 3
-    register_modification_tools,   # Phase 4
-    register_api_gateway_tools,    # Phase 5 (逃生舱)
-]
-
-for _registrar in _TOOL_REGISTRARS:
-    register_tools_with_envelope(mcp, _registrar, provider)
+register_tool_catalog(mcp, provider)
 
 # Resources 与 Prompts 不经工具包装
 register_resources(mcp, provider)

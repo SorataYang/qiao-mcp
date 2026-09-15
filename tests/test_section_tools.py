@@ -1,8 +1,11 @@
 """合并后 create_section 的行为测试：各类型分发与专用参数。"""
 
+import pytest
+import qtmodel
 from conftest import tool_fns
 
 from qiao_mcp.tools import register_modeling_tools
+from qiao_mcp.tools.envelope import ToolInputError
 
 
 def test_specific_section_tools_removed(fake_provider):
@@ -51,3 +54,32 @@ def test_symmetry_not_sent_for_plain_shapes(fake_provider):
     fns["create_section"](name="圆", sec_type="圆形", sec_info=[0.6])
     _, _, kw = fake_provider._mdb.last("add_section")
     assert "symmetry" not in kw, "非箱梁类型不应下发 symmetry，避免覆盖 qtmodel 默认"
+
+
+def test_polygon_payload_is_accepted_by_the_real_geometry_builder(fake_provider):
+    loops = {"main": [[0, 0], [2, 0], [2, 1], [0, 1]]}
+    functions = tool_fns(register_modeling_tools, fake_provider)
+    functions["create_polygon_section"](name="Polygon", loop_segments=loops)
+    kwargs = fake_provider._mdb.last("add_section")[2]
+    assert kwargs["sec_type"] == "自定义线圈截面"
+    assert isinstance(kwargs["loop_segments"], list)
+    assert kwargs["loop_segments"][0]["main"][-1] == [0, 0]
+    assert len(loops["main"]) == 4, "Normalization must not modify caller-owned coordinates"
+    # This SDK builder is local Python geometry; it never contacts QiaoTong.
+    shape = qtmodel.mdb.get_section_shape(
+        sec_type=kwargs["sec_type"], loop_segments=kwargs["loop_segments"],
+    )
+    assert shape.parts[0].loop_segments
+
+
+@pytest.mark.parametrize("loops", [
+    {"sub1": [[0, 0], [1, 0], [1, 1]]},
+    {"main": [[0, 0], [1, 0]]},
+    {"main": [[0, 0], [1, 0], [2, 0]]},
+    {"main": [[0, 0], [1, 0], [float("inf"), 1]]},
+])
+def test_invalid_polygon_is_rejected_before_writing(fake_provider, loops):
+    functions = tool_fns(register_modeling_tools, fake_provider)
+    with pytest.raises(ToolInputError):
+        functions["create_polygon_section"](name="Invalid", loop_segments=loops)
+    assert fake_provider._mdb.count("add_section") == 0

@@ -7,12 +7,26 @@ nodes, elements, materials, sections, structure groups, etc.
 """
 
 import asyncio
-from typing import Any
+import math
+from typing import Any, Literal, get_args
 
 from mcp.server.fastmcp import Context, FastMCP
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.schemas import (
+    FiveNumbers,
+    FourNumbers,
+    FunctionReference,
+    LoadCaseKind,
+    LoadCombinationItem,
+    NodeRows,
+    NonnegativeNumber,
+    PositiveInteger,
+    SectionLoop,
+    ThreeNumbers,
+    TwoNumbers,
+)
 
 
 def _describe_ids(ids: list[int]) -> str:
@@ -43,16 +57,38 @@ def _describe_ids(ids: list[int]) -> str:
     return ", ".join(parts[:3]) + f", … (+{len(parts) - 3} more ranges)"
 
 
+def _closed_polygon_loops(loops: dict[str, list[list[float]]]) -> dict[str, list[list[float]]]:
+    """Validate simple ring inputs and make closing edges explicit for the backend."""
+    if "main" not in loops or any(key != "main" and not key.startswith("sub") for key in loops):
+        raise ToolInputError("Provide a main outer loop and optional sub1/sub2/... holes")
+    closed = {}
+    for name, points in loops.items():
+        if len(points) < 3 or any(len(point) != 2 for point in points):
+            raise ToolInputError(f"Loop {name!r} needs at least three 2D points")
+        if any(not math.isfinite(value) for point in points for value in point):
+            raise ToolInputError(f"Loop {name!r} coordinates must be finite")
+        ring = [list(point) for point in points]
+        if len({tuple(point) for point in ring}) < 3:
+            raise ToolInputError(f"Loop {name!r} needs at least three distinct vertices")
+        if ring[-1] != ring[0]:
+            ring.append(ring[0].copy())
+        area2 = sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(ring, ring[1:], strict=False))
+        if area2 == 0:
+            raise ToolInputError(f"Loop {name!r} has zero signed area; check vertex order")
+        closed[name] = ring
+    return closed
+
+
 def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     """Register all modeling-related MCP tools."""
 
     @mcp.tool()
     def create_nodes(
-        node_data: list[list[float]],
+        node_data: NodeRows,
         intersected: bool = False,
         is_merged: bool = True,
-        merge_error: float = 1e-3,
-        numbering_type: int = 1,
+        merge_error: NonnegativeNumber = 1e-3,
+        numbering_type: Literal[0, 1, 2] = 1,
         start_id: int = 1,
     ) -> str:
         """
@@ -67,8 +103,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             intersected: Whether to split elements at intersection points (是否交叉分割, 默认关)
             is_merged: Whether to merge duplicate nodes at the same position (是否合并重合节点)
             merge_error: Merge tolerance in model units, default 1e-3 (合并容差，默认1mm)
-            numbering_type: Node numbering strategy: 1=sequential (编号方式: 1=顺序编号)
-            start_id: Starting node ID when auto-numbering (起始节点编号)
+            numbering_type: Numbering strategy: 0=smallest unused ID, 1=existing maximum+1,
+                2=request start_id (编号方式：0最小空号、1最大号加一、2用户指定)
+            start_id: Requested first ID, used only with numbering_type=2. QiaoTong may
+                reassign conflicting IDs; query get_model_data(kind="nodes") afterwards
+                (仅编号方式2使用；冲突时请查询实际编号)
         """
         try:
             provider.add_nodes(
@@ -87,7 +126,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
     @mcp.tool()
     def create_nodes_linear(
-        count: int,
+        count: PositiveInteger,
         start_x: float = 0.0,
         start_y: float = 0.0,
         start_z: float = 0.0,
@@ -96,7 +135,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         spacing_z: float = 0.0,
         start_id: int = 1,
         is_merged: bool = True,
-        merge_error: float = 1e-3,
+        merge_error: NonnegativeNumber = 1e-3,
     ) -> str:
         """
         Create evenly-spaced nodes along a straight line — the preferred way to model
@@ -131,7 +170,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             create_nodes_linear(count=101, start_x=0, spacing_x=1.0)
         """
         if count <= 0:
-            return "Error: count must be a positive integer > 0 (节点数量必须大于0)"
+            raise ToolInputError("count must be a positive integer > 0 (节点数量必须大于0)")
 
         try:
             node_data = [
@@ -195,7 +234,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         sec_id: int,
         element_id: int = -1,
         beta_angle: float = 0.0,
-        ele_type: int = 1,
+        ele_type: Literal[1, 2, 3] = 1,
         initial_type: int = 0,
         initial_value: float = 0.0,
     ) -> str:
@@ -214,8 +253,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             element_id: Element ID, -1 = auto-assign next available ID (单元编号，-1表示自动分配)
             beta_angle: Beta angle in degrees, controls local axis orientation (贝塔角，度)
             ele_type: Element type (单元类型): 1=Beam(梁), 2=Truss(杆), 3=Cable(索)
-            initial_type: Initial strain/force type (初始应变类型): 0=None, 1=Strain, 2=Force
-            initial_value: Initial strain or force value (初始应变或内力值)
+            initial_type: Cable initialization only: 1=initial tension, 2=initial
+                horizontal force, 3=unstressed length. Set explicitly for cables;
+                beam/truss elements ignore it (索：1初拉力、2初始水平力、3无应力长度)
+            initial_value: Cable initial force (N) or unstressed length (m), according
+                to initial_type (索单元初始力或无应力长度，取决于初始化类型)
 
         Example:
             create_beam_element(node_i=1, node_j=2, mat_id=1, sec_id=1)
@@ -245,7 +287,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         count: int = 0,
         element_id_start: int = 1,
         beta_angle: float = 0.0,
-        ele_type: int = 1,
+        ele_type: Literal[1, 2, 3] = 1,
     ) -> str:
         """
         Batch-create frame elements chaining nodes along a girder
@@ -433,24 +475,40 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def add_load_combine(
         name: str,
-        combine_type: int = 1,
-        combine_info: list[list] | None = None,
+        combine_type: Literal[1, 2, 3, 4, 5, 6] = 1,
+        combine_info: list[LoadCombinationItem] | None = None,
         describe: str = "",
         index: int = -1,
     ) -> str:
         """
-        Add a load combination (添加荷载组合).
+        Create or replace a model load combination (创建或替换模型荷载组合).
 
-        Combines multiple load cases into a single combination for analysis/checking.
-        (将多个荷载工况组合成一个荷载组合)
+        Use this for MDB model/result combinations. For a concrete-check CDB case,
+        use add_check_load_combination. Referenced cases/combinations must exist;
+        create_load_case creates an individual case rather than a combination.
+        QiaoTong supports automatic overwrite, so use a distinct name/index when
+        creating a new combination. This writes the definition but does not solve.
+        (引用工况须已存在；组合可被覆盖，调用后不会自动求解。)
 
         Args:
             name: Load combination name (荷载组合名称)
-            combine_type: Combination type (组合类型): 1=Add(线性加), 2=Envelope(包络), etc.
-            combine_info: List of components [[case_name, case_type, factor], ...]
-                          (组合项信息 [[工况名, 类型(如'ST'), 系数], ...])
+            combine_type: Native rule: 1=add, 2=discriminant, 3=envelope, 4=SRSS,
+                5=absolute sum, 6=permanent actions added and other actions discriminated
+                (1叠加、2判别、3包络、4平方和开根、5绝对值和、6混合)
+            combine_info: Components [[case_type, case_name, factor], ...], in that order.
+                Types: ST=static, CS=construction stage, CB=combination, MV=moving load,
+                SM=settlement, RS=response spectrum, TH=time history. None/[] creates
+                an empty definition (先类型、再工况名、最后系数；省略时组合为空)
             describe: Description (描述说明)
             index: ID index, -1 for auto (编号，-1自动生成)
+
+        Example:
+            add_load_combine(name="ULS", combine_type=1,
+                combine_info=[["ST", "Dead", 1.2], ["ST", "Live", 1.4]])
+
+        Returns:
+            Success message identifying the saved combination; backend failures are
+            MCP errors. Configure/run analysis before requesting combination results.
         """
         try:
             kwargs: dict[str, Any] = {
@@ -460,9 +518,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 "index": index,
             }
             if combine_info is not None:
+                if any(len(item) != 3 or item[0] not in get_args(LoadCaseKind) for item in combine_info):
+                    raise ToolInputError("combine_info items must be [case_type, case_name, factor]")
                 kwargs["combine_info"] = [tuple(item) for item in combine_info]
             provider.add_load_combine(**kwargs)
-            return f"Successfully added load combination '{name}' (成功添加荷载组合 '{name}')"
+            return f"Saved load combination '{name}' (已创建或更新荷载组合 '{name}')"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
@@ -473,10 +533,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def create_material(
         name: str,
-        mat_type: int,
+        mat_type: Literal[1, 2, 3, 4, 5, 6],
         standard: int = 1,
         database: str = "",
-        data_info: list[float] | None = None,
+        data_info: FourNumbers | None = None,
     ) -> str:
         """
         Create a material in the bridge model (创建材料).
@@ -512,7 +572,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         name: str,
         code_index: int = 1,
         time_parameter: list[float] | None = None,
-        creep_data: list[list] | None = None,
+        creep_data: list[FunctionReference] | None = None,
         shrink_data: str = "",
         index: int = -1,
     ) -> str:
@@ -578,7 +638,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def add_creep_function(
         name: str,
-        creep_data: list[list[float]],
+        creep_data: list[TwoNumbers],
         scale_factor: float = 1.0,
     ) -> str:
         """
@@ -604,7 +664,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def add_shrink_function(
         name: str,
-        shrink_data: list[list[float]] | None = None,
+        shrink_data: list[TwoNumbers] | None = None,
         scale_factor: float = 1.0,
     ) -> str:
         """
@@ -722,21 +782,42 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def create_polygon_section(
         name: str,
-        loop_segments: dict[str, list[list[float]]]
+        loop_segments: dict[str, SectionLoop]
     ) -> str:
         """
-        Create a custom polygon cross-section (创建任意多边形截面).
+        Create a custom section from polygon outlines and holes (创建多边形截面).
+
+        Use create_section for a standard parametric shape, create_line_width_section
+        for thin-wall centreline segments, or calc_section_property to calculate
+        properties without adding a section. This writes a section definition;
+        use get_model_data(kind="sections") to obtain its ID before assigning it.
+        Supply points in perimeter order with no self-intersections; holes must lie
+        inside the main outline. Missing closing points are appended automatically.
+        Basic point count/area is checked; verify hole containment and intersection
+        topology before calling. Repeating may create or replace a definition under backend rules.
+        (按边界顺序输入截面平面坐标，孔洞应在外圈内部；自动补闭合点。)
 
         Args:
             name: Section name (截面名称)
-            loop_segments: Dictionary of loops. Keys should be 'main' for outer loop and 'sub1'... for inner hollow loops. Example: `{"main": [[y1,z1], [y2,z2], ...]}`
+            loop_segments: One main outline and optional sub1/sub2/... holes, each with
+                at least three distinct finite [y,z] points in the section plane,
+                using model length units. These are 2D section coordinates, not global
+                XYZ node coordinates (main外圈，sub前缀为内孔；截面平面二维坐标)
+
+        Example:
+            create_polygon_section(name="Rectangle",
+                loop_segments={"main": [[0,0], [2,0], [2,1], [0,1]]})
+
+        Returns:
+            Success message with the section name; malformed rings or backend failures
+            produce MCP errors. No elements are created or reassigned.
         """
         try:
             provider.add_section(
                 name=name,
-                sec_type="任意",
+                sec_type="自定义线圈截面",
                 sec_info=[],
-                loop_segments=loop_segments
+                loop_segments=[_closed_polygon_loops(loop_segments)]
             )
             return f"Successfully created polygon section '{name}'"
         except ToolError:
@@ -747,7 +828,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def create_line_width_section(
         name: str,
-        sec_lines: list[list[float]]
+        sec_lines: list[FiveNumbers]
     ) -> str:
         """
         Create a section from thin-walled centreline segments (创建线宽截面).
@@ -867,8 +948,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         ids: list[int] | str | None = None,
         factor_w: float = 1.0,
         factor_h: float = 1.0,
-        ref_w: int = 0,
-        ref_h: int = 0,
+        ref_w: Literal[0, 1] = 0,
+        ref_h: Literal[0, 1] = 0,
         dis_w: float = 0,
         dis_h: float = 0,
     ) -> str:
@@ -937,7 +1018,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_thickness(
         name: str,
         t: float = 0.1,
-        thick_type: int = 0,
+        thick_type: Literal[0, 1] = 0,
         index: int = -1,
         t_out: float | None = None,
     ) -> str:
@@ -1042,7 +1123,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         bias_type: str,
         center_type: str = "质心",
         shear_consider: bool = True,
-        bias_point: list[float] | None = None,
+        bias_point: TwoNumbers | None = None,
         side_i: bool = True
     ) -> str:
         """
@@ -1302,7 +1383,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     def apply_beam_distributed_load(
         element_id: int | list[int] | str,
         case_name: str,
-        direction: int = 3,
+        direction: Literal[1, 2, 3, 4, 5, 6] = 3,
         load_values: list[float] | None = None,
         load_positions: list[float] | None = None,
         group_name: str = "",
@@ -1383,8 +1464,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         element_id: int | list[int] | str,
         case_name: str,
         temperature: float,
-        section_oriental: int = 0,
-        element_type: int = 1,
+        section_oriental: Literal[0, 1] = 0,
+        element_type: Literal[1, 2] = 1,
         group_name: str = "",
     ) -> str:
         """
@@ -1429,8 +1510,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_custom_temperature(
         element_id: int | list[int] | str,
         case_name: str,
-        orientation: int = 1,
-        temperature_data: list[list[float]] | None = None,
+        orientation: Literal[1, 2] = 1,
+        temperature_data: list[TwoNumbers] | None = None,
         group_name: str = "",
     ) -> str:
         """
@@ -1471,7 +1552,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         element_id: int | list[int] | str,
         case_name: str,
         code_index: int = 1,
-        sec_type: int = 1,
+        sec_type: Literal[1, 2] = 1,
         t1: float = 0,
         t2: float = 0,
         t3: float = 0,
@@ -1495,8 +1576,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Args:
             element_id: Element ID(s) (单元编号)
             case_name: Load case name (荷载工况名)
-            code_index: Code index (规范号)
-            sec_type: Section type (截面类型, 如1为箱梁等)
+            code_index: Code index; the SDK documents 1=JTG D60-2015,
+                2=AASHTO 2017 (规范号：1公路规范2015、2美规2017)
+            sec_type: Material category: 1=concrete, 2=composite beam
+                (截面材料类别：1混凝土、2组合梁；不是截面形状编号)
             t1: Temperature difference param 1 (各部位温差参数1)
             t2: Temperature difference param 2 (各部位温差参数2)
             t3: Temperature difference param 3 (各部位温差参数3)
@@ -1523,8 +1606,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         element_id: int | list[int] | str,
         case_name: str,
         tension: float = 0.0,
-        tension_type: int = 1,
-        application_type: int = 1,
+        tension_type: Literal[0, 1] = 1,
+        application_type: Literal[1, 2, 3] = 1,
         stiffness: float = 0.0,
         group_name: str = "",
     ) -> str:
@@ -1579,7 +1662,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         element_id: int | list[int] | str,
         case_name: str,
         length: float = 0.0,
-        tension_type: int = 1,
+        tension_type: Literal[0, 1] = 1,
         group_name: str = "",
     ) -> str:
         """
@@ -1623,11 +1706,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_plate_element_load(
         element_id: int | list[int] | str,
         case_name: str,
-        load_type: int = 1,
-        load_place: int = 1,
-        coord_system: int = 3,
+        load_type: Literal[1, 2, 3, 4] = 1,
+        load_place: Literal[0, 1, 2, 3, 4] = 1,
+        coord_system: Literal[1, 2, 3, 4, 5, 6] = 3,
         list_load: list[float] | float | None = None,
-        list_xy: list[float] | None = None,
+        list_xy: TwoNumbers | None = None,
         group_name: str = "",
     ) -> str:
         """
@@ -1695,9 +1778,9 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         index: int,
         case_name: str,
         type_name: str,
-        point1: list[float] | None = None,
-        point2: list[float] | None = None,
-        point3: list[float] | None = None,
+        point1: ThreeNumbers | None = None,
+        point2: ThreeNumbers | None = None,
+        point3: ThreeNumbers | None = None,
         plate_ids: list[int] | None = None,
         coord_system: int = 3,
         group_name: str = "",
@@ -1889,8 +1972,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_spectrum_function(
         name: str,
         factor: float = 1.0,
-        kind: int = 0,
-        function_info: list[list[float]] | None = None,
+        kind: Literal[0, 1, 2] = 0,
+        function_info: list[TwoNumbers] | None = None,
     ) -> str:
         """
         Define a response spectrum curve for later use (定义反应谱函数曲线).
@@ -1933,10 +2016,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_spectrum_case(
         name: str,
         description: str = "",
-        kind: int = 1,
-        info_x: list | None = None,
-        info_y: list | None = None,
-        info_z: list | None = None,
+        kind: Literal[1, 2] = 1,
+        info_x: FunctionReference | None = None,
+        info_y: FunctionReference | None = None,
+        info_z: FunctionReference | None = None,
     ) -> str:
         """
         Create a response spectrum case that excites the model in one or more
@@ -1997,8 +2080,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_time_history_function(
         name: str,
         factor: float = 1.0,
-        kind: int = 0,
-        function_info: list[list[float]] | None = None,
+        kind: Literal[0, 1, 2, 3] = 0,
+        function_info: list[TwoNumbers] | None = None,
     ) -> str:
         """
         Define a time-varying function for time-history analysis, e.g. a
@@ -2240,7 +2323,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         do_creep: bool = False,
         do_vibration: bool = False,
         vibration_modes: int = 10,
-        solver_type: int = 0,
+        solver_type: Literal[0, 1] = 0,
     ) -> str:
         """
         Configure analysis settings (配置分析设置).
@@ -2274,7 +2357,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
     @mcp.tool()
     async def run_analysis(
-        ctx: Context, read_timeout: int = 3600, show_view: bool = False
+        ctx: Context, read_timeout: PositiveInteger = 3600, show_view: bool = False
     ) -> str:
         """
         Run the structural analysis calculation (执行结构分析计算).

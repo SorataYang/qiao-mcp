@@ -22,7 +22,9 @@ from typing import Annotated, Any
 from mcp.server.fastmcp import Context
 from mcp.server.fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-from pydantic import Field
+from pydantic import BaseModel, Field
+
+from qiao_mcp.tools.schemas import MessageResult, ObjectResult
 
 
 class ToolInputError(ToolError):
@@ -38,6 +40,12 @@ _DESTRUCTIVE_NAMES = {
     "open_model_file",    # 覆盖当前模型
     "merge_nodes",        # 合并会删除重合节点
     "remove_unused_sections",
+    "call_qtmodel_api",  # 长尾调用可能删除或覆盖数据
+    "save_model_file",   # 保存到已有路径会覆盖文件
+    "add_load_combine",  # qtmodel 明确支持覆盖既有组合
+    "manage_check_stirrup",  # 可删除箍筋定义
+    "assign_element_stirrup",  # 可删除所有单元箍筋
+    "manage_check_case_file",  # 可替换当前检算工况或覆盖文件
 }
 # 逃生舱：可调用任意 qtmodel 方法，对外部世界开放
 _OPEN_WORLD_NAMES = {"call_qtmodel_api"}
@@ -112,7 +120,9 @@ def _operation_for(name: str) -> str:
 
 def _annotations_for(name: str) -> ToolAnnotations:
     """Classify a tool by name into read-only / destructive / open-world hints."""
-    is_readonly = name.startswith(_READONLY_PREFIXES) or name == "validate_model"
+    is_readonly = name.startswith(_READONLY_PREFIXES) or name in {
+        "validate_model", "check_qiaotong_connection",
+    }
     is_destructive = name.startswith(_DESTRUCTIVE_PREFIXES) or name in _DESTRUCTIVE_NAMES
     return ToolAnnotations(
         readOnlyHint=is_readonly,
@@ -125,9 +135,10 @@ def _annotations_for(name: str) -> ToolAnnotations:
 
 def _normalize(result: Any) -> Any:
     """Normalize a tool return value to structured content."""
+    if isinstance(result, BaseModel):
+        result = result.model_dump(mode="json", exclude_unset=True)
     if isinstance(result, dict):
-        result.setdefault("status", "success")
-        return result
+        return {"status": "success", **result}
     if result is None:
         return {"status": "success"}
     if isinstance(result, str):
@@ -285,10 +296,18 @@ def _wrap(fn: Callable, provider: Any = None, operation: str = "connection") -> 
             ensure_allowed()
             return _normalize(fn(*args, **kwargs))
 
-    # 覆盖返回注解为 dict，让 FastMCP 生成结构化输出；参数签名保持不变。
-    wrapper.__signature__ = sig.replace(return_annotation=dict)  # type: ignore[attr-defined]
+    # Bare dict has no output schema in FastMCP 1.29. Preserve explicit response
+    # models, and describe normalized text/dict envelopes with concrete models.
+    original_return = sig.return_annotation
+    if isinstance(original_return, type) and issubclass(original_return, BaseModel):
+        output_type = original_return
+    elif original_return is str:
+        output_type = MessageResult
+    else:
+        output_type = ObjectResult
+    wrapper.__signature__ = sig.replace(return_annotation=output_type)  # type: ignore[attr-defined]
     annotations = dict(getattr(fn, "__annotations__", {}))
-    annotations["return"] = dict
+    annotations["return"] = output_type
     wrapper.__annotations__ = annotations
     # 断开 functools.wraps 设置的 __wrapped__，否则 inspect 会回溯到原函数注解。
     if hasattr(wrapper, "__wrapped__"):

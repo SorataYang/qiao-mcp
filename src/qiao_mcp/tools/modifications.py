@@ -6,7 +6,7 @@ Provides tools to modify existing nodes, elements, materials,
 sections, boundaries, and structure groups.
 """
 
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
 
@@ -52,14 +52,28 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     @mcp.tool()
     def save_model_file(file_path: str) -> str:
         """
-        Save the current model to a file (保存模型文件).
+        Save the active QiaoTong model to its native file (保存当前桥通模型).
+
+        Use before model changes or to create a checkpoint. For an image use
+        save_model_screenshot; this saves the editable model. Requires an open model
+        and a writable path on the machine running QiaoTong. Existing files may be
+        overwritten; the wrapper creates no backup and returns no downloaded file.
+        (路径属于桥通所在机器，已有文件可能被覆盖；不会自动备份或下载。)
 
         Args:
-            file_path: Absolute or relative path to the .qtb file (保存的文件路径)
+            file_path: Prefer an absolute path on the QiaoTong host. The qtmodel SDK
+                documents .bfmd native files; use the format supported by your QiaoTong
+                version. Relative paths resolve in QiaoTong's environment; an empty
+                string saves to its current path (桥通主机路径；空串用当前路径)
+
+        Returns:
+            Success message after the backend save call, or an MCP error on failure.
+            The MCP process does not independently verify a file on the remote host.
         """
         try:
             provider.save_model_file(file_path=file_path)
-            return f"Successfully saved model to '{file_path}' (成功保存模型)"
+            destination = repr(file_path) if file_path else "the current QiaoTong path"
+            return f"Successfully saved model to {destination} (成功保存模型)"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
@@ -70,8 +84,13 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         """
         Open an existing model file (打开模型文件).
 
+        Replaces the active model. Save unsaved work with save_model_file first.
+        The path is read by QiaoTong on its host, not uploaded from the MCP machine.
+
         Args:
-            file_path: Absolute or relative path to the .qtb file (要打开的文件路径)
+            file_path: Native model path on the QiaoTong host (.bfmd in the qtmodel SDK;
+                use the format your desktop version supports). Prefer an absolute path.
+                (桥通主机上的模型文件路径，建议使用绝对路径)
         """
         try:
             provider.open_model_file(file_path=file_path)
@@ -254,7 +273,7 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     def update_element(
         old_id: int,
         new_id: int = -1,
-        ele_type: int | None = None,
+        ele_type: Literal[1, 2, 3, 4] | None = None,
         node_i: int | None = None,
         node_j: int | None = None,
         mat_id: int | None = None,

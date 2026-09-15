@@ -6,12 +6,13 @@ Provides tools for elastic links (弹性连接), master-slave links (主从约�
 and elastic supports (弹性支承).
 """
 
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.schemas import BoundaryKind, ConstraintTerm, SixFlags, SixNumbers, SpringValues
 
 
 def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -21,8 +22,8 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_elastic_link(
         start_node_id: int,
         end_node_id: int,
-        link_type: int = 1,
-        stiffness_values: list[float] | None = None,
+        link_type: Literal[1, 2, 3, 4] = 1,
+        stiffness_values: SixNumbers | None = None,
         kx: float = 0.0,
         gap: float = 0.0,
         friction: float = 0.0,
@@ -92,7 +93,7 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_master_slave_link(
         master_node_id: int,
         slave_node_ids: list[int] | str,
-        dof_constraints: list[bool] | None = None,
+        dof_constraints: SixFlags | None = None,
         group_name: str = "",
     ) -> str:
         """
@@ -134,8 +135,8 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def add_elastic_support(
         node_id: int | list[int] | str,
-        spring_values: list[float],
-        support_type: int = 1,
+        spring_values: SpringValues,
+        support_type: Literal[1, 2, 3] = 1,
         group_name: str = "",
     ) -> str:
         """
@@ -163,6 +164,11 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
             kwargs: dict[str, Any] = {}
             if group_name:
                 kwargs["group_name"] = group_name
+            expected_size = 6 if support_type == 1 else 2
+            if len(spring_values) != expected_size:
+                raise ToolInputError(f"support_type={support_type} requires {expected_size} spring_values")
+            if support_type in (2, 3) and spring_values[0] not in (1, 2, 3):
+                raise ToolInputError("Spring direction must be 1=X, 2=Y or 3=Z (弹簧方向编号应为1/2/3)")
             provider.add_elastic_support(
                 node_id=node_id,
                 support_type=support_type,
@@ -181,8 +187,8 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def add_beam_constraint(
         beam_id: int,
-        release_i: list[bool] | None = None,
-        release_j: list[bool] | None = None,
+        release_i: SixFlags | None = None,
+        release_j: SixFlags | None = None,
         group_name: str = "",
     ) -> str:
         """
@@ -195,12 +201,17 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         Common use: releasing rotation at one end to create a pin connection.
         常见用法：释放一端转动自由度以创建铰接。
 
+        Both ends are written together. None means no releases at that end (all six
+        DOFs connected), not preservation of earlier settings. Read the current
+        boundaries first when changing an existing release definition.
+        (同时写入两端；省略某端表示该端六自由度均不释放，不是保留旧设置。)
+
         Args:
             beam_id: Beam element ID (梁单元编号)
-            release_i: DOF releases at I-end [dx, dy, dz, rx, ry, rz]
-                       (I端自由度释放，True=释放)
-            release_j: DOF releases at J-end [dx, dy, dz, rx, ry, rz]
-                       (J端自由度释放，True=释放)
+            release_i: Exactly six DOF flags at I-end [dx, dy, dz, rx, ry, rz];
+                       True releases that DOF (I端六个自由度释放标志，True=释放)
+            release_j: Exactly six DOF flags at J-end [dx, dy, dz, rx, ry, rz];
+                       True releases that DOF (J端六个自由度释放标志，True=释放)
             group_name: Boundary group name (边界组名)
 
         Example:
@@ -208,10 +219,17 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
             # Release My rotation at I-end (I端释放绕Y轴转动=铰接)
         """
         try:
+            for flags in (release_i, release_j):
+                if flags is not None and len(flags) != 6:
+                    raise ToolInputError("Each release array must contain exactly six flags")
+            # qtmodel's info_i/info_j use True=fixed, whereas this MCP interface
+            # explicitly exposes True=released. Convert instead of forwarding.
+            info_i = [not flag for flag in release_i] if release_i is not None else [True] * 6
+            info_j = [not flag for flag in release_j] if release_j is not None else [True] * 6
             provider.add_beam_constraint(
                 beam_id=beam_id,
-                info_i=release_i,
-                info_j=release_j,
+                info_i=info_i,
+                info_j=info_j,
                 group_name=group_name,
             )
             parts = []
@@ -219,6 +237,8 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
                 parts.append(f"I-end releases={release_i}")
             if release_j is not None:
                 parts.append(f"J-end releases={release_j}")
+            if release_i is None or release_j is None:
+                parts.append("omitted ends have no releases")
             return (
                 f"Beam constraint set on element {beam_id}: "
                 f"{', '.join(parts)} (梁端约束设置成功)"
@@ -232,8 +252,8 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_constraint_equation(
         name: str,
         slave_node: int,
-        slave_dof: int = 1,
-        master_info: list[list] | None = None,
+        slave_dof: Literal[1, 2, 3, 4, 5, 6] = 1,
+        master_info: list[ConstraintTerm] | None = None,
         group_name: str = "",
     ) -> str:
         """
@@ -290,7 +310,7 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def remove_boundary(
         remove_id: int,
-        kind: str,
+        kind: BoundaryKind,
         group_name: str = "",
         extra_name: str = "I",
     ) -> str:
