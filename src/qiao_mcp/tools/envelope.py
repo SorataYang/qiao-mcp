@@ -147,6 +147,38 @@ def _normalize(result: Any) -> Any:
     return result
 
 
+# 后端"写命令已发出、结果未收到"的异常类名。qtmodel 2.9 起写命令遇断连、读超时
+# 或 504 时抛 CommandOutcomeUnknownError 且不再自动重发（2.8.2 会重发一次，可能
+# 重复写入）。按类名识别，envelope 不必导入具体后端。
+_OUTCOME_UNKNOWN_ERRORS = frozenset({"CommandOutcomeUnknownError"})
+
+
+def _outcome_unknown(error: BaseException) -> bool:
+    """Whether a lost-reply write error appears anywhere in the exception chain.
+
+    工具普遍以 ``raise ToolError(...) from e`` 包装后端异常，故沿
+    __cause__/__context__ 链查找，而不只看最外层。
+    """
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen:
+        if type(current).__name__ in _OUTCOME_UNKNOWN_ERRORS:
+            return True
+        seen.add(id(current))
+        current = current.__cause__ or current.__context__
+    return False
+
+
+def _outcome_unknown_error(error: BaseException) -> ToolError:
+    return ToolError(
+        f"{error} — OUTCOME UNKNOWN: the command was sent but its reply was lost, so "
+        "the model may or may not have changed. Do NOT retry automatically: read the "
+        "affected objects back (or call get_model_status) and let the user decide. "
+        "(写命令已发出但未收到结果，模型可能已改也可能未改；切勿自动重试，"
+        "先回读相关对象或调用 get_model_status，再由用户决定。)"
+    )
+
+
 # ── docstring Args → JSON Schema 参数描述 ────────────────────────────────
 # FastMCP 只从函数签名(类型注解 + Annotated 内的 Field)生成参数 schema，不解析
 # docstring。本项目各工具的参数说明都写在 Google 风格 docstring 的 Args 段里；
@@ -287,14 +319,24 @@ def _wrap(fn: Callable, provider: Any = None, operation: str = "connection") -> 
         @functools.wraps(fn)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             ensure_allowed()
-            return _normalize(await fn(*args, **kwargs))
+            try:
+                return _normalize(await fn(*args, **kwargs))
+            except Exception as e:
+                if not _outcome_unknown(e):
+                    raise
+                raise _outcome_unknown_error(e) from e
 
     else:
 
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             ensure_allowed()
-            return _normalize(fn(*args, **kwargs))
+            try:
+                return _normalize(fn(*args, **kwargs))
+            except Exception as e:
+                if not _outcome_unknown(e):
+                    raise
+                raise _outcome_unknown_error(e) from e
 
     # Bare dict has no output schema in FastMCP 1.29. Preserve explicit response
     # models, and describe normalized text/dict envelopes with concrete models.

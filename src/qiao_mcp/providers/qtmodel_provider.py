@@ -208,7 +208,7 @@ class QtModelProvider(BridgeProvider):
                 ),
                 "action": (
                     "如需状态感知保护，请安装带 get_model_state 的 qtmodel 构建"
-                    "（上游源码 ≥ 5f4f4eb，或 2.8.2 之后的正式发布）并同步升级桥通。"
+                    "（2.9.0 起的 PyPI 正式发布，或上游源码 ≥ 5f4f4eb）并同步升级桥通。"
                 ),
             }
         try:
@@ -461,8 +461,37 @@ class QtModelProvider(BridgeProvider):
 
     # ── Generic API gateway (逃生舱) ───────────────────────────────────
 
-    # 危险/长耗时操作必须走各自带防护的专用工具，禁止经逃生舱直呼
-    _API_BLOCKLIST = {"initial", "do_solve"}
+    # 禁止经逃生舱直呼的方法：
+    # - initial / do_solve / wait_solve：危险或长耗时（wait_solve 默认无限期轮询），
+    #   必须走各自带防护的专用工具；
+    # - prepare_model_edit（2.9）：按确认切换阶段或删除结果，删除不可撤销；上游
+    #   明确它只能由宿主在用户确认后调用，不能交给模型；
+    # - post_python_file（2.9）/ ensure_running / set_url / set_version：作用于 MCP
+    #   所在主机或改写连接目标——读任意本地文件并 POST 到任意 URL 让桥通执行、启动
+    #   任意可执行文件、把后续请求改发别处——都超出"操作桥通模型"的范围；
+    # - export_api_help（2.9）/ export_qt_helper：把 SDK 帮助写到 MCP 主机任意路径，
+    #   对操作模型无用，却能覆盖本地文件。export_file 同样写本机，但导出的是模型
+    #   交付物，与专用工具 save_model 同属正当用途，故保留。
+    _API_BLOCKLIST = {
+        "initial", "do_solve", "wait_solve", "prepare_model_edit",
+        "post_python_file", "ensure_running", "set_url", "set_version",
+        "export_api_help", "export_qt_helper",
+    }
+    # 名称不带 get_/query_/calc_ 前缀、却不改模型的 mdb 方法：前四个是纯本地计算
+    # （不连桥通），resolve_node_selection 只在桥通内解析节点条件。按读操作守卫，
+    # 调用后也不提交。未列出的方法一律按写处理（fail closed）。
+    _API_MDB_READS = {
+        "list_parameter_section_types", "build_parameter_section_copy_spec",
+        "build_parameter_section_update_spec", "generate_curve_node_data",
+        "resolve_node_selection",
+    }
+    # 桥通把每条 mdb 写命令放进当前复合命令，由 update_model 作为一条可撤销命令提交
+    # （2.9 的 delete_model_object 等明确要求调用方提交）。以下工程/文件/视图管理
+    # 命令不进复合命令，调用后不追加提交——close_project 之后更是无模型可提交。
+    _API_NO_COMMIT = {
+        "update_model", "undo_model", "redo_model", "update_to_pre", "update_to_post",
+        "save_file", "open_file", "close_project", "export_file",
+    }
 
     def _resolve_api_object(self, api_object: str):
         obj = {"mdb": self._mdb, "odb": self._odb, "cdb": self._cdb}.get(api_object)
@@ -513,7 +542,7 @@ class QtModelProvider(BridgeProvider):
         if api_object == "mdb":
             operation = (
                 "model_read"
-                if method.startswith(("get_", "query_", "calc_"))
+                if method.startswith(("get_", "query_", "calc_")) or method in self._API_MDB_READS
                 else "model_write"
             )
         elif api_object == "cdb":
@@ -542,7 +571,11 @@ class QtModelProvider(BridgeProvider):
                 f"Arguments do not match (参数不匹配): {e}. Real signature (真实签名): {method}{sig}"
             ) from e
         result = self._parse(fn(**kwargs))
-        if api_object == "mdb" and method.startswith(("add_", "update_", "remove_")):
+        if (
+            api_object == "mdb"
+            and operation == "model_write"
+            and method not in self._API_NO_COMMIT
+        ):
             self._mdb.update_model()
         return result
 
@@ -1003,7 +1036,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_creep_function(name=name, creep_data=creep_data, scale_factor=scale_factor)
         self._mdb.update_model()
 
-    def add_shrink_function(self, name: str, shrink_data: list | None = None, scale_factor: float = 1) -> None:
+    def add_shrink_function(self, name: str, shrink_data: list, scale_factor: float = 1) -> None:
         self._require_available()
         self._mdb.add_shrink_function(name=name, shrink_data=shrink_data, scale_factor=scale_factor)
         self._mdb.update_model()
@@ -1420,9 +1453,39 @@ class QtModelProvider(BridgeProvider):
         self._mdb.update_bulking_setting(**kwargs)
         self._mdb.update_model()
 
-    def add_nodal_mass(self, node_id, **kwargs) -> None:
+    def add_nodal_mass(
+        self,
+        node_id,
+        mass_xyz: tuple[float, float, float],
+        rotation: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    ) -> None:
+        """Add a lumped nodal mass in QiaoTong's native field layout.
+
+        qtmodel 的 mass_info 是 (平动质量, 绕X, 绕Y, 绕Z 转动惯量)，并非 2.8.2
+        docstring 自称"示例"的 (mx, my, mz, mrx)——桥通 C# 导出日志、
+        get_node_mass_data 的返回说明与 2.9 docstring 三方一致。旧格式只有一个平动
+        质量；2.9 起可另传 mass_xyz=(mX, mY, mZ) 表达各向不同的平动质量，导出日志中
+        此时 mass_info 首项取 mZ。
+
+        三向相等时始终走旧格式（任何版本的桥通都认）；三向不等时必须由 qtmodel 提供
+        mass_xyz，旧版直接拒绝，而不是把三个值静默合并成一个。
+        """
         self._require_available()
-        self._mdb.add_nodal_mass(node_id=node_id, **kwargs)
+        mass_x, mass_y, mass_z = mass_xyz
+        options: dict[str, Any] = {}
+        if not (mass_x == mass_y == mass_z):
+            try:
+                options = self._optional_mdb_parameter(
+                    "add_nodal_mass", "mass_xyz", [mass_x, mass_y, mass_z]
+                )
+            except ValueError as exc:
+                raise ValueError(
+                    "Direction-specific translational masses need a qtmodel build whose "
+                    "add_nodal_mass accepts mass_xyz (2.9.0+); older builds carry one "
+                    "translational mass for all directions "
+                    "(各向不同的平动质量需要支持 mass_xyz 的 qtmodel 2.9.0+，旧版只能三向相同)"
+                ) from exc
+        self._mdb.add_nodal_mass(node_id=node_id, mass_info=[mass_z, *rotation], **options)
         self._mdb.update_model()
 
     def add_load_to_mass(self, name: str, factor: float = 1.0) -> None:
@@ -1450,8 +1513,8 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_time_history_case(**kwargs)
         self._mdb.update_model()
 
-    def run_analysis(self, read_timeout: int = 3600, show_view: bool = False) -> None:
-        """启动后台求解并轮询至任务真正结束。
+    def run_analysis(self, read_timeout: int = 3600, show_view: bool = False) -> Any:
+        """启动后台求解并轮询至任务真正结束，返回 qtmodel 给出的最终状态。
 
         do_solve 有两条互斥路径，由 sync 选择：
 
@@ -1466,10 +1529,13 @@ class QtModelProvider(BridgeProvider):
 
         本方法要的正是后一条：MCP 工具承诺 read_timeout 是总时限、且求解期间
         连接保持响应（工作线程 + 进度心跳），只有轮询路径能兑现。sync 参数在
-        2.5.0–2.8.2 全部支持范围内都存在，可无条件传入。
+        2.5.0–2.9.x 全部支持范围内都存在，可无条件传入。
 
         求解失败/取消时 qtmodel 抛 RuntimeError，超时抛 TimeoutError，
-        均由上层转为 ToolError。
+        均由上层转为 ToolError。但 wait_solve 并非对所有未成功的结局都抛错：
+        用户在桥通中终止求解时返回 canceled 状态，is_running 为 false 而状态
+        不在成功集合时也原样返回（2.8.2 甚至先判 is_running，连 failed 也会
+        静默返回）。故必须把最终状态交给调用方核对，不能以"没抛错"当成功。
 
         show_view=True 请求桥通显示分析进度窗口，不改变后台求解和轮询语义。
         旧版 do_solve 没有该参数时拒绝显式开启；默认调用保持旧版兼容。
@@ -1478,7 +1544,7 @@ class QtModelProvider(BridgeProvider):
         options = self._optional_mdb_parameter(
             "do_solve", "show_view", True if show_view else None
         )
-        self._mdb.do_solve(
+        return self._mdb.do_solve(
             wait=True,
             sync=False,
             poll_interval=2.0,

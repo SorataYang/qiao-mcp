@@ -143,6 +143,10 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Updated source builds also expose reset_*_setting analysis resets and
         copy_thicknesses / arrange_thickness_ids / remove_thicknesses through mdb.
         Search "reset_" or "thickness" to check availability in the installed build.
+        qtmodel 2.9 adds, among others, transversal analysis (search "transversal"),
+        international and planned-lane live loads ("international", "planned"),
+        strengthening ("strengthen"), exact object deletion ("delete_model_object")
+        and complete reinforcement/check snapshots on cdb ("snapshot", "set_").
 
         Args:
             api_object: Which database to inspect (数据库对象):
@@ -181,12 +185,24 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         against the real signature before dispatch, so a wrong parameter name
         fails fast with the correct signature rather than corrupting the model.
 
-        Destructive/long-running methods (initial 清空模型, do_solve 求解) are
-        blocked here — use initialize_model / run_analysis instead.
-        （清空模型、求解等危险或长耗时操作已禁止经此调用，请用对应专用工具。）
+        Destructive/long-running methods (initial 清空模型, do_solve/wait_solve 求解)
+        are blocked here — use initialize_model / run_analysis instead. So are methods
+        that act on the MCP host or the connection rather than the bridge model
+        (post_python_file, ensure_running, set_url, set_version, export_api_help,
+        export_qt_helper) and prepare_model_edit, which can irreversibly delete
+        results and is reserved for the host application after explicit user approval.
+        （清空模型、求解等危险或长耗时操作已禁止经此调用，请用对应专用工具；
+        作用于 MCP 主机或连接目标的方法，以及可能不可逆删除结果的
+        prepare_model_edit 同样禁止。）
 
-        MDB get_/query_/calc_ methods are read-only model operations; other MDB
-        methods, including calculate_section_property, require model-write permission.
+        MDB get_/query_/calc_ methods are read-only model operations, as are the
+        local helpers list_parameter_section_types, build_parameter_section_*_spec
+        and generate_curve_node_data, and resolve_node_selection. Other MDB methods,
+        including calculate_section_property, require model-write permission.
+        Every MDB write is committed with update_model afterwards, as QiaoTong
+        requires; project/file/view management calls (save_file, close_project,
+        undo_model, update_to_pre, …) are not.
+        （MDB 写方法调用后统一以 update_model 提交；工程、文件和视图管理命令除外。）
 
         New MDB management APIs are available here without additional wrapper tools.
         copy_thicknesses / remove_thicknesses accept positive integer IDs or lists,

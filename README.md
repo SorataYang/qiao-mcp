@@ -94,7 +94,7 @@ changes. See [Backend Selection](./INTEGRATION_GUIDE.md#后端选择-backend-sel
 ### Prerequisites
 - Python >= 3.11
 - [uv](https://docs.astral.sh/uv/) package manager
-- `qtmodel` 2.6.3 – 2.8.x (installed by `uv sync`; 2.8.2 is the current lock)
+- `qtmodel` 2.6.3 – 2.9.x, except 2.9.0 (installed by `uv sync`; 2.9.2 is the current lock)
 - QiaoTong software running when calling backend model, analysis, or visualization operations
   (see [Compatibility](#compatibility) for which versions pair with which)
 
@@ -255,6 +255,7 @@ where it belongs: in the dependency constraint.
 
 | Qiao-MCP           | qtmodel       | QiaoTong software                          |
 |--------------------|---------------|--------------------------------------------|
+| Unreleased         | 2.6.3 – 2.9.x, not 2.9.0 | 2.6.3+; with 2.9.x, QiaoTong must report model state |
 | 0.3.2 – 0.3.3     | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
 | 0.3.0 – 0.3.1      | 2.6.3 – 2.6.x | 2.6.3 (exact match enforced by qtmodel)    |
 | 0.2.x              | 2.5.0 – 2.5.x | 2.5.0                                      |
@@ -274,11 +275,39 @@ Different builds report qtmodel 2.8.2: the PyPI wheel (2026-08-20) does not incl
 `QtServer.get_model_state`, while the upstream source at the same version does.
 Qiao-MCP detects the capability rather than the version — without it the
 model-state guard is skipped (`guard_unavailable`) and tools behave as in 0.3.1;
-with it, every tool is gated on the state QiaoTong reports.
+with it, every tool is gated on the state QiaoTong reports. qtmodel 2.9.0 is the
+first PyPI release that includes it, so on 2.9.x the guard is always active.
+
+### Upstream Changes in qtmodel 2.9 (2026-09-11–24)
+
+The reference repository is synced through `8ae651e`, whose package is identical to
+the PyPI 2.9.2 wheel (the source still reports `QT_VERSION = "2.9.1"`):
+
+- **Write safety.** A write whose reply is lost raises `CommandOutcomeUnknownError`
+  and is no longer resent. Qiao-MCP reports it as an unknown outcome and tells the
+  client to read the model back before doing anything else.
+- **Client-side validation.** Many writes now reject malformed values before sending
+  them. Qiao-MCP's schemas match: nonempty creep/shrink curves, 26- or 29-value
+  section property tables, per-code creep parameter counts and `data_info` for
+  custom materials.
+- **Nodal mass layout.** `add_nodal_mass` documents `mass_info` as
+  `(mass, inertia X, Y, Z)` and adds `mass_xyz` for direction-specific masses.
+  Qiao-MCP now sends that layout (see the changelog for the corrected fields).
+- **New APIs, available through the gateway.** Transversal analysis, international
+  and planned-lane live loads, strengthening, exact object deletion
+  (`delete_model_object`), complete reinforcement/check snapshots on `cdb`, and
+  edit-readiness checks (`get_model_edit_readiness`). The gateway commits every MDB
+  write with `update_model`, as these APIs require.
+- **Blocked in the gateway.** `post_python_file` (reads a local file and posts it
+  to any URL for execution), `prepare_model_edit` (can irreversibly delete results;
+  for the host application after user approval), `export_api_help` (writes SDK help
+  to any local path), and the pre-existing `ensure_running`, `set_url`,
+  `set_version`, `export_qt_helper` and `wait_solve` (polls without a time limit;
+  use `run_analysis`).
 
 ### Upstream Source Changes (2026-09-04–08)
 
-The reference repository is synced through `2316654`, still labeled `2.8.2`:
+These changes, first synced at `2316654` while still labeled `2.8.2`, are part of 2.9.0:
 
 - `ac4dbad` moves model queries from `odb` to `mdb`. Qiao-MCP prefers the new
   namespace and falls back to `odb` when the method is absent. Existing-model
@@ -297,13 +326,11 @@ The reference repository is synced through `2316654`, still labeled `2.8.2`:
   Qiao-MCP exposes the two new options on its existing tools; the fifteen
   management APIs are available through the discover-then-call gateway.
 
-**Build compatibility:** `2316654` restores the `core/data_helper.py` missing in
-`6821413`, and the latest source passes the offline tests. The PyPI 2.8.2 build
-(August 20) still lacks these new options and management APIs. Dependencies and
-the lock remain unchanged (`qtmodel>=2.6.3,<2.9`). Default tool calls keep working;
-explicit `t_out` or `show_view=True` requests fail before writing or starting a
-solve if the installed API does not accept them. A matching version label alone
-does not establish feature support.
+**Build compatibility:** these options and management APIs ship in the PyPI 2.9.x
+releases; the PyPI 2.8.2 build (August 20) lacks them. Default tool calls keep
+working on either; explicit `t_out` or `show_view=True` requests fail before
+writing or starting a solve if the installed API does not accept them. A matching
+version label alone does not establish feature support.
 
 MCP tool-call examples with a supporting qtmodel build:
 

@@ -99,10 +99,12 @@ class BridgeProvider(ABC):
         ...
 
     @abstractmethod
-    def run_analysis(self, read_timeout: int = 3600, show_view: bool = False) -> None:
+    def run_analysis(self, read_timeout: int = 3600, show_view: bool = False) -> Any:
         """Run analysis, optionally showing the backend's progress window.
 
         read_timeout: 最大等待秒数；show_view: 是否显示后端求解进度窗口。
+        返回后端报告的最终求解状态（dict，含 ``state``），无状态可报时返回 None。
+        失败、超时须抛异常；以状态返回的非成功结局（如用户终止）由工具层判定为失败。
         """
         ...
 

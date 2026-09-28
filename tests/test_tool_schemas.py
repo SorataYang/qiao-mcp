@@ -77,6 +77,13 @@ def test_schema_exposes_ranges_enums_lengths_and_workflow_fields(catalog):
     ("add_spectrum_case", {"name": "RS", "info_x": ["F"]}),
     ("add_time_history_function", {"name": "TH", "function_info": [[0, 0, 1]]}),
     ("add_creep_function", {"name": "C", "creep_data": [[0, float("nan")]]}),
+    ("add_creep_function", {"name": "C", "creep_data": []}),
+    ("add_shrink_function", {"name": "S", "shrink_data": []}),
+    ("add_shrink_function", {"name": "S"}),
+    ("add_time_parameter", {"name": "T", "code_index": 10}),
+    ("update_section_property", {"index": 1, "sec_property": [0.0] * 27}),
+    ("update_section_property", {"index": 1, "sec_property": [0.0] * 25}),
+    ("add_nodal_mass", {"node_id": 1, "mass": -1.0}),
     ("add_distribute_plane_load", {"index": -1, "case_name": "L", "type_name": "P", "point1": [0, 0]}),
     ("create_tendon_2d", {"name": "T", "property_name": "P", "control_points": [[0, 0, 0]], "point_insert": [0, 0]}),
     ("add_tendon_3d", {"name": "T", "property_name": "P", "control_points": [[0, 0, 0]], "point_insert": [0, 0, 0]}),
@@ -112,12 +119,14 @@ def test_spring_type_and_direction_are_validated_before_writing(catalog, fake_pr
 def test_combination_keeps_native_type_name_factor_order(catalog, fake_provider):
     _, result = asyncio.run(catalog.call_tool("add_load_combine", {
         "name": "Envelope", "combine_type": 3,
-        "combine_info": [["ST", "Dead", 1.2], ["CS", "合计值", 1.0]],
+        "combine_info": [["ST", "Dead", 1.2], ["CS", "合计值", 1.0], ["TV", "横向工况", 1.0]],
     }))
     assert result["status"] == "success"
     kwargs = fake_provider._mdb.last("add_load_combine")[2]
     assert kwargs["combine_type"] == 3
-    assert kwargs["combine_info"] == [("ST", "Dead", 1.2), ("CS", "合计值", 1.0)]
+    assert kwargs["combine_info"] == [
+        ("ST", "Dead", 1.2), ("CS", "合计值", 1.0), ("TV", "横向工况", 1.0),
+    ]
 
 
 @pytest.mark.parametrize("node_data", [

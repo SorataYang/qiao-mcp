@@ -2,7 +2,7 @@
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field
 
 PositiveNumber = Annotated[float, Field(gt=0, allow_inf_nan=False)]
 FiniteNumber = Annotated[float, Field(allow_inf_nan=False)]
@@ -21,10 +21,27 @@ SpringValues = TwoNumbers | SixNumbers
 NonemptyName = Annotated[str, Field(min_length=1)]
 TendonNames = NonemptyName | Annotated[list[NonemptyName], Field(min_length=1)]
 FunctionReference = tuple[NonemptyName, FiniteNumber]
+# 时间-数值曲线（徐变/收缩函数）；qtmodel 2.9 起空表在客户端即被拒绝
+CurvePoints = Annotated[list[TwoNumbers], Field(min_length=1)]
 ConstraintTerm = tuple[PositiveInteger, Literal[1, 2, 3, 4, 5, 6], FiniteNumber]
-LoadCaseKind = Literal["ST", "CS", "CB", "MV", "SM", "RS", "TH"]
+# TV 为横向移动荷载工况（qtmodel 2.9 横向分析），直接使用工况名
+LoadCaseKind = Literal["ST", "CS", "CB", "MV", "SM", "RS", "TH", "TV"]
 LoadCombinationItem = tuple[LoadCaseKind, NonemptyName, FiniteNumber]
 SectionLoop = Annotated[list[TwoNumbers], Field(min_length=3)]
+
+
+def _section_property_layout(values: list[float]) -> list[float]:
+    if len(values) not in (26, 29):
+        raise ValueError("sec_property must contain 26 (legacy) or 29 (full) values")
+    return values
+
+
+# 截面特性表只有两种布局：26 项旧格式与 29 项完整格式（qtmodel 2.9 客户端校验）
+SectionProperties = Annotated[
+    list[FiniteNumber],
+    Field(min_length=26, max_length=29),
+    AfterValidator(_section_property_layout),
+]
 
 
 def _database_name(value: Any) -> Any:
