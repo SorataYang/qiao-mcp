@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **qtmodel 2.9 support.** The dependency range is now `qtmodel>=2.6.3,!=2.9.0,<2.10`
+  and the lock uses 2.9.2 (identical to upstream `8ae651e` apart from its unbumped
+  version label). Every direct mdb/odb/cdb call and model query was checked against
+  2.9.2; signatures only gained optional parameters. The offline suite passes on
+  2.8.2, 2.9.1 and 2.9.2. 2.9.0 is excluded: its `add_section` validates
+  `sec_property` even when it is omitted, so creating a section without explicit
+  properties fails on the client. The minor bound stays: 2.9.2 removed two modules
+  that 2.9.1 shipped.
+- **The model-state guard now applies to PyPI installs.** 2.9.0 is the first release
+  wheel with `QtServer.get_model_state`; with an older QiaoTong that does not report
+  model state, tools fail closed (`state_unknown`) instead of writing unguarded.
+- **BREAKING: `add_nodal_mass` takes `mass`, optional `mass_x`/`mass_y`/`mass_z`
+  and `rot_x`/`rot_y`/`rot_z`; `mass_rm` is removed.** See Fixed.
+- **`add_shrink_function` requires a nonempty `shrink_data`**, as does
+  `add_creep_function`'s `creep_data`; qtmodel 2.9 rejects empty curves.
+
+### Fixed
+
+- **Nodal mass was written into the wrong fields.** QiaoTong's `mass_info` is
+  `(translational mass, inertia about X, Y, Z)` — confirmed by QiaoTong's own export
+  logs, the query documentation and the 2.9 docstring. `mass_y`/`mass_z` were sent
+  as rotational inertias, and a mass given only as `mass_z` had no translational
+  mass at all. Isotropic masses now use the layout every build accepts;
+  direction-specific masses use 2.9's `mass_xyz` and are rejected by older builds
+  rather than merged.
+- **Creep code `1000` means user-defined functions**, not AASHTO (which is `8`);
+  added `9` = BS EN 1992-2:2005. `add_time_parameter` rejects custom functions
+  without `code_index=1000`, `1000` without `creep_data`, and code parameter lists
+  of the wrong length (1→4, 2→3, 3→4, 4→5, 5→3, 6→4, 7→4, 8→2, 9→5 values).
+- **`run_analysis` no longer reports success for an unfinished solve.** qtmodel
+  returns, rather than raises, when the user terminates the solve in QiaoTong or
+  when the solver stops in a non-success state; the final state is now checked.
+- **Lost write replies are reported as "outcome unknown".** qtmodel 2.9 raises
+  `CommandOutcomeUnknownError` instead of silently resending a write (2.8.2 resent
+  once, which could apply it twice). The error now tells the client not to retry and
+  to read the model back first.
+- **Validation matches qtmodel 2.9.** Custom materials (`mat_type=5`) require
+  `data_info`; `update_section_property` takes exactly 26 or 29 values; load
+  combinations accept `TV` (transverse moving-load case).
+
+### Security
+
+- **The API gateway blocks methods that act outside the bridge model.** qtmodel
+  2.9's `post_python_file` reads any local file and posts it to any URL for
+  execution; `prepare_model_edit` can irreversibly delete results and is meant for
+  the host after user approval. Both are blocked, together with `ensure_running`,
+  `set_url` and `set_version`, and with `export_api_help`/`export_qt_helper`, which
+  write SDK help to any path on the MCP host. `wait_solve` is blocked like
+  `do_solve`: it polls without a time limit by default; use `run_analysis`.
+- **Every MDB write made through the gateway is committed.** 2.9 write APIs such as
+  `delete_model_object` require `update_model`; previously only `add_`/`update_`/
+  `remove_` methods were committed. Project, file and view commands are not.
+  Methods that change nothing although their names lack a `get_`/`query_`/`calc_`
+  prefix — the local helpers `list_parameter_section_types`,
+  `build_parameter_section_*_spec` and `generate_curve_node_data`, and
+  `resolve_node_selection` — are treated as reads: they need no write permission and
+  trigger no commit.
+
 ## [0.3.3] - 2026-09-15
 
 ### Added

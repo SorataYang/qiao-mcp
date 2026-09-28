@@ -41,6 +41,18 @@ def _register_sample(mcp, provider):
     def backend_fails() -> str:
         raise RuntimeError("后端炸了")
 
+    @mcp.tool()
+    def reply_lost() -> str:
+        # 与工具的惯用写法一致：后端异常被包成 ToolError 再抛出
+        try:
+            raise CommandOutcomeUnknownError("命令 ADD-NODE 的执行结果未知")
+        except Exception as e:
+            raise ToolError(f"Error creating nodes: {e}") from e
+
+
+class CommandOutcomeUnknownError(RuntimeError):
+    """与 qtmodel 2.9 同名的替身；envelope 按类名识别，不导入后端。"""
+
 
 @pytest.fixture
 def mcp():
@@ -75,6 +87,16 @@ def test_backend_failure_becomes_tool_error(mcp):
     with pytest.raises(ToolError) as exc:
         asyncio.run(mcp.call_tool("backend_fails", {}))
     assert "后端炸了" in str(exc.value)
+    assert "OUTCOME UNKNOWN" not in str(exc.value)
+
+
+def test_lost_write_reply_warns_against_retry(mcp):
+    """写命令结果未知时必须明确要求先回读、不得自动重试。"""
+    with pytest.raises(ToolError) as exc:
+        asyncio.run(mcp.call_tool("reply_lost", {}))
+    msg = str(exc.value)
+    assert "Error creating nodes" in msg and "ADD-NODE" in msg
+    assert "OUTCOME UNKNOWN" in msg and "Do NOT retry" in msg
 
 
 def test_input_error_becomes_tool_error(mcp):

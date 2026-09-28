@@ -117,6 +117,27 @@ def test_success_message_only_after_solve_returns(run_analysis, provider):
     assert provider._mdb.count("do_solve") == 1
 
 
+@pytest.mark.parametrize(
+    "status",
+    [
+        # wait_solve 对"用户终止"不抛错，原样返回取消状态
+        {"ok": True, "state": "canceled", "is_running": False, "message": "用户终止"},
+        # is_running=false 而状态不在成功集合时同样直接返回（2.8.2 连 failed 也如此）
+        {"ok": False, "state": "failed", "is_running": False, "message": "刚度矩阵奇异"},
+        {"ok": True, "state": "idle", "is_running": False, "message": ""},
+    ],
+)
+def test_unfinished_final_state_is_not_reported_as_success(provider, run_analysis, status):
+    provider._mdb.do_solve = lambda **kwargs: status
+    with pytest.raises(ToolError, match=f"state={status['state']}"):
+        asyncio.run(run_analysis(ctx=_Ctx()))
+
+
+def test_succeeded_final_state_reports_completion(provider, run_analysis):
+    provider._mdb.do_solve = lambda **kwargs: {"ok": True, "state": "succeeded", "is_running": False}
+    assert "completed" in tool_text(asyncio.run(run_analysis(ctx=_Ctx()))).lower()
+
+
 def test_show_view_is_independent_of_background_solve_options(run_analysis, provider):
     asyncio.run(run_analysis(ctx=_Ctx(), read_timeout=120, show_view=True))
     kwargs = provider._mdb.last("do_solve")[2]
