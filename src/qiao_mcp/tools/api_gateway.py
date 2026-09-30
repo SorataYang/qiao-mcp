@@ -147,6 +147,9 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         international and planned-lane live loads ("international", "planned"),
         strengthening ("strengthen"), exact object deletion ("delete_model_object")
         and complete reinforcement/check snapshots on cdb ("snapshot", "set_").
+        Search "update_operation_stage_setting" for transversal_load_cases support;
+        search "remove_material" / "remove_tendon_property" for cascade defaults.
+        These management methods remain gateway-only (管理类接口继续经网关调用).
 
         Args:
             api_object: Which database to inspect (数据库对象):
@@ -210,6 +213,24 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         delete settings, and arrange_thickness_ids renumbers thickness references;
         only call them when that change is intended.
         （板厚批量操作不接受区间字符串；重置会删除分析设置，整理板厚会更改编号。）
+
+        Operation analysis: mdb.update_operation_stage_setting accepts
+        transversal_load_cases on supporting builds. Pass the existing final_stage
+        and ALL desired static_load_cases / sink_load_cases / live_load_cases too:
+        omitted or empty lists disable their corresponding analysis, not preserve it.
+        The transversal cases must already exist; None/[] disables transversal analysis.
+        （运营阶段设置为整体替换：需同时提供最终阶段及所有需计算的工况列表，
+        省略/空列表会关闭对应分析；transversal_load_cases 引用已建横向工况。）
+
+        Deletion: mdb.remove_material defaults to cascade=True on qtmodel 2.9 and
+        also deletes associated tendon properties and tendons; cascade=False retains
+        tendon properties. mdb.remove_tendon_property defaults to cascade=False,
+        refusing deletion of referenced properties; True deletes referencing tendons
+        AND their loads without a dialog. With neither name nor index these methods
+        delete ALL materials/properties. Discover the installed signature first and
+        confirm the target and cascade scope with the user before calling.
+        （删除材料默认级联删除相关钢束特性和钢束；删除钢束特性默认不级联，
+        True 会无弹窗删除引用钢束及其荷载。不指定名称/编号会删除全部，调用前须确认范围。）
 
         Args:
             api_object: Database object (数据库对象): "mdb", "odb", "cdb"
