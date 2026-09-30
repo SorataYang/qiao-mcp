@@ -25,6 +25,7 @@ from qiao_mcp.tools.schemas import (
     NodeRows,
     NonnegativeNumber,
     PositiveInteger,
+    PositiveNumber,
     SectionLoop,
     SectionProperties,
     ThreeNumbers,
@@ -545,6 +546,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         standard: int = 1,
         database: str = "",
         data_info: FourNumbers | None = None,
+        is_orthotropic: bool | None = None,
+        ey: PositiveNumber | None = None,
     ) -> str:
         """
         Create a material in the bridge model (创建材料).
@@ -557,6 +560,12 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             database: Material database name, e.g. 'C50', 'Q345' (数据库名称)
             data_info: Custom material properties [E, γ, ν, α]; required for mat_type=5
                        自定义材料参数 [弹性模量, 容重, 泊松比, 热膨胀系数]，mat_type=5 时必填
+            is_orthotropic: Enable orthotropic material behavior. None keeps the
+                            upstream default (False); explicit values require a
+                            supporting qtmodel build (是否正交异性；省略保持默认，需新版)
+            ey: Elastic modulus along the element local Y axis, in Pa. None keeps
+                the upstream default (3.45e10); use with is_orthotropic=True
+                (单元局部Y向弹性模量，Pa；用于正交异性材料，需新版 qtmodel)
         """
         try:
             if mat_type == 5 and data_info is None:
@@ -567,6 +576,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             kwargs: dict[str, Any] = {}
             if data_info:
                 kwargs["data_info"] = data_info
+            if is_orthotropic is not None:
+                kwargs["is_orthotropic"] = is_orthotropic
+            if ey is not None:
+                kwargs["ey"] = ey
             provider.add_material(
                 name=name,
                 mat_type=mat_type,
