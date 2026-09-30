@@ -459,6 +459,13 @@ class QtModelProvider(BridgeProvider):
             ) from exc
         return options
 
+    def _optional_mdb_parameters(self, method: str, **values: Any) -> dict[str, Any]:
+        """Check all opt-in parameters before issuing any write."""
+        options = {}
+        for parameter, value in values.items():
+            options.update(self._optional_mdb_parameter(method, parameter, value))
+        return options
+
     # ── Generic API gateway (逃生舱) ───────────────────────────────────
 
     # 禁止经逃生舱直呼的方法：
@@ -1016,13 +1023,20 @@ class QtModelProvider(BridgeProvider):
         mat_type: int,
         standard: int = 1,
         database: str = "",
+        *,
+        is_orthotropic: bool | None = None,
+        ey: float | None = None,
         **kwargs,
     ) -> None:
         self._require_available()
+        options = self._optional_mdb_parameters(
+            "add_material", is_orthotropic=is_orthotropic, ey=ey
+        )
         params = {"name": name, "mat_type": mat_type, "standard": standard}
         if database:
             params["database"] = database
         params.update(kwargs)
+        params.update(options)
         self._mdb.add_material(**params)
         self._mdb.update_model()
 
