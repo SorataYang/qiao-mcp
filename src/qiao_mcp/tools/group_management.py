@@ -15,6 +15,7 @@ from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError
+from qiao_mcp.tools.schemas import NonnegativeNumber
 
 
 def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -234,7 +235,7 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
     def update_construction_stage(
         name: str,
         new_name: str = "",
-        duration: int = 0,
+        duration: NonnegativeNumber = 0,
         active_structures: list[list] | None = None,
         delete_structures: list[str] | None = None,
         active_boundaries: list[list] | None = None,
@@ -242,6 +243,7 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         active_loads: list[list] | None = None,
         delete_loads: list[list] | None = None,
         temp_loads: list[str] | None = None,
+        sub_steps: list[NonnegativeNumber] | None = None,
     ) -> str:
         """
         Update an existing construction stage (修改施工阶段).
@@ -253,16 +255,21 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         Args:
             name: Existing stage name (现有阶段名称)
             new_name: New stage name (新名称)
-            duration: Stage duration in days (阶段时长，天)
-            active_structures: Structures to activate [[name, age, mat_id, time_param_id], ...]
-                               (激活的结构组信息 [[名称, 材龄, 材料号, 时间参数号], ...])
+            duration: Stage duration in days, including fractional days (阶段时长，天，支持小数)
+            active_structures: Structures to activate [[name, age, install_method, weight_stage_id], ...]
+                               (激活结构组 [[名称, 龄期, 安装方法, 计自重施工阶段号], ...])
             delete_structures: Structure group names to deactivate (钝化的结构组名称列表)
             active_boundaries: Boundaries to activate [[name, position], ...]
                                (激活的边界组信息 [[名称, 位置], ...])
             delete_boundaries: Boundary group names to deactivate (钝化的边界组名称列表)
-            active_loads: Loads to activate [[name, day], ...] (激活的荷载组信息 [[名称, 天数], ...])
-            delete_loads: Loads to deactivate [[name, day], ...] (钝化的荷载组信息 [[名称, 天数], ...])
+            active_loads: Loads to activate [[name, time], ...]; time=0 start, 1 end
+                          (激活荷载组 [[名称, 时间], ...]；0=阶段开始，1=阶段结束)
+            delete_loads: Loads to deactivate [[name, time], ...]; time=0 start, 1 end
+                          (钝化荷载组 [[名称, 时间], ...]；0=阶段开始，1=阶段结束)
             temp_loads: Temporary load group names (临时荷载组名称列表)
+            sub_steps: Sub-step durations in days; None omits the option, [] clears
+                       sub-steps. Requires a supporting qtmodel build
+                       (子步时长列表；省略不传，空列表清除子步，需新版 qtmodel)
         """
         try:
             kwargs: dict[str, Any] = {"name": name, "new_name": new_name, "duration": duration}
@@ -280,6 +287,8 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["delete_loads"] = [tuple(item) for item in delete_loads]
             if temp_loads is not None:
                 kwargs["temp_loads"] = temp_loads
+            if sub_steps is not None:
+                kwargs["sub_steps"] = sub_steps
 
             provider.update_construction_stage(**kwargs)
             return f"Successfully updated construction stage '{name}' (成功修改施工阶段 '{name}')"

@@ -69,6 +69,25 @@ def fake_provider():
     return p
 
 
+@pytest.fixture
+def qtmodel_wire(fake_provider, monkeypatch):
+    """Run tools against real MDB constructors without connecting to QiaoTong."""
+    import json
+
+    import qtmodel
+    from qtmodel.core.qt_server import QtServer
+
+    requests = []
+
+    def record(command="", header="", read_timeout=600):
+        requests.append((header, json.loads(command) if command else None))
+        return ""
+
+    monkeypatch.setattr(QtServer, "send_command", staticmethod(record))
+    fake_provider._mdb = qtmodel.mdb
+    return fake_provider, requests
+
+
 def tool_fns(register, provider, wrap=True):
     """注册工具到临时 FastMCP 实例并返回 {工具名: 可调用函数}。
 
