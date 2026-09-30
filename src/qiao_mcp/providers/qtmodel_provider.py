@@ -1592,9 +1592,14 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         return self._mdb.add_node_tandem(*args, **kwargs)
 
-    def add_influence_plane(self, *args, **kwargs):
+    def add_influence_plane(
+        self, *args, always_divided_by_beam_shape: bool | None = None, **kwargs
+    ):
         self._require_available()
-        return self._mdb.add_influence_plane(*args, **kwargs)
+        options = self._optional_mdb_parameter(
+            "add_influence_plane", "always_divided_by_beam_shape", always_divided_by_beam_shape
+        )
+        return self._mdb.add_influence_plane(*args, **options, **kwargs)
 
     # ── Result Extraction ──────────────────────────────────────────────
 
@@ -2234,9 +2239,14 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_lane_line(name=name, **kwargs)
         self._mdb.update_model()
 
-    def add_live_load_case(self, name: str, **kwargs) -> None:
+    def add_live_load_case(
+        self, name: str, *, sub_case_optimized: list[bool] | None = None, **kwargs
+    ) -> None:
         self._require_available()
-        self._mdb.add_live_load_case(name=name, **kwargs)
+        options = self._optional_mdb_parameter(
+            "add_live_load_case", "sub_case_optimized", sub_case_optimized
+        )
+        self._mdb.add_live_load_case(name=name, **options, **kwargs)
         self._mdb.update_model()
 
     def get_live_load_results(self, case_name: str, result_type: str, ids: Any) -> Any:
