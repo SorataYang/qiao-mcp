@@ -7,12 +7,13 @@ node tandems (节点纵列) → influence planes (影响面) → lane lines (车
 → standard vehicles (标准车辆) → live load cases (活载工况).
 """
 
-from typing import Literal
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import StrictBool
 
 from qiao_mcp.providers import BridgeProvider
-from qiao_mcp.tools.envelope import ToolError
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 
 
 def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -50,6 +51,7 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_influence_plane(
         name: str,
         tandem_names: list[str],
+        always_divided_by_beam_shape: bool | None = None,
     ) -> str:
         """
         Define an influence plane from node tandems (添加影响面).
@@ -60,9 +62,16 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         Args:
             name: Influence plane name (影响面名称, e.g. "影响面1")
             tandem_names: Node tandem names (节点纵列名称列表)
+            always_divided_by_beam_shape: Always divide by beam shape. None keeps the
+                                         upstream default (False); explicit values
+                                         require a supporting qtmodel build
+                                         (是否始终按梁形划分；省略保持默认，需新版)
         """
         try:
-            provider.add_influence_plane(name=name, tandem_names=tandem_names)
+            kwargs: dict[str, Any] = {}
+            if always_divided_by_beam_shape is not None:
+                kwargs["always_divided_by_beam_shape"] = always_divided_by_beam_shape
+            provider.add_influence_plane(name=name, tandem_names=tandem_names, **kwargs)
             return f"Influence plane '{name}' created (影响面 '{name}' 创建成功)"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
@@ -162,6 +171,7 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         influence_plane: str,
         span: float,
         sub_cases: list[list],
+        sub_case_optimized: list[StrictBool] | None = None,
     ) -> str:
         """
         Create a moving live load case (创建活载工况).
@@ -176,18 +186,31 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
             span: Bridge span in meters (跨度，单位m)
             sub_cases: Sub-case list, each item [vehicle_name, factor, [lane names...]]
                        (子工况信息 [[车辆名, 系数, [车道名...]], ...])
+            sub_case_optimized: Optimization flag for each sub-case, in the same order
+                                and with exactly the same length as sub_cases. None
+                                keeps legacy behavior; explicit lists require a
+                                supporting qtmodel build (各子工况优化标志，等长布尔列表，需新版)
 
         Example:
             create_live_load_case(name="活载工况1", influence_plane="影响面1", span=100,
                                   sub_cases=[["公路I级", 1.0, ["车道1", "车道2"]]])
         """
         try:
+            kwargs: dict[str, Any] = {}
+            if sub_case_optimized is not None:
+                if len(sub_case_optimized) != len(sub_cases):
+                    raise ToolInputError(
+                        "sub_case_optimized must have the same length as sub_cases "
+                        "(子工况优化标志数量必须与子工况一致)"
+                    )
+                kwargs["sub_case_optimized"] = sub_case_optimized
             formatted = [(str(v), float(f), list(lanes)) for v, f, lanes in sub_cases]
             provider.add_live_load_case(
                 name=name,
                 influence_plane=influence_plane,
                 span=span,
                 sub_case=formatted,
+                **kwargs,
             )
             return (
                 f"Live load case '{name}' created on plane '{influence_plane}' "
