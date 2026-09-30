@@ -1247,11 +1247,17 @@ class QtModelProvider(BridgeProvider):
 
 
     def add_general_support(
-        self, node_id: Any, boundary_info: list, **kwargs
+        self, node_id: Any, boundary_info: list, *, coordinate: int | None = None,
+        extra_enabled: bool | None = None, extra_parameters: list[float] | None = None,
+        **kwargs,
     ) -> None:
         self._require_available()
+        options = self._optional_mdb_parameters(
+            "add_general_support", coordinate=coordinate, extra_enabled=extra_enabled,
+            extra_parameters=extra_parameters,
+        )
         self._mdb.add_general_support(
-            node_id=node_id, boundary_info=boundary_info, **kwargs
+            node_id=node_id, boundary_info=boundary_info, **options, **kwargs
         )
         self._mdb.update_model()
 
@@ -2195,11 +2201,19 @@ class QtModelProvider(BridgeProvider):
         self._mdb.update_model()
 
     def add_elastic_support(
-        self, node_id: Any, support_type: int = 1, boundary_info: list | None = None, **kwargs
+        self, node_id: Any, support_type: int = 1, boundary_info: list | None = None,
+        *, coordinate: int | None = None, extra_enabled: bool | None = None,
+        extra_parameters: list[float] | None = None, axis_direction: int | None = None,
+        **kwargs,
     ) -> None:
         self._require_available()
+        options = self._optional_mdb_parameters(
+            "add_elastic_support", coordinate=coordinate, extra_enabled=extra_enabled,
+            extra_parameters=extra_parameters, axis_direction=axis_direction,
+        )
         self._mdb.add_elastic_support(
-            node_id=node_id, support_type=support_type, boundary_info=boundary_info, **kwargs
+            node_id=node_id, support_type=support_type, boundary_info=boundary_info,
+            **options, **kwargs
         )
         self._mdb.update_model()
 

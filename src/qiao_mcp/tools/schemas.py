@@ -18,6 +18,7 @@ NodeRows = Annotated[list[ThreeNumbers | FourNumbers], Field(min_length=1)]
 SixFlags = Annotated[list[bool], Field(min_length=6, max_length=6)]
 SixNumbers = Annotated[list[FiniteNumber], Field(min_length=6, max_length=6)]
 SpringValues = TwoNumbers | SixNumbers
+SupportExtraParameters = Annotated[list[FiniteNumber], Field(min_length=8, max_length=8)]
 NonemptyName = Annotated[str, Field(min_length=1)]
 TendonNames = NonemptyName | Annotated[list[NonemptyName], Field(min_length=1)]
 FunctionReference = tuple[NonemptyName, FiniteNumber]

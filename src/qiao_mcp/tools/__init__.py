@@ -28,6 +28,7 @@ from qiao_mcp.tools.schemas import (
     PositiveNumber,
     SectionLoop,
     SectionProperties,
+    SupportExtraParameters,
     ThreeNumbers,
     TwoNumbers,
 )
@@ -1284,6 +1285,9 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         ry: bool = False,
         rz: bool = False,
         group_name: str = "",
+        coordinate: Literal[0, 1] | None = None,
+        extra_enabled: bool | None = None,
+        extra_parameters: SupportExtraParameters | None = None,
     ) -> str:
         """
         Set support boundary conditions on nodes (设置节点支承).
@@ -1298,12 +1302,25 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             ry: Fix Y rotation (固定Y转动), default False
             rz: Fix Z rotation (固定Z转动), default False
             group_name: Boundary group name (边界组名)
+            coordinate: 0=global, 1=node coordinate system; None uses the upstream
+                        default (0=整体，1=节点坐标系；省略用默认值，需新版 qtmodel)
+            extra_enabled: Enable additional support parameters; None omits the
+                           option (是否启用支座附加参数；省略不传，需新版 qtmodel)
+            extra_parameters: Exactly [static friction, dynamic friction, Dx, Dy, Dz,
+                              Rx, Ry, Rz]; None omits the option. Requires a supporting
+                              qtmodel build (静摩擦、动摩擦、Dx/Dy/Dz/Rx/Ry/Rz，共8项)
         """
         try:
             boundary_info = [dx, dy, dz, rx, ry, rz]
             kwargs: dict[str, Any] = {}
             if group_name:
                 kwargs["group_name"] = group_name
+            for key, value in {
+                "coordinate": coordinate, "extra_enabled": extra_enabled,
+                "extra_parameters": extra_parameters,
+            }.items():
+                if value is not None:
+                    kwargs[key] = value
             provider.add_general_support(
                 node_id=node_id, boundary_info=boundary_info, **kwargs
             )
