@@ -36,6 +36,32 @@ def test_complete_catalog_has_documented_inputs_and_output_contracts(catalog):
             assert "status" in tool.outputSchema["properties"], tool.name
 
 
+def test_qtmodel_options_have_nullable_defaults_and_constrained_schemas(catalog):
+    tools = {tool.name: tool for tool in asyncio.run(catalog.list_tools())}
+    options = {
+        "create_material": ["is_orthotropic", "ey"],
+        "set_support": ["coordinate", "extra_enabled", "extra_parameters"],
+        "add_elastic_support": ["coordinate", "extra_enabled", "extra_parameters", "axis_direction"],
+        "add_construction_stage": ["sub_steps"],
+        "update_construction_stage": ["sub_steps"],
+        "add_influence_plane": ["always_divided_by_beam_shape"],
+        "create_live_load_case": ["sub_case_optimized"],
+    }
+    for tool, parameters in options.items():
+        for name in parameters:
+            schema = tools[tool].inputSchema["properties"][name]
+            assert schema["default"] is None
+            assert {"type": "null"} in schema["anyOf"]
+            assert name not in tools[tool].inputSchema.get("required", [])
+    for name in ("add_construction_stage", "update_construction_stage"):
+        duration = tools[name].inputSchema["properties"]["duration"]
+        assert duration["type"] == "number"
+    for name in ("set_support", "add_elastic_support"):
+        variants = tools[name].inputSchema["properties"]["extra_parameters"]["anyOf"]
+        vector = next(item for item in variants if item.get("type") == "array")
+        assert vector["minItems"] == vector["maxItems"] == 8
+
+
 def test_schema_exposes_ranges_enums_lengths_and_workflow_fields(catalog):
     tools = {tool.name: tool for tool in asyncio.run(catalog.list_tools())}
     query = tools["get_model_data"].inputSchema["properties"]
@@ -56,6 +82,18 @@ def test_schema_exposes_ranges_enums_lengths_and_workflow_fields(catalog):
 
 @pytest.mark.parametrize("name, arguments", [
     ("create_material", {"name": "Invalid", "mat_type": 99}),
+    ("create_material", {"name": "M", "mat_type": 1, "ey": 0}),
+    ("create_material", {"name": "M", "mat_type": 1, "ey": float("inf")}),
+    ("add_construction_stage", {"name": "S", "duration": -1}),
+    ("update_construction_stage", {"name": "S", "duration": float("nan")}),
+    ("add_construction_stage", {"name": "S", "duration": 2, "sub_steps": [-0.25]}),
+    ("update_construction_stage", {"name": "S", "sub_steps": [float("inf")]}),
+    ("set_support", {"node_id": 1, "coordinate": 2}),
+    ("set_support", {"node_id": 1, "extra_parameters": [0] * 7}),
+    ("add_elastic_support", {"node_id": 1, "spring_values": [0] * 6, "extra_parameters": [0] * 9}),
+    ("add_elastic_support", {"node_id": 1, "spring_values": [0] * 6, "axis_direction": 6}),
+    ("create_live_load_case", {"name": "MV", "influence_plane": "P", "span": 50,
+                               "sub_cases": [["V", 1, ["L"]]], "sub_case_optimized": [1]}),
     ("create_nodes_linear", {"count": 0}),
     ("get_model_data", {"kind": "unknown"}),
     ("get_model_data", {"kind": "nodes", "limit": 501}),
