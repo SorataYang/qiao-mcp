@@ -2306,10 +2306,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def add_construction_stage(
         name: str,
-        duration: float,
+        duration: NonnegativeNumber,
         active_structures: list[list] | None = None,
         active_boundaries: list[list] | None = None,
         active_loads: list[list] | None = None,
+        sub_steps: list[NonnegativeNumber] | None = None,
     ) -> str:
         """
         Add a construction stage and say what becomes active in it
@@ -2345,9 +2346,13 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
         Args:
             name: Stage name (施工阶段名称)
-            duration: Stage duration in days. Upstream stores this as an
-                      integer, so a fractional value is truncated
-                      (时长，单位天；上游按整数存储，小数会被截断)
+            duration: Stage duration in days, including fractional days. Fractional
+                      durations require a qtmodel build exposing sub_steps; older
+                      builds are rejected rather than silently truncating the value
+                      (时长，单位天，支持小数；旧版不支持时明确报错，不截断)
+            sub_steps: Sub-step durations in days, e.g. [0.25, 1.5]. None omits the
+                       option; [] explicitly supplies no sub-steps. Requires a
+                       supporting qtmodel build (子步时长列表；省略保持旧行为，需新版)
             active_structures: Structure groups to activate (激活结构组):
                 [[group_name, age, install_method, weight_stage_id], ...]
                 age: concrete age in days at activation (激活时龄期，天)
@@ -2374,6 +2379,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["active_boundaries"] = [tuple(b) for b in active_boundaries]
             if active_loads:
                 kwargs["active_loads"] = [tuple(l) for l in active_loads]
+            if sub_steps is not None:
+                kwargs["sub_steps"] = sub_steps
             provider.add_construction_stage(name=name, duration=duration, **kwargs)
             return f"Successfully added construction stage '{name}' (成功添加施工阶段 '{name}')"
         except ToolError:

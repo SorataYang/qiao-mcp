@@ -1406,9 +1406,21 @@ class QtModelProvider(BridgeProvider):
 
     # ── Construction Stage Operations ──────────────────────────────────
 
-    def add_construction_stage(self, name: str, duration: float, **kwargs) -> None:
+    def add_construction_stage(
+        self, name: str, duration: float, *, sub_steps: list[float] | None = None, **kwargs
+    ) -> None:
         self._require_available()
-        self._mdb.add_construction_stage(name=name, duration=duration, **kwargs)
+        # sub_steps 与 ADD 的浮点工期在上游同一变更引入；旧版会 int(duration)。
+        if not float(duration).is_integer():
+            try:
+                self._optional_mdb_parameter("add_construction_stage", "sub_steps", [])
+            except ValueError as exc:
+                raise ValueError(
+                    "Installed qtmodel does not support fractional duration for "
+                    "add_construction_stage; upgrade qtmodel (旧版会截断小数工期，请升级)"
+                ) from exc
+        options = self._optional_mdb_parameter("add_construction_stage", "sub_steps", sub_steps)
+        self._mdb.add_construction_stage(name=name, duration=duration, **options, **kwargs)
         self._mdb.update_model()
 
     def merge_all_stages(self, name: str, **kwargs) -> None:
@@ -1421,9 +1433,12 @@ class QtModelProvider(BridgeProvider):
         self._mdb.remove_construction_stage(name=name)
         self._mdb.update_model()
 
-    def update_construction_stage(self, name: str, **kwargs) -> None:
+    def update_construction_stage(
+        self, name: str, *, sub_steps: list[float] | None = None, **kwargs
+    ) -> None:
         self._require_available()
-        self._mdb.update_construction_stage(name=name, **kwargs)
+        options = self._optional_mdb_parameter("update_construction_stage", "sub_steps", sub_steps)
+        self._mdb.update_construction_stage(name=name, **options, **kwargs)
         self._mdb.update_model()
 
     def switch_display_stage(self, stage_name: str) -> None:
