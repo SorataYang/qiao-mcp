@@ -255,10 +255,14 @@ where it belongs: in the dependency constraint.
 
 | Qiao-MCP           | qtmodel       | QiaoTong software                          |
 |--------------------|---------------|--------------------------------------------|
-| Unreleased         | 2.6.3 – 2.9.x, not 2.9.0 | 2.6.3+; with 2.9.x, QiaoTong must report model state |
+| 0.4.0              | 2.6.3 – 2.9.x, not 2.9.0 | 2.6.3+; with 2.9.x, QiaoTong must report model state |
 | 0.3.2 – 0.3.3     | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
 | 0.3.0 – 0.3.1      | 2.6.3 – 2.6.x | 2.6.3 (exact match enforced by qtmodel)    |
 | 0.2.x              | 2.5.0 – 2.5.x | 2.5.0                                      |
+
+Known lower-bound limitation: qtmodel 2.6.3 lacks `get_load_group_names`, so the
+one-shot bridge workflow tools cannot run on that version. This predates 0.4.0's
+parameter additions; use 2.6.4 or later for those workflows (2.9.0 remains excluded).
 
 How the two sides are matched changed in qtmodel 2.8.2:
 
@@ -293,6 +297,22 @@ the PyPI 2.9.2 wheel (the source still reports `QT_VERSION = "2.9.1"`):
 - **Nodal mass layout.** `add_nodal_mass` documents `mass_info` as
   `(mass, inertia X, Y, Z)` and adds `mass_xyz` for direction-specific masses.
   Qiao-MCP now sends that layout (see the changelog for the corrected fields).
+- **Existing tools expose new parameters.** Construction stages support fractional
+  durations and `sub_steps`; `create_material` adds `is_orthotropic` / `ey`;
+  `set_support` and `add_elastic_support` add `coordinate`, `extra_enabled` and
+  eight-value `extra_parameters`. Unidirectional elastic supports also accept
+  signed `axis_direction`. `add_influence_plane` adds `always_divided_by_beam_shape`,
+  and `create_live_load_case` adds the per-sub-case boolean list `sub_case_optimized`.
+  Omitted options keep legacy behavior; explicit options are checked against the
+  installed signature before writing. Fractional stage creation is rejected on
+  builds that would truncate it. The catalog remains at 133 tools.
+- **Operation settings and cascade deletion stay in the gateway.** Discover
+  `update_operation_stage_setting` to use `transversal_load_cases`; supply all
+  intended case lists because omitted/empty lists disable their analysis.
+  `remove_material` defaults to `cascade=True` (also deletes associated tendon
+  properties and tendons). `remove_tendon_property` defaults to `False`; `True`
+  deletes referencing tendons and their loads without a dialog. Confirm the
+  deletion scope first; omitting both name and index targets all objects.
 - **New APIs, available through the gateway.** Transversal analysis, international
   and planned-lane live loads, strengthening, exact object deletion
   (`delete_model_object`), complete reinforcement/check snapshots on `cdb`, and

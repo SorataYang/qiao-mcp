@@ -7,13 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-29
+
+### Added
+
+- **Existing tools expose qtmodel 2.9 options without growing the tool catalog.**
+  Construction stages accept `sub_steps`; materials accept `is_orthotropic` / `ey`;
+  general and elastic supports accept `coordinate`, `extra_enabled` and the
+  eight-value `extra_parameters`; unidirectional elastic supports also accept
+  `axis_direction`. Influence planes accept `always_divided_by_beam_shape`, and
+  live-load cases accept a parallel `sub_case_optimized` boolean list.
+  Options default to `None` (omitted), preserving explicit `False`, `0` and `[]`.
+  Unsupported options fail before writes on older qtmodel builds.
+- **Gateway guidance covers operation-stage and deletion options.**
+  `update_operation_stage_setting` accepts `transversal_load_cases` on supporting
+  builds; its lists replace analysis selections rather than partially update them.
+  `remove_material` defaults to `cascade=True`; `remove_tendon_property` defaults
+  to `False`, with `True` deleting referenced tendons and loads without a dialog.
+  Both deletion methods target all objects when neither name nor index is supplied.
+
 ### Changed
 
 - **qtmodel 2.9 support.** The dependency range is now `qtmodel>=2.6.3,!=2.9.0,<2.10`
   and the lock uses 2.9.2 (identical to upstream `8ae651e` apart from its unbumped
   version label). Every direct mdb/odb/cdb call and model query was checked against
   2.9.2; signatures only gained optional parameters. The offline suite passes on
-  2.8.2, 2.9.1 and 2.9.2. 2.9.0 is excluded: its `add_section` validates
+  2.6.4, 2.8.2, 2.9.1 and 2.9.2. A pre-existing 2.6.3 limitation remains:
+  it lacks `get_load_group_names`, required by the one-shot bridge workflows.
+  2.9.0 is excluded: its `add_section` validates
   `sec_property` even when it is omitted, so creating a section without explicit
   properties fails on the client. The minor bound stays: 2.9.2 removed two modules
   that 2.9.1 shipped.
@@ -27,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Construction-stage updates retain fractional durations.** The tool now exposes
+  a number rather than an integer. Stage creation refuses older clients that
+  truncate fractional durations; integer durations remain compatible. Stage docs
+  also correct installation/self-weight fields and start/end load flags.
 - **Nodal mass was written into the wrong fields.** QiaoTong's `mass_info` is
   `(translational mass, inertia about X, Y, Z)` — confirmed by QiaoTong's own export
   logs, the query documentation and the 2.9 docstring. `mass_y`/`mass_z` were sent
@@ -318,7 +343,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
-[Unreleased]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.3...develop
+[Unreleased]: https://github.com/SorataYang/qiao-mcp/compare/v0.4.0...develop
+[0.4.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.0...v0.3.1
