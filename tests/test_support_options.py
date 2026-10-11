@@ -1,6 +1,7 @@
 """Support options follow QiaoTong's eight-field and signed-axis export layouts."""
 
 import inspect
+from unittest.mock import Mock
 
 import pytest
 from conftest import tool_fns
@@ -25,7 +26,9 @@ def test_support_options_forwarded(fake_provider, register, tool, method, argume
     tool_fns(register, fake_provider)[tool](node_id=8, **arguments, **options)
     kwargs = fake_provider._mdb.last(method)[2]
     for key in ("coordinate", "extra_enabled", "extra_parameters"):
-        if key in options:
+        if key == "extra_enabled" and "extra_parameters" in options and key not in options:
+            assert kwargs[key] is True
+        elif key in options:
             assert kwargs[key] == options[key]
         else:
             assert key not in kwargs
@@ -96,3 +99,30 @@ def test_support_real_export_wire(qtmodel_wire, register, tool, method, argument
     expected_boundary = arguments.get("spring_values", [True, True, True, False, False, False])
     assert payload["boundary_info"] == expected_boundary
     assert len(requests) == 2
+
+
+@pytest.mark.parametrize("register, tool, method, arguments", SUPPORTS)
+def test_parameter_only_input_explicitly_enables_it_on_every_supporting_sdk(qtmodel_wire, register, tool, method, arguments):
+    provider, requests = qtmodel_wire
+    options = {"extra_parameters": [0.2, 0.1, 0, 0, 0, 0, 0, 0]}
+    parameters = inspect.signature(getattr(provider._mdb, method)).parameters
+    function = tool_fns(register, provider)[tool]
+    if not {"extra_enabled", "extra_parameters"} <= parameters.keys():
+        with pytest.raises(ToolError, match="does not support"):
+            function(node_id=8, **arguments, **options)
+        assert requests == []
+        return
+    function(node_id=8, **arguments, **options)
+    assert requests[0][1]["extra_enabled"] is True
+    assert requests[0][1]["extra_parameters"] == options["extra_parameters"]
+    assert requests[1][0] == "UPDATE" and len(requests) == 2
+
+
+@pytest.mark.parametrize("register, tool, method, arguments", SUPPORTS)
+def test_support_commit_failure_does_not_claim_no_change(fake_provider, register, tool, method, arguments):
+    commit = Mock(side_effect=RuntimeError("commit unavailable"))
+    fake_provider._mdb.update_model = commit
+    with pytest.raises(ToolError, match="model may have changed"):
+        tool_fns(register, fake_provider)[tool](node_id=8, **arguments, extra_parameters=[0] * 8)
+    assert fake_provider._mdb.count(method) == 1
+    commit.assert_called_once()

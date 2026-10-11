@@ -1562,14 +1562,16 @@ class QtModelProvider(BridgeProvider):
         **kwargs,
     ) -> None:
         self._require_available()
+        if extra_parameters is not None and extra_enabled is None:
+            extra_enabled = True
         options = self._optional_mdb_parameters(
             "add_general_support", coordinate=coordinate, extra_enabled=extra_enabled,
             extra_parameters=extra_parameters,
         )
-        self._mdb.add_general_support(
-            node_id=node_id, boundary_info=boundary_info, **options, **kwargs
-        )
-        self._mdb.update_model()
+        arguments = {"node_id": node_id, "boundary_info": boundary_info, **options, **kwargs}
+        method = "add_general_support"
+        fn = self._validated_method("mdb", method, arguments)
+        self._execute_model_command(fn, method, arguments)
 
     def add_elastic_link(
         self, link_type: int, start_id: int, end_id: int, **kwargs
@@ -2522,15 +2524,17 @@ class QtModelProvider(BridgeProvider):
         **kwargs,
     ) -> None:
         self._require_available()
+        if extra_parameters is not None and extra_enabled is None:
+            extra_enabled = True
         options = self._optional_mdb_parameters(
             "add_elastic_support", coordinate=coordinate, extra_enabled=extra_enabled,
             extra_parameters=extra_parameters, axis_direction=axis_direction,
         )
-        self._mdb.add_elastic_support(
-            node_id=node_id, support_type=support_type, boundary_info=boundary_info,
-            **options, **kwargs
-        )
-        self._mdb.update_model()
+        arguments = {"node_id": node_id, "support_type": support_type,
+                     "boundary_info": boundary_info, **options, **kwargs}
+        method = "add_elastic_support"
+        fn = self._validated_method("mdb", method, arguments)
+        self._execute_model_command(fn, method, arguments)
 
     # ── Moving Loads ───────────────────────────────────────────────────
 

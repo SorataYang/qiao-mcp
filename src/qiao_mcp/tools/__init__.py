@@ -1302,12 +1302,16 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             ry: Fix Y rotation (固定Y转动), default False
             rz: Fix Z rotation (固定Z转动), default False
             group_name: Boundary group name (边界组名)
-            coordinate: 0=global, 1=node coordinate system; None uses the upstream
-                        default (0=整体，1=节点坐标系；省略用默认值，需新版 qtmodel)
-            extra_enabled: Enable additional support parameters; None omits the
-                           option (是否启用支座附加参数；省略不传，需新版 qtmodel)
+            coordinate: 0=global, 1=node coordinate system; None preserves the
+                        existing setting on overwrite or uses the creation default
+                        (0=整体，1=节点坐标系；省略时覆盖保留原值、新增用默认值)
+            extra_enabled: Enable additional support parameters. None enables them
+                           when extra_parameters is supplied, otherwise preserves the
+                           existing setting. False clears them (提供附加参数时默认启用；
+                           两者均省略保留原设置，False 清空；需新版 qtmodel)
             extra_parameters: Exactly [static friction, dynamic friction, Dx, Dy, Dz,
-                              Rx, Ry, Rz]; None omits the option. Requires a supporting
+                              Rx, Ry, Rz]; supplying this enables it unless explicitly
+                              disabled. None preserves it. Requires a supporting
                               qtmodel build (静摩擦、动摩擦、Dx/Dy/Dz/Rx/Ry/Rz，共8项)
         """
         try:

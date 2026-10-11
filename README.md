@@ -47,6 +47,10 @@ backend call. A beam end `release_i` / `release_j` flag means **True = release**
 omitting an end keeps all six DOFs connected. Load combination components use
 `[case_type, case_name, factor]`, with `combine_type=3` for an envelope.
 
+Support overrides preserve omitted coordinate/additional settings. Supplying
+`extra_parameters` enables them unless `extra_enabled=False` explicitly clears
+them; this behavior also applies to older SDKs that support these options.
+
 ### Development: B1 queries and diagnostics (unreleased)
 
 The development catalog adds `get_model_edit_readiness` and `query_model_data`;

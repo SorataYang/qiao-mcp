@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Support tools now enable additional parameters when only their values are
+  supplied, matching current upstream semantics on older supporting SDKs too.
+  Explicit False still clears them; omitted values preserve the existing setting.
+  A failed commit reports that the support command may already have changed the model.
+
+### Fixed
+
 - **CDB model snapshots require model-write permission and a model commit.**
   An explicit nine-method set shares the dedicated/gateway commit path. Legacy
   CDB queries, file operations and solvers keep their existing behavior. A failed
