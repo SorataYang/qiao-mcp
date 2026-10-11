@@ -9,11 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **B1 read-only edit diagnostics (one new tool; 134 total).**
+- **B1 read-only diagnostics and server-side queries (two new tools; 135 total).**
   `get_model_edit_readiness` returns bridge-owned preparation diagnostics even
   when model operations are blocked, without switching stages or deleting results.
   Missing client APIs, unavailable connections and unknown responses never imply
   editing is safe; preparation tokens are returned opaquely, not retained/reused.
+- **`query_model_data` uses kind-specific, closed input schemas** for nodes,
+  elements, boundaries, static loads, node local axes and section summaries.
+  It validates filters and preserves native pagination metadata without a second
+  slice. Missing APIs fail explicitly; there is no full-download fallback.
+  Qiao-MCP caps lists/pages at 500; section summaries use the upstream 100-ID,
+  100-item limit.
 ## [0.4.0] - 2026-09-29
 
 ### Added

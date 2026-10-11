@@ -713,6 +713,25 @@ class QtModelProvider(BridgeProvider):
             raise AttributeError(f"qtmodel has no model query '{fn_name}'")
         return self._parse(method(*args, **kwargs))
 
+    def query_model_data(self, kind: str, **filters: Any) -> dict[str, Any]:
+        """Use native server filtering/pagination, never full-download fallbacks."""
+        methods = {
+            "nodes": "query_node_data", "elements": "query_element_data",
+            "boundaries": "query_boundary_data", "loads": "query_load_data",
+            "node_local_axes": "query_node_local_axis_data",
+            "section_summaries": "query_section_summaries",
+        }
+        if kind not in methods:
+            raise ValueError(f"Unknown model query kind: {kind}")
+        self._require_available()
+        result = self._query_model(methods[kind], **filters)
+        if not isinstance(result, dict) or not result:
+            raise RuntimeError(
+                f"{methods[kind]} returned no valid query page; the bridge may not support it "
+                "(未返回有效查询页，请检查桥通是否支持该接口；不会回退到全量查询)"
+            )
+        return result
+
     def _safe_get(self, fn_name: str, *args, **kwargs) -> Any:
         """Call an optional model query, returning None on error."""
         fn = self._model_query_method(fn_name)

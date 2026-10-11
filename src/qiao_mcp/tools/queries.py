@@ -2,7 +2,9 @@
 MCP Query Tools — read-only information retrieval from the bridge model.
 桥梁模型只读信息查询工具（合并版）
 
-Four consolidated tools replace the former 52 single-purpose wrappers:
+The four consolidated tools replace the former 52 single-purpose wrappers;
+query_model_data adds native server filtering and pagination:
+    query_model_data    — server-side typed filters and native query pages (服务端筛选分页)
     get_model_data      — entity/load/stage data by kind (按类型查询模型数据)
     find_entities       — locate nodes/elements by coordinates or attributes (按条件定位)
     calc_section_property — compute properties from raw geometry (按几何计算截面特性)
@@ -15,6 +17,7 @@ import json
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
@@ -22,6 +25,8 @@ from qiao_mcp.tools.schemas import (
     EntitySearch,
     FiveNumbers,
     ModelDataKind,
+    ModelQuery,
+    ModelQueryResult,
     NonnegativeNumber,
     PageLimit,
     PageOffset,
@@ -36,6 +41,9 @@ MAX_LIMIT = 500
 _OVERVIEW_KINDS = frozenset(
     {"summary", "analysis_context", "project_metadata", "check_context", "structure_group_summaries"}
 )
+
+
+_MODEL_QUERY_ADAPTER: TypeAdapter[ModelQuery] = TypeAdapter(ModelQuery)
 
 
 def _fmt(obj: Any) -> str:
@@ -65,6 +73,36 @@ def _paginate(data: Any, limit: int, offset: int) -> str:
 
 def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     """Register consolidated read-only query tools."""
+
+    @mcp.tool()
+    def query_model_data(request: ModelQuery) -> ModelQueryResult:
+        """Filter and paginate model records on the bridge (服务端筛选分页查询).
+
+        Unlike get_model_data, this never downloads all records for local
+        filtering. Requires a qtmodel/QiaoTong build supporting the chosen
+        endpoint; missing APIs fail explicitly. Filters are intersected by the
+        server. IDs accept a positive integer or list (section_summaries: list
+        only), not range strings. Names must be lists, not a single string.
+        Node queries require at least one filter; near/tolerance are paired.
+        Qiao-MCP caps input lists/pages at 500, or 100 for section summaries.
+        The data object preserves native pagination fields without inventing
+        totals or slicing again. Consult has_more/truncated when present.
+
+        Args:
+            request: Typed query selected by kind: nodes, elements, boundaries,
+                loads, node_local_axes or section_summaries. Each kind has its
+                own filters and limit/offset; see the nested input Schema.
+        """
+        try:
+            query = _MODEL_QUERY_ADAPTER.validate_python(request)
+            filters = query.model_dump(exclude={"kind"}, exclude_none=True)
+            return ModelQueryResult(status="success", data=provider.query_model_data(query.kind, **filters))
+        except ToolError:
+            raise
+        except ValueError as e:
+            raise ToolInputError(f"Invalid model query (查询参数无效): {e}") from e
+        except Exception as e:
+            raise ToolError(f"Error querying model data (服务端查询失败): {e}") from e
 
     @mcp.tool()
     def get_model_data(
