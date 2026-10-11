@@ -201,6 +201,6 @@ def test_server_catalog_initializes_without_a_connection_probe(monkeypatch):
     monkeypatch.setattr(qiao_mcp.providers, "create_provider", lambda: stub)
     namespace = runpy.run_module("qiao_mcp.server", run_name="qiao_mcp._startup_test")
     tools = asyncio.run(namespace["mcp"].list_tools())
-    assert len(tools) == 150
+    assert len(tools) == 153
     assert "check_qiaotong_connection" in {tool.name for tool in tools}
     probe.assert_not_called()

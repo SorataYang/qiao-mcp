@@ -90,7 +90,7 @@ async def inspect_package(wheel: Path, expected_tools: int, output: Path | None)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("wheel", type=Path)
-    parser.add_argument("--expected-tools", type=int, default=150)
+    parser.add_argument("--expected-tools", type=int, default=153)
     parser.add_argument("--output", type=Path, help="Write the inspected protocol catalog as JSON")
     args = parser.parse_args()
     asyncio.run(asyncio.wait_for(

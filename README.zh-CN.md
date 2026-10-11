@@ -9,7 +9,7 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 
 ## 功能特性
 
-### 🔧 工具（开发版 150 个，按功能分组）
+### 🔧 工具（开发版 153 个，按功能分组）
 
 工具按桥梁建模与分析工作流分组。以下是各组代表工具：
 
@@ -29,7 +29,7 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 | **工作流** | `create_simple_beam_bridge`、`create_continuous_beam_bridge` |
 | **网关与诊断** | `check_qiaotong_connection`、`get_model_status`、`list_qtmodel_api`、`call_qtmodel_api`（连接与模型状态诊断、长尾 API 检索与签名校验调用） |
 
-148 个非图片工具提供输出 Schema，并返回 MCP 结构化内容（`{status, message, ...}`）。连接诊断另有 `connection_status`、`connected` 等字段；一键建桥返回实际节点、单元、材料和截面编号；`get_model_status` 的 `status` 保留桥通状态。两个支持图片的工具返回可预览的 MCP 图像或文本说明。执行失败使用类型化 MCP 错误；工具注解说明只读、破坏性和开放世界行为。调用长尾 API 前，请先使用 `list_qtmodel_api` 查询真实签名。
+151 个非图片工具提供输出 Schema，并返回 MCP 结构化内容（`{status, message, ...}`）。连接诊断另有 `connection_status`、`connected` 等字段；一键建桥返回实际节点、单元、材料和截面编号；`get_model_status` 的 `status` 保留桥通状态。两个支持图片的工具返回可预览的 MCP 图像或文本说明。执行失败使用类型化 MCP 错误；工具注解说明只读、破坏性和开放世界行为。调用长尾 API 前，请先使用 `list_qtmodel_api` 查询真实签名。
 
 输入 Schema 包含参数说明、固定枚举、分页范围和坐标/自由度数组长度约束，不符合 Schema 的输入会在调用后端前被拒绝。梁端 `release_i` / `release_j` 中 **True 表示释放**，省略某端表示该端六自由度均不释放。荷载组合分项顺序为 `[工况类型, 工况名, 系数]`，`combine_type=3` 才是包络。
 
@@ -101,6 +101,29 @@ Qiao-MCP 自定列表/单页上限为 500；截面摘要按上游约束最多 10
 非活动参数：专用工具只接收对应规范的字段；完整原生定义原样回放仍可使用网关。
 以上接口不统一缩放荷载值。
 
+`create_en1991_vehicle` 通过 `source="standard"|"user"` 选择原生工厂，必须明确名称。
+标准工厂只暴露实际生效的控制字段，不能覆盖由规范生成的均布荷载、受载长度和间距。
+用户工厂保留这些字段及 `p`/`dis`、`load_length`、`num`、`point_load`；LM71 的
+`p`/`dis` 同为 null 时使用四个 250 kN 轴载。工厂也会提交并回读实际车辆编号。
+例如，显式选择 `en1991` 后调用：
+
+```json
+{"request": {"source": "standard", "name": "LM71", "load_type": "LM71"}}
+```
+
+`set_planned_lane` 必须传入影响面、参考纵列、宽度、车辆数、有符号偏移和方向。
+规划车道使用独立端点，与 `add_traffic_lane(optimize=True)` 不同。上游没有独立
+规划车道 getter，响应只确认提交，定义须通过模型导出或界面核验。经网关删除时，
+`remove_lane_line` 必须显式传 `lane_kind="planned"`。
+
+`set_international_live_load_case` 在写前核对车辆的精确名称与预期 `standard`。
+子工况通过 `optimized=False|True` 选择普通/规划车道；EN1991 拒绝重复车道分配。
+车道存在性、类别及其所属影响面由桥通权威校验。系数对象保留完整原生字段和值；
+null 表示使用服务端默认值，修改时亦如此。随后通过 `configure_operation_stage`
+显式设置 `live_load_cases`，再调用 `run_analysis`，并使用已从桥通核实的完整结果
+标识调用 `get_analysis_results(case_name_mode="full")`。定义接口不会隐式求解。
+车辆和工况的删除继续经网关调用 `remove_international_vehicle`、`remove_live_load_case`。
+
 ### 📦 资源 (7个)
 | URI | 描述 |
 |-----|-------------|
@@ -141,7 +164,7 @@ qiao-mcp/
 └── reference-docs/            # 评审记录与项目文档
 ```
 
-**Provider 模式**让 150 个工具与具体后端解耦。用 `BRIDGE_PROVIDER` 选择后端；每个后端自己声明软件专有规则，因此换后端无需改提示词。当前支持：
+**Provider 模式**让 153 个工具与具体后端解耦。用 `BRIDGE_PROVIDER` 选择后端；每个后端自己声明软件专有规则，因此换后端无需改提示词。当前支持：
 - **QTModel**（`qtmodel`，默认）— [桥通 (QiaoTong)](https://www.brdi.com.cn/Software.html) 桥梁分析软件（[用户手册](https://soratayang.github.io/)）
 
 接入新后端只需实现 `BridgeProvider` 并登记一行，不改工具层代码。详见 [后端选择](./INTEGRATION_GUIDE.md#后端选择-backend-selection)。

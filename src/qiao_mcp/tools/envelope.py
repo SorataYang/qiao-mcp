@@ -52,6 +52,9 @@ _DESTRUCTIVE_NAMES = {
     "set_transversal_lane",
     "set_transversal_case",
     "set_international_vehicle",
+    "create_en1991_vehicle",
+    "set_planned_lane",
+    "set_international_live_load_case",
     "set_section_reinforcement",
     "set_check_stirrup_snapshot",
     "set_element_stirrups",
@@ -101,7 +104,8 @@ _CHECK_RUN_NAMES = {
     "run_concrete_check",
 }
 _MODEL_WRITE_NAMES = {
-    "set_international_vehicle",
+    "set_international_vehicle", "create_en1991_vehicle",
+    "set_planned_lane", "set_international_live_load_case",
     "set_section_reinforcement", "remove_section_reinforcement",
     "set_check_stirrup_snapshot", "set_element_stirrups",
     "manage_check_material", "manage_check_case_definition",

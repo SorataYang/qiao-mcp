@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **EN1991 factories, planned lanes and international cases.** Standard factories
+  expose only effective options; user factories retain separate axle, length and
+  HSLM controls. Dedicated planned lanes commit without inventing a getter.
+  Typed international cases check vehicle standards and EN1991 duplicate lanes,
+  preserve complete factor objects, and use authoritative server validation for
+  lane/plane references. Three offline workflows cover definition-to-result order.
 - **International vehicles and complete readback.** AASHTO, BS and EN1991 use
   separate typed parameter schemas, full add/update definitions and actual-ID
   readback. Native units are passed unchanged, including AASHTO percent `r`;
