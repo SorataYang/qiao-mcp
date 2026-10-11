@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **CDB model snapshots require model-write permission and a model commit.**
+  An explicit nine-method set shares the dedicated/gateway commit path. Legacy
+  CDB queries, file operations and solvers keep their existing behavior. A failed
+  commit reports that the preceding command already ran and must not be replayed.
+
 ### Added
 
 - **Complete result identifiers and a transversal workflow prompt.**

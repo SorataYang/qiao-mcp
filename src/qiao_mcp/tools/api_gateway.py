@@ -229,6 +229,14 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         undo_model, update_to_pre, …) are not.
         （MDB 写方法调用后统一以 update_model 提交；工程、文件和视图管理命令除外。）
 
+        CDB base-model snapshots also require model-write permission and one
+        update_model commit: set_section_reinforcement,
+        remove_section_reinforcement_by_name, set_check_stirrup,
+        set_element_stirrups, set_check_material, remove_check_material,
+        set_check_case, remove_check_case_snapshot and
+        set_steel_bar_material_convention. Legacy CDB queries/files/solvers do not
+        get an MDB commit (新快照操作基础模型；既有 CSAN 操作保留原权限和提交语义).
+
         New MDB management APIs are available here without additional wrapper tools.
         copy_thicknesses / remove_thicknesses accept positive integer IDs or lists,
         not range strings; remove_thicknesses([]) deletes nothing. Analysis resets

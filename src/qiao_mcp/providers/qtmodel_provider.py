@@ -662,6 +662,21 @@ class QtModelProvider(BridgeProvider):
         "update_model", "undo_model", "redo_model", "update_to_pre", "update_to_post",
         "save_file", "open_file", "close_project", "export_file",
     }
+    # These CDB methods edit base-model snapshots, unlike legacy CSAN operations.
+    # Keep the list explicit: CDB queries, files and solvers must not commit MDB.
+    _API_CDB_MODEL_WRITES = frozenset({
+        "set_steel_bar_material_convention", "set_section_reinforcement",
+        "remove_section_reinforcement_by_name", "set_check_stirrup", "set_element_stirrups",
+        "set_check_material", "remove_check_material", "set_check_case", "remove_check_case_snapshot",
+    })
+
+    def write_check_snapshot(self, method: str, **kwargs: Any) -> Any:
+        """Dispatch an explicit base-model snapshot command with model permissions."""
+        if method not in self._API_CDB_MODEL_WRITES:
+            raise ValueError(f"Not a model snapshot method: {method}")
+        self.ensure_operation_allowed("model_write")
+        fn = self._validated_method("cdb", method, kwargs)
+        return self._execute_model_command(fn, method, kwargs)
 
     def _resolve_api_object(self, api_object: str):
         obj = {"mdb": self._mdb, "odb": self._odb, "cdb": self._cdb}.get(api_object)
@@ -716,7 +731,10 @@ class QtModelProvider(BridgeProvider):
                 else "model_write"
             )
         elif api_object == "cdb":
-            operation = "check_run" if method.startswith(("solve", "run", "do_")) else "check_write"
+            if method in self._API_CDB_MODEL_WRITES:
+                operation = "model_write"
+            else:
+                operation = "check_run" if method.startswith(("solve", "run", "do_")) else "check_write"
         elif method.startswith(("set_", "save_", "plot_", "change_", "display_", "reset_")):
             operation = "view"
         elif any(
@@ -740,14 +758,13 @@ class QtModelProvider(BridgeProvider):
             raise ValueError(
                 f"Arguments do not match (参数不匹配): {e}. Real signature (真实签名): {method}{sig}"
             ) from e
-        result = self._parse(fn(**kwargs))
         if (
             api_object == "mdb"
             and operation == "model_write"
             and method not in self._API_NO_COMMIT
-        ):
-            self._mdb.update_model()
-        return result
+        ) or (api_object == "cdb" and method in self._API_CDB_MODEL_WRITES):
+            return self._execute_model_command(fn, method, kwargs)
+        return self._parse(fn(**kwargs))
 
     # ── Model Information ──────────────────────────────────────────────
 

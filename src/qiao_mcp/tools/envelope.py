@@ -51,6 +51,11 @@ _DESTRUCTIVE_NAMES = {
     "set_transversal_vehicle",  # 按同名或编号完整覆盖
     "set_transversal_lane",
     "set_transversal_case",
+    "set_section_reinforcement",
+    "set_check_stirrup_snapshot",
+    "set_element_stirrups",
+    "manage_check_material",
+    "manage_check_case_definition",
 }
 # 逃生舱：可调用任意 qtmodel 方法，对外部世界开放
 _OPEN_WORLD_NAMES = {"call_qtmodel_api"}
@@ -94,6 +99,11 @@ _CHECK_READ_NAMES = {
 _CHECK_RUN_NAMES = {
     "run_concrete_check",
 }
+_MODEL_WRITE_NAMES = {
+    "set_section_reinforcement", "remove_section_reinforcement",
+    "set_check_stirrup_snapshot", "set_element_stirrups",
+    "manage_check_material", "manage_check_case_definition",
+}
 
 
 def _operation_for(name: str) -> str:
@@ -102,6 +112,8 @@ def _operation_for(name: str) -> str:
         return "connection"
     if name in _LIFECYCLE_NAMES:
         return "lifecycle"
+    if name in _MODEL_WRITE_NAMES:
+        return "model_write"
     if name == "run_analysis":
         return "analysis_run"
     if name in _CHECK_RUN_NAMES:
