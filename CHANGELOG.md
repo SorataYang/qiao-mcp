@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Transversal vehicles and lanes.** Complete, typed add/update definitions use
+  fixed kN/m, preserve ordered lane nodes and map distribution widths to the
+  native field. Each write commits once and reads back the actual ID; missing or
+  ambiguous readback reports the already-committed write. Native connectivity
+  rejection is preserved. `get_transversal_data` returns paged definitions.
 - **Explicit live-load configuration.** `configure_live_load_system` supports the
   five native systems and defaults to `clear_existing=False`.
   `configure_operation_stage` requires all four case lists, including empty ones,

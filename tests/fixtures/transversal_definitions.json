@@ -1,0 +1,43 @@
+{
+  "source": "qtmodel-release 0687ffe tests/fixtures/transversal_model_export.json; literal arguments from QiaoTong C# export, no code execution",
+  "definitions": {
+    "vehicle": {
+      "index": 9,
+      "name": "车辆\"\\\n🚗",
+      "wheel_load": 72.5,
+      "wheel_distance": 1.8,
+      "min_vehicle_distance": 1.3,
+      "wheel_margin": 0.5,
+      "sidewalk_width": 1.0,
+      "model_length": 1.0,
+      "left_lane_count": 1,
+      "right_lane_count": 1,
+      "has_medial_divider": true,
+      "medial_divider_position": 8.25,
+      "medial_divider_width": 0.5
+    },
+    "lane": {
+      "index": 7,
+      "name": "车道\"",
+      "node_ids": [
+        3,
+        2,
+        1
+      ],
+      "load_factors": [
+        0.5,
+        1.25,
+        0.75
+      ]
+    },
+    "case": {
+      "index": 6,
+      "name": "横向工况",
+      "vehicle_id": 9,
+      "lane_id": 7,
+      "impact_factor": 1.3,
+      "reduction_factors": "8|1.2,1,0.78,0.67,0.6,0.55,0.52,0.5,0.5",
+      "description": "说明\"\\\n🚗"
+    }
+  }
+}

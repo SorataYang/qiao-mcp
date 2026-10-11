@@ -13,6 +13,7 @@ from qiao_mcp.tools.modifications import register_modification_tools
 from qiao_mcp.tools.moving_load import register_moving_load_tools
 from qiao_mcp.tools.queries import register_query_tools
 from qiao_mcp.tools.tendon import register_tendon_tools
+from qiao_mcp.tools.transversal import register_transversal_tools
 from qiao_mcp.tools.visualization import register_visualization_tools
 from qiao_mcp.tools.workflows import register_workflow_tools
 
@@ -23,6 +24,7 @@ TOOL_REGISTRARS = (
     register_advanced_boundary_tools,
     register_visualization_tools,
     register_moving_load_tools,
+    register_transversal_tools,
     register_checking_tools,
     register_workflow_tools,
     register_query_tools,

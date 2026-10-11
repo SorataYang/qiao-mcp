@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目简介
 
-Qiao-MCP 是一个 MCP 服务器,把桥梁结构分析软件(当前仅支持桥通/QiaoTong,经 `qtmodel` Python API)的能力暴露给 AI 助手:建模、施工阶段、荷载、预应力、活载、规范验算、结果查询。共 137 个工具、7 个资源、4 个提示模板。
+Qiao-MCP 是一个 MCP 服务器,把桥梁结构分析软件(当前仅支持桥通/QiaoTong,经 `qtmodel` Python API)的能力暴露给 AI 助手:建模、施工阶段、荷载、预应力、活载、规范验算、结果查询。共 140 个工具、7 个资源、4 个提示模板。
 
 ## 常用命令
 
@@ -58,7 +58,7 @@ src/qiao_mcp/
 所有工具经 `register_tools_with_envelope` 包装(`tools/catalog.py` 的 `TOOL_REGISTRARS` 统一注册，服务器与离线检查共用入口):
 
 - 成功:返回 dict、响应 BaseModel 或 str(自动包裹为 `{status, message}`)。`tools/schemas.py` 定义输入约束与响应模型；包装器保留显式响应模型，字符串/普通字典分别使用 MessageResult/ObjectResult。不要把返回注解改回裸 dict，FastMCP 1.29 无法据此生成输出 Schema。
-- 图片:两个图片工具显式 `structured_output=False`，保留 MCP Image 内容。其他 135 个工具必须有输出 Schema。
+- 图片:两个图片工具显式 `structured_output=False`，保留 MCP Image 内容。其他 138 个工具必须有输出 Schema。
 - 启动与目录注册不探测桥通连接；连接检查由诊断工具和操作守卫按需执行。
 - 失败:`raise ToolError(...)`;输入不合法用 `ToolInputError`(`tools/envelope.py`)
 - `envelope.py` 同时把每个工具名映射到桥通能力类别(`model_read`/`model_write`/`stage_write`/`result_read`/`check_*`/`analysis_run`/`view`/`lifecycle`/`connection`),用于模型状态守卫
