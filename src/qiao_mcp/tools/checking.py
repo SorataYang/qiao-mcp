@@ -145,8 +145,8 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
             provider.solve_concrete_check(name=name, wait=True, max_wait=max_wait_seconds)
             return (
                 f"Concrete check '{name}' completed. "
-                f"Use get_check_results to retrieve results. "
-                f"(混凝土检算 '{name}' 完成，使用 get_check_results 获取结果)"
+                f"Use get_check_data to retrieve results. "
+                f"(混凝土检算 '{name}' 完成，使用 get_check_data 获取结果)"
             )
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息

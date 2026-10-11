@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Material and check-case snapshots.** Typed set/reset material overrides and
+  set/remove concrete, seismic and strengthening definitions preserve native
+  enums, stored units, six force flags and backend-owned properties. Existing
+  concrete checking still imports the named model case before solving; the new
+  definitions do not claim seismic/strengthening solver support.
 - **Stirrup snapshots and bulk element assignments.** New tools preserve native
   field names, stored dimensions and model enums. Renumbering takes original_id;
   shear/torsion rows are fixed at five/three entries. None retains a family, []

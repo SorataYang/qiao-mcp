@@ -1,9 +1,12 @@
 """Complete base-model definitions, separate from legacy CSAN editing tools."""
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.check_schemas import (
+    CheckCaseRequest,
+    CheckMaterialRequest,
     CheckSnapshotResult,
     CheckStirrupDefinition,
     ElementStirrupsDefinition,
@@ -12,6 +15,9 @@ from qiao_mcp.tools.check_schemas import (
 )
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
 from qiao_mcp.tools.schemas import QueryName
+
+_MATERIAL_ADAPTER: TypeAdapter[CheckMaterialRequest] = TypeAdapter(CheckMaterialRequest)
+_CASE_ADAPTER: TypeAdapter[CheckCaseRequest] = TypeAdapter(CheckCaseRequest)
 
 
 def _commit_snapshot(provider: BridgeProvider, method: str, message: str, **kwargs) -> CheckSnapshotResult:
@@ -24,6 +30,53 @@ def _commit_snapshot(provider: BridgeProvider, method: str, message: str, **kwar
 
 def register_check_snapshot_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     """Register fixed snapshot operations without changing legacy check contracts."""
+
+    @mcp.tool()
+    def manage_check_material(request: CheckMaterialRequest) -> CheckSnapshotResult:
+        """Set a full check-material override or restore the base material (设置/恢复检算材料).
+
+        set requires the complete UI-exported definition, including native model
+        enums, stored modulus, properties and parameters. Keep all legal keys and
+        units; do not build a replacement from an incomplete CSAN/material query.
+        reset removes only the override for an explicit material ID. This is a
+        base-model write with one commit, not a current-CSAN partial update.
+
+        Args:
+            request: action=set with full definition, or action=reset with index.
+        """
+        try:
+            spec = _MATERIAL_ADAPTER.validate_python(request)
+        except ValueError as exc:
+            raise ToolInputError(f"Invalid material snapshot request (检算材料请求无效): {exc}") from exc
+        if spec.action == "set":
+            return _commit_snapshot(provider, "set_check_material", "Check material snapshot committed (检算材料快照已提交)",
+                                    definition=spec.definition.model_dump(mode="json"))
+        return _commit_snapshot(provider, "remove_check_material", "Base material restored (已恢复使用基础材料)", index=spec.index)
+
+    @mcp.tool()
+    def manage_check_case_definition(request: CheckCaseRequest) -> CheckSnapshotResult:
+        """Set/remove a complete base-model check case (完整设置或删除检算工况).
+
+        Supports concrete, seismic and strengthening definitions. Native enums
+        start at zero and all exported fields must be retained, including inactive
+        family fields. Removing a case invalidates its corresponding check file.
+        This does not import or solve a current CSAN case. For concrete only, use
+        run_concrete_check after committing; it imports the named model case first.
+        No seismic/strengthening solver is promised by that concrete tool.
+
+        Args:
+            request: action=set plus full definition, or action=remove plus
+                explicit family and index; both require model-write permission.
+        """
+        try:
+            spec = _CASE_ADAPTER.validate_python(request)
+        except ValueError as exc:
+            raise ToolInputError(f"Invalid check-case snapshot request (检算工况请求无效): {exc}") from exc
+        if spec.action == "set":
+            return _commit_snapshot(provider, "set_check_case", "Check case snapshot committed (检算工况快照已提交)",
+                                    definition=spec.definition.model_dump(mode="json"))
+        return _commit_snapshot(provider, "remove_check_case_snapshot", "Check case deletion committed (检算工况删除已提交)",
+                                family=spec.family, index=spec.index)
 
     @mcp.tool()
     def set_check_stirrup_snapshot(
