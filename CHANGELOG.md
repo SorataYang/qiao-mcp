@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **International vehicles and complete readback.** AASHTO, BS and EN1991 use
+  separate typed parameter schemas, full add/update definitions and actual-ID
+  readback. Native units are passed unchanged, including AASHTO percent `r`;
+  BS axle-force units remain undocumented upstream and require verified exports.
+  Vehicle/case queries preserve all fields with explicit local selection/pages.
 - **Material and check-case snapshots.** Typed set/reset material overrides and
   set/remove concrete, seismic and strengthening definitions preserve native
   enums, stored units, six force flags and backend-owned properties. Existing

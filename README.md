@@ -11,7 +11,7 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-### 🔧 Tools (148 tools in the development tree, grouped)
+### 🔧 Tools (150 tools in the development tree, grouped)
 
 Tools are organized by workflow area. Highlights per group:
 
@@ -24,6 +24,7 @@ Tools are organized by workflow area. Highlights per group:
 | **Stages & analysis** | `add_construction_stage`, `merge_operation_stage`, `configure_analysis`, `run_analysis` (async, progress-reporting, optional `show_view`), `get_analysis_results` |
 | **Tendons** | `create_tendon_property`, `create_tendon_2d`, `apply_prestress`, `get_tendon_info` |
 | **Traffic (moving load)** | `add_node_tandem`, `add_influence_plane`, `add_traffic_lane`, `add_standard_vehicle`, `create_live_load_case` |
+| **International live load** | `set_international_vehicle`, `get_international_live_load_data` — AASHTO, BS and EN1991 definitions with separate parameter schemas |
 | **Checking** | `setup_concrete_check`, `add_check_load_combination`, `add_parametric_reinforcement`, `run_concrete_check`, `get_check_data` |
 | **Queries** | `get_model_info`, `get_model_data` (by kind, incl. qtmodel 2.8 overview kinds `summary` / `analysis_context` / `project_metadata` / `check_context`), `find_entities`, `calc_section_property`, `get_special_results` (paginated where applicable) |
 | **Modification** | `initialize_model`, `save_model_file`, `open_model_file`, `update_node`, `move_nodes`, `update_element`, `remove_nodes`, `remove_elements` |
@@ -31,7 +32,7 @@ Tools are organized by workflow area. Highlights per group:
 | **Workflows** | `create_simple_beam_bridge`, `create_continuous_beam_bridge` |
 | **Gateway & diagnostics** | `check_qiaotong_connection`, `get_model_status`, `list_qtmodel_api`, `call_qtmodel_api` — diagnose the bridge connection and model state, or discover and call long-tail qtmodel methods with signature validation |
 
-The 146 non-image tools publish output schemas and return MCP structured content
+The 148 non-image tools publish output schemas and return MCP structured content
 (`{status, message, ...}`). Connection diagnostics also expose `connection_status`
 and `connected`; bridge templates return the resolved node, element and property IDs.
 `get_model_status` preserves QiaoTong's state in `status`. The two image-capable tools
@@ -112,6 +113,27 @@ seismic and strengthening model definitions with native enum values. The existin
 not run seismic or strengthening checks. Preserve the complete exported material
 properties/parameters and stored units instead of constructing partial snapshots.
 
+International vehicles use `set_international_vehicle` with a `request`
+discriminated by `standard="AASHTO"|"BS"|"EN1991"`. Select the matching model
+system first. `parameters` and `load_items` must be explicit, even for `{}`/`[]`.
+Both add and update replace the definition; omitted/null scalars use new-definition
+defaults. Update locates the original name and retains its actual ID/references.
+Writes commit once and return a definition read back by exact name.
+
+| Standard | Native units and conventions |
+|----------|------------------------------|
+| AASHTO | Axles `[N, m]`, `w` N/m, lengths m, `r` percent (`90` = 90%) |
+| BS | `pa`/`pb` kN, `w3` kN/m, lengths m; `w1`/`w2` formula coefficients and dimensionless exponents |
+| EN1991 | Axles `[kN, m]`, uniform loads kN/m, point load kN, lengths m; loaded lengths and spacings are distinct |
+
+The SDK does not specify the BS axle-force unit. Use verified native BS axle
+export/query values unchanged; do not infer their unit from another standard.
+`get_international_live_load_data(kind="vehicles"|"cases")` retains complete
+native fields; selection and pagination run locally over its native whole-list
+response. Vehicle exports may contain inactive parameters for other standards:
+select the documented fields for the typed tool, or use the existing gateway to
+replay an unchanged full native definition. No global unit conversion is applied.
+
 ### 📦 Resources (7 resources)
 | URI | Description |
 |-----|-------------|
@@ -153,7 +175,7 @@ qiao-mcp/
 └── reference-docs/            # Review notes and project documentation
 ```
 
-The **Provider pattern** keeps the 148 tools decoupled from any single backend. Select one with
+The **Provider pattern** keeps the 150 tools decoupled from any single backend. Select one with
 `BRIDGE_PROVIDER`; each provider declares its own software-specific rules, so the LLM adapts
 without prompt changes. Currently supports:
 - **QTModel** (`qtmodel`, default) — [QiaoTong (桥通)](https://www.brdi.com.cn/Software.html) bridge analysis software ([user manual](https://soratayang.github.io/))

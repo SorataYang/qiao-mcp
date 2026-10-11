@@ -9,7 +9,7 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 
 ## 功能特性
 
-### 🔧 工具（开发版 148 个，按功能分组）
+### 🔧 工具（开发版 150 个，按功能分组）
 
 工具按桥梁建模与分析工作流分组。以下是各组代表工具：
 
@@ -29,7 +29,7 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 | **工作流** | `create_simple_beam_bridge`、`create_continuous_beam_bridge` |
 | **网关与诊断** | `check_qiaotong_connection`、`get_model_status`、`list_qtmodel_api`、`call_qtmodel_api`（连接与模型状态诊断、长尾 API 检索与签名校验调用） |
 
-146 个非图片工具提供输出 Schema，并返回 MCP 结构化内容（`{status, message, ...}`）。连接诊断另有 `connection_status`、`connected` 等字段；一键建桥返回实际节点、单元、材料和截面编号；`get_model_status` 的 `status` 保留桥通状态。两个支持图片的工具返回可预览的 MCP 图像或文本说明。执行失败使用类型化 MCP 错误；工具注解说明只读、破坏性和开放世界行为。调用长尾 API 前，请先使用 `list_qtmodel_api` 查询真实签名。
+148 个非图片工具提供输出 Schema，并返回 MCP 结构化内容（`{status, message, ...}`）。连接诊断另有 `connection_status`、`connected` 等字段；一键建桥返回实际节点、单元、材料和截面编号；`get_model_status` 的 `status` 保留桥通状态。两个支持图片的工具返回可预览的 MCP 图像或文本说明。执行失败使用类型化 MCP 错误；工具注解说明只读、破坏性和开放世界行为。调用长尾 API 前，请先使用 `list_qtmodel_api` 查询真实签名。
 
 输入 Schema 包含参数说明、固定枚举、分页范围和坐标/自由度数组长度约束，不符合 Schema 的输入会在调用后端前被拒绝。梁端 `release_i` / `release_j` 中 **True 表示释放**，省略某端表示该端六自由度均不释放。荷载组合分项顺序为 `[工况类型, 工况名, 系数]`，`combine_type=3` 才是包络。
 
@@ -83,6 +83,24 @@ Qiao-MCP 自定列表/单页上限为 500；截面摘要按上游约束最多 10
 保留模型枚举原值。提交后既有 `run_concrete_check` 会先导入具名混凝土工况再检算，
 它不负责抗震或加固求解。材料 properties/parameters 和存储单位须取自完整导出。
 
+国际车辆使用 `set_international_vehicle`，`request` 按
+`standard="AASHTO"|"BS"|"EN1991"` 选择独立参数 Schema。先显式选择相应活载体系；
+`parameters` 和 `load_items` 必须给出，包括 `{}`/`[]`。新增和修改都是完整替换，
+省略或为 null 的标量采用新建默认值；修改按原名称定位并保留实际编号与引用。
+写入只提交一次，随后按精确名称回读完整定义和实际编号。
+
+| 规范 | 原生单位与约定 |
+|------|----------------|
+| AASHTO | 轴列 `[N, m]`，`w` 为 N/m，长度 m，`r` 为百分数（90 表示 90%） |
+| BS | `pa`/`pb` 为 kN，`w3` 为 kN/m，长度 m；`w1`/`w2` 为公式系数，指数无量纲 |
+| EN1991 | 轴列 `[kN, m]`，均布荷载 kN/m，点荷载 kN，长度 m；受载长度与间距分别传递 |
+
+上游 SDK 未明确 BS 轴列的力单位。须使用已核实的 BS 原生导出/查询值并保持不变，
+不能套用其他规范的单位。`get_international_live_load_data(kind="vehicles"|"cases")`
+保留完整原生字段，对上游返回的全量列表做本地筛选与分页。车辆导出可能含其他规范的
+非活动参数：专用工具只接收对应规范的字段；完整原生定义原样回放仍可使用网关。
+以上接口不统一缩放荷载值。
+
 ### 📦 资源 (7个)
 | URI | 描述 |
 |-----|-------------|
@@ -123,7 +141,7 @@ qiao-mcp/
 └── reference-docs/            # 评审记录与项目文档
 ```
 
-**Provider 模式**让 148 个工具与具体后端解耦。用 `BRIDGE_PROVIDER` 选择后端；每个后端自己声明软件专有规则，因此换后端无需改提示词。当前支持：
+**Provider 模式**让 150 个工具与具体后端解耦。用 `BRIDGE_PROVIDER` 选择后端；每个后端自己声明软件专有规则，因此换后端无需改提示词。当前支持：
 - **QTModel**（`qtmodel`，默认）— [桥通 (QiaoTong)](https://www.brdi.com.cn/Software.html) 桥梁分析软件（[用户手册](https://soratayang.github.io/)）
 
 接入新后端只需实现 `BridgeProvider` 并登记一行，不改工具层代码。详见 [后端选择](./INTEGRATION_GUIDE.md#后端选择-backend-selection)。
