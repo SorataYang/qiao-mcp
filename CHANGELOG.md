@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Audited upstream `0687ffe`, including native factor/flange definitions,
+  effective-width calculations, statistics, compound merges and the new
+  concrete-check signature. Gateway tests cover real SDK transport, permissions,
+  one-commit writes and explicit rejection on older clients. Model weight-query
+  documentation now specifies fixed N instead of display units.
+
 ### Fixed
 
 - Support tools now enable additional parameters when only their values are

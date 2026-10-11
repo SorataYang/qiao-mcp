@@ -127,6 +127,9 @@ null 表示使用服务端默认值，修改时亦如此。随后通过 `configu
 标识调用 `get_analysis_results(case_name_mode="full")`。定义接口不会隐式求解。
 车辆和工况的删除继续经网关调用 `remove_international_vehicle`、`remove_live_load_case`。
 
+开发版也通过既有网关对齐上游 `0687ffe` 的质量/刚度系数、翼缘/有效宽度、
+统计和结构合并接口。模型重量查询固定使用 N，不随显示单位变化。
+
 ### 📦 资源 (7个)
 | URI | 描述 |
 |-----|-------------|

@@ -315,7 +315,7 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 "elements_by_material" (按材料名找单元, 需 name),
                 "elements_by_section" (按截面号找单元, 需 index),
                 "element_type" (查单元类型, 需 ids),
-                "element_weight" (查单元重量, 需 ids),
+                "element_weight" (查单元重量，固定 N、包含材料构造系数，不随显示单位变化；需 ids),
                 "span_supports" (跨径支承信息, 需 span_info_name),
                 "span_elements" (跨径单元信息, 需 span_info_name)
             x: X coordinate, used by the point-search modes (点查找坐标X)
