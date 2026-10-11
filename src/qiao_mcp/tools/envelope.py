@@ -50,6 +50,7 @@ _DESTRUCTIVE_NAMES = {
     "configure_operation_stage",  # 完整替换各类运营工况选择
     "set_transversal_vehicle",  # 按同名或编号完整覆盖
     "set_transversal_lane",
+    "set_transversal_case",
 }
 # 逃生舱：可调用任意 qtmodel 方法，对外部世界开放
 _OPEN_WORLD_NAMES = {"call_qtmodel_api"}

@@ -556,11 +556,11 @@ class QtModelProvider(BridgeProvider):
         fn = self._validated_method("mdb", method, kwargs)
         return self._execute_model_command(fn, method, kwargs)
 
-    # ── Generic API gateway (逃生舱) ───────────────────────────────────
+    # ── Transversal model definitions ─────────────────────────────────
 
     def get_transversal_data(self, kind: str, name: str = "", index: int = -1) -> list[dict]:
         """Read complete definitions with native exact selectors."""
-        if kind not in {"vehicles", "lanes"}:
+        if kind not in {"vehicles", "lanes", "cases"}:
             raise ValueError(f"Unknown transversal data kind: {kind}")
         kwargs = {"name": name, "index": index}
         method = f"get_transversal_{kind}"
@@ -572,21 +572,30 @@ class QtModelProvider(BridgeProvider):
 
     def set_transversal_data(self, kind: str, action: str, definition: dict[str, Any]) -> dict:
         """Write one complete definition, commit once, and resolve its real ID."""
-        if kind not in {"vehicle", "lane"} or action not in {"add", "update"}:
+        if kind not in {"vehicle", "lane", "case"} or action not in {"add", "update"}:
             raise ValueError("Unsupported transversal kind/action")
         kwargs = dict(definition)
         kwargs.setdefault("index", -1)
         if kind == "lane":
             kwargs["load_factors"] = kwargs.pop("distribution_widths")
+        if kind == "case":
+            factors = kwargs["reduction_factors"]
+            greater = kwargs.pop("greater_lane_factor")
+            kwargs["reduction_factors"] = f"{len(factors)}|" + ",".join(str(value) for value in [*factors, greater])
         if action == "add" and "new_name" in kwargs:
             raise ValueError("new_name is only valid for update")
         method = f"{action}_transversal_{kind}"
         fn = self._validated_method("mdb", method, kwargs)
         target_name = kwargs.get("new_name") or kwargs["name"]
         selectors = {"name": target_name, "index": kwargs["index"]}
-        plural = {"vehicle": "vehicles", "lane": "lanes"}[kind]
+        plural = {"vehicle": "vehicles", "lane": "lanes", "case": "cases"}[kind]
         # Fail before mutation if the required readback capability is absent.
         self._validated_method("mdb", f"get_transversal_{plural}", selectors)
+        if kind == "case":
+            for family, key in (("vehicles", "vehicle_id"), ("lanes", "lane_id")):
+                records = self.get_transversal_data(family, index=kwargs[key])
+                if len(records) != 1 or type(records[0].get("index")) is not int or records[0]["index"] != kwargs[key]:
+                    raise ValueError(f"No unique transversal {key}={kwargs[key]} (请先回读并使用已有车辆/车道编号)")
         self._execute_model_command(fn, method, kwargs)
         try:
             records = self.get_transversal_data(plural, **selectors)
@@ -600,6 +609,24 @@ class QtModelProvider(BridgeProvider):
                 f"{method} was committed, but readback failed. Do not repeat the write; "
                 f"use get_transversal_data (写入已提交，但回读失败；请查询核对，勿重复写入): {exc}"
             ) from exc
+
+    def remove_transversal_data(
+        self, kind: str, name: str = "", index: int = -1, cascade: bool | None = None,
+    ) -> Any:
+        """Delete an explicit target; never change references or escalate cascade."""
+        if kind not in {"vehicle", "lane", "case"} or (not name and index == -1):
+            raise ValueError("A supported kind and explicit deletion target are required")
+        kwargs: dict[str, Any] = {"name": name, "index": index}
+        if kind == "case":
+            if cascade is not None:
+                raise ValueError("Transversal case deletion has no cascade option")
+        else:
+            kwargs["cascade"] = False if cascade is None else cascade
+        method = f"remove_transversal_{kind}"
+        fn = self._validated_method("mdb", method, kwargs)
+        return self._execute_model_command(fn, method, kwargs)
+
+    # ── Generic API gateway (逃生舱) ───────────────────────────────────
 
     # 禁止经逃生舱直呼的方法：
     # - initial / do_solve / wait_solve：危险或长耗时（wait_solve 默认无限期轮询），
