@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Transversal cases and explicit deletion.** Case definitions verify real
+  vehicle/lane IDs before writing and construct reduction strings from typed
+  positive factors. Deletion requires a name/ID, defaults to no cascade, and
+  preserves backend rejection for references in combinations or operation settings.
 - **Transversal vehicles and lanes.** Complete, typed add/update definitions use
   fixed kN/m, preserve ordered lane nodes and map distribution widths to the
   native field. Each write commits once and reads back the actual ID; missing or

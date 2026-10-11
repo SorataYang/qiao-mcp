@@ -21,6 +21,12 @@ def request_for(kind, action="add"):
     definition = dict(DEFINITIONS[kind])
     if kind == "lane":
         definition["distribution_widths"] = definition.pop("load_factors")
+    if kind == "case":
+        count, values = definition["reduction_factors"].split("|")
+        factors = [float(v) for v in values.split(",")]
+        assert len(factors) == int(count) + 1
+        definition["reduction_factors"] = factors[:-1]
+        definition["greater_lane_factor"] = factors[-1]
     return {"action": action, **definition}
 
 
@@ -156,4 +162,104 @@ def test_lost_write_reply_is_not_repeated(fake_provider):
     with pytest.raises(ToolError, match="OUTCOME UNKNOWN"):
         tool_fns(register_transversal_tools, fake_provider)["set_transversal_vehicle"](request=request_for("vehicle"))
     writer.assert_called_once()
+    assert fake_provider._mdb.calls == []
+
+
+@pytest.mark.parametrize("action", ["add", "update"])
+def test_case_wire_checks_references_and_formats_reductions(fake_provider, monkeypatch, action):
+    import qtmodel
+    from qtmodel.core.qt_server import QtServer
+
+    if not callable(getattr(qtmodel.mdb, "add_transversal_case", None)):
+        pytest.skip("Installed qtmodel lacks transversal cases")
+    request = request_for("case", action)
+    expected = dict(DEFINITIONS["case"])
+    case = dict(expected)
+    if action == "update":
+        request["new_name"] = expected["new_name"] = case["name"] = "改名工况"
+    replies = {"VEHICLES": [DEFINITIONS["vehicle"]], "LANES": [DEFINITIONS["lane"]], "CASES": [case]}
+    calls = []
+
+    def send(command="", header="", read_timeout=600):
+        calls.append((header, json.loads(command) if command else None))
+        return json.dumps(replies[header.rsplit("-", 1)[1]]) if header.startswith("GET-") else ""
+
+    monkeypatch.setattr(QtServer, "send_command", send)
+    fake_provider._mdb = qtmodel.mdb
+    result = tool_fns(register_transversal_tools, fake_provider)["set_transversal_case"](request=request)
+    assert result["data"] == case
+    assert [h for h, _ in calls] == [
+        "GET-TRANSVERSAL-VEHICLES", "GET-TRANSVERSAL-LANES",
+        f"{action.upper()}-TRANSVERSAL-CASE", "UPDATE", "GET-TRANSVERSAL-CASES",
+    ]
+    assert calls[0][1]["index"] == 9 and calls[1][1]["index"] == 7
+    payload = calls[2][1]
+    payload.pop("version", None)
+    n, values = payload.pop("reduction_factors").split("|")
+    expected.pop("reduction_factors")
+    assert int(n) == 8
+    assert [float(v) for v in values.split(",")] == [1.2, 1, .78, .67, .6, .55, .52, .5, .5]
+    assert payload == expected
+
+
+@pytest.mark.parametrize("missing", ["vehicles", "lanes"])
+def test_case_missing_reference_stops_before_write(fake_provider, missing):
+    fake_provider._mdb.get_transversal_vehicles = Mock(return_value=[DEFINITIONS["vehicle"]])
+    fake_provider._mdb.get_transversal_lanes = Mock(return_value=[DEFINITIONS["lane"]])
+    setattr(fake_provider._mdb, f"get_transversal_{missing}", Mock(return_value=[]))
+    with pytest.raises(ToolError, match="No unique transversal"):
+        tool_fns(register_transversal_tools, fake_provider)["set_transversal_case"](request=request_for("case"))
+    assert fake_provider._mdb.calls == []
+
+
+@pytest.mark.parametrize("kind, cascade", [("vehicle", False), ("vehicle", True), ("lane", False), ("lane", True), ("case", None)])
+def test_delete_exact_target_wire(qtmodel_wire, kind, cascade):
+    p, calls = qtmodel_wire
+    if not callable(getattr(p._mdb, f"remove_transversal_{kind}", None)):
+        pytest.skip("Installed qtmodel lacks transversal deletion")
+    request = {"kind": kind, "index": DEFINITIONS[kind]["index"]}
+    expected = {"name": "", "index": request["index"]}
+    if cascade is not None:
+        request["cascade"] = expected["cascade"] = cascade
+    tool_fns(register_transversal_tools, p)["remove_transversal_data"](request=request)
+    assert [h for h, _ in calls] == [f"REMOVE-TRANSVERSAL-{kind.upper()}", "UPDATE"]
+    calls[0][1].pop("version", None)
+    assert calls[0][1] == expected
+
+
+def test_delete_defaults_to_no_cascade_and_preserves_rejection(fake_provider):
+    delete = Mock(side_effect=ValueError("Referenced by operation settings"))
+    fake_provider._mdb.remove_transversal_vehicle = delete
+    with pytest.raises(ToolError, match="Referenced"):
+        tool_fns(register_transversal_tools, fake_provider)["remove_transversal_data"](
+            request={"kind": "vehicle", "name": "v", "index": 9},
+        )
+    delete.assert_called_once_with(name="v", index=9, cascade=False)
+    assert fake_provider._mdb.calls == []
+
+
+@pytest.mark.parametrize("selector", [
+    {"kind": "vehicle"}, {"kind": "lane", "name": " "},
+    {"kind": "case", "index": 6, "cascade": False}, {"kind": "case", "index": 0},
+    {"kind": "lane", "index": True}, {"kind": "vehicle", "index": 9, "cascade": "true"},
+])
+def test_deletion_invalid_selectors_fail_before_guard(fake_provider, selector):
+    mcp = FastMCP("transversal")
+    register_tools_with_envelope(mcp, register_transversal_tools, fake_provider)
+    fake_provider.ensure_operation_allowed = Mock()
+    with pytest.raises(ToolError):
+        asyncio.run(mcp.call_tool("remove_transversal_data", {"request": selector}))
+    fake_provider.ensure_operation_allowed.assert_not_called()
+
+
+@pytest.mark.parametrize("patch", [
+    {"vehicle_id": 0}, {"lane_id": True}, {"reduction_factors": []},
+    {"reduction_factors": [0.0]}, {"greater_lane_factor": 0.0},
+    {"impact_factor": float("nan")}, {"reduction_factors": "2|1.2,1,.8"},
+])
+def test_case_invalid_factors_fail_without_calls(fake_provider, patch):
+    with pytest.raises(ToolError):
+        tool_fns(register_transversal_tools, fake_provider)["set_transversal_case"](
+            request={**request_for("case"), **patch},
+        )
     assert fake_provider._mdb.calls == []

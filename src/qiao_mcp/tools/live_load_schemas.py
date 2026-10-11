@@ -62,6 +62,39 @@ class TransversalLaneWrite(TransversalWrite):
         return self
 
 
+class TransversalCaseWrite(TransversalWrite):
+    vehicle_id: ModelId = Field(description="Actual existing transversal vehicle ID from readback.")
+    lane_id: ModelId = Field(description="Actual existing transversal lane ID from readback.")
+    impact_factor: PositiveLoadNumber = Field(description="Dimensionless impact multiplier, e.g. 1.3 (not the 0.3 increment).")
+    reduction_factors: Annotated[list[PositiveLoadNumber], Field(min_length=1)] = Field(description="Factors for 1 through N loaded lanes; N is the length of this list.")
+    greater_lane_factor: PositiveLoadNumber = Field(description="Reduction factor for more than N loaded lanes; appended to the native N|f1,...,fN,fGreater value.")
+    description: str = Field(description="Complete description; an empty string clears it.")
+
+
+class TransversalDeleteTarget(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: QueryName | None = Field(default=None, description="Exact object name; supply this or index, or both for an intersected selector.")
+    index: ModelId | None = Field(default=None, description="Exact positive object ID; empty selectors cannot delete all objects.")
+
+    @model_validator(mode="after")
+    def require_target(self):
+        if self.name is None and self.index is None:
+            raise ValueError("Deletion requires a name or ID (删除必须明确指定名称或编号)")
+        return self
+
+
+class TransversalDependencyRemoval(TransversalDeleteTarget):
+    kind: Literal["vehicle", "lane"] = Field(description="Delete a vehicle or lane definition.")
+    cascade: StrictBool = Field(default=False, description="Allow deletion of dependent transversal cases. References in combinations/check combinations/operation settings still block deletion.")
+
+
+class TransversalCaseRemoval(TransversalDeleteTarget):
+    kind: Literal["case"] = Field(description="Delete a transversal case; remove its combination/operation references explicitly first. No cascade option exists.")
+
+
+TransversalRemoval = Annotated[TransversalDependencyRemoval | TransversalCaseRemoval, Field(discriminator="kind")]
+
+
 class ModelDefinitionResult(ObjectResult):
     committed: Literal[True] = Field(description="The model command and its update_model commit completed.")
     data: dict[str, Any] = Field(description="Definition read back by exact name/ID after commit, including the actual assigned ID and native fields.")

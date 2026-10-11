@@ -3,6 +3,7 @@
 from typing import Literal
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError
@@ -10,10 +11,14 @@ from qiao_mcp.tools.live_load_schemas import (
     ModelDefinitionResult,
     ModelId,
     ModelRecordsResult,
+    TransversalCaseWrite,
     TransversalLaneWrite,
+    TransversalRemoval,
     TransversalVehicleWrite,
 )
-from qiao_mcp.tools.schemas import PageLimit, PageOffset, QueryName
+from qiao_mcp.tools.schemas import MessageResult, PageLimit, PageOffset, QueryName
+
+_REMOVAL_ADAPTER: TypeAdapter[TransversalRemoval] = TypeAdapter(TransversalRemoval)
 
 
 def register_transversal_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
@@ -62,8 +67,49 @@ def register_transversal_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             raise ToolError(f"Error defining transversal lane (定义横向车道失败): {exc}") from exc
 
     @mcp.tool()
+    def set_transversal_case(request: TransversalCaseWrite) -> ModelDefinitionResult:
+        """Add or completely replace a transversal case (完整定义横向工况).
+
+        Reference existing vehicle/lane IDs obtained from readback. Both are
+        checked before mutation. Factors are dimensionless multipliers; the
+        provider builds the native reduction string. add may overwrite an
+        existing name/ID; update can rename while retaining combination references.
+        This commits a definition without changing operation selections or solving.
+
+        Args:
+            request: Complete case, IDs, impact multiplier, factors for 1..N lanes,
+                factor for more than N lanes, description, and add/update identity.
+        """
+        try:
+            spec = TransversalCaseWrite.model_validate(request)
+            data = provider.set_transversal_data("case", spec.action, spec.model_dump(exclude={"action"}, exclude_none=True))
+            return ModelDefinitionResult(status="success", committed=True, data=data)
+        except Exception as exc:
+            raise ToolError(f"Error defining transversal case (定义横向工况失败): {exc}") from exc
+
+    @mcp.tool()
+    def remove_transversal_data(request: TransversalRemoval) -> MessageResult:
+        """Delete one explicit transversal object (删除明确指定的横向对象).
+
+        Vehicles/lanes default to cascade=False. Opting into cascade can delete
+        dependent cases, but references from model/check combinations or operation
+        settings still block deletion. Case deletion has no cascade option. Never
+        removes external references or retries with more destructive options.
+
+        Args:
+            request: kind=vehicle|lane|case and explicit name/index. Only vehicle
+                and lane selectors support the optional cascade boolean.
+        """
+        try:
+            spec = _REMOVAL_ADAPTER.validate_python(request)
+            provider.remove_transversal_data(spec.kind, **spec.model_dump(exclude={"kind"}, exclude_none=True))
+            return MessageResult(status="success", message=f"Transversal {spec.kind} deletion committed (横向对象删除已提交)")
+        except Exception as exc:
+            raise ToolError(f"Error deleting transversal object (删除横向对象失败): {exc}") from exc
+
+    @mcp.tool()
     def get_transversal_data(
-        kind: Literal["vehicles", "lanes"], name: QueryName | None = None,
+        kind: Literal["vehicles", "lanes", "cases"], name: QueryName | None = None,
         index: ModelId | None = None, limit: PageLimit = 50, offset: PageOffset = 0,
     ) -> ModelRecordsResult:
         """Read complete native transversal definitions (回读横向定义).
@@ -73,7 +119,7 @@ def register_transversal_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         load_factors in meters. Use the returned index for case references.
 
         Args:
-            kind: Definition family: vehicles (车辆) or lanes (车道).
+            kind: Definition family: vehicles (车辆), lanes (车道) or cases (工况).
             name: Optional exact name; when an ID is also supplied both must match.
             index: Optional positive object ID; omitted means no ID filter.
             limit: Maximum definitions to return, 1..500 (每页上限).
