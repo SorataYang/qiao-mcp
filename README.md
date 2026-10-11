@@ -11,7 +11,7 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-### 🔧 Tools (144 tools in the development tree, grouped)
+### 🔧 Tools (146 tools in the development tree, grouped)
 
 Tools are organized by workflow area. Highlights per group:
 
@@ -31,7 +31,7 @@ Tools are organized by workflow area. Highlights per group:
 | **Workflows** | `create_simple_beam_bridge`, `create_continuous_beam_bridge` |
 | **Gateway & diagnostics** | `check_qiaotong_connection`, `get_model_status`, `list_qtmodel_api`, `call_qtmodel_api` — diagnose the bridge connection and model state, or discover and call long-tail qtmodel methods with signature validation |
 
-The 142 non-image tools publish output schemas and return MCP structured content
+The 144 non-image tools publish output schemas and return MCP structured content
 (`{status, message, ...}`). Connection diagnostics also expose `connection_status`
 and `connected`; bridge templates return the resolved node, element and property IDs.
 `get_model_status` preserves QiaoTong's state in `status`. The two image-capable tools
@@ -99,6 +99,12 @@ empty arrays clear that part. Six-entry outer/inner rows and model length units
 differ from the legacy parametric tool. Current CSAN queries are not lossless
 model snapshots. The new tools require model-write permission and commit once.
 
+`set_check_stirrup_snapshot` preserves the full exported definition and accepts
+`original_id` for renumbering. `set_element_stirrups` replaces complete shear
+(five entries) and torsion (three entries) assignments independently: `null`
+keeps a family, `[]` clears it, and stirrup ID `0` means unassigned. These are
+separate from the legacy current-CSAN stirrup tools.
+
 ### 📦 Resources (7 resources)
 | URI | Description |
 |-----|-------------|
@@ -140,7 +146,7 @@ qiao-mcp/
 └── reference-docs/            # Review notes and project documentation
 ```
 
-The **Provider pattern** keeps the 144 tools decoupled from any single backend. Select one with
+The **Provider pattern** keeps the 146 tools decoupled from any single backend. Select one with
 `BRIDGE_PROVIDER`; each provider declares its own software-specific rules, so the LLM adapts
 without prompt changes. Currently supports:
 - **QTModel** (`qtmodel`, default) — [QiaoTong (桥通)](https://www.brdi.com.cn/Software.html) bridge analysis software ([user manual](https://soratayang.github.io/))

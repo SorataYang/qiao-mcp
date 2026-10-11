@@ -16,7 +16,9 @@ from qiao_mcp.tools.check_snapshots import register_check_snapshot_tools
 from qiao_mcp.tools.envelope import ToolError, register_tools_with_envelope
 
 CALLS = json.loads((Path(__file__).parent / "fixtures/check_snapshots.json").read_text())["calls"]
-SECTION_CALLS = [item for item in CALLS if item["method"] in {"set_section_reinforcement", "remove_section_reinforcement_by_name"}]
+SNAPSHOT_CALLS = [item for item in CALLS if item["method"] in {
+    "set_section_reinforcement", "remove_section_reinforcement_by_name", "set_check_stirrup", "set_element_stirrups",
+}]
 SECTION = next(item["kwargs"]["definition"] for item in CALLS if item["method"] == "set_section_reinforcement")
 
 
@@ -29,9 +31,9 @@ def check_wire(qtmodel_wire):
     return p, calls
 
 
-@pytest.mark.parametrize("call", SECTION_CALLS)
+@pytest.mark.parametrize("call", SNAPSHOT_CALLS)
 @pytest.mark.parametrize("gateway", [False, True])
-def test_exported_section_snapshot_wire(check_wire, call, gateway):
+def test_exported_snapshot_wire(check_wire, call, gateway):
     p, wire = check_wire
     method = call["method"]
     if not callable(getattr(p._cdb, method, None)):
@@ -40,8 +42,10 @@ def test_exported_section_snapshot_wire(check_wire, call, gateway):
     if gateway:
         result = tool_fns(register_api_gateway_tools, p)["call_qtmodel_api"](api_object="cdb", method=method, kwargs=kwargs)
     else:
-        tool = "remove_section_reinforcement" if method.endswith("by_name") else method
-        result = tool_fns(register_check_snapshot_tools, p)[tool](**kwargs)
+        tool = {"remove_section_reinforcement_by_name": "remove_section_reinforcement",
+                "set_check_stirrup": "set_check_stirrup_snapshot"}.get(method, method)
+        arguments = {"request": kwargs} if method == "set_element_stirrups" else kwargs
+        result = tool_fns(register_check_snapshot_tools, p)[tool](**arguments)
         assert result["committed"] is True
     assert result["status"] == "success"
     assert [h for h, _ in wire] == [method.replace("_", "-").upper(), "UPDATE"]
@@ -117,3 +121,44 @@ def test_missing_snapshot_api_fails_explicitly(fake_provider):
     with pytest.raises(ToolError, match="does not support"):
         tool_fns(register_check_snapshot_tools, fake_provider)["set_section_reinforcement"](definition=SECTION)
     assert fake_provider._mdb.calls == []
+
+
+@pytest.mark.parametrize("shear, torsion", [
+    (None, []), ([], None), ([], []), (None, None),
+    ([[1, 3, 0, 3, 0]], [[1, 3, 0]]),
+])
+def test_assignment_none_empty_and_zero_are_distinct(fake_provider, shear, torsion):
+    tool_fns(register_check_snapshot_tools, fake_provider)["set_element_stirrups"](request={"shear": shear, "torsion": torsion})
+    assert fake_provider._cdb.calls == [("set_element_stirrups", (), {"shear": shear, "torsion": torsion})]
+    assert fake_provider._mdb.count("update_model") == 1
+
+
+@pytest.mark.parametrize("assignment", [
+    {"shear": [[1, 1, 0, 0]]}, {"torsion": [[1, 0, 0, 0]]},
+    {"shear": [[1, 3, 0, 3, 0], [1, 3, 0, 0, 0]]},
+    {"torsion": [[1, 3, 0], [1, 0, 3]]}, {"torsion": [[0, 1, 0]]},
+    {"torsion": [[1, -1, 0]]}, {"torsion": [[1, True, 0]]},
+    {"torsion": [[1, 1.5, 0]]},
+])
+def test_invalid_assignments_fail_before_guard(fake_provider, assignment):
+    mcp = FastMCP("assignments")
+    register_tools_with_envelope(mcp, register_check_snapshot_tools, fake_provider)
+    fake_provider.ensure_operation_allowed = Mock()
+    with pytest.raises(ToolError):
+        asyncio.run(mcp.call_tool("set_element_stirrups", {"request": assignment}))
+    fake_provider.ensure_operation_allowed.assert_not_called()
+
+
+def test_stirrup_rename_passes_explicit_original_id_without_unit_conversion(fake_provider):
+    definition = copy.deepcopy(next(c["kwargs"]["definition"] for c in CALLS if c["method"] == "set_check_stirrup"))
+    definition["StirrupTypeId"] = 8
+    tool_fns(register_check_snapshot_tools, fake_provider)["set_check_stirrup_snapshot"](definition=definition, original_id=1)
+    assert fake_provider._cdb.last("set_check_stirrup")[2] == {"definition": definition, "original_id": 1}
+    assert definition["StirrupType"] == 0
+    assert definition["StirrupDiameter"] == 12 and definition["StirrupSpacing"] == .1
+
+
+def test_stirrup_snapshot_rejects_partial_legacy_definition(fake_provider):
+    with pytest.raises(ToolError, match="StirrupTypeName"):
+        tool_fns(register_check_snapshot_tools, fake_provider)["set_check_stirrup_snapshot"](definition={"StirrupTypeId": 8})
+    assert fake_provider._cdb.calls == fake_provider._mdb.calls == []
