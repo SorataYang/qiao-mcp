@@ -629,6 +629,57 @@ class QtModelProvider(BridgeProvider):
         fn = self._validated_method("mdb", method, kwargs)
         return self._execute_model_command(fn, method, kwargs)
 
+    # ── International model definitions ───────────────────────────────
+
+    _INTERNATIONAL_QUERIES = {
+        "vehicles": "get_international_vehicles",
+        "cases": "get_international_live_load_cases",
+    }
+
+    def get_international_live_load_data(self, kind: str) -> list[dict]:
+        """Read the complete native list; these endpoints have no selectors/pages."""
+        if kind not in self._INTERNATIONAL_QUERIES:
+            raise ValueError(f"Unknown international data kind: {kind}")
+        method = self._INTERNATIONAL_QUERIES[kind]
+        fn = self._validated_method("mdb", method, {})
+        result = self._parse(fn())
+        if not isinstance(result, list) or any(not isinstance(item, dict) for item in result):
+            raise RuntimeError(f"{method} returned no valid definition list (未返回有效定义列表)")
+        return result
+
+    def _commit_international_definition(self, method: str, kwargs: dict[str, Any], kind: str) -> dict:
+        fn = self._validated_method("mdb", method, kwargs)
+        # An unavailable getter must fail before the definition is written.
+        self._validated_method("mdb", self._INTERNATIONAL_QUERIES[kind], {})
+        self._execute_model_command(fn, method, kwargs)
+        target_name = kwargs.get("new_name") or kwargs["name"]
+        try:
+            records = self.get_international_live_load_data(kind)
+            matches = [item for item in records if item.get("name") == target_name]
+            if len(matches) != 1 or type(matches[0].get("index")) is not int or matches[0]["index"] <= 0:
+                raise ValueError("Cannot resolve a unique positive object ID (无法确认唯一的实际编号)")
+            # Update locates by name and ignores a supplied compatibility index.
+            if method.startswith("add_") and kwargs.get("index", -1) != -1 and matches[0]["index"] != kwargs["index"]:
+                raise ValueError("The readback ID does not match the explicit add ID")
+            if "standard" in kwargs and matches[0].get("standard") != kwargs["standard"]:
+                raise ValueError("The readback standard does not match the written vehicle")
+            return matches[0]
+        except Exception as exc:
+            raise RuntimeError(
+                f"{method} was committed, but readback failed. Do not repeat the write; "
+                "use get_international_live_load_data (写入已提交，但回读失败；请查询核对，勿重复写入): "
+                f"{exc}"
+            ) from exc
+
+    def set_international_vehicle(self, action: str, definition: dict[str, Any]) -> dict:
+        if action not in {"add", "update"}:
+            raise ValueError("Unsupported international vehicle action")
+        kwargs = dict(definition)
+        kwargs.setdefault("index", -1)
+        if action == "add" and "new_name" in kwargs:
+            raise ValueError("new_name is only valid for update")
+        return self._commit_international_definition(f"{action}_international_vehicle", kwargs, "vehicles")
+
     # ── Generic API gateway (逃生舱) ───────────────────────────────────
 
     # 禁止经逃生舱直呼的方法：

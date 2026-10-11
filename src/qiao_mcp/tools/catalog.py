@@ -10,6 +10,7 @@ from qiao_mcp.tools.check_snapshots import register_check_snapshot_tools
 from qiao_mcp.tools.checking import register_checking_tools
 from qiao_mcp.tools.envelope import register_tools_with_envelope
 from qiao_mcp.tools.group_management import register_group_tools
+from qiao_mcp.tools.international_load import register_international_load_tools
 from qiao_mcp.tools.modifications import register_modification_tools
 from qiao_mcp.tools.moving_load import register_moving_load_tools
 from qiao_mcp.tools.queries import register_query_tools
@@ -26,6 +27,7 @@ TOOL_REGISTRARS = (
     register_visualization_tools,
     register_moving_load_tools,
     register_transversal_tools,
+    register_international_load_tools,
     register_checking_tools,
     register_check_snapshot_tools,
     register_workflow_tools,
