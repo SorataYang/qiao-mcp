@@ -79,6 +79,7 @@ src/qiao_mcp/
 - 依赖范围 `qtmodel>=2.6.3,!=2.9.0,<2.10` 的注释(pyproject.toml)记录了每次收放的原因,调整前先读。2.9 的补丁版之间也会增删模块,不要放开到 `<3`。2.9.0 被排除:它的 `add_section` 在不传 `sec_property` 时也校验长度,建截面全被拒。
 - 放宽范围前逐个版本跑离线测试:把 PyPI wheel 解压到临时目录,`PYTHONPATH=<解压目录>:src uv run pytest ...`。只有直接调用上游本地构造器的测试(如 `test_section_tools.py` 里的 `get_section_shape`)能抓到客户端校验的缺陷。
 - `do_solve` 的 `sync=True` 默认值(2.6.3 起)会禁用 `max_wait` 等待语义——provider 调用时**始终显式传 `sync=False`**。`wait_solve` 对用户终止等结局返回状态而不抛错,`run_analysis` 必须核对最终 `state`。
+- 混凝土检算同样核对返回状态：2.9.1 及更早等待器先判断 `is_running=False`，失败/取消也可能直接返回；2.9.2 仍会返回已停止的其他非成功状态。Provider 须保留状态交给 `run_concrete_check` 判断，不能仅按“没有异常”报告成功。
 - 2.9 起写命令响应丢失时抛 `CommandOutcomeUnknownError` 且不重发;envelope 按类名识别并提示"先回读、勿重试"。
 - 2.9 起大量写接口在客户端校验取值(`qtmodel/core/mutation_validation.py`),FakeDb 测试覆盖不到这一层——改工具参数时对照上游 `tests/fixtures/*` 的桥通 C# 导出日志确定字段布局,不要信 docstring 里自称"示例"的说明(节点质量就曾因此写错字段)。
 - 模型查询方法 2.8 起从 `odb` 迁到 `mdb`(provider 优先 `mdb`、缺方法时回落 `odb`);上游返回的 typed record 需递归转成纯 JSON(`to_dict()`/`Mapping`)。

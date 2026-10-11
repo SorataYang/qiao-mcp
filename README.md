@@ -11,7 +11,7 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-### 🔧 Tools (153 tools in the development tree, grouped)
+### 🔧 Tools (153 tools in 0.5.0, grouped)
 
 Tools are organized by workflow area. Highlights per group:
 
@@ -24,8 +24,10 @@ Tools are organized by workflow area. Highlights per group:
 | **Stages & analysis** | `add_construction_stage`, `merge_operation_stage`, `configure_analysis`, `run_analysis` (async, progress-reporting, optional `show_view`), `get_analysis_results` |
 | **Tendons** | `create_tendon_property`, `create_tendon_2d`, `apply_prestress`, `get_tendon_info` |
 | **Traffic (moving load)** | `add_node_tandem`, `add_influence_plane`, `add_traffic_lane`, `add_standard_vehicle`, `create_live_load_case` |
+| **Live-load configuration & transversal analysis** | `configure_live_load_system`, `configure_operation_stage`, `set_transversal_vehicle`, `set_transversal_lane`, `set_transversal_case`, `get_transversal_data`, `remove_transversal_data` |
 | **International live load** | `set_international_vehicle`, `create_en1991_vehicle`, `set_planned_lane`, `set_international_live_load_case`, `get_international_live_load_data` |
 | **Checking** | `setup_concrete_check`, `add_check_load_combination`, `add_parametric_reinforcement`, `run_concrete_check`, `get_check_data` |
+| **Model reinforcement & check definitions** | `set_section_reinforcement`, `remove_section_reinforcement`, `set_check_stirrup_snapshot`, `set_element_stirrups`, `manage_check_material`, `manage_check_case_definition` |
 | **Queries** | `get_model_info`, `get_model_data` (by kind, incl. qtmodel 2.8 overview kinds `summary` / `analysis_context` / `project_metadata` / `check_context`), `find_entities`, `calc_section_property`, `get_special_results` (paginated where applicable) |
 | **Modification** | `initialize_model`, `save_model_file`, `open_model_file`, `update_node`, `move_nodes`, `update_element`, `remove_nodes`, `remove_elements` |
 | **Visualization** | `save_model_screenshot`, `plot_analysis_result` (optionally return viewable images), `set_view_angle`, `display_ids` |
@@ -51,11 +53,13 @@ Support overrides preserve omitted coordinate/additional settings. Supplying
 `extra_parameters` enables them unless `extra_enabled=False` explicitly clears
 them; this behavior also applies to older SDKs that support these options.
 
-### Development: B1 queries and diagnostics (unreleased)
+### 0.5.0: queries, transversal analysis, check snapshots and international loads (unreleased)
 
-The development catalog adds `get_model_edit_readiness` and `query_model_data`;
-these are not part of the 0.4.0 parameter-only release below. Edit readiness is
-read-only and remains accessible when model operations are blocked. Its `success`
+This version completes B1–B4 with 20 new tools and one workflow prompt. Local
+validation and remaining engineering checks are recorded in the
+[validation report](docs/0.5.0-validation.md).
+
+`get_model_edit_readiness` is read-only and remains accessible when model operations are blocked. Its `success`
 status means a response was received, not that editing is safe; inspect the raw
 `readiness` object. No token is retained/reused, and no stages/results are changed.
 
@@ -116,6 +120,8 @@ seismic and strengthening model definitions with native enum values. The existin
 `run_concrete_check` imports the named concrete case after these commits; it does
 not run seismic or strengthening checks. Preserve the complete exported material
 properties/parameters and stored units instead of constructing partial snapshots.
+Reported failed, canceled or other non-success completion states are tool errors,
+including on older SDKs whose waiters return them without raising.
 
 International vehicles use `set_international_vehicle` with a `request`
 discriminated by `standard="AASHTO"|"BS"|"EN1991"`. Select the matching model
@@ -166,7 +172,7 @@ result identifier verified from QiaoTong. Definitions never start analysis.
 Vehicle/case deletion remains available through `remove_international_vehicle`
 and `remove_live_load_case` in the existing gateway.
 
-The development line also tracks upstream `0687ffe` through the existing gateway
+0.5.0 also tracks upstream `0687ffe` through the existing gateway
 for mass/stiffness factors, flange/effective-width definitions, statistics and
 structure merges. See the [API alignment record](docs/0.5.0-upstream-alignment.md).
 Model weight queries use fixed N, independent of display units.
@@ -386,6 +392,7 @@ where it belongs: in the dependency constraint.
 
 | Qiao-MCP           | qtmodel       | QiaoTong software                          |
 |--------------------|---------------|--------------------------------------------|
+| 0.5.0 (unreleased)  | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
 | 0.4.0              | 2.6.3 – 2.9.x, not 2.9.0 | 2.6.3+; with 2.9.x, QiaoTong must report model state |
 | 0.3.2 – 0.3.3     | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
 | 0.3.0 – 0.3.1      | 2.6.3 – 2.6.x | 2.6.3 (exact match enforced by qtmodel)    |
@@ -394,6 +401,11 @@ where it belongs: in the dependency constraint.
 Known lower-bound limitation: qtmodel 2.6.3 lacks `get_load_group_names`, so the
 one-shot bridge workflow tools cannot run on that version. This predates 0.4.0's
 parameter additions; use 2.6.4 or later for those workflows (2.9.0 remains excluded).
+The dependency range does not guarantee every new tool on every build: missing
+methods or incompatible parameters fail explicitly before writes. See the
+[six-build validation matrix](docs/0.5.0-validation.md) for capability differences.
+PyPI 2.9.2 and reference `0687ffe` each pass all 1,733 offline tests. Engineering
+validation against QiaoTong remains pending; these tests verify software contracts.
 
 How the two sides are matched changed in qtmodel 2.8.2:
 
@@ -413,10 +425,12 @@ model-state guard is skipped (`guard_unavailable`) and tools behave as in 0.3.1;
 with it, every tool is gated on the state QiaoTong reports. qtmodel 2.9.0 is the
 first PyPI release that includes it, so on 2.9.x the guard is always active.
 
-### Upstream Changes in qtmodel 2.9 (2026-09-11–24)
+### Upstream qtmodel 2.9 alignment
 
-The reference repository is synced through `8ae651e`, whose package is identical to
-the PyPI 2.9.2 wheel (the source still reports `QT_VERSION = "2.9.1"`):
+The current reference is `0687ffe`, labeled 2.9.2 but different from the PyPI
+2.9.2 wheel. The 0.4.0 baseline was `8ae651e`, whose package matched that wheel
+apart from its older version label. See the
+[API alignment record](docs/0.5.0-upstream-alignment.md) for the subsequent changes.
 
 - **Write safety.** A write whose reply is lost raises `CommandOutcomeUnknownError`
   and is no longer resent. Qiao-MCP reports it as an unknown outcome and tells the
@@ -436,19 +450,21 @@ the PyPI 2.9.2 wheel (the source still reports `QT_VERSION = "2.9.1"`):
   and `create_live_load_case` adds the per-sub-case boolean list `sub_case_optimized`.
   Omitted options keep legacy behavior; explicit options are checked against the
   installed signature before writing. Fractional stage creation is rejected on
-  builds that would truncate it. The catalog remains at 133 tools.
-- **Operation settings and cascade deletion stay in the gateway.** Discover
-  `update_operation_stage_setting` to use `transversal_load_cases`; supply all
-  intended case lists because omitted/empty lists disable their analysis.
+  builds that would truncate it. These parameter additions shipped in 0.4.0;
+  the current 0.5.0 catalog has 153 tools.
+- **Operation settings and cascade deletion.** `configure_operation_stage`
+  exposes all four case lists, including transversal cases. The gateway method
+  `update_operation_stage_setting` remains available; supply all intended case
+  lists because omitted/empty lists disable their analysis.
   `remove_material` defaults to `cascade=True` (also deletes associated tendon
   properties and tendons). `remove_tendon_property` defaults to `False`; `True`
   deletes referencing tendons and their loads without a dialog. Confirm the
   deletion scope first; omitting both name and index targets all objects.
-- **New APIs, available through the gateway.** Transversal analysis, international
-  and planned-lane live loads, strengthening, exact object deletion
-  (`delete_model_object`), complete reinforcement/check snapshots on `cdb`, and
-  edit-readiness checks (`get_model_edit_readiness`). The gateway commits every MDB
-  write with `update_model`, as these APIs require.
+- **Dedicated tools and long-tail APIs.** 0.5.0 adds dedicated transversal,
+  international/planned-lane, reinforcement/check-snapshot and edit-readiness
+  tools. Exact object deletion (`delete_model_object`), factors, effective widths,
+  statistics and structure merges remain available through the gateway. Every
+  MDB write and the explicit CDB model-snapshot methods commit with `update_model`.
 - **Blocked in the gateway.** `post_python_file` (reads a local file and posts it
   to any URL for execution), `prepare_model_edit` (can irreversibly delete results;
   for the host application after user approval), `export_api_help` (writes SDK help
