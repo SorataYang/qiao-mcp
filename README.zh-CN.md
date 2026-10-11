@@ -9,7 +9,7 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 
 ## 功能特性
 
-### 🔧 工具（开发版 153 个，按功能分组）
+### 🔧 工具（0.5.0 共 153 个，按功能分组）
 
 工具按桥梁建模与分析工作流分组。以下是各组代表工具：
 
@@ -22,7 +22,10 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 | **分析** | `configure_analysis`、`run_analysis`（异步并报告进度，可选 `show_view`）、`get_analysis_results` |
 | **预应力钢束** | `create_tendon_property`、`create_tendon_2d`、`apply_prestress`、`get_tendon_info` |
 | **移动荷载** | `add_node_tandem`、`add_influence_plane`、`add_traffic_lane`、`add_standard_vehicle`、`create_live_load_case` |
+| **活载配置与横向分析** | `configure_live_load_system`、`configure_operation_stage`、`set_transversal_vehicle`、`set_transversal_lane`、`set_transversal_case`、`get_transversal_data`、`remove_transversal_data` |
+| **国际活载** | `set_international_vehicle`、`create_en1991_vehicle`、`set_planned_lane`、`set_international_live_load_case`、`get_international_live_load_data` |
 | **结构验算** | `setup_concrete_check`、`add_check_load_combination`、`add_parametric_reinforcement`、`run_concrete_check`、`get_check_data` |
+| **模型配筋与检算定义** | `set_section_reinforcement`、`remove_section_reinforcement`、`set_check_stirrup_snapshot`、`set_element_stirrups`、`manage_check_material`、`manage_check_case_definition` |
 | **查询** | `get_model_info`、`get_model_data`（按 kind 查询，含 qtmodel 2.8 概览类型 `summary` / `analysis_context` / `project_metadata` / `check_context`）、`find_entities`、`calc_section_property`、`get_special_results`（适用时支持分页） |
 | **模型修改** | `initialize_model`、`save_model_file`、`open_model_file`、`update_node`、`move_nodes`、`update_element`、`remove_nodes`、`remove_elements` |
 | **可视化** | `save_model_screenshot`、`plot_analysis_result`（可直接返回图像）、`set_view_angle`、`display_ids` |
@@ -36,10 +39,11 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 覆盖支承时，省略坐标系和附加设置会保留原值。只提供 `extra_parameters` 时自动启用，
 显式 `extra_enabled=False` 则清空；这一行为也适用于支持这些选项的旧版 SDK。
 
-### 开发中：B1 查询与诊断（未发布）
+### 0.5.0：查询、横向分析、检算快照与国际活载（待发布）
 
-开发目录新增 `get_model_edit_readiness`、`query_model_data`，不计入下文 0.4.0 的纯参数补齐版本。
-编辑就绪诊断在模型读写被阻断时仍可调用；`success` 仅表示收到响应，不表示可以编辑，应查看原始 `readiness` 对象。
+本版完成 B1–B4，新增 20 个工具和 1 个工作流提示模板。
+
+`get_model_edit_readiness` 在模型读写被阻断时仍可调用；`success` 仅表示收到响应，不表示可以编辑，应查看原始 `readiness` 对象。
 工具不会保存/重用准备令牌，不切阶段、不删除结果。
 
 `query_model_data` 使用按 `kind` 区分的类型化 `request`，例如：
@@ -85,6 +89,7 @@ Qiao-MCP 自定列表/单页上限为 500；截面摘要按上游约束最多 10
 `manage_check_case_definition` 完整设置/删除混凝土、抗震、加固三类模型检算工况，
 保留模型枚举原值。提交后既有 `run_concrete_check` 会先导入具名混凝土工况再检算，
 它不负责抗震或加固求解。材料 properties/parameters 和存储单位须取自完整导出。
+返回失败、取消或其他未成功的结束状态时，工具明确报错；旧 SDK 等待器不抛异常也不会误报完成。
 
 国际车辆使用 `set_international_vehicle`，`request` 按
 `standard="AASHTO"|"BS"|"EN1991"` 选择独立参数 Schema。先显式选择相应活载体系；
@@ -127,7 +132,7 @@ null 表示使用服务端默认值，修改时亦如此。随后通过 `configu
 标识调用 `get_analysis_results(case_name_mode="full")`。定义接口不会隐式求解。
 车辆和工况的删除继续经网关调用 `remove_international_vehicle`、`remove_live_load_case`。
 
-开发版也通过既有网关对齐上游 `0687ffe` 的质量/刚度系数、翼缘/有效宽度、
+0.5.0 也通过既有网关对齐上游 `0687ffe` 的质量/刚度系数、翼缘/有效宽度、
 统计和结构合并接口。模型重量查询固定使用 N，不随显示单位变化。
 
 ### 📦 资源 (7个)
@@ -325,12 +330,17 @@ Qiao-MCP 的版本号独立于 `qtmodel`：本项目可以自行迭代（修 bug
 
 | Qiao-MCP        | qtmodel       | 桥通软件                               |
 |-----------------|---------------|----------------------------------------|
+| 0.5.0（待发布） | 2.6.3 – 2.9.x，不含 2.9.0 | 配 2.9.x 时桥通须上报模型状态；新命令须服务端支持 |
 | 0.4.0          | 2.6.3 – 2.9.x，不含 2.9.0 | 2.6.3+；配 2.9.x 时桥通须上报模型状态  |
 | 0.3.2 – 0.3.3  | 2.6.3 – 2.8.x | 2.6.3+；2.8.x 不再要求两侧版本精确一致 |
 | 0.3.0 – 0.3.1   | 2.6.3 – 2.6.x | 2.6.3（qtmodel 强制精确匹配）          |
 | 0.2.x           | 2.5.0 – 2.5.x | 2.5.0                                  |
 
-**最低版本已知限制：** qtmodel 2.6.3 缺少 `get_load_group_names`，不能使用一键建桥工作流工具。这是早于本次 0.4.0 参数扩展的既有问题；这些工作流请使用 2.6.4 或更新版本（仍排除 2.9.0）。
+**最低版本已知限制：** qtmodel 2.6.3 缺少 `get_load_group_names`，不能使用一键建桥工作流工具。
+这是早于 0.4.0 参数扩展的既有问题；这些工作流请使用 2.6.4 或更新版本（仍排除 2.9.0）。
+依赖范围不代表所有构建均有全部新能力：缺方法或参数不兼容时，工具会在写入前明确拒绝。PyPI
+2.9.2 与参考源码 `0687ffe` 各通过全部 1733 项离线测试；这些测试验证软件契约，
+桥通工程端验收仍待完成。
 
 两侧版本的匹配方式在 qtmodel 2.8.2 发生了变化：
 
@@ -339,16 +349,17 @@ Qiao-MCP 的版本号独立于 `qtmodel`：本项目可以自行迭代（修 bug
 
 不同构建可能都标记为 qtmodel 2.8.2：PyPI 上的 wheel（2026-08-20）不含 `QtServer.get_model_state`，而同版本号的上游源码已带上它。Qiao-MCP 按能力而非版本号探测——没有该方法时跳过模型状态守卫（`guard_unavailable`），行为与 0.3.1 一致；有该方法时，每个工具都会按桥通上报的状态放行或拦截。qtmodel 2.9.0 是首个带该方法的 PyPI 正式发布，因此在 2.9.x 上守卫始终生效。
 
-### qtmodel 2.9 上游变更（2026-09-11 至 09-24）
+### qtmodel 2.9 上游对齐
 
-参考仓库已同步至 `8ae651e`，其 qtmodel 包与 PyPI 2.9.2 wheel 完全一致（源码中 `QT_VERSION` 仍写作 `"2.9.1"`）：
+当前参考仓库为 `0687ffe`，虽标为 2.9.2，但与 PyPI 2.9.2 wheel 内容不同。0.4.0 使用的基准
+`8ae651e` 除旧版本标记外与该 wheel 一致。
 
 - **写入安全：** 写命令的响应丢失时抛 `CommandOutcomeUnknownError`，不再自动重发。本项目将其报为"结果未知"，并提示客户端先回读模型，不要重试。
 - **客户端校验：** 许多写接口会在下发前拒绝不合法的数值。本项目的参数 schema 已对齐：徐变/收缩曲线不能为空，截面特性表只能是 26 或 29 项，各规范的徐变参数个数固定，自定义材料必须提供 `data_info`。
 - **节点质量字段：** `add_nodal_mass` 的 `mass_info` 实为 `(平动质量, 绕X, 绕Y, 绕Z 转动惯量)`，并新增 `mass_xyz` 表达各向不同的平动质量。本项目已按此布局下发（字段修正见更新日志）。
-- **现有工具补齐新参数：** 施工阶段支持小数工期和 `sub_steps`；`create_material` 增加 `is_orthotropic` / `ey`；`set_support`、`add_elastic_support` 增加 `coordinate`、`extra_enabled` 和 8 项 `extra_parameters`，单向弹性支承另支持正负轴 `axis_direction`；`add_influence_plane` 增加 `always_divided_by_beam_shape`，`create_live_load_case` 增加与子工况等长的布尔列表 `sub_case_optimized`。省略选项保持旧行为，显式指定则在写入前按真实签名检查；旧版会截断的小数工期创建请求改为明确报错。工具总数仍为 133。
-- **运营设置和级联删除继续走网关：** 检索 `update_operation_stage_setting` 后可传 `transversal_load_cases`，必须同时提供全部需计算的工况列表，省略/空列表会关闭对应分析。`remove_material` 默认 `cascade=True`，连同相关钢束特性和钢束删除；`remove_tendon_property` 默认 `False`，设为 `True` 会无弹窗删除引用钢束及其荷载。删除前须确认范围，不指定名称和编号会删除全部对象。
-- **新接口经 API 网关使用：** 横向分析、国际/规划车道活载、加固、按身份精确删除对象（`delete_model_object`）、`cdb` 的完整配筋与检算快照，以及修改前准备检查（`get_model_edit_readiness`）。网关会在每次 MDB 写操作后调用 `update_model` 提交，这是这些接口的要求。
+- **现有工具补齐新参数：** 施工阶段支持小数工期和 `sub_steps`；`create_material` 增加 `is_orthotropic` / `ey`；`set_support`、`add_elastic_support` 增加 `coordinate`、`extra_enabled` 和 8 项 `extra_parameters`，单向弹性支承另支持正负轴 `axis_direction`；`add_influence_plane` 增加 `always_divided_by_beam_shape`，`create_live_load_case` 增加与子工况等长的布尔列表 `sub_case_optimized`。省略选项保持旧行为，显式指定则在写入前按真实签名检查；旧版会截断的小数工期创建请求改为明确报错。这些参数在 0.4.0 补齐，当前 0.5.0 目录为 153 个工具。
+- **运营设置与级联删除：** `configure_operation_stage` 显式提供横向在内的四类工况列表；网关的 `update_operation_stage_setting` 仍可调用，必须同时提供全部需计算的列表，省略/空列表会关闭对应分析。`remove_material` 默认 `cascade=True`，连同相关钢束特性和钢束删除；`remove_tendon_property` 默认 `False`，设为 `True` 会无弹窗删除引用钢束及其荷载。删除前须确认范围，不指定名称和编号会删除全部对象。
+- **专用工具与长尾接口：** 0.5.0 为横向、国际/规划车道、模型配筋/检算快照和编辑就绪诊断提供专用工具。精确删除对象（`delete_model_object`）、系数、有效宽度、统计及结构合并等仍经网关调用。每次 MDB 写操作及明确列出的 CDB 模型快照操作都会调用 `update_model` 提交。
 - **网关禁用：** `post_python_file`（读取本地文件并发往任意 URL 执行）、`prepare_model_edit`（可能不可逆地删除结果，应由宿主程序在用户确认后调用）、`export_api_help`（把 SDK 帮助写到本机任意路径），以及原有的 `ensure_running`、`set_url`、`set_version`、`export_qt_helper` 和 `wait_solve`（默认无限期轮询，请用 `run_analysis`）。
 
 ### 2026-09-04 至 09-08 上游源码变更

@@ -1,7 +1,7 @@
 """Check a built wheel over stdio without calling bridge operations.
 
 Run with the project's installed dependencies:
-    uv run python scripts/check_mcp_package.py dist/qiao_mcp-0.3.3-py3-none-any.whl
+    uv run python scripts/check_mcp_package.py dist/qiao_mcp-0.5.0-py3-none-any.whl
 """
 
 import argparse
