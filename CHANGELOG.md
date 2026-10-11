@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Stirrup snapshots and bulk element assignments.** New tools preserve native
+  field names, stored dimensions and model enums. Renumbering takes original_id;
+  shear/torsion rows are fixed at five/three entries. None retains a family, []
+  clears it, and zero means unassigned. Legacy CSAN tools keep their interfaces.
 - **Complete section reinforcement snapshots.** New set/remove tools use model
   identifiers including I/J ends and tapered groups. Required fields preserve
   inactive parameter rows and actual points, use six-entry layer rows and model

@@ -20,7 +20,7 @@ def catalog(fake_provider):
 
 def test_complete_catalog_has_documented_inputs_and_output_contracts(catalog):
     tools = asyncio.run(catalog.list_tools())
-    assert len(tools) == 144
+    assert len(tools) == 146
     image_tools = {"save_model_screenshot", "plot_analysis_result"}
     for tool in tools:
         assert tool.description
