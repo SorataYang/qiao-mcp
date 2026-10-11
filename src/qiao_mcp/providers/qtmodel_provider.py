@@ -2235,15 +2235,17 @@ class QtModelProvider(BridgeProvider):
         wait: bool = True,
         max_wait: float | None = None,
         poll_interval: float = 5.0,
-    ) -> None:
-        """同步指定检算工况后启动检算；wait=True 时轮询至后台任务结束。
+    ) -> Any:
+        """同步指定检算工况后启动检算；返回启动或等待结束后的原生状态。
 
         2.5.0 起 solve_concrete_check 不再接受 name，改为对"当前检算数据"求解，
         故先用 import_concrete_check_case 把目标工况同步为当前 CSAN 检算数据。
+        旧版等待器在 is_running=False 时直接返回，失败/取消也可能不抛错；
+        调用方必须核对返回状态后再报告成功。
         """
         self._require_available()
         self._cdb.import_concrete_check_case(case_name=name)
-        self._cdb.solve_concrete_check(
+        return self._cdb.solve_concrete_check(
             wait=wait,
             poll_interval=poll_interval,
             max_wait=max_wait,

@@ -134,6 +134,8 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
 
         Syncs the named check case into the current check data, then runs the
         code-based verification and waits for the background task to finish.
+        A reported failed/canceled or other non-success state is an error, even
+        when an older SDK returns it without raising an exception.
         先将指定检算工况同步为当前检算数据，再运行规范验算并等待后台任务完成。
 
         Args:
@@ -142,7 +144,15 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
                               (最长等待秒数，None 表示不限时)
         """
         try:
-            provider.solve_concrete_check(name=name, wait=True, max_wait=max_wait_seconds)
+            status = provider.solve_concrete_check(name=name, wait=True, max_wait=max_wait_seconds)
+            state = str(status.get("state", "")).lower() if isinstance(status, dict) else ""
+            if state and state not in {"succeeded", "success", "completed", "complete"}:
+                message = status.get("message") or ""
+                raise ToolError(
+                    f"Concrete check did not complete: state={state}"
+                    + (f", message={message}" if message else "")
+                    + " (混凝土检算未成功完成，已有结果不能作为本次成功的证据)"
+                )
             return (
                 f"Concrete check '{name}' completed. "
                 f"Use get_check_data to retrieve results. "
