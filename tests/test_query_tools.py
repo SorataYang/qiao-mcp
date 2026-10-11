@@ -11,9 +11,10 @@ def _fns(fake_provider):
     return tool_fns(register_query_tools, fake_provider)
 
 
-def test_only_four_query_tools_registered(fake_provider):
+def test_five_query_tools_registered(fake_provider):
     fns = _fns(fake_provider)
     assert set(fns) == {
+        "query_model_data",
         "get_model_data",
         "find_entities",
         "calc_section_property",

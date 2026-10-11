@@ -11,7 +11,7 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-### 🔧 Tools (134 tools in the development tree, grouped)
+### 🔧 Tools (135 tools in the development tree, grouped)
 
 Tools are organized by workflow area. Highlights per group:
 
@@ -25,36 +25,7 @@ Tools are organized by workflow area. Highlights per group:
 | **Tendons** | `create_tendon_property`, `create_tendon_2d`, `apply_prestress`, `get_tendon_info` |
 | **Traffic (moving load)** | `add_node_tandem`, `add_influence_plane`, `add_traffic_lane`, `add_standard_vehicle`, `create_live_load_case` |
 | **Checking** | `setup_concrete_check`, `add_check_load_combination`, `add_parametric_reinforcement`, `run_concrete_check`, `get_check_data` |
-| **Queries** | `get_model_info`, `get_model_data` (by kind, incl. qtmodel 2.8 overview kinds `summary` / `analysis_context` / `project_metadata` / `check_context`), `find_entities`, `calc_section_property`, `get_special_results` (paginated where applicable) |
-| **Modification** | `initialize_model`, `save_model_file`, `open_model_file`, `update_node`, `move_nodes`, `update_element`, `remove_nodes`, `remove_elements` |
-| **Visualization** | `save_model_screenshot`, `plot_analysis_result` (optionally return viewable images), `set_view_angle`, `display_ids` |
-| **Workflows** | `create_simple_beam_bridge`, `create_continuous_beam_bridge` |
-| **Gateway & diagnostics** | `check_qiaotong_connection`, `get_model_status`, `list_qtmodel_api`, `call_qtmodel_api` — diagnose the bridge connection and model state, or discover and call long-tail qtmodel methods with signature validation |
-
-The 132 non-image tools publish output schemas and return MCP structured content
-(`{status, message, ...}`). Connection diagnostics also expose `connection_status`
-and `connected`; bridge templates return the resolved node, element and property IDs.
-`get_model_status` preserves QiaoTong's state in `status`. The two image-capable tools
-return viewable MCP image content or a text summary. Tool failures use typed MCP errors, and
-read-only, destructive, and open-world operations carry MCP tool annotations. The
-server instructions include the full tool-group overview; use `list_qtmodel_api`
-before calling an uncovered backend method through the gateway.
-
-Input schemas include parameter descriptions, closed-set selectors, pagination bounds
-and fixed-size coordinate/DOF arrays. Invalid schema inputs are rejected before a
-backend call. A beam end `release_i` / `release_j` flag means **True = release**;
-omitting an end keeps all six DOFs connected. Load combination components use
-`[case_type, case_name, factor]`, with `combine_type=3` for an envelope.
-
-### Development: B1 queries and diagnostics (unreleased)
-
-The development catalog adds `get_model_edit_readiness`;
-this is not part of the 0.4.0 parameter-only release below. Edit readiness is
-read-only and remains accessible when model operations are blocked. Its `success`
-status means a response was received, not that editing is safe; inspect the raw
-`readiness` object. No token is retained/reused, and no stages/results are changed.
-
-### 📦 Resources (7 resources)
+| **Queries** | `get_model_info`, ### 📦 Resources (7 resources)
 | URI | Description |
 |-----|-------------|
 | `bridge://model/summary` | Model overview |
@@ -89,7 +60,7 @@ qiao-mcp/
 └── reference-docs/            # Review notes and project documentation
 ```
 
-The **Provider pattern** keeps the 134 tools decoupled from any single backend. Select one with
+The **Provider pattern** keeps the 135 tools decoupled from any single backend. Select one with
 `BRIDGE_PROVIDER`; each provider declares its own software-specific rules, so the LLM adapts
 without prompt changes. Currently supports:
 - **QTModel** (`qtmodel`, default) — [QiaoTong (桥通)](https://www.brdi.com.cn/Software.html) bridge analysis software ([user manual](https://soratayang.github.io/))
