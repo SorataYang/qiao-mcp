@@ -53,6 +53,7 @@ _OPEN_WORLD_NAMES = {"call_qtmodel_api"}
 _CONNECTION_NAMES = {
     "check_qiaotong_connection",
     "get_model_status",
+    "get_model_edit_readiness",
     "list_qtmodel_api",
     "call_qtmodel_api",  # 具体 mdb/odb/cdb 权限由 provider.call_api 再判断
 }

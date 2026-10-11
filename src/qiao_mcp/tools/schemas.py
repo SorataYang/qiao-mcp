@@ -128,6 +128,17 @@ class ModelStateResult(ObjectResult):
     message: str | None = Field(default=None, description="State explanation or reason state reporting is unavailable.")
 
 
+class ModelEditReadinessResult(ObjectResult):
+    readiness: dict[str, Any] | None = Field(
+        default=None, description="Unmodified bridge readiness response, including any opaque preparation_token; null when unknown.",
+    )
+    connection: dict[str, Any] | None = Field(
+        default=None, description="Connection diagnostic when the readiness query cannot be sent.",
+    )
+    message: str | None = Field(default=None, description="Diagnostic explanation; success does not itself mean editable.")
+    action: str | None = Field(default=None, description="Suggested manual action; no automatic state changes are performed.")
+
+
 class BridgeWorkflowResult(MessageResult):
     spans: list[PositiveNumber] = Field(description="Span lengths in model coordinate order, in meters.")
     node_ids: list[PositiveInteger] = Field(description="Resolved node IDs in girder coordinate order, including reused nodes.")

@@ -11,7 +11,7 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-### 🔧 Tools (133 tools, grouped)
+### 🔧 Tools (134 tools in the development tree, grouped)
 
 Tools are organized by workflow area. Highlights per group:
 
@@ -31,7 +31,7 @@ Tools are organized by workflow area. Highlights per group:
 | **Workflows** | `create_simple_beam_bridge`, `create_continuous_beam_bridge` |
 | **Gateway & diagnostics** | `check_qiaotong_connection`, `get_model_status`, `list_qtmodel_api`, `call_qtmodel_api` — diagnose the bridge connection and model state, or discover and call long-tail qtmodel methods with signature validation |
 
-The 131 non-image tools publish output schemas and return MCP structured content
+The 132 non-image tools publish output schemas and return MCP structured content
 (`{status, message, ...}`). Connection diagnostics also expose `connection_status`
 and `connected`; bridge templates return the resolved node, element and property IDs.
 `get_model_status` preserves QiaoTong's state in `status`. The two image-capable tools
@@ -45,6 +45,14 @@ and fixed-size coordinate/DOF arrays. Invalid schema inputs are rejected before 
 backend call. A beam end `release_i` / `release_j` flag means **True = release**;
 omitting an end keeps all six DOFs connected. Load combination components use
 `[case_type, case_name, factor]`, with `combine_type=3` for an envelope.
+
+### Development: B1 queries and diagnostics (unreleased)
+
+The development catalog adds `get_model_edit_readiness`;
+this is not part of the 0.4.0 parameter-only release below. Edit readiness is
+read-only and remains accessible when model operations are blocked. Its `success`
+status means a response was received, not that editing is safe; inspect the raw
+`readiness` object. No token is retained/reused, and no stages/results are changed.
 
 ### 📦 Resources (7 resources)
 | URI | Description |
@@ -81,7 +89,7 @@ qiao-mcp/
 └── reference-docs/            # Review notes and project documentation
 ```
 
-The **Provider pattern** keeps the 133 tools decoupled from any single backend. Select one with
+The **Provider pattern** keeps the 134 tools decoupled from any single backend. Select one with
 `BRIDGE_PROVIDER`; each provider declares its own software-specific rules, so the LLM adapts
 without prompt changes. Currently supports:
 - **QTModel** (`qtmodel`, default) — [QiaoTong (桥通)](https://www.brdi.com.cn/Software.html) bridge analysis software ([user manual](https://soratayang.github.io/))

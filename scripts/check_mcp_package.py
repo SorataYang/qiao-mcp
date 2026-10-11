@@ -39,6 +39,7 @@ async def inspect_package(wheel: Path, expected_tools: int, output: Path | None)
             resources = (await session.list_resources()).resources
             prompts = (await session.list_prompts()).prompts
             connection = await session.call_tool("check_qiaotong_connection", {})
+            readiness = await session.call_tool("get_model_edit_readiness", {})
             invalid = await session.call_tool("create_nodes_linear", {"count": 0})
 
     assert initialized.serverInfo.name == "qiao-mcp"
@@ -60,6 +61,8 @@ async def inspect_package(wheel: Path, expected_tools: int, output: Path | None)
     assert not connection.isError and connection.structuredContent
     assert connection.structuredContent["connection_status"] == "software_not_running"
     assert connection.structuredContent["connected"] is False
+    assert not readiness.isError and readiness.structuredContent
+    assert readiness.structuredContent["status"] in {"not_connected", "api_unavailable"}
     assert invalid.isError, "Invalid arguments must use the MCP error channel"
     if output:
         output.write_text(json.dumps({
@@ -82,7 +85,7 @@ async def inspect_package(wheel: Path, expected_tools: int, output: Path | None)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("wheel", type=Path)
-    parser.add_argument("--expected-tools", type=int, default=133)
+    parser.add_argument("--expected-tools", type=int, default=134)
     parser.add_argument("--output", type=Path, help="Write the inspected protocol catalog as JSON")
     args = parser.parse_args()
     asyncio.run(asyncio.wait_for(
