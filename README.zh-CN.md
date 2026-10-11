@@ -33,6 +33,9 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 
 输入 Schema 包含参数说明、固定枚举、分页范围和坐标/自由度数组长度约束，不符合 Schema 的输入会在调用后端前被拒绝。梁端 `release_i` / `release_j` 中 **True 表示释放**，省略某端表示该端六自由度均不释放。荷载组合分项顺序为 `[工况类型, 工况名, 系数]`，`combine_type=3` 才是包络。
 
+覆盖支承时，省略坐标系和附加设置会保留原值。只提供 `extra_parameters` 时自动启用，
+显式 `extra_enabled=False` 则清空；这一行为也适用于支持这些选项的旧版 SDK。
+
 ### 开发中：B1 查询与诊断（未发布）
 
 开发目录新增 `get_model_edit_readiness`、`query_model_data`，不计入下文 0.4.0 的纯参数补齐版本。

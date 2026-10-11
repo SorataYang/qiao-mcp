@@ -169,8 +169,10 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
             coordinate: 0=global, 1=node coordinate system. None preserves existing
                         values on overwrite, or uses defaults on creation (整体/节点
                         坐标系；省略时覆盖保留原值、新增用默认值，需新版 qtmodel)
-            extra_enabled: Enable additional support parameters; None preserves
-                           existing values on overwrite (是否启用附加参数，需新版 qtmodel)
+            extra_enabled: Enable additional parameters; None enables them when
+                           extra_parameters is supplied, otherwise preserves the
+                           existing setting. False clears them (提供附加参数时默认启用；
+                           两者均省略保留原设置，False 清空；需新版 qtmodel)
             extra_parameters: Exactly [static friction, dynamic friction, Dx, Dy, Dz,
                               Rx, Ry, Rz]; None preserves existing values on overwrite
                               (静摩擦、动摩擦、Dx/Dy/Dz/Rx/Ry/Rz，共8项，需新版 qtmodel)
