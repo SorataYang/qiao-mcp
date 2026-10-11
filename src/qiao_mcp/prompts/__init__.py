@@ -12,6 +12,48 @@ def register_prompts(mcp: FastMCP):
     """Register all MCP prompts."""
 
     @mcp.prompt()
+    def analyze_transversal(case_name: str = "横向工况") -> str:
+        """Guide a transversal definition, solve and verified result-query workflow.
+
+        Args:
+            case_name: Intended transversal case name (横向工况名称).
+        """
+        return f"""Set up and analyze the transversal case {case_name!r} in QiaoTong.
+This is a guided workflow, not an automatic model replacement. Fixed load units
+are kN; lengths and node distribution widths are m, independent of display units.
+
+1. Inspect `get_model_status`. If blocked, use `get_model_edit_readiness` to
+   explain the bridge's requirements. Let the user prepare the model in QiaoTong;
+   never switch stages or delete results automatically.
+2. Read `get_model_data` with kind="analysis_context" to inspect settings, and
+   explicitly use `configure_live_load_system` with system="china_transversal".
+   Keep clear_existing=False unless the user explicitly chose clearing old loads.
+   A rejected switch must not be retried with clearing enabled automatically.
+3. Use `query_model_data` to identify the existing nodes/beam elements. Keep the
+   lane's intended node order; each adjacent pair must already have a direct beam.
+4. Use `set_transversal_vehicle` and `set_transversal_lane` with complete physical
+   definitions and explicit add/update actions. distribution_widths are meters.
+   Capture each returned data.index; inspect `get_transversal_data` if needed.
+5. Use those actual IDs in `set_transversal_case`. Supply impact multiplier,
+   positive factors for 1..N lanes, the factor above N lanes, and the description.
+   Query the case back. Definitions do not switch systems or run a solve.
+6. If a load combination is needed, use `add_load_combine` with the documented
+   TV component type. That combination code does not establish a result prefix.
+7. Use `configure_operation_stage` with the final construction stage and all four
+   explicit case lists. Include existing cases that should remain enabled;
+   [] deliberately disables a family. Include {case_name!r} in transversal_load_cases.
+8. After reviewing the definitions/settings with the user, call `run_analysis`
+   explicitly. Only proceed when the solve completes successfully.
+9. Obtain the exact complete result case identifier from QiaoTong's results/UI
+   or a verified backend query. If it is unavailable, report that missing input.
+   Do not guess a TV:/MV: prefix from the definition or combination name.
+10. Use `get_analysis_results` with case_name_mode="full" and that exact identifier
+    for force, deformation and reaction. State the result units and the queried
+    stage/case when reviewing values. Offline transport tests do not prove
+    engineering accuracy; validate a dedicated test model against known results.
+"""
+
+    @mcp.prompt()
     def design_simple_beam(
         span_length: float = 20.0,
         beam_height: float = 1.5,

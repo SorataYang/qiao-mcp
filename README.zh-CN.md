@@ -80,13 +80,18 @@ Qiao-MCP 自定列表/单页上限为 500；截面摘要按上游约束最多 10
 | `bridge://model/structure-groups` | 结构组 |
 | `bridge://model/boundaries` | 边界条件 |
 
-### 💬 提示词 (4个工作流)
+### 💬 提示词 (5个工作流)
 | 提示词 | 描述 |
 |--------|-------------|
-| `design-simple-beam` | 简支梁桥设计工作流 |
-| `design-continuous-beam` | 连续梁桥设计 |
-| `check-structure` | 结构规范验算 |
-| `construction-stage-analysis` | 施工阶段分析 |
+| `design_simple_beam` | 简支梁桥设计工作流 |
+| `design_continuous_beam` | 连续梁桥设计 |
+| `check_structure` | 结构规范验算 |
+| `construction_stage_analysis` | 施工阶段分析 |
+| `analyze_transversal` | 横向定义、配置、求解及完整结果工况名查询 |
+
+普通静力结果仍默认自动加 `ST:`。其他结果使用 `case_name_mode="full"`，传入桥通
+结果界面或已验证接口给出的完整工况标识，工具原样转交；不能把组合类型 TV/MV 当作
+结果接口的前缀约定。
 
 ## 架构设计
 

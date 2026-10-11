@@ -2600,6 +2600,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         case_name: str = "",
         limit: int = 100,
         offset: int = 0,
+        case_name_mode: Literal["static", "full"] = "static",
     ) -> str:
         """
         Get analysis results from the bridge model (获取分析结果).
@@ -2611,10 +2612,14 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             stage_id: Construction stage (施工阶段): -1=operation(运营), 0=envelope(包络),
                       n=stage n (第n阶段)
             case_name: Load case name for operation stage (运营阶段荷载工况名).
-                       For stage_id=-1, the tool automatically adds "ST:" prefix if missing.
-                       (运营阶段查询时工具会自动添加 "ST:" 前缀)
+                       static mode adds "ST:" when missing for stage_id=-1.
+                       full mode passes a verified complete result identifier unchanged.
             limit: Max items per page, default 100 (单页条数上限)
             offset: Pagination offset (翻页偏移)
+            case_name_mode: static preserves the legacy ordinary static-case prefix;
+                full requires a nonempty complete identifier confirmed by QiaoTong
+                results/UI and passes it unchanged. Do not infer TV:/MV: result
+                prefixes from combination type codes (完整工况名模式不猜测前缀).
 
         Returns:
             Deformation results (变形): List of dicts with keys
@@ -2628,10 +2633,13 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             from qiao_mcp.tools.queries import _paginate
 
             kwargs: dict[str, Any] = {}
+            if case_name_mode not in {"static", "full"}:
+                raise ToolInputError("case_name_mode must be static or full")
+            if case_name_mode == "full" and not case_name.strip():
+                raise ToolInputError("full mode requires a verified complete case_name (完整模式须提供已核实的工况标识)")
             if case_name:
-                # 运营阶段查询：qtmodel 要求工况名加 "ST:" 前缀
-                # Operation stage queries require "ST:" prefix in qtmodel
-                if stage_id == -1 and not case_name.startswith("ST:"):
+                # Preserve the original static-case convention only in static mode.
+                if case_name_mode == "static" and stage_id == -1 and not case_name.startswith("ST:"):
                     kwargs["case_name"] = f"ST:{case_name}"
                 else:
                     kwargs["case_name"] = case_name

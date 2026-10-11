@@ -448,9 +448,12 @@ class QtModelProvider(BridgeProvider):
         "船舶撞击荷载" | "汽车撞击荷载" | "用户定义荷载"
 
         ### Result Query (结果查询) — operation stage load case naming
-        When querying operation stage results (stage_id=-1), the load case name is
-        automatically prefixed with "ST:" by get_analysis_results tool. You only need
-        to provide the original load case name when you created it.
+        For ordinary static operation results (stage_id=-1), get_analysis_results
+        defaults to case_name_mode="static" and adds "ST:" to the original name.
+        For transversal/international or other result families, first obtain the
+        complete result identifier from QiaoTong results/UI, then use
+        case_name_mode="full" to pass it unchanged. Never infer result prefixes
+        from the TV/MV combination type codes.
 
         Example:
         • Create load case: add_load_case(name='荷载1', case_type='恒载')

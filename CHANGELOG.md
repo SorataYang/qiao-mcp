@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Complete result identifiers and a transversal workflow prompt.**
+  `get_analysis_results(case_name_mode="full")` passes a verified case identifier
+  unchanged; the default retains ordinary static `ST:` naming. The new
+  `analyze_transversal` prompt connects diagnosis, definitions, actual IDs,
+  explicit settings, solving and result queries without guessing result prefixes.
 - **Transversal cases and explicit deletion.** Case definitions verify real
   vehicle/lane IDs before writing and construct reduction strings from typed
   positive factors. Deletion requires a name/ID, defaults to no cascade, and
