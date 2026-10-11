@@ -15,6 +15,7 @@ import pytest
 from conftest import tool_fns
 
 from qiao_mcp.tools.checking import register_checking_tools
+from qiao_mcp.tools.envelope import ToolError
 
 
 @pytest.fixture
@@ -121,3 +122,35 @@ def test_run_concrete_check_accepts_unlimited_wait(tools, fake_provider):
     tools["run_concrete_check"](name="C1", max_wait_seconds=None)
     _, _, kw = fake_provider._cdb.last("solve_concrete_check")
     assert kw["max_wait"] is None
+
+
+@pytest.mark.parametrize("state", ["failed", "canceled", "idle"])
+def test_returned_non_success_is_an_error_without_replaying(tools, fake_provider, state):
+    """旧 SDK 在 is_running=False 时返回失败/取消，不能当成完成。"""
+    solve_calls = []
+
+    def stopped(**kwargs):
+        solve_calls.append(kwargs)
+        return {"ok": True, "state": state, "is_running": False, "message": "native detail"}
+
+    fake_provider._cdb.solve_concrete_check = stopped
+    with pytest.raises(ToolError, match=f"state={state}, message=native detail"):
+        tools["run_concrete_check"](name="C1", max_wait_seconds=12)
+    assert len(solve_calls) == 1
+    assert fake_provider._cdb.count("import_concrete_check_case") == 1
+    assert fake_provider._mdb.calls == []
+
+
+def test_concrete_check_timeout_is_an_error_without_replaying(tools, fake_provider):
+    solve_calls = []
+
+    def timed_out(**kwargs):
+        solve_calls.append(kwargs)
+        raise TimeoutError("Concrete check solve did not finish within 12 seconds.")
+
+    fake_provider._cdb.solve_concrete_check = timed_out
+    with pytest.raises(ToolError, match="did not finish within 12 seconds"):
+        tools["run_concrete_check"](name="C1", max_wait_seconds=12)
+    assert len(solve_calls) == 1
+    assert fake_provider._cdb.count("import_concrete_check_case") == 1
+    assert fake_provider._mdb.calls == []

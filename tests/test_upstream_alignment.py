@@ -116,7 +116,7 @@ def test_new_mutators_are_never_mistaken_for_readonly_calculations(fake_provider
     assert fake_provider._mdb.calls == []
 
 
-@pytest.mark.parametrize("outcome", ["succeeded", "failed", "canceled"])
+@pytest.mark.parametrize("outcome", ["succeeded", "failed", "canceled", "idle"])
 def test_named_concrete_check_uses_supported_background_signature(fake_provider, monkeypatch, outcome):
     import qtmodel
     from qtmodel.core.qt_server import QtServer
