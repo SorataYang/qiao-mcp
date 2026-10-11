@@ -17,7 +17,7 @@ import json
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
-from pydantic import TypeAdapter
+from pydantic import StrictInt, TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
@@ -43,6 +43,16 @@ _OVERVIEW_KINDS = frozenset(
 )
 
 
+_CATALOG_KINDS = frozenset({
+    "material_summaries", "material_detail", "load_case_summaries", "load_case_detail",
+    "load_combination_summaries", "load_combination_detail", "construction_stage_summaries",
+    "element_section", "spans",
+})
+_DETAIL_ID_PARAMETERS = {
+    "material_detail": "material_id", "load_case_detail": "load_case_id",
+    "load_combination_detail": "combination_id", "element_section": "ele_id",
+}
+_SERVER_PAGED_DETAILS = frozenset({"load_case_detail", "load_combination_detail"})
 _MODEL_QUERY_ADAPTER: TypeAdapter[ModelQuery] = TypeAdapter(ModelQuery)
 
 
@@ -107,7 +117,7 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     @mcp.tool()
     def get_model_data(
         kind: ModelDataKind,
-        ids: int | list[int] | str | None = None,
+        ids: StrictInt | list[StrictInt] | str | None = None,
         name: str = "",
         sec_id: int | None = None,
         position: Literal[0, 1] = 0,
@@ -148,7 +158,16 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 "summary" (模型状态与实体数量), "analysis_context" (分析设置与已求解阶段),
                 "project_metadata" (工程名称/单位/人员/日期), "check_context" (设计活载与检算上下文),
                 "structure_group_summaries" (各结构组的节点/单元数量, 不展开成员)
-            ids: Entity IDs for nodes/elements, int/list/range string "1to10" (编号)
+                ── 轻量目录与详情 Native catalogs (需支持对应 API; 不支持时明确报错) ──
+                "material_summaries" / "material_detail" (材料摘要/详情),
+                "load_case_summaries" / "load_case_detail" (荷载工况摘要/分页详情),
+                "load_combination_summaries" / "load_combination_detail" (组合摘要/分页详情),
+                "construction_stage_summaries" (施工阶段摘要, stage_id 随阶段顺序变化),
+                "element_section" (单元插值后的实际端部截面, 需 ids 和可选 position),
+                "spans" (跨度定义及单元/支承成员)。摘要不是无损写回快照。
+            ids: Entity IDs for nodes/elements, int/list/range string "1to10" (编号).
+                New *_detail and element_section require one positive integer
+                or a one-item integer list, not a range string (新详情仅接受单个正整数编号).
             name: Group name, for group_elements/group_nodes (结构组名)
             sec_id: Section ID, for section_detail/section_shape/section_property (截面号)
             position: Tapered section end, for section_detail (变截面位置 0起/1末)
@@ -237,6 +256,20 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 if stage_id is None:
                     raise ToolInputError("stage_groups requires stage_id (需要提供 stage_id)")
                 data = provider.get_groups_of_stage(stage_id)
+            elif kind in _CATALOG_KINDS:
+                options: dict[str, Any] = {}
+                if kind in _DETAIL_ID_PARAMETERS:
+                    entity_id = ids[0] if isinstance(ids, list) and len(ids) == 1 else ids
+                    if type(entity_id) is not int or entity_id <= 0:
+                        raise ToolInputError(f"{kind} requires one positive integer in ids (需要单个正整数编号)")
+                    options[_DETAIL_ID_PARAMETERS[kind]] = entity_id
+                if kind == "element_section":
+                    options["position"] = position
+                if kind in _SERVER_PAGED_DETAILS:
+                    options.update(limit=limit, offset=offset)
+                data = provider.get_model_catalog_data(kind, **options)
+                if kind in _SERVER_PAGED_DETAILS:
+                    return f"{kind}:\n{_fmt(data)}"
             elif kind in _OVERVIEW_KINDS:
                 data = provider.get_model_overview(kind)
             else:

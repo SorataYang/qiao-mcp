@@ -50,6 +50,11 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 Qiao-MCP 自定列表/单页上限为 500；截面摘要按上游约束最多 100 个显式 ID、单页最多 100 条。
 结构化 `data` 保留原生分页字段，不推算总数、不二次切片；缺接口明确报错，不全量下载后本地过滤。
 
+`get_model_data` 增加 `material_summaries`、`material_detail`、`load_case_summaries`、`load_case_detail`、
+`load_combination_summaries`、`load_combination_detail`、`construction_stage_summaries`、`element_section`、`spans`。
+新详情通过 `ids` 指定一个正整数或单项整数列表；实际单元截面用 `position=0|1` 指定端部。
+工况/组合详情在服务端分页，其他列表维持原文本分页。摘要不等于可无损写回的完整快照，施工阶段编号随当前阶段顺序变化。
+
 ### 📦 资源 (7个)
 | URI | 描述 |
 |-----|-------------|

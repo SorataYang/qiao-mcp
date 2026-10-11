@@ -59,6 +59,9 @@ ModelDataKind = Literal[
     "node_masses", "tendon_properties", "deviation_parameters", "deviation_loads", "stages",
     "stage_elements", "stage_nodes", "stage_groups", "summary", "analysis_context",
     "project_metadata", "check_context", "structure_group_summaries",
+    "material_summaries", "material_detail", "load_case_summaries", "load_case_detail",
+    "load_combination_summaries", "load_combination_detail", "construction_stage_summaries",
+    "element_section", "spans",
 ]
 EntitySearch = Literal[
     "node_at_point", "elements_at_point", "elements_by_material", "elements_by_section",

@@ -65,7 +65,7 @@ _SERVER_INSTRUCTIONS = (
     "Traffic:  add_node_tandem, add_influence_plane, add_traffic_lane, add_standard_vehicle, create_live_load_case, get_live_load_results\n"
     "Checking: setup_concrete_check, add_check_load_combination, add_parametric_reinforcement, run_concrete_check, get_check_data(kind=stress|materials|stirrups|reinforcement|*_setting|...), configure_check_analysis(kind=crack_width|limit_state|normal_stress|...), add_check_stirrup, manage_check_stirrup, assign_element_stirrup, update_vertical_steel_tendon, manage_check_case_file\n"
     "Modify:   update_node, update_node_id, renumber_nodes, move_nodes, merge_nodes, remove_nodes, update_element, update_element_id, renumber_elements, revert_local_orientation, remove_elements\n"
-    "B1 queries: query_model_data(request={kind: nodes|elements|boundaries|loads|node_local_axes|section_summaries, ...}) — typed server-side filters/pages\n"
+    "B1 queries: query_model_data(request={kind: nodes|elements|boundaries|loads|node_local_axes|section_summaries, ...}) — typed server-side filters/pages; get_model_data adds *_summaries, material_detail, load_case_detail, load_combination_detail, element_section and spans\n"
     "Edit readiness: get_model_edit_readiness — read-only diagnostics even when model operations are blocked; never automatically prepare edits, switch stages or delete results\n"
     "View:     set_view_angle, save_model_screenshot\n"
     "Gateway:  list_qtmodel_api, call_qtmodel_api — 长尾 API 先检索真实签名再调用\n"

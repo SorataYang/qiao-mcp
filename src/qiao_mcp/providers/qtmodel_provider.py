@@ -732,6 +732,26 @@ class QtModelProvider(BridgeProvider):
             )
         return result
 
+    def get_model_catalog_data(self, kind: str, **options: Any) -> Any:
+        """Read native summaries/details while retaining backend-owned fields."""
+        methods = {
+            "material_summaries": "get_material_summaries",
+            "material_detail": "get_material_detail",
+            "load_case_summaries": "get_load_case_summaries",
+            "load_case_detail": "get_load_case_detail",
+            "load_combination_summaries": "get_load_combination_summaries",
+            "load_combination_detail": "get_load_combination_detail",
+            "construction_stage_summaries": "get_construction_stage_summaries",
+            "element_section": "get_element_section", "spans": "get_span_data",
+        }
+        if kind not in methods:
+            raise ValueError(f"Unknown model catalog kind: {kind}")
+        self._require_available()
+        result = self._query_model(methods[kind], **options)
+        if result is None or isinstance(result, str):
+            raise RuntimeError(f"{methods[kind]} returned no valid model data (未返回有效模型数据)")
+        return result
+
     def _safe_get(self, fn_name: str, *args, **kwargs) -> Any:
         """Call an optional model query, returning None on error."""
         fn = self._model_query_method(fn_name)
