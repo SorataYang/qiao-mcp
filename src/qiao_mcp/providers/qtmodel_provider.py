@@ -647,7 +647,9 @@ class QtModelProvider(BridgeProvider):
             raise RuntimeError(f"{method} returned no valid definition list (未返回有效定义列表)")
         return result
 
-    def _commit_international_definition(self, method: str, kwargs: dict[str, Any], kind: str) -> dict:
+    def _commit_international_definition(
+        self, method: str, kwargs: dict[str, Any], kind: str, expected_standard: str | None = None,
+    ) -> dict:
         fn = self._validated_method("mdb", method, kwargs)
         # An unavailable getter must fail before the definition is written.
         self._validated_method("mdb", self._INTERNATIONAL_QUERIES[kind], {})
@@ -661,7 +663,8 @@ class QtModelProvider(BridgeProvider):
             # Update locates by name and ignores a supplied compatibility index.
             if method.startswith("add_") and kwargs.get("index", -1) != -1 and matches[0]["index"] != kwargs["index"]:
                 raise ValueError("The readback ID does not match the explicit add ID")
-            if "standard" in kwargs and matches[0].get("standard") != kwargs["standard"]:
+            standard = kwargs.get("standard", expected_standard)
+            if standard is not None and matches[0].get("standard") != standard:
                 raise ValueError("The readback standard does not match the written vehicle")
             return matches[0]
         except Exception as exc:
@@ -679,6 +682,43 @@ class QtModelProvider(BridgeProvider):
         if action == "add" and "new_name" in kwargs:
             raise ValueError("new_name is only valid for update")
         return self._commit_international_definition(f"{action}_international_vehicle", kwargs, "vehicles")
+
+    def create_en1991_vehicle(self, source: str, options: dict[str, Any]) -> dict:
+        if source not in {"standard", "user"}:
+            raise ValueError("Unsupported EN1991 vehicle source")
+        return self._commit_international_definition(
+            f"add_international_{source}_vehicle", dict(options), "vehicles", expected_standard="EN1991",
+        )
+
+    def set_planned_lane(self, action: str, definition: dict[str, Any]) -> Any:
+        if action not in {"add", "update"}:
+            raise ValueError("Unsupported planned lane action")
+        kwargs = dict(definition)
+        if action == "add" and "new_name" in kwargs:
+            raise ValueError("new_name is only valid for update")
+        method = f"{action}_planned_lane_line"
+        fn = self._validated_method("mdb", method, kwargs)
+        return self._execute_model_command(fn, method, kwargs)
+
+    def set_international_live_load_case(self, action: str, standard: str, definition: dict[str, Any]) -> dict:
+        if action not in {"add", "update"} or standard not in {"AASHTO", "BS", "EN1991"}:
+            raise ValueError("Unsupported international case action/standard")
+        kwargs = dict(definition)
+        kwargs.setdefault("index", -1)
+        if action == "add" and "new_name" in kwargs:
+            raise ValueError("new_name is only valid for update")
+        method = f"{action}_international_live_load_case"
+        self._validated_method("mdb", method, kwargs)
+        self._validated_method("mdb", self._INTERNATIONAL_QUERIES["cases"], {})
+        records = self.get_international_live_load_data("vehicles")
+        for sub_case in kwargs["sub_cases"]:
+            name = sub_case["vehicle_name"]
+            matches = [item for item in records if item.get("name") == name]
+            if len(matches) != 1 or matches[0].get("standard") != standard:
+                raise ValueError(f"No unique {standard} vehicle named {name!r} (请先核对车辆名称及规范)")
+        # No lane/plane query exists. The command's server-side validation checks
+        # those references without inventing local definitions or silently fixing them.
+        return self._commit_international_definition(method, kwargs, "cases")
 
     # ── Generic API gateway (逃生舱) ───────────────────────────────────
 

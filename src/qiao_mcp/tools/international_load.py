@@ -7,11 +7,18 @@ from pydantic import TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError
-from qiao_mcp.tools.international_schemas import InternationalVehicleWrite
+from qiao_mcp.tools.international_schemas import (
+    En1991FactoryRequest,
+    InternationalCaseWrite,
+    InternationalVehicleWrite,
+    ModelCommandResult,
+    PlannedLaneWrite,
+)
 from qiao_mcp.tools.live_load_schemas import ModelDefinitionResult, ModelId, ModelRecordsResult
 from qiao_mcp.tools.schemas import PageLimit, PageOffset, QueryName
 
 _VEHICLE_ADAPTER: TypeAdapter[InternationalVehicleWrite] = TypeAdapter(InternationalVehicleWrite)
+_FACTORY_ADAPTER: TypeAdapter[En1991FactoryRequest] = TypeAdapter(En1991FactoryRequest)
 
 
 def register_international_load_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
@@ -68,3 +75,77 @@ def register_international_load_tools(mcp: FastMCP, provider: BridgeProvider) ->
                                       limit=limit, offset=offset, has_more=offset + limit < len(data))
         except Exception as exc:
             raise ToolError(f"Error reading international definitions (回读国际活载定义失败): {exc}") from exc
+
+    @mcp.tool()
+    def create_en1991_vehicle(request: En1991FactoryRequest) -> ModelDefinitionResult:
+        """Create/overwrite a named EN1991 vehicle through its native factory (欧规车辆工厂).
+
+        Select en1991 explicitly first. source=standard uses code-generated uniform
+        loads, loaded lengths and spacings; the native compatibility arguments that
+        are ignored by that factory are not exposed. source=user retains those
+        controls plus p/dis, load_length, num and point_load. Forces use kN, lengths
+        m and uniform loads kN/m. An existing name is completely overwritten.
+        Commits once and returns the actual definition/ID read back by exact name.
+
+        Args:
+            request: source=standard|user, explicit name and the corresponding
+                factory controls; user LM71 defaults to four 250 kN axles when
+                p/dis are both null. No automatic system change or analysis.
+        """
+        try:
+            spec = _FACTORY_ADAPTER.validate_python(request)
+            data = provider.create_en1991_vehicle(spec.source, spec.model_dump(mode="json", exclude={"source"}, exclude_none=True))
+            return ModelDefinitionResult(status="success", committed=True, data=data)
+        except Exception as exc:
+            raise ToolError(f"Error creating EN1991 vehicle (欧规车辆工厂失败): {exc}") from exc
+
+    @mcp.tool()
+    def set_planned_lane(request: PlannedLaneWrite) -> ModelCommandResult:
+        """Add or completely replace a planned lane (完整定义规划车道).
+
+        Uses the dedicated planned-lane endpoint, distinct from add_traffic_lane's
+        optimize flag. Every physical field is explicit; lengths use model units.
+        add can overwrite a same-named planned lane. update can rename while
+        preserving references. QiaoTong validates the influence plane and tandem.
+        There is no independent planned-lane getter: after the single commit,
+        inspect a model export/UI. Deletion through the gateway must explicitly
+        pass lane_kind="planned" to remove_lane_line.
+
+        Args:
+            request: Complete add/update identity, influence plane, tandem, width,
+                vehicle count, signed offset and direction, with optional rename.
+        """
+        try:
+            spec = PlannedLaneWrite.model_validate(request)
+            provider.set_planned_lane(spec.action, spec.model_dump(mode="json", exclude={"action"}, exclude_none=True))
+            return ModelCommandResult(status="success", committed=True,
+                                      message="Planned lane committed; inspect the model export/UI for verification (规划车道已提交；请通过模型导出或界面核对)")
+        except Exception as exc:
+            raise ToolError(f"Error defining planned lane (定义规划车道失败): {exc}") from exc
+
+    @mcp.tool()
+    def set_international_live_load_case(request: InternationalCaseWrite) -> ModelDefinitionResult:
+        """Add or fully replace an international live-load case (完整定义国际活载工况).
+
+        Validates referenced vehicle names and standards by query before mutation;
+        EN1991 also rejects repeated lane assignments. QiaoTong authoritatively
+        validates lane existence/kind and membership in the influence plane, for
+        which no independent query endpoint exists. Complete factor objects retain
+        native capitalization, units and inactive fields; null uses server defaults.
+        Writes commit once and return the exact case's actual ID. Configure the
+        operating-stage live_load_cases explicitly, then use run_analysis and
+        get_analysis_results(case_name_mode="full") with a verified result name.
+
+        Args:
+            request: Full add/update definition, expected vehicle standard,
+                influence plane, typed subcases and optional complete factors.
+                Update retains references by original name, with optional new_name.
+        """
+        try:
+            spec = InternationalCaseWrite.model_validate(request)
+            data = provider.set_international_live_load_case(
+                spec.action, spec.standard, spec.model_dump(mode="json", exclude={"action", "standard"}, exclude_none=True),
+            )
+            return ModelDefinitionResult(status="success", committed=True, data=data)
+        except Exception as exc:
+            raise ToolError(f"Error defining international case (定义国际工况失败): {exc}") from exc

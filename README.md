@@ -11,7 +11,7 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-### 🔧 Tools (150 tools in the development tree, grouped)
+### 🔧 Tools (153 tools in the development tree, grouped)
 
 Tools are organized by workflow area. Highlights per group:
 
@@ -24,7 +24,7 @@ Tools are organized by workflow area. Highlights per group:
 | **Stages & analysis** | `add_construction_stage`, `merge_operation_stage`, `configure_analysis`, `run_analysis` (async, progress-reporting, optional `show_view`), `get_analysis_results` |
 | **Tendons** | `create_tendon_property`, `create_tendon_2d`, `apply_prestress`, `get_tendon_info` |
 | **Traffic (moving load)** | `add_node_tandem`, `add_influence_plane`, `add_traffic_lane`, `add_standard_vehicle`, `create_live_load_case` |
-| **International live load** | `set_international_vehicle`, `get_international_live_load_data` — AASHTO, BS and EN1991 definitions with separate parameter schemas |
+| **International live load** | `set_international_vehicle`, `create_en1991_vehicle`, `set_planned_lane`, `set_international_live_load_case`, `get_international_live_load_data` |
 | **Checking** | `setup_concrete_check`, `add_check_load_combination`, `add_parametric_reinforcement`, `run_concrete_check`, `get_check_data` |
 | **Queries** | `get_model_info`, `get_model_data` (by kind, incl. qtmodel 2.8 overview kinds `summary` / `analysis_context` / `project_metadata` / `check_context`), `find_entities`, `calc_section_property`, `get_special_results` (paginated where applicable) |
 | **Modification** | `initialize_model`, `save_model_file`, `open_model_file`, `update_node`, `move_nodes`, `update_element`, `remove_nodes`, `remove_elements` |
@@ -32,7 +32,7 @@ Tools are organized by workflow area. Highlights per group:
 | **Workflows** | `create_simple_beam_bridge`, `create_continuous_beam_bridge` |
 | **Gateway & diagnostics** | `check_qiaotong_connection`, `get_model_status`, `list_qtmodel_api`, `call_qtmodel_api` — diagnose the bridge connection and model state, or discover and call long-tail qtmodel methods with signature validation |
 
-The 148 non-image tools publish output schemas and return MCP structured content
+The 151 non-image tools publish output schemas and return MCP structured content
 (`{status, message, ...}`). Connection diagnostics also expose `connection_status`
 and `connected`; bridge templates return the resolved node, element and property IDs.
 `get_model_status` preserves QiaoTong's state in `status`. The two image-capable tools
@@ -134,6 +134,34 @@ response. Vehicle exports may contain inactive parameters for other standards:
 select the documented fields for the typed tool, or use the existing gateway to
 replay an unchanged full native definition. No global unit conversion is applied.
 
+`create_en1991_vehicle` selects a native `source="standard"|"user"` factory with
+an explicit name. Standard vehicles expose effective factory controls only; their
+code-generated uniform loads/lengths/spacings cannot be overridden. User vehicles
+retain those fields plus `p`/`dis`, `load_length`, `num` and `point_load`; LM71 uses
+four 250 kN axles when both `p`/`dis` are null. Factory writes also read back the
+actual vehicle ID. For example, after selecting `en1991`:
+
+```json
+{"request": {"source": "standard", "name": "LM71", "load_type": "LM71"}}
+```
+
+`set_planned_lane` requires the plane, reference tandem, width, vehicle count,
+signed offset and direction. It uses its own endpoint, distinct from
+`add_traffic_lane(optimize=True)`. There is no independent planned-lane getter;
+its response confirms the commit, and model export/UI inspection verifies the
+definition. Gateway deletion must pass `lane_kind="planned"` to `remove_lane_line`.
+
+`set_international_live_load_case` checks each vehicle's exact name and expected
+`standard` before writing. Subcases select ordinary/planned lanes with
+`optimized=False|True`; EN1991 rejects duplicate lane assignments. QiaoTong checks
+lane existence, lane kind and influence-plane membership. Factor objects use
+complete native field names and values; null means server defaults, including
+on update. Configure `live_load_cases` explicitly with `configure_operation_stage`,
+then use `run_analysis` and `get_analysis_results(case_name_mode="full")` with a
+result identifier verified from QiaoTong. Definitions never start analysis.
+Vehicle/case deletion remains available through `remove_international_vehicle`
+and `remove_live_load_case` in the existing gateway.
+
 ### 📦 Resources (7 resources)
 | URI | Description |
 |-----|-------------|
@@ -175,7 +203,7 @@ qiao-mcp/
 └── reference-docs/            # Review notes and project documentation
 ```
 
-The **Provider pattern** keeps the 150 tools decoupled from any single backend. Select one with
+The **Provider pattern** keeps the 153 tools decoupled from any single backend. Select one with
 `BRIDGE_PROVIDER`; each provider declares its own software-specific rules, so the LLM adapts
 without prompt changes. Currently supports:
 - **QTModel** (`qtmodel`, default) — [QiaoTong (桥通)](https://www.brdi.com.cn/Software.html) bridge analysis software ([user manual](https://soratayang.github.io/))
