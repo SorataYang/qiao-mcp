@@ -48,6 +48,8 @@ _DESTRUCTIVE_NAMES = {
     "manage_check_case_file",  # 可替换当前检算工况或覆盖文件
     "configure_live_load_system",  # 显式允许时可清理旧体系定义
     "configure_operation_stage",  # 完整替换各类运营工况选择
+    "set_transversal_vehicle",  # 按同名或编号完整覆盖
+    "set_transversal_lane",
 }
 # 逃生舱：可调用任意 qtmodel 方法，对外部世界开放
 _OPEN_WORLD_NAMES = {"call_qtmodel_api"}

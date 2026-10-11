@@ -558,6 +558,49 @@ class QtModelProvider(BridgeProvider):
 
     # ── Generic API gateway (逃生舱) ───────────────────────────────────
 
+    def get_transversal_data(self, kind: str, name: str = "", index: int = -1) -> list[dict]:
+        """Read complete definitions with native exact selectors."""
+        if kind not in {"vehicles", "lanes"}:
+            raise ValueError(f"Unknown transversal data kind: {kind}")
+        kwargs = {"name": name, "index": index}
+        method = f"get_transversal_{kind}"
+        fn = self._validated_method("mdb", method, kwargs)
+        result = self._parse(fn(**kwargs))
+        if not isinstance(result, list) or any(not isinstance(item, dict) for item in result):
+            raise RuntimeError(f"{method} returned no valid definition list (未返回有效定义列表)")
+        return result
+
+    def set_transversal_data(self, kind: str, action: str, definition: dict[str, Any]) -> dict:
+        """Write one complete definition, commit once, and resolve its real ID."""
+        if kind not in {"vehicle", "lane"} or action not in {"add", "update"}:
+            raise ValueError("Unsupported transversal kind/action")
+        kwargs = dict(definition)
+        kwargs.setdefault("index", -1)
+        if kind == "lane":
+            kwargs["load_factors"] = kwargs.pop("distribution_widths")
+        if action == "add" and "new_name" in kwargs:
+            raise ValueError("new_name is only valid for update")
+        method = f"{action}_transversal_{kind}"
+        fn = self._validated_method("mdb", method, kwargs)
+        target_name = kwargs.get("new_name") or kwargs["name"]
+        selectors = {"name": target_name, "index": kwargs["index"]}
+        plural = {"vehicle": "vehicles", "lane": "lanes"}[kind]
+        # Fail before mutation if the required readback capability is absent.
+        self._validated_method("mdb", f"get_transversal_{plural}", selectors)
+        self._execute_model_command(fn, method, kwargs)
+        try:
+            records = self.get_transversal_data(plural, **selectors)
+            matches = [item for item in records if item.get("name") == target_name
+                       and (kwargs["index"] == -1 or item.get("index") == kwargs["index"])]
+            if len(matches) != 1 or type(matches[0].get("index")) is not int or matches[0]["index"] <= 0:
+                raise ValueError("Cannot resolve a unique positive object ID (无法确认唯一的实际编号)")
+            return matches[0]
+        except Exception as exc:
+            raise RuntimeError(
+                f"{method} was committed, but readback failed. Do not repeat the write; "
+                f"use get_transversal_data (写入已提交，但回读失败；请查询核对，勿重复写入): {exc}"
+            ) from exc
+
     # 禁止经逃生舱直呼的方法：
     # - initial / do_solve / wait_solve：危险或长耗时（wait_solve 默认无限期轮询），
     #   必须走各自带防护的专用工具；

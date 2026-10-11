@@ -64,6 +64,7 @@ _SERVER_INSTRUCTIONS = (
     "Tendons:  create_tendon_property, create_tendon_2d, apply_prestress, get_tendon_info\n"
     "Traffic:  add_node_tandem, add_influence_plane, add_traffic_lane, add_standard_vehicle, create_live_load_case, get_live_load_results\n"
     "Live-load configuration: configure_live_load_system (clearing is opt-in), configure_operation_stage (all four case lists required; [] disables a family); defining loads never implicitly runs analysis\n"
+    "Transversal: set_transversal_vehicle, set_transversal_lane, get_transversal_data — complete definitions in fixed kN/m; read back actual IDs; lane distribution_widths are meters, node order is preserved\n"
     "Checking: setup_concrete_check, add_check_load_combination, add_parametric_reinforcement, run_concrete_check, get_check_data(kind=stress|materials|stirrups|reinforcement|*_setting|...), configure_check_analysis(kind=crack_width|limit_state|normal_stress|...), add_check_stirrup, manage_check_stirrup, assign_element_stirrup, update_vertical_steel_tendon, manage_check_case_file\n"
     "Modify:   update_node, update_node_id, renumber_nodes, move_nodes, merge_nodes, remove_nodes, update_element, update_element_id, renumber_elements, revert_local_orientation, remove_elements\n"
     "B1 queries: query_model_data(request={kind: nodes|elements|boundaries|loads|node_local_axes|section_summaries, ...}) — typed server-side filters/pages; get_model_data adds *_summaries, material_detail, load_case_detail, load_combination_detail, element_section and spans\n"
