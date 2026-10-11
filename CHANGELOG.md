@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Complete section reinforcement snapshots.** New set/remove tools use model
+  identifiers including I/J ends and tapered groups. Required fields preserve
+  inactive parameter rows and actual points, use six-entry layer rows and model
+  length units, and remain separate from legacy current-CSAN tools.
 - **Complete result identifiers and a transversal workflow prompt.**
   `get_analysis_results(case_name_mode="full")` passes a verified case identifier
   unchanged; the default retains ordinary static `ST:` naming. The new
