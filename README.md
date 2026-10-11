@@ -11,7 +11,7 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-### 🔧 Tools (135 tools in the development tree, grouped)
+### 🔧 Tools (137 tools in the development tree, grouped)
 
 Tools are organized by workflow area. Highlights per group:
 
@@ -31,7 +31,7 @@ Tools are organized by workflow area. Highlights per group:
 | **Workflows** | `create_simple_beam_bridge`, `create_continuous_beam_bridge` |
 | **Gateway & diagnostics** | `check_qiaotong_connection`, `get_model_status`, `list_qtmodel_api`, `call_qtmodel_api` — diagnose the bridge connection and model state, or discover and call long-tail qtmodel methods with signature validation |
 
-The 133 non-image tools publish output schemas and return MCP structured content
+The 135 non-image tools publish output schemas and return MCP structured content
 (`{status, message, ...}`). Connection diagnostics also expose `connection_status`
 and `connected`; bridge templates return the resolved node, element and property IDs.
 `get_model_status` preserves QiaoTong's state in `status`. The two image-capable tools
@@ -76,6 +76,8 @@ explicitly rather than downloading everything for local filtering.
 on the server; other list kinds retain their existing text pagination. Summaries
 are not full write-back snapshots, and construction stage IDs follow stage order.
 
+`configure_live_load_system` explicitly selects one of the five live-load systems; clearing old definitions defaults to off. `configure_operation_stage` requires all four case lists; `[]` disables that family. These tools commit settings without running analysis.
+
 ### 📦 Resources (7 resources)
 | URI | Description |
 |-----|-------------|
@@ -111,7 +113,7 @@ qiao-mcp/
 └── reference-docs/            # Review notes and project documentation
 ```
 
-The **Provider pattern** keeps the 135 tools decoupled from any single backend. Select one with
+The **Provider pattern** keeps the 137 tools decoupled from any single backend. Select one with
 `BRIDGE_PROVIDER`; each provider declares its own software-specific rules, so the LLM adapts
 without prompt changes. Currently supports:
 - **QTModel** (`qtmodel`, default) — [QiaoTong (桥通)](https://www.brdi.com.cn/Software.html) bridge analysis software ([user manual](https://soratayang.github.io/))

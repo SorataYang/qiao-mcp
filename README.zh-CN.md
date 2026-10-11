@@ -9,7 +9,7 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 
 ## 功能特性
 
-### 🔧 工具（开发版 135 个，按功能分组）
+### 🔧 工具（开发版 137 个，按功能分组）
 
 工具按桥梁建模与分析工作流分组。以下是各组代表工具：
 
@@ -29,7 +29,7 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 | **工作流** | `create_simple_beam_bridge`、`create_continuous_beam_bridge` |
 | **网关与诊断** | `check_qiaotong_connection`、`get_model_status`、`list_qtmodel_api`、`call_qtmodel_api`（连接与模型状态诊断、长尾 API 检索与签名校验调用） |
 
-133 个非图片工具提供输出 Schema，并返回 MCP 结构化内容（`{status, message, ...}`）。连接诊断另有 `connection_status`、`connected` 等字段；一键建桥返回实际节点、单元、材料和截面编号；`get_model_status` 的 `status` 保留桥通状态。两个支持图片的工具返回可预览的 MCP 图像或文本说明。执行失败使用类型化 MCP 错误；工具注解说明只读、破坏性和开放世界行为。调用长尾 API 前，请先使用 `list_qtmodel_api` 查询真实签名。
+135 个非图片工具提供输出 Schema，并返回 MCP 结构化内容（`{status, message, ...}`）。连接诊断另有 `connection_status`、`connected` 等字段；一键建桥返回实际节点、单元、材料和截面编号；`get_model_status` 的 `status` 保留桥通状态。两个支持图片的工具返回可预览的 MCP 图像或文本说明。执行失败使用类型化 MCP 错误；工具注解说明只读、破坏性和开放世界行为。调用长尾 API 前，请先使用 `list_qtmodel_api` 查询真实签名。
 
 输入 Schema 包含参数说明、固定枚举、分页范围和坐标/自由度数组长度约束，不符合 Schema 的输入会在调用后端前被拒绝。梁端 `release_i` / `release_j` 中 **True 表示释放**，省略某端表示该端六自由度均不释放。荷载组合分项顺序为 `[工况类型, 工况名, 系数]`，`combine_type=3` 才是包络。
 
@@ -54,6 +54,8 @@ Qiao-MCP 自定列表/单页上限为 500；截面摘要按上游约束最多 10
 `load_combination_summaries`、`load_combination_detail`、`construction_stage_summaries`、`element_section`、`spans`。
 新详情通过 `ids` 指定一个正整数或单项整数列表；实际单元截面用 `position=0|1` 指定端部。
 工况/组合详情在服务端分页，其他列表维持原文本分页。摘要不等于可无损写回的完整快照，施工阶段编号随当前阶段顺序变化。
+
+`configure_live_load_system` 显式选择五类活载体系，默认不清理旧定义。`configure_operation_stage` 必须给出四类工况列表，`[]` 关闭对应分析；两个工具只提交设置，不启动求解。
 
 ### 📦 资源 (7个)
 | URI | 描述 |
@@ -90,7 +92,7 @@ qiao-mcp/
 └── reference-docs/            # 评审记录与项目文档
 ```
 
-**Provider 模式**让 135 个工具与具体后端解耦。用 `BRIDGE_PROVIDER` 选择后端；每个后端自己声明软件专有规则，因此换后端无需改提示词。当前支持：
+**Provider 模式**让 137 个工具与具体后端解耦。用 `BRIDGE_PROVIDER` 选择后端；每个后端自己声明软件专有规则，因此换后端无需改提示词。当前支持：
 - **QTModel**（`qtmodel`，默认）— [桥通 (QiaoTong)](https://www.brdi.com.cn/Software.html) 桥梁分析软件（[用户手册](https://soratayang.github.io/)）
 
 接入新后端只需实现 `BridgeProvider` 并登记一行，不改工具层代码。详见 [后端选择](./INTEGRATION_GUIDE.md#后端选择-backend-selection)。

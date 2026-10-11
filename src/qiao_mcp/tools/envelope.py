@@ -46,6 +46,8 @@ _DESTRUCTIVE_NAMES = {
     "manage_check_stirrup",  # 可删除箍筋定义
     "assign_element_stirrup",  # 可删除所有单元箍筋
     "manage_check_case_file",  # 可替换当前检算工况或覆盖文件
+    "configure_live_load_system",  # 显式允许时可清理旧体系定义
+    "configure_operation_stage",  # 完整替换各类运营工况选择
 }
 # 逃生舱：可调用任意 qtmodel 方法，对外部世界开放
 _OPEN_WORLD_NAMES = {"call_qtmodel_api"}
@@ -65,6 +67,7 @@ _STAGE_WRITE_NAMES = {
     "update_construction_stage",
     "set_self_weight_stage",
     "configure_analysis",
+    "configure_operation_stage",
 }
 _RESULT_NAMES = {
     "get_analysis_results",
