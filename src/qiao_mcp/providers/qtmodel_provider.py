@@ -499,6 +499,63 @@ class QtModelProvider(BridgeProvider):
             options.update(self._optional_mdb_parameter(method, parameter, value))
         return options
 
+    def _validated_method(self, api_object: str, method: str, kwargs: dict[str, Any]):
+        """Resolve an explicit capability and bind every argument before writes."""
+        import inspect
+
+        self._require_available()
+        fn = getattr(self._resolve_api_object(api_object), method, None)
+        if not callable(fn):
+            raise ValueError(
+                f"Installed qtmodel does not support {api_object}.{method} "
+                "(当前 qtmodel 缺少该接口，请安装支持此功能的版本)"
+            )
+        try:
+            inspect.signature(fn).bind(**kwargs)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Installed qtmodel does not support these {api_object}.{method} arguments "
+                f"(当前接口参数不兼容，尚未写入): {exc}"
+            ) from exc
+        return fn
+
+    def _execute_model_command(self, fn, method: str, kwargs: dict[str, Any]) -> Any:
+        """Commit one successful model command; never replay after a lost reply."""
+        result = fn(**kwargs)
+        try:
+            self._mdb.update_model()
+        except Exception as exc:
+            raise RuntimeError(
+                f"{method} completed but update_model failed. The model may have changed; "
+                "read it back before retrying (命令已执行但提交失败，模型可能已改变；请先回读，勿自动重试). "
+                f"{exc}"
+            ) from exc
+        return self._parse(result)
+
+    def configure_live_load_system(self, system: str, clear_existing: bool = False) -> Any:
+        """Change the live-load system only on an explicit configuration call."""
+        systems = {"china_longitudinal": 0, "aashto": 1, "china_transversal": 2, "bs": 3, "en1991": 4}
+        if system not in systems:
+            raise ValueError(f"Unknown live-load system: {system}")
+        kwargs = {"kind": systems[system], "clear_existing": clear_existing}
+        method = "set_live_load_type"
+        fn = self._validated_method("mdb", method, kwargs)
+        return self._execute_model_command(fn, method, kwargs)
+
+    def configure_operation_stage(
+        self, final_stage: str, static_load_cases: list[str], sink_load_cases: list[str],
+        live_load_cases: list[str], transversal_load_cases: list[str], do_analysis: bool = True,
+    ) -> Any:
+        """Replace all operating-stage selections, including explicit empty lists."""
+        kwargs = {
+            "final_stage": final_stage, "static_load_cases": static_load_cases,
+            "sink_load_cases": sink_load_cases, "live_load_cases": live_load_cases,
+            "transversal_load_cases": transversal_load_cases, "do_analysis": do_analysis,
+        }
+        method = "update_operation_stage_setting"
+        fn = self._validated_method("mdb", method, kwargs)
+        return self._execute_model_command(fn, method, kwargs)
+
     # ── Generic API gateway (逃生舱) ───────────────────────────────────
 
     # 禁止经逃生舱直呼的方法：

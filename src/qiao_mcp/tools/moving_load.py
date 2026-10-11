@@ -14,10 +14,71 @@ from pydantic import StrictBool
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.live_load_schemas import LiveLoadCaseNames, LiveLoadSystem
+from qiao_mcp.tools.schemas import MessageResult
 
 
 def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
     """Register moving load MCP tools."""
+
+    @mcp.tool()
+    def configure_live_load_system(
+        system: LiveLoadSystem, clear_existing: StrictBool = False,
+    ) -> MessageResult:
+        """Explicitly select the bridge live-load system (选择活载体系).
+
+        Existing incompatible definitions can block a switch. Set clear_existing
+        only when the user chose to delete those definitions; references in
+        combinations/operation settings may still block deletion. Never retry a
+        rejected switch with clearing enabled automatically. Does not run analysis.
+
+        Args:
+            system: china_longitudinal=中国纵向, aashto=AASHTO,
+                china_transversal=中国横向, bs=BS, en1991=EN1991.
+            clear_existing: Explicitly allow clearing old live-load definitions
+                during the switch (允许清理旧活载；默认 False).
+        """
+        try:
+            provider.configure_live_load_system(system, clear_existing=clear_existing)
+            return MessageResult(status="success", message=f"Live-load system set to {system} (活载体系已设置)")
+        except Exception as exc:
+            raise ToolError(f"Error configuring live-load system (设置活载体系失败): {exc}") from exc
+
+    @mcp.tool()
+    def configure_operation_stage(
+        final_stage: str,
+        static_load_cases: LiveLoadCaseNames,
+        sink_load_cases: LiveLoadCaseNames,
+        live_load_cases: LiveLoadCaseNames,
+        transversal_load_cases: LiveLoadCaseNames,
+        do_analysis: StrictBool = True,
+    ) -> MessageResult:
+        """Replace all operation-stage analysis selections (完整设置运营阶段).
+
+        Each case list is required: [] disables that family. Read the current
+        analysis_context first and include every family that should remain
+        enabled. Names must match existing definitions. This only commits settings;
+        use run_analysis separately to solve. It does not switch the displayed stage.
+
+        Args:
+            final_stage: Exact final construction-stage name to inherit; an empty
+                string delegates stage selection to QiaoTong (最终施工阶段名).
+            static_load_cases: Complete ordinary static case names; [] disables (静力工况).
+            sink_load_cases: Complete settlement case names; [] disables (沉降工况).
+            live_load_cases: Complete longitudinal/influence-plane live-load case
+                names; [] disables (纵向活载工况).
+            transversal_load_cases: Complete transversal case names; [] disables (横向工况).
+            do_analysis: Whether operation-stage analysis is enabled (是否计算运营阶段).
+        """
+        try:
+            provider.configure_operation_stage(
+                final_stage=final_stage, static_load_cases=static_load_cases,
+                sink_load_cases=sink_load_cases, live_load_cases=live_load_cases,
+                transversal_load_cases=transversal_load_cases, do_analysis=do_analysis,
+            )
+            return MessageResult(status="success", message="Operation-stage selections replaced (运营阶段设置已完整替换)")
+        except Exception as exc:
+            raise ToolError(f"Error configuring operation stage (设置运营阶段失败): {exc}") from exc
 
     @mcp.tool()
     def add_node_tandem(

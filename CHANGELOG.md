@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Explicit live-load configuration.** `configure_live_load_system` supports the
+  five native systems and defaults to `clear_existing=False`.
+  `configure_operation_stage` requires all four case lists, including empty ones,
+  so replacing settings cannot silently omit a family. Both commit once without
+  starting analysis; unavailable client parameters fail before writes.
 - **B1 read-only diagnostics and server-side queries (two new tools; 135 total).**
   `get_model_edit_readiness` returns bridge-owned preparation diagnostics even
   when model operations are blocked, without switching stages or deleting results.
