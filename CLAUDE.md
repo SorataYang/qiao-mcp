@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目简介
 
-Qiao-MCP 是一个 MCP 服务器,把桥梁结构分析软件(当前仅支持桥通/QiaoTong,经 `qtmodel` Python API)的能力暴露给 AI 助手:建模、施工阶段、荷载、预应力、活载、规范验算、结果查询。共 142 个工具、7 个资源、4 个提示模板。
+Qiao-MCP 是一个 MCP 服务器,把桥梁结构分析软件(当前仅支持桥通/QiaoTong,经 `qtmodel` Python API)的能力暴露给 AI 助手:建模、施工阶段、荷载、预应力、活载、规范验算、结果查询。共 142 个工具、7 个资源、5 个提示模板。
 
 ## 常用命令
 

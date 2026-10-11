@@ -49,7 +49,8 @@ async def inspect_package(wheel: Path, expected_tools: int, output: Path | None)
     assert initialized.serverInfo.version == expected_version, initialized.serverInfo
     assert initialized.instructions and "get_model_status" in initialized.instructions
     assert len(tools) == expected_tools, f"Expected {expected_tools} tools, got {len(tools)}"
-    assert len(resources) == 7 and len(prompts) == 4
+    assert len(resources) == 7 and len(prompts) == 5
+    assert "analyze_transversal" in {prompt.name for prompt in prompts}
     parameters = [
         (tool.name, name, schema)
         for tool in tools for name, schema in tool.inputSchema.get("properties", {}).items()

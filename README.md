@@ -103,13 +103,19 @@ Combination and operation-stage references must be removed explicitly first.
 | `bridge://model/structure-groups` | Structure groups |
 | `bridge://model/boundaries` | Boundary conditions |
 
-### 💬 Prompts (4 workflows)
+### 💬 Prompts (5 workflows)
 | Prompt | Description |
 |--------|-------------|
-| `design-simple-beam` | Simple beam bridge design workflow (简支梁设计) |
-| `design-continuous-beam` | Continuous beam bridge design (连续梁设计) |
-| `check-structure` | Structural code checking (结构检算) |
-| `construction-stage-analysis` | Construction stage analysis (施工阶段分析) |
+| `design_simple_beam` | Simple beam bridge design workflow (简支梁设计) |
+| `design_continuous_beam` | Continuous beam bridge design (连续梁设计) |
+| `check_structure` | Structural code checking (结构检算) |
+| `construction_stage_analysis` | Construction stage analysis (施工阶段分析) |
+| `analyze_transversal` | Explicit transversal definitions, configuration, solve and verified result identifiers |
+
+For ordinary static cases, `get_analysis_results` keeps its automatic `ST:`
+prefix. Use `case_name_mode="full"` with a complete identifier verified from
+QiaoTong results/UI for other result families. It is passed unchanged; TV/MV
+combination codes are not evidence of a result endpoint's naming convention.
 
 ## Architecture
 
