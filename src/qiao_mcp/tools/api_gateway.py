@@ -14,7 +14,12 @@ from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError
-from qiao_mcp.tools.schemas import ApiObject, ConnectionResult, ModelStateResult
+from qiao_mcp.tools.schemas import (
+    ApiObject,
+    ConnectionResult,
+    ModelEditReadinessResult,
+    ModelStateResult,
+)
 
 
 def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
@@ -125,6 +130,23 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             return ModelStateResult.model_validate(provider.get_model_state())
         except Exception as e:
             raise ToolError(f"Error checking model status (模型状态查询失败): {e}") from e
+
+    @mcp.tool()
+    def get_model_edit_readiness() -> ModelEditReadinessResult:
+        """Diagnose why the current model cannot be edited (只读检查编辑准备项).
+
+        Available even when model reads/writes are blocked, including solving,
+        postprocessing and an unknown model state. The readiness object contains
+        only bridge-reported fields: success means a response was received, NOT
+        that editing is safe. Missing API, connection failure and unknown data
+        are reported explicitly. Any preparation_token is opaque and must not
+        be cached or reused. This tool never calls prepare_model_edit, switches
+        stages or deletes results; ask the user to handle preparation in QiaoTong.
+        """
+        try:
+            return ModelEditReadinessResult.model_validate(provider.get_model_edit_readiness())
+        except Exception as e:
+            raise ToolError(f"Error checking edit readiness (编辑就绪诊断失败): {e}") from e
 
     @mcp.tool()
     def list_qtmodel_api(api_object: ApiObject, pattern: str = "") -> str:

@@ -227,6 +227,39 @@ class QtModelProvider(BridgeProvider):
                 "action": "确认桥通软件已启动并重试。",
             }
 
+    def get_model_edit_readiness(self) -> dict[str, Any]:
+        """Read edit preparation diagnostics without requiring edit permission."""
+        method = getattr(self._mdb, "get_model_edit_readiness", None)
+        if not callable(method):
+            return {
+                "status": "api_unavailable",
+                "message": "当前 qtmodel 不提供 get_model_edit_readiness，无法判断编辑就绪状态。",
+                "action": "请安装支持该 API 的 qtmodel；不要据此尝试修改模型。",
+            }
+        connection = self.get_connection_status()
+        if connection.get("status") == "probe_failed":
+            return {"status": "probe_failed", "connection": connection,
+                    "message": "连接探测失败，编辑就绪状态未知。"}
+        if connection.get("connected") is not True or connection.get("compatible") is False:
+            return {"status": "not_connected", "connection": connection,
+                    "message": "桥通连接不可用，编辑就绪状态未知。"}
+        try:
+            result = self._parse(method())
+        except NotImplementedError as e:
+            return {"status": "server_unsupported", "message": str(e),
+                    "action": "请升级桥通以支持编辑就绪诊断。"}
+        except Exception as e:
+            return {"status": "probe_failed",
+                    "message": f"编辑就绪探测失败（{type(e).__name__}: {e}）。"}
+        if not isinstance(result, dict) or not result:
+            return {
+                "status": "state_unknown",
+                "message": "桥通未返回有效编辑就绪数据，服务端可能不支持该接口；不能认定可编辑。",
+                "action": "请检查桥通版本；不要自动切换阶段或删除结果。",
+            }
+        # The bridge owns all readiness fields. Never infer ready=True or retain its token.
+        return {"status": "success", "readiness": result}
+
     def ensure_operation_allowed(self, operation: str) -> None:
         """Fail closed when the current bridge state rejects an MCP operation.
 

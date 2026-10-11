@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **B1 read-only edit diagnostics (one new tool; 134 total).**
+  `get_model_edit_readiness` returns bridge-owned preparation diagnostics even
+  when model operations are blocked, without switching stages or deleting results.
+  Missing client APIs, unavailable connections and unknown responses never imply
+  editing is safe; preparation tokens are returned opaquely, not retained/reused.
 ## [0.4.0] - 2026-09-29
 
 ### Added
