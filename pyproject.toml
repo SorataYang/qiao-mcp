@@ -29,8 +29,9 @@ dependencies = [
     # 2.6.x 曾对桥通做精确版本握手（QT_VERSION 硬编码，不匹配即拒连），故上界一度收在
     # <2.7。2.8.2 起该握手被移除（get_connection_status 恒返回 compatible=True），
     # 跨次版本不再强制用户同步升级桥通，上界因此放宽到 <2.9。
-    # 2.9.x 已逐方法核对 provider 的全部直调与模型查询（均仍存在，签名只增不减），
-    # 上界放宽到 <2.10。2.9 的补丁版之间仍会增删模块（2.9.2 删掉了 2.9.1 的
+    # 2.9.x 已逐方法核对 provider 的全部直调与模型查询，所需参数仍兼容；
+    # 源码 0687ffe 已移除混凝土检算的旧窗口参数，不能假定所有签名只增不减。
+    # 上界为 <2.10。2.9 的补丁版之间仍会增删模块（2.9.2 删掉了 2.9.1 的
     # mdb_combination_definitions / mdb_property_operations），故不放开到 <3。
     # 排除 2.9.0：其 add_section / add_custom_section 在未传 sec_property 时也按
     # "26 或 29 项"校验（上游 86fe001 引入、b8c4cdb 修复），不给截面特性的建截面调用

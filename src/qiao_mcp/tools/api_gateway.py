@@ -171,7 +171,12 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         and complete reinforcement/check snapshots on cdb ("snapshot", "set_").
         Search "update_operation_stage_setting" for transversal_load_cases support;
         search "remove_material" / "remove_tendon_property" for cascade defaults.
-        These management methods remain gateway-only (管理类接口继续经网关调用).
+        Current source also adds mass/stiffness factor definitions ("_factor"),
+        flange definitions/effective-width calculation ("flange", "effective_width"),
+        model statistics ("statistics", "weight_table"), merge_node_groups,
+        merge_frame_elements, merge_plate_elements and move_nodes_by_offsets.
+        These long-tail methods remain available here; common transversal,
+        international and model-check snapshots also have dedicated tools.
 
         Args:
             api_object: Which database to inspect (数据库对象):
@@ -223,7 +228,8 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         MDB get_/query_/calc_ methods are read-only model operations, as are the
         local helpers list_parameter_section_types, build_parameter_section_*_spec
         and generate_curve_node_data, and resolve_node_selection. Other MDB methods,
-        including calculate_section_property, require model-write permission.
+        including calculate_section_property and calculate_effective_width,
+        require model-write permission.
         Every MDB write is committed with update_model afterwards, as QiaoTong
         requires; project/file/view management calls (save_file, close_project,
         undo_model, update_to_pre, …) are not.
@@ -243,6 +249,21 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         delete settings, and arrange_thickness_ids renumbers thickness references;
         only call them when that change is intended.
         （板厚批量操作不接受区间字符串；重置会删除分析设置，整理板厚会更改编号。）
+
+        On supporting source builds, get_mass_factor/get_stiffness_factor use
+        None for all definitions and [] for none. Their update methods preserve
+        omitted fields; supplying element_ids/group_names replaces the selection.
+        calculate_effective_width writes generated width/factor definitions and
+        is committed once. get_element_weight/get_element_weight_table and
+        material weight statistics use fixed N, independent of display units.
+        Merges may remove nodes/elements/associated loads; use explicit targets
+        and the actual returned merged_count, not a guessed count.
+
+        Current cdb.solve_concrete_check starts a background task and no longer
+        accepts show_view/modal/auto_close/sync. Prefer run_concrete_check for
+        named-case import and bounded waiting. cdb.remove_section_reinforcement
+        uses sec_id/position for current CSAN data; the base-model snapshot tool
+        uses remove_section_reinforcement_by_name and commits separately.
 
         Operation analysis: mdb.update_operation_stage_setting accepts
         transversal_load_cases on supporting builds. Pass the existing final_stage

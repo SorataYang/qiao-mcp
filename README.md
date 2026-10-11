@@ -166,6 +166,11 @@ result identifier verified from QiaoTong. Definitions never start analysis.
 Vehicle/case deletion remains available through `remove_international_vehicle`
 and `remove_live_load_case` in the existing gateway.
 
+The development line also tracks upstream `0687ffe` through the existing gateway
+for mass/stiffness factors, flange/effective-width definitions, statistics and
+structure merges. See the [API alignment record](docs/0.5.0-upstream-alignment.md).
+Model weight queries use fixed N, independent of display units.
+
 ### 📦 Resources (7 resources)
 | URI | Description |
 |-----|-------------|

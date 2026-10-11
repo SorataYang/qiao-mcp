@@ -1,0 +1,338 @@
+{
+  "source": "qtmodel-release 0687ffe tests/fixtures; C# composite operation logs",
+  "extraction": "AST literal arguments only; no log code executed. Structure stream retains only the newly added move/merge methods.",
+  "ignored_comment_records": 3,
+  "calls": [
+    {
+      "source": "element_factor_command_logs.json",
+      "method": "add_mass_factor",
+      "kwargs": {
+        "index": 1,
+        "name": "主梁质量",
+        "factor": 1.1,
+        "element_ids": [],
+        "group_names": [
+          "主梁\"\\\n"
+        ]
+      }
+    },
+    {
+      "source": "element_factor_command_logs.json",
+      "method": "add_mass_factor",
+      "kwargs": {
+        "index": 1,
+        "name": "主梁质量",
+        "factor": 1.2,
+        "element_ids": [],
+        "group_names": [
+          "主梁\"\\\n"
+        ]
+      }
+    },
+    {
+      "source": "element_factor_command_logs.json",
+      "method": "add_stiffness_factor",
+      "kwargs": {
+        "index": 1,
+        "name": "主梁质量",
+        "factor": 0.8,
+        "element_ids": [
+          1,
+          2
+        ],
+        "group_names": []
+      }
+    },
+    {
+      "source": "element_factor_command_logs.json",
+      "method": "add_mass_factor",
+      "kwargs": {
+        "index": 1,
+        "name": "重命名\"\\\n",
+        "factor": 0.9,
+        "element_ids": [],
+        "group_names": [
+          "主梁\"\\\n"
+        ]
+      }
+    },
+    {
+      "source": "element_factor_command_logs.json",
+      "method": "add_mass_factor",
+      "kwargs": {
+        "index": 1,
+        "name": "重命名\"\\\n",
+        "factor": 0.9,
+        "element_ids": [],
+        "group_names": [
+          "主梁\"\\\n"
+        ]
+      }
+    },
+    {
+      "source": "element_factor_command_logs.json",
+      "method": "add_mass_factor",
+      "kwargs": {
+        "index": 6,
+        "name": "局部",
+        "factor": 0.7,
+        "element_ids": [
+          2,
+          3
+        ],
+        "group_names": []
+      }
+    },
+    {
+      "source": "element_factor_command_logs.json",
+      "method": "add_stiffness_factor",
+      "kwargs": {
+        "index": 1,
+        "name": "主梁质量",
+        "factor": 0.8,
+        "element_ids": [
+          1,
+          2
+        ],
+        "group_names": []
+      }
+    },
+    {
+      "source": "element_factor_command_logs.json",
+      "method": "remove_mass_factor",
+      "kwargs": {
+        "indices": [
+          6
+        ]
+      }
+    },
+    {
+      "source": "element_factor_command_logs.json",
+      "method": "add_stiffness_factor",
+      "kwargs": {
+        "index": 2,
+        "name": "HTTP",
+        "factor": 1.0,
+        "element_ids": [],
+        "group_names": [
+          "横梁"
+        ]
+      }
+    },
+    {
+      "source": "element_factor_command_logs.json",
+      "method": "add_stiffness_factor",
+      "kwargs": {
+        "index": 2,
+        "name": "HTTP",
+        "factor": 1.0,
+        "element_ids": [],
+        "group_names": [
+          "横梁"
+        ]
+      }
+    },
+    {
+      "source": "element_factor_command_logs.json",
+      "method": "add_stiffness_factor",
+      "kwargs": {
+        "index": 2,
+        "name": "HTTP",
+        "factor": 0.0,
+        "element_ids": [],
+        "group_names": [
+          "横梁"
+        ]
+      }
+    },
+    {
+      "source": "element_factor_command_logs.json",
+      "method": "remove_stiffness_factor",
+      "kwargs": {
+        "indices": [
+          2
+        ]
+      }
+    },
+    {
+      "source": "effective_width_command_logs.json",
+      "method": "set_flange_width",
+      "kwargs": {
+        "section_id": 10,
+        "top_line_ids": [
+          1
+        ],
+        "bottom_line_ids": [
+          3
+        ],
+        "web_lines": [
+          {
+            "name": "腹板\"\\\n",
+            "direction": 0,
+            "left_ids": [
+              2
+            ],
+            "right_ids": [
+              4
+            ]
+          }
+        ],
+        "top_ribs": [],
+        "bottom_ribs": [],
+        "b0": 0.2,
+        "top_name": "顶缘",
+        "bottom_name": "底缘"
+      }
+    },
+    {
+      "source": "effective_width_command_logs.json",
+      "method": "set_flange_width",
+      "kwargs": {
+        "section_id": 20,
+        "end_j": {
+          "top_line_ids": [
+            1
+          ],
+          "bottom_line_ids": [
+            3
+          ],
+          "web_lines": [
+            {
+              "name": "腹板\"\\\n",
+              "direction": 0,
+              "left_ids": [
+                2
+              ],
+              "right_ids": [
+                4
+              ]
+            }
+          ],
+          "top_ribs": [],
+          "bottom_ribs": [],
+          "b0": 0.4,
+          "top_name": "顶缘",
+          "bottom_name": "底缘"
+        },
+        "top_line_ids": [
+          1
+        ],
+        "bottom_line_ids": [
+          3
+        ],
+        "web_lines": [
+          {
+            "name": "腹板\"\\\n",
+            "direction": 0,
+            "left_ids": [
+              2
+            ],
+            "right_ids": [
+              4
+            ]
+          }
+        ],
+        "top_ribs": [],
+        "bottom_ribs": [],
+        "b0": 0.7,
+        "top_name": "顶缘",
+        "bottom_name": "底缘"
+      }
+    },
+    {
+      "source": "effective_width_command_logs.json",
+      "method": "remove_flange_width",
+      "kwargs": {
+        "section_ids": [
+          20
+        ]
+      }
+    },
+    {
+      "source": "effective_width_command_logs.json",
+      "method": "calculate_effective_width",
+      "kwargs": {
+        "span_id": 1,
+        "code": 0,
+        "b0": 0.0,
+        "rib_type": 0,
+        "group_name": ""
+      }
+    },
+    {
+      "source": "effective_width_command_logs.json",
+      "method": "add_effective_width",
+      "kwargs": {
+        "element_ids": [
+          1
+        ],
+        "group_name": "跨度_EW边界组",
+        "factor_i": 0.2,
+        "factor_j": 0.3,
+        "dz_i": 0.1,
+        "dz_j": 0.2,
+        "factor_i_z": 0.4,
+        "factor_j_z": 0.5,
+        "dy_i": 0.3,
+        "dy_j": 0.4,
+        "factor_i_ax": 0.8,
+        "factor_j_ax": 0.9
+      }
+    },
+    {
+      "source": "effective_width_command_logs.json",
+      "method": "remove_effective_width",
+      "kwargs": {
+        "element_ids": [
+          1
+        ],
+        "group_name": "跨度_EW边界组"
+      }
+    },
+    {
+      "source": "effective_width_command_logs.json",
+      "method": "calculate_effective_width",
+      "kwargs": {
+        "span_id": 1,
+        "code": 4,
+        "b0": 0.0,
+        "rib_type": 0,
+        "top_k": [
+          4.0
+        ],
+        "bottom_k": [],
+        "group_name": "钢梁"
+      }
+    },
+    {
+      "source": "structure_command_stream_logs.json",
+      "method": "move_nodes_by_offsets",
+      "kwargs": {
+        "node_ids": [
+          20
+        ],
+        "offsets": [
+          [
+            1.0,
+            2.0,
+            3.0
+          ]
+        ],
+        "intersected": false
+      }
+    },
+    {
+      "source": "structure_command_stream_logs.json",
+      "method": "merge_frame_elements",
+      "kwargs": {
+        "ids": [
+          1,
+          2,
+          3
+        ],
+        "delete_free_nodes": true,
+        "accept_warnings": false
+      }
+    }
+  ]
+}
