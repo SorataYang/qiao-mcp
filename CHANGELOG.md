@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   slice. Missing APIs fail explicitly; there is no full-download fallback.
   Qiao-MCP caps lists/pages at 500; section summaries use the upstream 100-ID,
   100-item limit.
+- **`get_model_data` adds nine catalog/detail kinds**: material summaries/detail,
+  load-case summaries/detail, load-combination summaries/detail, construction-stage
+  summaries, actual element-end sections and spans. Existing kinds keep their text
+  output; paged details send limit/offset to the server. Summaries are not promised
+  to be lossless write-back snapshots.
+
 ## [0.4.0] - 2026-09-29
 
 ### Added
