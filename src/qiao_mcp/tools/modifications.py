@@ -127,20 +127,19 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         """
         Modify an existing node's coordinates and/or ID (修改节点坐标或编号).
 
-        Writes to the model and refreshes it. Partial updates are safe: the
-        underlying qtmodel API overwrites all three coordinates on every call,
-        so this tool first re-reads the node's current position and fills in
-        whichever of x/y/z you left out. That costs one extra model query, and
-        it fails if the node does not exist.
+        Writes to the model and refreshes it. The underlying qtmodel API
+        overwrites all three coordinates, so when any of x/y/z is omitted this
+        tool reads the current position once and fills the omitted components.
+        That read fails if the node is missing. Supplying all three coordinates
+        skips the extra read; the bridge then validates the target node.
 
         When to use vs. siblings: coordinates (with or without a new ID) here;
         renumbering only → update_node_id (no read-back, cheaper); shifting
         nodes by a relative offset rather than to absolute coordinates →
         move_nodes; renumbering many nodes → renumber_nodes.
 
-        (写模型并刷新。部分更新是安全的：底层 qtmodel API 每次调用都会整体覆盖三个
-        坐标，因此本工具会先读回节点当前位置、补齐你没传的 x/y/z——代价是多一次模型
-        查询，且节点不存在时会失败。选型：改坐标（可同时改编号）用本工具；只改编号用
+        (写模型并刷新。底层每次整体覆盖三坐标，省略任一坐标时先回读补齐，节点不存在
+        时回读失败；三坐标齐全时不额外查询，由桥通校验目标。选型：改坐标（可同时改编号）用本工具；只改编号用
         update_node_id（无需读回、更省）；按相对偏移平移用 move_nodes；批量改号用
         renumber_nodes。)
 
@@ -191,14 +190,18 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         narrow, single-purpose tool.
 
         When to use vs. siblings: renumbering ONE node here; moving a node or
-        changing coordinates and ID together → update_node (it re-reads the
-        node's current coordinates first, so it costs an extra model query);
+        changing coordinates and ID together → update_node (it reads current
+        coordinates only when some coordinate components are omitted);
         renumbering MANY nodes, or compacting all node numbers from 1 →
         renumber_nodes.
 
         (写模型并刷新。只改编号、不动坐标，是单一用途的窄工具。选型：改一个节点的编号
-        用本工具；要改坐标、或同时改坐标和编号用 update_node（它会先读回当前坐标补齐，
-        多一次模型查询）；批量改号或把全部节点号从 1 起重排用 renumber_nodes。)
+        用本工具；要改坐标、或同时改坐标和编号用 update_node（省略部分坐标时多一次
+        模型查询补齐）；批量改号或把全部节点号从 1 起重排用 renumber_nodes。)
+
+        Returns a confirmation, not an updated node record. The bridge owns
+        collision checks and reference updates; read nodes/elements back
+        before using cached identifiers after the change.
 
         Args:
             node_id: Existing node ID (原节点编号)
@@ -217,12 +220,27 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     @mcp.tool()
     def renumber_nodes(ids: Any = None, new_ids: Any = None) -> str:
         """
-        Renumber nodes (节点重新编号).
-        If no IDs are provided, renumbers all nodes starting from 1 continuously.
+        Renumber selected nodes with an explicit mapping, or compact all node
+        numbers from 1 (按映射批量改号，或从 1 开始重排全模型节点).
+
+        For selected nodes, supply BOTH ids and new_ids with equal lengths;
+        each old ID maps to the new ID at the same position. If EITHER argument
+        is None, the current SDK renumbers ALL nodes, even when the other
+        argument is present. Omitting both intentionally selects that mode.
+        (局部改号须同时传入等长的旧、新编号列表；任一参数为 None 均会重排全模型，
+        不是只修改另一个参数选中的节点。两者均省略表示有意全模型重排。)
+
+        Use update_node_id for one ID, update_node for coordinates plus an ID,
+        or move_nodes for relative offsets. This call writes and refreshes the
+        model, then returns a confirmation, not an old-to-new mapping. Read
+        nodes/elements back before reusing cached IDs; collision and reference
+        handling are owned by the bridge and are not preflighted here.
 
         Args:
-            ids: List of node IDs or string format (可选，原节点号)
-            new_ids: List of new node IDs (可选，新节点号)
+            ids: Old IDs, as an int/list/range string; pair with new_ids to
+                 limit the operation to these nodes (原节点号，局部改号须与 new_ids 成对)
+            new_ids: New IDs matching ids in order and count; None selects
+                     full-model renumbering (对应的新编号列表；None 会触发全模型重排)
         """
         try:
             provider.renumber_nodes(ids=ids, new_ids=new_ids)
@@ -243,6 +261,12 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         """
         Move nodes by an offset (平移节点).
 
+        Use update_node for absolute coordinates on one node; use update_node_id
+        or renumber_nodes for numbering without moving geometry. Each call adds
+        the offset again, so it is not idempotent. Returns a confirmation after
+        refreshing the model; re-read affected geometry before a new analysis.
+        (本工具按相对位移移动，重复会再次累加；绝对坐标用 update_node，改号用改号工具。)
+
         Args:
             ids: Node ID(s) to move. Supports int, list, or range string '1to10'.
                  (节点编号，支持整数、列表或范围字符串)
@@ -251,7 +275,7 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             offset_z: Z-direction offset in model units (Z方向偏移量)
 
         Example:
-            move_nodes("1to10", offset_z=-0.5)  # Move nodes 1-10 down by 0.5m
+            move_nodes("1to10", offset_z=-0.5)  # Shift Z by -0.5 in model length units
         """
         try:
             provider.move_nodes(
@@ -283,13 +307,19 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         """
         Modify several properties of ONE element in a single call (修改单元属性).
 
-        Writes to the model and refreshes it. Partial updates are safe: the
-        underlying qtmodel API overwrites every field on each call, so this tool
-        first re-reads the element's current data and fills in whatever you left
-        out. That costs one extra model query, and it fails if the element does
-        not exist.
+        Writes to the model and refreshes it. The underlying qtmodel API
+        overwrites the record, so this tool reads the current element once and
+        fills omitted fields present in that record. A missing element fails.
+        Fields absent from an older backend response still take SDK defaults
+        (for example plate_type); inspect the source record/build before relying
+        on preservation of those fields.
 
         One caveat: it handles ONE element — old_id is a single ID, not a range.
+        Both node_i and node_j are needed to replace connectivity; supplying
+        only one leaves it unchanged. This two-node input cannot reconnect a
+        plate; use the gateway's mdb.update_element_node with all four nodes.
+        Other plate properties can be updated while retaining its connectivity.
+        (改接须同时给 node_i/node_j，单给一个不改连接；板的四节点改接经网关完成。)
 
         When to use vs. siblings: several properties of one element at once
         here; ONE property across MANY elements → update_element_material /
@@ -297,8 +327,9 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         "1to50" range strings); connectivity only → update_element_nodes;
         renumbering only → update_element_id (no read-back, cheaper).
 
-        (写模型并刷新。部分更新是安全的：底层 qtmodel API 每次都整体覆盖全部字段，
-        因此本工具会先读回单元当前数据补齐——代价是多一次模型查询，单元不存在时失败。
+        (写模型并刷新。底层整体覆盖，本工具多一次查询补齐回读记录中已有的字段，
+        单元不存在时失败。旧版响应缺失的字段如 plate_type 仍可能取 SDK 默认值，
+        不能保证这类缺失字段无损保留。
         一点注意：一次只处理一个单元(old_id 是单个编号、不支持区间)。
         选型：一次改一个单元的多个属性用
         本工具；对大批单元改同一个属性用 update_element_material /
@@ -309,8 +340,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             old_id: Existing element ID, a single ID (待修改的单元编号，单个)
             new_id: New element ID, -1 to keep unchanged  (新单元编号，-1不修改)
             ele_type: Element type (单元类型): 1=beam(梁), 2=truss(杆), 3=cable(索), 4=plate(板)
-            node_i: New I-end node ID (新I端节点号)
-            node_j: New J-end node ID (新J端节点号)
+            node_i: New frame I-end node ID; only used together with node_j
+                    (新I端节点号，仅与 node_j 同时提供时生效)
+            node_j: New frame J-end node ID; only used together with node_i
+                    (新J端节点号，仅与 node_i 同时提供时生效)
             mat_id: New material ID (新材料编号)
             sec_id: New section ID, or thickness ID for a plate
                     (新截面编号；板单元时为板厚编号)
@@ -377,7 +410,11 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     def renumber_elements(element_ids: Any = None, new_ids: Any = None) -> str:
         """
         Renumber elements (单元编号重排序).
-        If no IDs are provided, renumbers all elements starting from 1 continuously.
+        Supply both lists with equal lengths for a local mapping; either None
+        makes the SDK renumber all elements from 1. For one ID use
+        update_element_id, or update_element to change properties as well.
+        Returns a confirmation, not a mapping; read elements and references back
+        before reusing old IDs (局部须两列成对，任一为 None 则全模型重排；完成后回读).
 
         Args:
             element_ids: List of element IDs or string format (可选，原单元号)
@@ -400,16 +437,19 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
         Writes to the model and refreshes it. FRAME ELEMENTS ONLY
         (beam/truss/cable). After the swap, "I-end" and "J-end" in every other
-        tool refer to the opposite physical ends of the member, and the sign of
-        member-end forces in results flips with them. Calling it twice restores
-        the original orientation.
+        tool refer to the opposite physical ends of the member. Re-read its
+        connectivity and local-axis-dependent loads, then rerun analysis before
+        interpreting new end forces. The SDK does not promise a sign flip for
+        every result component or automatic transformation of attached loads.
+        Returns a confirmation, not transformed results.
 
         When to use vs. siblings: reversing I/J here; rotating the local
         y/z-axes around the member axis without swapping ends →
         update_element_beta.
 
         (写模型并刷新。仅适用于杆系单元(梁/杆/索)。对调后，其它工具中的"I端""J端"
-        指向该构件相反的物理端，结果中的杆端力符号随之翻转。调两次即恢复原方向。
+        指向该构件相反的物理端。回读连接和局部荷载并重新求解后再解释端力；SDK
+        未承诺全部结果符号翻转或附属荷载自动转换。返回确认消息。
         选型：对调 I/J 用本工具；绕杆轴旋转局部 y/z 轴、不对调端点用
         update_element_beta。)
 
@@ -433,6 +473,11 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     ) -> str:
         """
         Change the material of one or more elements (修改单元材料).
+
+        Requires an existing material and elements. For several properties on
+        one element use update_element; this targeted batch operation does not
+        read and rebuild the whole element record. Returns a confirmation after
+        refresh, with no solve (单字段批量赋值；单个单元多字段修改用 update_element).
 
         Args:
             ids: Element ID(s). Supports int, list, or range string '1to50'.
@@ -459,6 +504,11 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     ) -> str:
         """
         Change the section of one or more frame elements (修改杆系单元截面).
+
+        Requires an existing section and frame elements. For a plate thickness
+        or several properties on one element use update_element. This calls the
+        frame-section endpoint directly; returns a confirmation after refresh,
+        without solving (杆系截面批量赋值；板厚或多字段修改用 update_element).
 
         Args:
             ids: Element ID(s). Supports int, list, or range string '1to50'.
@@ -488,6 +538,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
         The beta angle controls the local axis orientation of a beam/truss element.
         贝塔角控制单元局部坐标系方向。
+        Use revert_local_orientation to reverse I/J instead; use update_element
+        for several properties on one element. This sets an absolute angle,
+        not an angular increment, and returns a confirmation without solving.
+        (绝对角赋值；对调端点用 revert_local_orientation，多字段修改用 update_element。)
 
         Args:
             ids: Element ID(s). Supports int, list, or range string.
@@ -517,8 +571,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
         Writes to the model and refreshes it. Changes only the connectivity —
         material, section and beta angle are left alone. Both nodes must already
-        exist. Reconnecting changes the element's geometry, so anything derived
-        from its length (self-weight, cable unstressed length) changes with it.
+        exist. Reconnecting changes the element's geometry. Verify length-based
+        settings and local-axis loads, then solve again; this call does not
+        itself recompute results or explicitly update a cable's unstressed length.
+        Returns the requested connectivity in a confirmation, not a read-back.
 
         FRAME ELEMENTS ONLY (beam/truss/cable, 2 nodes). Plate elements need 4
         nodes, which this tool cannot express; use the escape hatch instead:
@@ -531,7 +587,8 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         on one element → update_element.
 
         (写模型并刷新。只改连接关系，材料/截面/贝塔角不动；两个节点须已存在。改接会改变
-        单元几何，凡由长度导出的量（自重、索无应力长度）都随之变化。仅适用于杆系单元
+        单元几何，应核对长度相关设置和局部荷载后重新求解；本调用不显式改索无应力长度，
+        也不重算结果，返回的是请求连接信息。仅适用于杆系单元
         (梁/杆/索，2 节点)；板单元需 4 节点，本工具无法表达，需经逃生舱调
         update_element_node。选型：改连接用本工具；改材料/截面/贝塔角用对应的
         update_element_* 窄工具；一次改多项用 update_element。)

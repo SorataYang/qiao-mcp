@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - Unreleased
+
+### Fixed
+
+- Correct self-weight routing, temperature profile shape/direction and selected-element
+  temperature semantics. `add_custom_temperature` now accepts native three-value rows
+  while preserving legacy two-value rows unchanged; no reference point is inferred.
+- Clarify model-wide renumbering, project-setting defaults, section calculations,
+  result prerequisites and backend-owned units/replacement behavior. Prestress
+  confirmation text reports the native input without an unverified kN conversion.
+- Correct tool annotations for known overwrites and align prompts/server guidance
+  with the actual tool names, write scope and read-back limitations.
+
+### Changed
+
+- Publish Args descriptions once in input schemas when extraction is complete;
+  preserve bilingual explanations, nested fields, examples, output contracts and
+  all 153 tool names. Ambiguous layouts keep their full descriptions.
+- Add the 0.3.1-based quality audit, tool-selection scenarios and local candidate
+  evidence. Engineering acceptance remains pending.
+
 ## [0.5.0] - 2026-10-12
 
 This release includes all changes since the published 0.3.3. The work previously

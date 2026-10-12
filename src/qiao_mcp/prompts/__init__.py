@@ -77,17 +77,18 @@ with the following parameters:
 
 ## Workflow Steps (工作流步骤)
 
-1. **Create Material (创建材料)**: Use `create_material` tool to add concrete material {material}
+0. **Inspect State (检查状态)**: Use `get_model_status` and work in an editable model.
+1. **Create Material (创建材料)**: Use `create_material` with name/database {material}; inspect existing names before replacing one.
 2. **Create Section (创建截面)**: Use `create_section` tool to create the beam cross-section
-3. **Create Nodes (创建节点)**: Use `create_nodes` tool to create support and midspan nodes
-4. **Create Elements (创建单元)**: Use `create_elements` tool to connect nodes with beam elements
+3. **Create Nodes (创建节点)**: Use `create_nodes_linear` for equal spacing or `create_nodes` for explicit coordinates; read actual IDs back.
+4. **Create Elements (创建单元)**: Use `create_beam_element`, or `create_beam_elements_linear` only for verified consecutive node IDs.
 5. **Set Supports (设置支承)**: Use `set_support` tool to add boundary conditions
    - Left support: pin (铰接) - fix DX, DY, DZ
    - Right support: roller (滑动) - fix DY, DZ
-6. **Apply Loads (施加荷载)**: Use `apply_nodal_force` or `apply_beam_distributed_load`
+6. **Apply Loads (施加荷载)**: Create the load group/case, then use `apply_nodal_force` for node point loads or `apply_beam_distributed_load` for beam line loads. Verify native units. Automatic self-weight uses `merge_operation_stage`; configure staged self-weight with `set_self_weight_stage`.
 7. **Validate Model (验证模型)**: Use `validate_model` to check for issues
 8. **Configure Analysis (配置分析)**: Use `configure_analysis` to set up the analysis
-9. **Review Results (查看结果)**: Use `get_analysis_results` to check deformation and forces
+9. **Solve and Review (求解及查看结果)**: Call `run_analysis`; only after success use `get_analysis_results` to check deformation and forces.
 
 Please proceed step by step, explaining each action and its engineering rationale.
 请按步骤进行，解释每个操作及其工程依据。
@@ -115,14 +116,14 @@ Please proceed step by step, explaining each action and its engineering rational
 
 1. **Parse Span Info**: Parse span arrangement "{spans}" to determine support locations
 2. **Create Material**: Add concrete material {material} with creep/shrinkage parameters
-3. **Create Sections**: Create variable depth cross-sections (box girder typical for continuous beams)
+3. **Create Sections**: Use `create_tapered_section` for end sections, then `add_tapper_section_group` for the variation law; `calc_section_property` only evaluates candidate geometry, while `calculate_section_property` rewrites all stored section properties.
 4. **Create Nodes**: Create nodes at supports, quarter-points, and midspan
 5. **Create Elements**: Connect with beam elements, assign tapered sections
 6. **Set Supports**: Apply appropriate boundary conditions at each pier/abutment
 7. **Define Construction Stages**: Set up cantilever construction stages if applicable
-8. **Apply Dead/Live Loads**: Self-weight, secondary dead load, vehicle loads
-9. **Add Prestressing**: Define tendon profiles and apply prestress forces
-10. **Validate & Analyze**: Check model and run staged construction analysis
+8. **Apply Dead/Live Loads**: Configure automatic self-weight with `set_self_weight_stage` and `merge_operation_stage`; create cases for secondary dead load and other loads.
+9. **Add Prestressing**: Define tendon profiles and use `apply_prestress`; cable axial-force and unstressed-length inputs use `add_initial_tension_load` and `add_cable_length_load`. Read tendon definitions with `get_tendon_info`; computed losses require `get_tendon_loss_results` after a successful solve.
+10. **Validate & Analyze**: Use `validate_model`, `configure_analysis` and then `run_analysis`; settings alone do not run a solve.
 11. **Review Results**: Check stresses, deformations at critical sections
 
 请注意连续梁的关键设计要点：跨中和支座处的弯矩分布、预应力筋布置、施工阶段分析。
@@ -167,20 +168,28 @@ Please proceed step by step, explaining each action and its engineering rational
 ## Workflow Steps (工作流步骤)
 
 1. **Review Model Structure**: Use `get_model_info` to understand the model components
-2. **Define Structure Groups**: Organize elements by construction sequence (按施工顺序组织结构组)
+2. **Define Structure Groups**: Use `add_to_structure_group` for nodes/elements; `add_elements_to_group` is the element-only convenience. Removing membership uses `remove_from_structure_group`, not deletion of the group or entities (按施工顺序组织结构组).
 3. **Define Boundary Groups**: Group boundaries that change during construction
 4. **Define Load Groups**: Group loads by application stage
 5. **Create Construction Stages**: Use `add_construction_stage` to define each stage with:
    - Duration (时长)
-   - Activated/deactivated structure groups (激活/钝化结构组)
-   - Activated/deactivated boundary conditions (激活/钝化边界条件)
-   - Applied loads (施加荷载)
-   - Temporary loads (临时荷载)
+   - Activated structure groups, ages and self-weight stages (激活结构组、龄期和计自重阶段)
+   - Activated boundary groups and load groups (激活边界组及荷载组)
+   The dedicated tool exposes activation only. For deactivation or temporary
+   loads, discover `mdb.add_construction_stage` with `list_qtmodel_api` and use
+   `call_qtmodel_api` with its actual signature (钝化/临时荷载需经网关，先查签名).
 6. **Configure Creep/Shrinkage**: Enable time-dependent analysis if concrete
 7. **Set Analysis Parameters**: Configure construction stage analysis settings
 8. **Validate**: Run `validate_model` before analysis
-9. **Analyze**: Run the construction stage analysis
-10. **Review Stage Results**: Check results at each critical stage
+9. **Analyze**: Call `run_analysis` explicitly and check successful completion.
+10. **Review Stage Results**: Use `get_analysis_results` with the required stage.
+    `switch_display_stage` selects the modeling view by name;
+    `change_construct_stage` selects the results view by index. Neither computes results.
+
+For temperature loads select uniform element temperature (`add_system_temperature`),
+linear gradient (`add_gradient_temperature`), code-based section parameters
+(`add_beam_section_temperature`) or an explicit profile (`add_custom_temperature`).
+Verify the relevant native units and temperature convention before applying values.
 
 关键要点：确保施工顺序逻辑正确，龄期设置合理，安装方法选择正确（变形法/无应力法）。
 """

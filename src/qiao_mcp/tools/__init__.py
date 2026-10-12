@@ -110,7 +110,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                        节点坐标列表，格式: [[x,y,z],...] 或 [[id,x,y,z],...]
             intersected: Whether to split elements at intersection points (是否交叉分割, 默认关)
             is_merged: Whether to merge duplicate nodes at the same position (是否合并重合节点)
-            merge_error: Merge tolerance in model units, default 1e-3 (合并容差，默认1mm)
+            merge_error: Merge tolerance in model units, default 1e-3
+                         (合并容差，默认0.001模型长度单位)
             numbering_type: Numbering strategy: 0=smallest unused ID, 1=existing maximum+1,
                 2=request start_id (编号方式：0最小空号、1最大号加一、2用户指定)
             start_id: Requested first ID, used only with numbering_type=2. QiaoTong may
@@ -458,11 +459,13 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Create a load case (创建荷载工况).
 
         A load case must exist before loads can be applied to it.
-        In QiaoTong, creating a load case named "自重" is sufficient for self-weight —
-        the software applies it automatically (see server instructions for details).
+        This creates a named case, without applying any load. For automatic
+        structural self-weight, configure set_self_weight_stage and include the
+        stage with merge_operation_stage; a case named "自重" does not enable it.
+        (本工具只建工况，不施加荷载；自动自重由自重阶段及运营阶段合并配置。)
 
         Args:
-            name: Load case name (工况名称, e.g. "自重", "SW", "恒荷")
+            name: Load case name (工况名称, e.g. "二期恒载", "风荷载")
             case_type: Load case type (荷载工况类型):
                 "施工阶段荷载" (default) | "恒载" | "活载" | "制动力" | "风荷载"
                 "体系温度荷载" | "梯度温度荷载"
@@ -553,6 +556,18 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Create a material in the bridge model (创建材料).
 
+        Use a database grade for code materials; mat_type=5 requires the four
+        custom properties. This defines a material, without assigning elements
+        or solving. Read get_model_data(kind="materials") for its actual ID,
+        then create elements or use update_element_material to assign it.
+        The SDK documents overwrite by name: inspect an existing material before
+        reusing its name. Returns a confirmation, not the new material ID.
+        (数据库材料指定牌号，自定义材料填四项参数；同名可覆盖，创建后回读编号再赋给单元。)
+        Composite constituents and creep-material bindings require additional
+        SDK options: discover mdb.add_material with list_qtmodel_api and use
+        call_qtmodel_api with verified parameters. The dedicated tool exposes
+        neither composite_info nor creep_id (组合主辅材及徐变绑定经网关设置).
+
         Args:
             name: Material name (材料名称)
             mat_type: Material type (材料类型): 1=Concrete(混凝土), 2=Steel(钢材),
@@ -620,6 +635,12 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         还需用 configure_analysis(do_creep=True) 打开。自定义函数须配 code_index=1000：
         先用 add_creep_function / add_shrink_function 建好，再把"函数名"传进来。
         creep_data 不是时间-数值表——那种格式属于 add_creep_function。)
+
+        Material binding via creep_id is available through mdb.add_material
+        in the gateway, not through create_material's exposed parameters.
+        Returns a confirmation; the SDK does not specify same-name replacement
+        rules here, so inspect the bridge before redefining a name.
+        (材料的 creep_id 绑定经网关；重名处理由桥通决定，先核对再重定义。)
 
         Args:
             name: Creep-and-shrinkage material name (收缩徐变材料名)
@@ -697,13 +718,30 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         scale_factor: float = 1.0,
     ) -> str:
         """
-        Add user-defined creep function (添加自定义徐变函数).
+        Store a named creep-coefficient curve (定义命名徐变系数曲线).
+
+        Use measured/custom creep data here; use add_time_parameter for a
+        code-based creep-and-shrinkage material, or add_shrink_function for
+        shrinkage strain. To use this curve, reference its name in
+        add_time_parameter(code_index=1000, creep_data=[[name, loading_age]]).
+        Creating the curve alone neither assigns it to elements nor solves.
+        (自定义徐变曲线用本工具；规范收缩徐变材料用 add_time_parameter。
+        曲线须被 code_index=1000 的材料引用，自身不分配给单元或启动分析。)
+
+        Writes the definition, refreshes the model and returns a confirmation.
+        Points are sent in their supplied order, including duplicates; the
+        bridge owns interpolation and same-name handling. For intentional
+        edits, discover mdb.update_creep_function with list_qtmodel_api first.
 
         Args:
-            name: Function name (函数名称)
+            name: Curve name later referenced by the time-dependent material
+                  (后续收缩徐变材料引用的函数名)
             creep_data: Creep coefficient over time [[time(days), coefficient], ...]
-                        (徐变系数表 [[天数, 徐变系数], ...])
-            scale_factor: Scale factor (比例系数)
+                        with at least one finite pair; order is preserved
+                        (徐变系数表 [[天数, 无量纲系数], ...]，至少一个有限数值对，保留顺序)
+            scale_factor: Curve scale factor forwarded unchanged to QiaoTong;
+                points are not pre-scaled locally. Scaling interpretation is
+                owned by the bridge (缩放因子单独传递，本地不乘点值，具体缩放含义由桥通确定)
         """
         try:
             creep_tuples = [tuple(item) for item in creep_data]
@@ -725,12 +763,22 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Add user-defined shrinkage function (添加自定义收缩函数).
 
+        Use shrinkage strain here and add_creep_function for creep coefficients.
+        Reference this name in add_time_parameter's shrink_data with code_index=1000
+        and the required creep-function references. The curve alone assigns no
+        material and does not solve. Order and duplicate points pass through;
+        interpolation and same-name handling belong to the bridge. Returns a
+        confirmation after refresh (收缩应变曲线须由自定义收缩徐变材料引用；保留点序，
+        不自动赋材或求解，插值/重名规则由桥通决定).
+
         Args:
             name: Function name (函数名称)
             shrink_data: Shrinkage strain over time [[time(days), strain], ...];
                          at least one point
                          (收缩应变表 [[天数, 应变], ...]，至少一个点)
-            scale_factor: Scale factor (比例系数)
+            scale_factor: Factor sent separately from the original points;
+                no local scaling. Verify its interpretation in QiaoTong
+                (比例系数单独传递，点值不在本地缩放，具体含义须核验)
         """
         try:
             provider.add_shrink_function(
@@ -757,6 +805,12 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     ) -> str:
         """
         Create a cross-section (创建截面) — one tool for all parametric section types.
+
+        This writes a section with SDK numbering defaults; the SDK can overwrite
+        an existing section ID. Read sections before and after calling, then use
+        the actual ID for elements. Initial property calculation belongs to the
+        bridge; the response only confirms the requested name (可覆盖已有截面号，
+        创建前后回读；初始特性由桥通计算，返回名称确认).
 
         Args:
             name: Section name (截面名称)
@@ -892,11 +946,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
         Writes to the model. The shape is described as a skeleton: each segment
         is a centreline with a wall thickness, which suits thin-walled steel
-        box and I-shapes. Segments should connect end-to-end to form a closed
-        or open wall path — they are not independent plates.
+        box and I-shapes. Describe the actual wall junctions; the wrapper does
+        not join or reorder segments. These are section-plane lines, not plate
+        elements in the global model.
 
-        Section properties are not computed on creation. Call
-        calculate_section_property afterwards so Area / Iy / Iz / J are current.
+        The wrapper calls add_section without supplied properties, leaving
+        initial property calculation to the bridge. Read the resulting section
+        with get_model_data(kind="section_property", sec_id=...). Use
+        calculate_section_property when all existing sections need recomputing.
+        The SDK supports overwrite of an existing section ID; this wrapper uses
+        SDK numbering defaults. Read back sections before and after creation.
+        Returns the requested name in a confirmation, not computed properties.
 
         When to use vs. siblings: thin-walled centreline shapes here; a solid
         outline given as polygon loops → create_polygon_section; properties you
@@ -904,8 +964,9 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         properties of a shape without adding a section → calc_section_property.
 
         (写模型。用"骨架"描述截面：每段是一条中心线加壁厚，适合薄壁钢箱、工字形等。
-        各段应首尾相连构成开口或闭口壁路径，不是彼此独立的板。创建时不计算截面特性，
-        之后需调 calculate_section_property 使面积/惯性矩等为最新。选型：薄壁中心线
+        按实际壁交点输入，本包装不连接或重排线段；初始特性计算交给桥通，创建后回读。
+        SDK 可覆盖已有截面，本工具沿用编号默认值；需全模型重算时调
+        calculate_section_property。返回确认消息，不含特性值。选型：薄壁中心线
         形状用本工具；实体轮廓按多边形环给出用 create_polygon_section；已知特性值直接
         建用 create_section_from_properties；只想算某形状的特性而不建截面用
         calc_section_property。)
@@ -943,13 +1004,24 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Create a section directly from its pre-calculated properties (通过截面特性直接创建截面).
 
+        Use create_section/create_polygon_section/create_line_width_section when
+        geometry should determine properties; calc_section_property only evaluates
+        candidate geometry. Here supplied properties skip bridge calculation.
+        SDK numbering defaults can overwrite an existing section; read back the
+        actual ID. Returns a confirmation without assigning elements.
+        (已有特性直接建截面，不自动由几何补算；回读编号后再赋给单元。)
+
         Args:
             name: Section name (截面名称)
             area: Cross-sectional area (横截面面积 Area)
             ix: Torsional constant (扭转惯性矩 Ixx)
             iy: Moment of inertia about y-axis (抗弯惯性矩 Iyy)
             iz: Moment of inertia about z-axis (抗弯惯性矩 Izz)
-            sec_property: Full list of properties (up to 29). If not provided, a basic list is auto-generated with Area, Ix, Iy, Iz.
+            sec_property: Complete native property vector; current SDK accepts
+                26 or 29 values in its UI/export order. When None, this wrapper
+                builds [area,0,0,ix,iy,iz] + 23 zeros; verify omitted properties
+                before analysis. A supplied list takes precedence over scalars.
+                (原生26/29项；省略时仅填面积/惯性矩，其余补零，不代表完整工程截面特性)
         """
         try:
             if sec_property is None:
@@ -1034,6 +1106,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         而非缩放系数：1.0 为线性变化，其它值为幂次非线性变化，它们不会去乘截面尺寸。
         本工具只暴露简单的幂次形式；参数化变截面组（按 UI 参数名分别指定规律，支持
         非线性/自定义分段/圆弧三种）需经逃生舱传 parameter_info。)
+
+        create_structure_group/add_to_structure_group manage membership only;
+        they do not define taper laws. The legacy spelling tapper is retained.
+        Returns a confirmation; same-name replacement rules are not specified
+        by the SDK (普通结构组不定义变化规律；重名行为须核验，保留历史拼写 tapper).
 
         Args:
             name: Group name (变截面组名称)
@@ -1130,19 +1207,19 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         the group must exist (create_boundary_group) and be activated by a stage
         (add_construction_stage's active_boundaries) to take effect.
 
-        Only the Iy/centroid-z pair is exposed. Upstream also accepts z-direction
-        factors, y-direction centroid shifts and axial factors, but its own
-        docstring labels all six identically, so their meaning is unverified —
-        reach them via call_qtmodel_api(api_object="mdb",
-        method="add_effective_width", ...) only after confirming against your
-        QiaoTong build.
+        Only the Iy/centroid-z pair is exposed. Current qtmodel also documents
+        Iz factors, local-y centroid shifts and axial-area factors. Discover
+        mdb.add_effective_width with list_qtmodel_api before using those options
+        through call_qtmodel_api; older SDK builds may document them differently.
+        The bridge controls repeated boundary definitions. Returns a confirmation;
+        no analysis runs here. Verify centroid-shift units in the bridge.
 
         (写模型并刷新。名字虽叫有效宽度，实际不施加任何宽度：它按单元两端折减截面 Iy、
         并可平移形心，以此体现翼缘有效宽度的折减。本项属于边界组、不是截面属性，因此在
         施工阶段分析中随边界组激活生效——边界组须已建立，且被某阶段的 active_boundaries
         激活。本工具只暴露 Iy 与形心 z 这一对；上游另有 z 向系数、y 向形心平移与轴向系数，
-        但其 docstring 把这六个参数的说明写成了同一句，含义无法确证，需先对照所用桥通版本
-        核实后再经逃生舱调用。)
+        当前 SDK 已说明这些参数；旧版说明可能不同，先检索真实签名再经网关调用。
+        形心偏移单位和重复定义策略须核对桥通；本调用只返回确认、不求解。)
 
         Args:
             element_ids: Element ID(s) — int, list, or "XtoYbyN" range string
@@ -1387,6 +1464,21 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Set the gravitational acceleration used for self-weight (设置重力加速度).
 
+        Changes the project setting and refreshes the model; it does not run
+        analysis or create a self-weight load case. Use set_self_weight_stage
+        to choose when a structure group's automatic self-weight participates,
+        then run_analysis when new results are required.
+        (本工具改总体重力参数；计自重阶段用 set_self_weight_stage，更新结果需另行分析。)
+
+        This is a call to mdb.update_project_setting, whose SDK also sends
+        empty project/personnel/date/description fields and reference
+        temperature 0. Existing settings are not read and merged here;
+        preservation of those fields is not guaranteed. If they matter, read
+        get_model_data(kind="project_metadata") or the UI and use the gateway
+        with a verified complete update_project_setting payload instead.
+        (SDK 同时下发工程信息空值和基准温度 0，本工具不回读合并；需保留自定义总体
+        设置时，先核对工程信息/UI，再经网关提交完整设置。) Returns a confirmation.
+
         Args:
             gravity: Gravitational acceleration in m/s² (重力加速度，单位 m/s²), default 9.8
         """
@@ -1415,39 +1507,41 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
         Adds one nodal load to load case case_name for every listed node and
         refreshes the model; create the load case first with create_load_case.
-        All six components act along the GLOBAL axes, so a downward load is a
-        NEGATIVE fz (real models use e.g. fz=-14550000 for 14550 kN down).
+        Components use global axes; with Z upward, downward force has negative
+        fz. Values are forwarded without unit conversion. The SDK does not
+        specify fixed force/moment units here: verify the bridge's native
+        convention using a known load before submitting engineering values.
 
-        Each call adds a new load rather than replacing an earlier one, so
-        calling twice on the same node in the same case superposes. There is no
-        tool to edit or delete one afterwards — use the escape hatch
-        call_qtmodel_api(api_object="mdb", method="update_nodal_force", ...),
-        which needs the load's index.
+        The SDK requests an automatic load index (-1), not an in-place update.
+        Read existing loads with query_model_data(request={"kind":"loads",
+        "load_family":"nodal_force"}) before repeating. To edit a known index,
+        discover mdb.update_nodal_force with list_qtmodel_api and call it through
+        call_qtmodel_api. Returns a confirmation, not reactions or a load ID.
 
         When to use vs. siblings: point loads on nodes here; loads spread along
         a beam → apply_beam_distributed_load; a prescribed settlement instead of
-        a force → add_support_settlement; structural self-weight → set_gravity
-        plus a load case named 自重.
+        a force → add_support_settlement; automatic structural self-weight →
+        set_self_weight_stage and merge_operation_stage.
 
         (向工况 case_name 的每个指定节点添加集中荷载并刷新模型；需先用
-        create_load_case 建好工况。六个分量都沿整体坐标轴，因此向下的荷载 fz 取负
-        （真实模型如 fz=-14550000 表示向下 14550 kN）。每次调用是新增而非替换，同一节点
-        同一工况调两次会叠加；事后没有修改/删除的专用工具，需经逃生舱调 update_nodal_force
-        并给出荷载编号。选型：节点集中力用本工具；沿梁分布用 apply_beam_distributed_load；
-        给定沉降而非力用 add_support_settlement；结构自重用 set_gravity 配合名为
-        自重的工况。)
+        create_load_case 建好工况。整体 Z 向上时，向下的 fz 取负；不换算单位，
+        固定力/力矩单位须从桥通核验。SDK 每次自动分配荷载编号，不是原位修改；
+        重复前回读，修改已知编号可经网关调 update_nodal_force。返回确认消息，
+        不含反力或荷载编号。节点集中力、沿梁分布力、强制沉降分别选本工具、
+        apply_beam_distributed_load、add_support_settlement；自动自重通过
+        set_self_weight_stage 和 merge_operation_stage 配置。)
 
         Args:
             node_id: Node ID(s) — int, list, or "XtoYbyN" range string
                      (节点编号，支持整数、列表或 "XtoYbyN" 范围字符串)
             case_name: Load case name, must already exist (荷载工况名，须已存在)
-            fx: Force along global X in N (整体X向力，单位N)
-            fy: Force along global Y in N (整体Y向力，单位N)
-            fz: Force along global Z in N; negative is downward
-                (整体Z向力，单位N；向下为负)
-            mx: Moment about global X in N·m (绕整体X轴弯矩，单位N·m)
-            my: Moment about global Y in N·m (绕整体Y轴弯矩，单位N·m)
-            mz: Moment about global Z in N·m (绕整体Z轴弯矩，单位N·m)
+            fx: Global X force, in verified native force units (整体X向力，桥通原生力单位)
+            fy: Global Y force, in verified native force units (整体Y向力，桥通原生力单位)
+            fz: Global Z force; negative when Z is upward and load is downward
+                (整体Z向力，桥通原生力单位；Z轴向上时向下为负)
+            mx: Moment about global X, in native moment units (绕整体X轴力矩，原生力矩单位)
+            my: Moment about global Y, in native moment units (绕整体Y轴力矩，原生力矩单位)
+            mz: Moment about global Z, in native moment units (绕整体Z轴力矩，原生力矩单位)
             group_name: Load group name, empty for the default group
                         (荷载组名，空则用默认荷载组)
         """
@@ -1514,22 +1608,32 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply a uniform whole-element temperature change (体系温度/整体升降温荷载).
+        Apply a uniform temperature to selected elements (均匀单元温度荷载).
 
-        Adds one temperature load to load case case_name for the given
-        element(s) and refreshes the model; create the load case first. The
-        whole section changes by the same amount (no gradient).
-        (向工况 case_name 的指定单元添加温度荷载并刷新模型；需先建好工况。整截面等量升降温、无梯度。)
+        Submits an element-temperature definition to an existing load case,
+        refreshes the model and returns a confirmation. Despite the MCP name,
+        it calls mdb.add_element_temperature, not the SDK's model-wide
+        add_system_temperature. The whole section has one value, no gradient.
+        (向已有工况提交指定单元的均匀温度并刷新；底层为 add_element_temperature，
+        不是 SDK 中不带单元选择的 add_system_temperature。)
 
-        When to use vs. siblings: uniform ΔT here; linear gradient →
+        When to use vs. siblings: uniform element temperature here; linear gradient →
         add_gradient_temperature; code-based section temperature →
         add_beam_section_temperature; arbitrary profile → add_custom_temperature.
-        (选型：均匀升降温用本工具；线性梯度用 add_gradient_temperature；规范梁截面温度用 add_beam_section_temperature；任意分布用 add_custom_temperature。)
+        The SDK labels the value "final temperature"; this wrapper does not
+        subtract a reference temperature or convert an intended ΔT. Confirm
+        that convention in the target bridge. Repeated-call replacement or
+        accumulation is not specified by this SDK; inspect existing loads
+        before repeating. (SDK 称参数为最终温度，本工具不做温差换算；重复调用行为
+        未由 SDK 定义，须核对桥通中的基准温度与既有荷载。)
 
         Args:
             element_id: Element ID(s) (单元编号)
             case_name: Load case name (荷载工况名)
-            temperature: Temperature value (温度变化值，如升温+20，降温-20)
+            temperature: Native uniform element-temperature value, forwarded
+                         unchanged; the SDK describes a final temperature,
+                         not an automatically converted ΔT
+                         (原样传递的均匀单元温度；SDK 称最终温度，不自动把温差换算为终温)
             group_name: Load group name (荷载组名)
         """
         try:
@@ -1562,10 +1666,14 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Temperature varies linearly through the section depth.
         (向工况 case_name 的指定单元添加梯度温度并刷新模型；需先建好工况。温度沿截面高度线性变化。)
 
-        When to use vs. siblings: linear gradient here; uniform ΔT →
+        When to use vs. siblings: linear gradient here; uniform element temperature →
         add_system_temperature; code-based section temperature →
         add_beam_section_temperature; arbitrary profile → add_custom_temperature.
-        (选型：线性梯度用本工具；均匀升降温用 add_system_temperature；规范梁截面温度用 add_beam_section_temperature；任意分布用 add_custom_temperature。)
+        (选型：线性梯度用本工具；均匀单元温度用 add_system_temperature；规范梁截面温度用 add_beam_section_temperature；任意分布用 add_custom_temperature。)
+        Returns a confirmation without solving. Values and signs pass through;
+        verify temperature units and gradient sign in the target bridge. The SDK
+        does not specify how repeated definitions combine or replace each other.
+        (返回确认，不求解；单位、梯度正负和重复定义处理须按桥通核验。)
 
         Args:
             element_id: Element ID(s) (单元编号，支持范围字符串)
@@ -1597,7 +1705,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         element_id: int | list[int] | str,
         case_name: str,
         orientation: Literal[1, 2] = 1,
-        temperature_data: list[TwoNumbers] | None = None,
+        temperature_data: list[tuple[Literal[1, 2], float, float] | TwoNumbers] | None = None,
         group_name: str = "",
     ) -> str:
         """
@@ -1605,19 +1713,34 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
         Adds a custom temperature load to load case case_name for the given
         element(s) and refreshes the model; create the load case first. The
-        profile is defined by [distance, temp_diff] points along the section.
-        (向工况 case_name 的指定单元添加自定义温度并刷新模型；需先建好工况。分布由 [距离, 温差] 数据点沿截面给出。)
+        SDK profile rows are [reference, height, temperature], where reference
+        is 1=top or 2=bottom. For example [[1,0.25,12.5],[2,0.10,5.0]]. Rows are
+        forwarded in order without interpolation, sorting or unit conversion.
+        (需已有工况和梁单元；每行是 [参考位置1顶/2底, 高度, 温度]，按输入顺序原样提交。)
 
-        When to use vs. siblings: arbitrary/measured profile here; uniform ΔT →
+        When to use vs. siblings: arbitrary/measured profile here; uniform element temperature →
         add_system_temperature; linear gradient → add_gradient_temperature;
         code-based section temperature → add_beam_section_temperature.
         (选型：任意/实测分布用本工具；均匀用 add_system_temperature；线性梯度用 add_gradient_temperature；规范梁截面温度用 add_beam_section_temperature。)
 
+        Legacy two-number rows remain accepted and pass through unchanged for
+        compatibility, but the current SDK documents only three-number rows;
+        no top/bottom reference is inferred. Use triples for new calls. None
+        omits the profile argument; [] sends an empty profile. The SDK does not
+        define their bridge behavior, fixed units, interpolation or repeated
+        load handling. Verify those in the target bridge. Returns a confirmation
+        without solving. (兼容旧两列透传，但不推断顶底基准，新调用用三列；None 省略参数、
+        [] 传空表，具体空值行为、单位、插值及重复定义策略须核验，返回确认不求解。)
+
         Args:
             element_id: Element ID(s) (单元编号)
             case_name: Load case name (荷载工况名)
-            orientation: Direction of temperature change (温度方向, 1=Y向, 2=Z向)
-            temperature_data: Custom temperature points [[distance, temp_diff], ...] (温度数据点)
+            orientation: Direction in local element coordinates: 1=Z, 2=Y
+                         (单元局部坐标方向：1=Z向，2=Y向)
+            temperature_data: Rows [[reference, height, temperature], ...],
+                reference 1=top or 2=bottom; use bridge-verified native units.
+                Legacy pairs pass through unchanged; None omits, [] sends empty.
+                (三列：顶底基准、高度、温度；旧两列兼容透传，空值不推断)
             group_name: Load group name (荷载组名)
         """
         try:
@@ -1649,15 +1772,20 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Apply code-based beam section temperatures (梁截面温度荷载，按规范).
 
-        Adds a code-defined section temperature load to load case case_name
+        Submits a code-defined section temperature load to load case case_name
         for the given element(s) and refreshes the model; create the load case
         first. Uses standard design-code parameters (t1–t4 at code depths).
         (向工况 case_name 的指定单元添加规范梁截面温度并刷新模型；需先建好工况。按规范用 t1–t4 等标准参数。)
 
         When to use vs. siblings: design-code section temperatures here;
-        uniform ΔT → add_system_temperature; linear gradient →
+        uniform element temperature → add_system_temperature; linear gradient →
         add_gradient_temperature; arbitrary profile → add_custom_temperature.
         (选型：规范梁截面温度用本工具；均匀用 add_system_temperature；线性梯度用 add_gradient_temperature；任意分布用 add_custom_temperature。)
+
+        Returns a confirmation. The SDK exposes t1–t4 and thick but does not
+        document the full code-specific profile layout, fixed units, or
+        repeated-call policy. Use values verified in the selected code's
+        bridge dialog/export; do not infer depths or overwrite semantics.
 
         Args:
             element_id: Element ID(s) (单元编号)
@@ -1666,11 +1794,13 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 2=AASHTO 2017 (规范号：1公路规范2015、2美规2017)
             sec_type: Material category: 1=concrete, 2=composite beam
                 (截面材料类别：1混凝土、2组合梁；不是截面形状编号)
-            t1: Temperature difference param 1 (各部位温差参数1)
-            t2: Temperature difference param 2 (各部位温差参数2)
-            t3: Temperature difference param 3 (各部位温差参数3)
-            t4: Temperature difference param 4 (各部位温差参数4)
-            thick: Thickness parameter (厚度参数)
+            t1: First native temperature-profile parameter from the selected
+                code's dialog/export (所选规范界面/导出中的第 1 个温度参数)
+            t2: Second native temperature-profile parameter (同一规范的第 2 个温度参数)
+            t3: Third native temperature-profile parameter (同一规范的第 3 个温度参数)
+            t4: Fourth native temperature-profile parameter (同一规范的第 4 个温度参数)
+            thick: Native thickness parameter for the selected profile;
+                   verify its unit in the bridge (所选温度图式的厚度参数，单位须在桥通确认)
             group_name: Load group name (荷载组名)
         """
         try:
@@ -1713,11 +1843,18 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         建好工况。常用于斜拉桥/悬索桥索力。选型：给定"力"用本工具，给定"无应力索长"
         用 add_cable_length_load，或将 application_type 设为 3 由本工具转为索长张拉。)
 
+        Returns a confirmation; it does not solve or return the resulting
+        cable force. The SDK does not specify fixed force units or whether
+        repeated definitions replace earlier ones. Use bridge-verified values
+        and inspect the existing load before repeating; no unit conversion
+        is performed here.
+
         Args:
             element_id: Element ID(s) — int, list, or "XtoYbyN" range string
                         (单元编号，支持整数、列表或 "XtoYbyN" 范围字符串)
             case_name: Load case name, must already exist (荷载工况名，须已存在)
-            tension: Initial tension force in N (初始拉力，单位N)
+            tension: Initial tension force in the bridge API's native unit;
+                     the SDK declares no fixed N/kN unit (初始拉力，使用经桥通核验的原生单位)
             tension_type: How `tension` is interpreted (张拉类型):
                           0=increment(增量，叠加到现有索力)
                           1=total(全量，直接指定最终索力，默认)
@@ -1766,11 +1903,18 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         建好工况。索力由给定长度反算得出——本工具控制长度而非力。选型：给定"长度"用
         本工具，给定"力"用 add_initial_tension_load。)
 
+        Returns a confirmation, not the resulting cable force. Length is
+        forwarded without conversion; the SDK does not declare a fixed unit
+        or repeated-definition policy. Use a value verified against the
+        bridge's cable-length input and inspect existing loads before reuse.
+
         Args:
             element_id: Element ID(s) — int, list, or "XtoYbyN" range string
                         (单元编号，支持整数、列表或 "XtoYbyN" 范围字符串)
             case_name: Load case name, must already exist (荷载工况名，须已存在)
-            length: Cable length value in m (索长，单位m)
+            length: Cable length input in the bridge API's native unit;
+                    verify it in the bridge, as the SDK gives no fixed unit
+                    (索长输入，SDK 未声明固定单位，须先核对桥通接口使用的单位)
             tension_type: How `length` is interpreted (张拉类型):
                           0=increment(增量，相对现有索长的变化量)
                           1=total(全量，直接指定目标索长，默认)
@@ -1817,6 +1961,12 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         建好工况。可选参数取决于 load_type：集中荷载(1、2)需 list_xy；分布荷载(3、4)
         需 load_place。选型：逐单元加板荷载用本工具；按平面荷载图式分配到多个板单元
         用 add_distribute_plane_load；梁单元用 apply_beam_distributed_load。)
+
+        Requests automatic load IDs and returns a confirmation. Repeating
+        this add call is not an update by ID. Magnitudes and distances are
+        passed without conversion; the SDK does not define fixed units for
+        each load family. Verify the bridge convention for force vs. moment
+        and point vs. distributed loading before importing values.
 
         Args:
             element_id: Plate element ID(s) — int or list (板单元编号，整数或列表)
@@ -1897,6 +2047,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         局部y轴上一点，顺序颠倒会导致图式旋转。选型：可复用的面荷载图式用本工具；
         逐个单元施加用 add_plate_element_load。)
 
+        Returns a confirmation. Omitting frame points delegates their
+        defaults to the bridge; Qiao-MCP does not construct a missing frame.
+        Existing-ID and repeated-definition behavior are not specified by
+        the SDK, so inspect the bridge before reusing an index or retrying.
+
         Args:
             index: Load ID; pass -1 to auto-assign
                    (荷载编号，传 -1 由程序自动编号)
@@ -1910,12 +2065,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             plate_ids: Plate elements to receive the load; omit to load ALL
                        plate elements in the model
                        (承受该荷载的板单元；不传则作用于模型中全部板单元)
-            coord_system: Direction of the load, default 3 (global Z). Upstream
-                          leaves the enum undocumented for this API;
-                          add_plate_element_load uses 1–3=global X/Y/Z and
-                          4–6=local X/Y/Z.
-                          (荷载方向坐标系，默认 3(整体Z)。上游未对本 API 记录取值表；
-                          add_plate_element_load 的约定是 1–3 整体X/Y/Z、4–6 局部X/Y/Z。)
+            coord_system: Native load-direction code, default 3. The SDK does
+                          not document this API's enum; use a bridge-verified
+                          value rather than borrowing another tool's mapping
+                          (原生方向代码，默认 3；本接口未给枚举表，使用桥通已核验取值)
             group_name: Load group name, empty for the default group
                         (荷载组名，空则用默认荷载组)
         """
@@ -1953,16 +2106,33 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Apply support settlement / nodal displacement load (支座沉降/节点强制位移).
 
+        Apply a prescribed displacement to existing nodes in an existing load
+        case. Use set_support to define restraints, or apply_nodal_force for
+        forces; this tool does not create either a restraint or a node.
+        (已有节点的强制位移荷载用本工具；约束用 set_support，节点力用 apply_nodal_force。)
+
+        Sends [dx,dy,dz,rx,ry,rz] without unit conversion, adds a displacement
+        record using the SDK's automatic ID, refreshes the model and returns
+        a confirmation. Repeating the call is not an update of a known record;
+        use query_model_data(request={"kind":"loads","load_family":"nodal_displacement"})
+        to inspect records first. Verify native displacement/rotation units
+        in the bridge before converting imported values; the SDK does not
+        specify fixed units for this command.
+        (原样发送六个位移/转角分量，自动编号并刷新；重复调用不能当作原位修改。
+        输入采用桥通原生单位，SDK 未声明本命令的固定单位，导入前须在桥通确认。)
+
         Args:
-            node_id: Node ID(s) (节点编号)
-            case_name: Load case name (荷载工况名)
+            node_id: Existing node IDs: int, list, or "XtoYbyN" range string
+                     (已有节点编号，整数、列表或范围字符串)
+            case_name: Existing load case name (已存在的荷载工况名)
             dz: Settlement in Z direction (Z向沉降量/下沉为负值)
             dx: Displacement in X direction (X向强制位移)
             dy: Displacement in Y direction (Y向强制位移)
             rx: Rotation around X axis (绕X轴强制转角)
             ry: Rotation around Y axis (绕Y轴强制转角)
             rz: Rotation around Z axis (绕Z轴强制转角)
-            group_name: Load group name (荷载组名)
+            group_name: Load group name; empty uses the SDK default group
+                        (荷载组名，空字符串使用 SDK 默认荷载组)
         """
         try:
             displacement_info = [dx, dy, dz, rx, ry, rz]
@@ -2003,8 +2173,9 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         qtmodel 2.9+ and are rejected on older builds rather than merged.
         rot_x / rot_y / rot_z are rotational mass moments of inertia.
 
-        Only matters once an eigenvalue run exists: enable it with
-        configure_analysis(do_vibration=True). Mass from dead load is usually
+        Create mass before the relevant vibration/dynamic analysis; to include
+        eigenvalue analysis use configure_analysis(do_vibration=True). This
+        tool returns a confirmation and does not start a solve. Mass from dead load is usually
         supplied separately by add_load_to_mass; use this tool for discrete
         items the model does not carry as load (equipment, ballast blocks).
 
@@ -2015,10 +2186,15 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         (写模型并刷新。这是质量属性、不是荷载：不属于任何荷载工况，只贡献惯性、
         不产生静力。实体点质量在各方向相同，用 mass 给出；只有刻意让某方向不同时
         （如仅竖向参与）才用 mass_x/mass_y/mass_z 覆盖，需 qtmodel 2.9+，旧版直接拒绝
-        而不静默合并。rot_x/rot_y/rot_z 为转动惯量。仅在有自振分析时起作用，用
-        configure_analysis(do_vibration=True) 开启。恒载的质量通常由 add_load_to_mass
+        而不静默合并。rot_x/rot_y/rot_z 为转动惯量。应在自振/动力分析前定义；自振分析用
+        configure_analysis(do_vibration=True) 开启，本调用仅返回确认、不求解。恒载的质量通常由 add_load_to_mass
         单独提供；本工具用于模型未按荷载计入的离散物件。选型：节点离散质量用本工具；
         把已有工况折算为质量用 add_load_to_mass；静力向下的力用 apply_nodal_force。)
+
+        Mass/inertia values use verified native bridge units without scaling.
+        The SDK does not define repeated assignment behavior here; read the
+        existing nodal mass in QiaoTong before adding the same item again.
+        (质量与惯量均不换算单位，重复赋值策略须核对桥通，避免重复计入同一物件。)
 
         Args:
             node_id: Node ID(s) — int, list, or "XtoYbyN" range string
@@ -2136,9 +2312,9 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         self-vibration analysis enabled (configure_analysis with
         do_vibration=True) for results to be meaningful.
 
-        Usual practice is one case per direction — a separate case with only
-        info_x, another with only info_y — rather than one case driving all
-        three axes at once.
+        Supply only the directions required by the intended loading definition;
+        omitted directions use the SDK's empty defaults. Multi-direction input
+        is supported; choose its combination kind explicitly.
 
         Response-spectrum modal combination (SRSS/CQC) is NOT set here; it lives
         in the global spectrum setting, reachable via
@@ -2148,10 +2324,15 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
         (添加工况并刷新模型。info_x/y/z 引用的反应谱函数须已由 add_spectrum_function
         建好；模型还需有质量来源(add_load_to_mass / add_nodal_mass)并开启自振分析
-        (configure_analysis 的 do_vibration=True)，结果才有意义。惯例是一个方向一个
-        工况，而非一个工况同时驱动三个方向。振型组合方式(SRSS/CQC)不在本工具设置，
+        (configure_analysis 的 do_vibration=True)，结果才有意义。按目标加载定义给出
+        方向，省略方向取 SDK 空默认；多方向输入须明确组合方式。振型组合方式(SRSS/CQC)不在本工具设置，
         属全局反应谱设置，需经逃生舱 call_qtmodel_api 调
         update_response_spectrum_setting。)
+
+        For an explicit time-domain input choose add_time_history_case; ordinary
+        static cases use create_load_case. Returns a confirmation without solving;
+        inspect existing names before repeating, as duplicate handling belongs
+        to QiaoTong (时域与普通静力工况分别用上述工具，返回确认不求解，重名前先核对).
 
         Args:
             name: Case name (工况名称)
@@ -2206,6 +2387,12 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         要作为地震输入使用，需先建时程工况 add_time_history_case，再经逃生舱调
         add_ground_motion 把函数绑定到某个方向。选型：时域曲线用本工具；
         反应谱曲线用 add_spectrum_function。)
+
+        Returns a confirmation. Point order and values are passed through;
+        there is no sorting, time shift or unit conversion. The SDK names
+        the physical quantity but does not specify its fixed unit or
+        same-name replacement policy. Preserve verified bridge input units
+        and inspect a named function before attempting a replacement.
 
         Args:
             name: Function name, referenced later by add_ground_motion
@@ -2273,6 +2460,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         方法需经逃生舱先 add_dynamic_damping 定义阻尼，再调 add_time_history_case
         并传 damping 等参数。选型：时域分析用本工具；反应谱分析用 add_spectrum_case。)
 
+        Returns a confirmation, not time-response data. The SDK does not specify
+        duplicate-name handling; inspect the bridge before redefining this case.
+        (返回工况创建确认，不含时程结果；重名策略需核对桥通。)
+
         Args:
             name: Case name, referenced by add_ground_motion
                   (工况名称，由 add_ground_motion 引用)
@@ -2323,6 +2514,13 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         以及采用预应力还是无应力几何，都需经逃生舱设置。不指定 variable_cases
         时屈曲分析通常没有可变荷载。)
 
+        Use configure_analysis for the other global solve switches, or
+        update_construction_stage to change a stage's contents. This sends SDK
+        defaults for unexposed buckling fields without reading/merging previous
+        settings; do not assume an earlier gateway configuration is preserved.
+        Returns a confirmation (区别于全局分析开关和阶段内容修改；未暴露字段沿用 SDK
+        默认值，不回读合并，不能保证保留此前网关设置，返回确认消息).
+
         Args:
             do_analysis: Enable linear buckling analysis (是否进行线性屈曲分析)
             mode_count: Number of buckling modes to compute, must be positive
@@ -2359,7 +2557,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
         Appends a stage after the existing ones and refreshes the model. Every
         group named here must already exist (create_structure_group /
-        create_boundary_group / create_load_case). Stages are cumulative: what a
+        create_boundary_group / create_load_group). Stages are cumulative: what a
         stage activates stays active in later stages unless deactivated.
 
         LIMITATION — this tool can only ACTIVATE. Deactivation (钝化) of
@@ -2384,6 +2582,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         选型：建阶段用本工具；改已有阶段用 update_construction_stage；删用
         remove_construction_stage；合并为运营阶段用 merge_operation_stage。
         还须用 configure_analysis(do_construction_stage=True) 打开施工阶段分析。)
+
+        Empty/None activation lists are omitted by this wrapper. Duplicate-name
+        handling belongs to the bridge; inspect existing stages before repeating.
+        Returns the requested stage name in a confirmation, not a queried ID.
+        (空激活列表等同省略；重名策略由桥通决定，返回请求阶段名而非回读编号。)
 
         Args:
             name: Stage name (施工阶段名称)

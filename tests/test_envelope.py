@@ -2,10 +2,12 @@
 
 import asyncio
 import json
+from unittest.mock import patch
 
 import pytest
 from mcp.server.fastmcp import Context, FastMCP
 
+from qiao_mcp.tools.catalog import register_tool_catalog
 from qiao_mcp.tools.envelope import (
     ToolError,
     ToolInputError,
@@ -205,3 +207,102 @@ def test_context_param_excluded_but_others_described():
     props = tool.inputSchema["properties"]
     assert "ctx" not in props  # Context 注入参数不进 schema，注解须保持原样
     assert "求解总时限秒数" in props["read_timeout"]["description"]
+
+
+def test_compact_description_keeps_nested_fields_examples_and_original_docstring():
+    original = []
+
+    def register(mcp, provider):
+        @mcp.tool()
+        def configure(kind: str, settings: dict) -> str:
+            """Choose the setting family (选择设置类别); inspect with get_model_data.
+
+            Args:
+                kind: Setting group (设置类别):
+                    limit_state:
+                        fatigue (MPa), steel_bar
+                settings: Complete values; [] clears the selection (完整参数)
+
+            Returns:
+                Confirmation only (仅返回确认).
+
+            Example:
+                configure(kind="limit_state", settings={"fatigue": 10})
+
+            Notes:
+                get_check_data reads the result (读取结果).
+            """
+            return "ok"
+
+        original.append(configure.__doc__)
+
+    m = FastMCP("compact")
+    register_tools_with_envelope(m, register, None)
+    tool = asyncio.run(m.list_tools())[0]
+    assert "Args:" in original[0]  # The source remains available for parameter injection.
+    assert "Args:" not in tool.description
+    assert tool.inputSchema["properties"]["kind"]["description"] == (
+        "Setting group (设置类别):\nlimit_state:\n    fatigue (MPa), steel_bar"
+    )
+    assert "[] clears" in tool.inputSchema["properties"]["settings"]["description"]
+    assert "Returns:" in tool.description and "仅返回确认" in tool.description
+    assert 'configure(kind="limit_state"' in tool.description
+    assert "get_model_data" in tool.description and "get_check_data" in tool.description
+    assert _call_json(m, "configure", {"kind": "limit_state", "settings": {}})["status"] == "success"
+
+
+@pytest.mark.parametrize("doc", [
+    "Summary.\n\nArgs:\n    name: A name.",  # missing count
+    "Summary.\n\nArgs:\n    name: A name.\n    count: Count.\n    old: Orphan.",
+    "Summary.\n\nArgs:\n    name: First.\n    name: Second.\n    count: Count.",
+    "Summary.\n\nArgs:\n    Intro before parameters.\n    name: A name.\n    count: Count.",
+    "Summary.\n\nArgs:\n    name: A name.\n    count: Count.\n\nArgs:\n    old: Old.",
+])
+def test_ambiguous_or_incomplete_args_layout_keeps_full_description(doc):
+    def register(mcp, provider):
+        def example(name: str, count: int = 1) -> str:
+            return name * count
+
+        example.__doc__ = doc
+        mcp.tool()(example)
+
+    m = FastMCP("fallback")
+    register_tools_with_envelope(m, register, None)
+    assert asyncio.run(m.list_tools())[0].description == doc
+
+
+def test_explicit_description_is_respected_while_parameters_are_still_injected():
+    def register(mcp, provider):
+        @mcp.tool(description="Explicit public description.")
+        def example(name: str) -> str:
+            """Original summary.
+
+            Args:
+                name: Name with domain semantics (名称).
+            """
+            return name
+
+    m = FastMCP("explicit")
+    register_tools_with_envelope(m, register, None)
+    tool = asyncio.run(m.list_tools())[0]
+    assert tool.description == "Explicit public description."
+    assert "domain semantics" in tool.inputSchema["properties"]["name"]["description"]
+
+
+def test_catalog_compaction_preserves_all_input_output_metadata_and_references(fake_provider):
+    full = FastMCP("full")
+    with patch("qiao_mcp.tools.envelope._compact_description", return_value=None):
+        register_tool_catalog(full, fake_provider)
+    compact = FastMCP("compact")
+    register_tool_catalog(compact, fake_provider)
+    before = {t.name: t.model_dump() for t in asyncio.run(full.list_tools())}
+    after = {t.name: t.model_dump() for t in asyncio.run(compact.list_tools())}
+    assert before.keys() == after.keys()
+    for name in before:
+        old_description = before[name].pop("description")
+        new_description = after[name].pop("description")
+        assert before[name] == after[name], name
+        field_text = json.dumps(after[name]["inputSchema"], ensure_ascii=False)
+        for reference in before:
+            if reference in old_description:
+                assert reference in new_description or reference in field_text, (name, reference)
