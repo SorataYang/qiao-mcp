@@ -55,7 +55,9 @@ them; this behavior also applies to older SDKs that support these options.
 
 ### 0.5.0: queries, transversal analysis, check snapshots and international loads (unreleased)
 
-This version completes B1–B4 with 20 new tools and one workflow prompt.
+This version completes B1–B4 with 20 new tools and one workflow prompt. The published
+baseline is 0.3.3; unpublished work previously labeled 0.4.0 is included in the planned
+0.5.0 release. See [upgrading from 0.3.3](#upgrading-from-033).
 
 `get_model_edit_readiness` is read-only and remains accessible when model operations are blocked. Its `success`
 status means a response was received, not that editing is safe; inspect the raw
@@ -390,17 +392,16 @@ where it belongs: in the dependency constraint.
 | Qiao-MCP           | qtmodel       | QiaoTong software                          |
 |--------------------|---------------|--------------------------------------------|
 | 0.5.0 (unreleased)  | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
-| 0.4.0              | 2.6.3 – 2.9.x, not 2.9.0 | 2.6.3+; with 2.9.x, QiaoTong must report model state |
 | 0.3.2 – 0.3.3     | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
 | 0.3.0 – 0.3.1      | 2.6.3 – 2.6.x | 2.6.3 (exact match enforced by qtmodel)    |
 | 0.2.x              | 2.5.0 – 2.5.x | 2.5.0                                      |
 
 Known lower-bound limitation: qtmodel 2.6.3 lacks `get_load_group_names`, so the
-one-shot bridge workflow tools cannot run on that version. This predates 0.4.0's
-parameter additions; use 2.6.4 or later for those workflows (2.9.0 remains excluded).
-The dependency range does not guarantee every new tool on every build: missing methods
-or incompatible parameters fail explicitly before writes. PyPI 2.9.2 and reference
-`0687ffe` each pass all 1,733 offline tests. Engineering validation against QiaoTong
+one-shot bridge workflow tools cannot run on that version. This is an existing
+limitation; use 2.6.4 or later for those workflows (2.9.0 remains excluded). The
+dependency range does not guarantee every new tool on every build: missing methods or
+incompatible parameters fail explicitly before writes. PyPI 2.9.2 and reference
+`0687ffe` each pass the complete offline suite. Engineering validation against QiaoTong
 remains pending; these tests verify software contracts.
 
 How the two sides are matched changed in qtmodel 2.8.2:
@@ -421,11 +422,29 @@ model-state guard is skipped (`guard_unavailable`) and tools behave as in 0.3.1;
 with it, every tool is gated on the state QiaoTong reports. qtmodel 2.9.0 is the
 first PyPI release that includes it, so on 2.9.x the guard is always active.
 
+### Upgrading from 0.3.3
+
+0.5.0 includes an incompatible correction to `add_nodal_mass`:
+
+- Use `mass` for equal translational mass along X, Y and Z, for example
+  `{"node_id": 1, "mass": 10}`. Optional `mass_x`/`mass_y`/`mass_z` override
+  individual directions; omitted directions use `mass`, whose default is zero.
+- `mass_rm` is removed. Specify the intended rotational inertia axis with
+  `rot_x`, `rot_y` or `rot_z`; do not mechanically rename the old parameter.
+- Unequal directional masses require an SDK with `mass_xyz` support (the supported
+  PyPI 2.9 builds are 2.9.1 and 2.9.2). Older builds reject them before writing.
+
+Earlier versions put some translational mass arguments into rotational fields.
+Upgrading the package does not repair existing models: read back previously
+written nodal masses and check them against the intended engineering values.
+Also review the [changelog](CHANGELOG.md) for stricter creep/material validation,
+fractional stage durations and the model-state requirements above.
+
 ### Upstream qtmodel 2.9 alignment
 
 The current reference is `0687ffe`, labeled 2.9.2 but different from the PyPI 2.9.2
-wheel. The 0.4.0 baseline was `8ae651e`, whose package matched that wheel apart from its
-older version label.
+wheel. The earlier local baseline was `8ae651e`, whose package matched that wheel apart
+from its older version label.
 
 - **Write safety.** A write whose reply is lost raises `CommandOutcomeUnknownError`
   and is no longer resent. Qiao-MCP reports it as an unknown outcome and tells the
@@ -445,8 +464,8 @@ older version label.
   and `create_live_load_case` adds the per-sub-case boolean list `sub_case_optimized`.
   Omitted options keep legacy behavior; explicit options are checked against the
   installed signature before writing. Fractional stage creation is rejected on
-  builds that would truncate it. These parameter additions shipped in 0.4.0;
-  the current 0.5.0 catalog has 153 tools.
+  builds that would truncate it. These additions are included in 0.5.0;
+  its catalog has 153 tools.
 - **Operation settings and cascade deletion.** `configure_operation_stage`
   exposes all four case lists, including transversal cases. The gateway method
   `update_operation_stage_setting` remains available; supply all intended case
