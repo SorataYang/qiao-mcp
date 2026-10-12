@@ -1,0 +1,1050 @@
+{
+  "schema": 1,
+  "date": "2026-10-12",
+  "scope": "Installed-build live smoke test and targeted numerical checks; not complete B1-B4 engineering acceptance.",
+  "tested_artifact": {
+    "qiao_mcp_version": "0.5.0",
+    "source_commit": "964df18101d3b7c95c6677f8ae2efdfdd23b96e0",
+    "wheel_filename": "qiao_mcp-0.5.0-py3-none-any.whl",
+    "wheel_sha256": "f0f550a48ce5c0a9d10d21ca54e2f9b980120849daf549651c01e19790005928",
+    "qtmodel_source": "PyPI 2.9.2",
+    "mcp_version": "1.29.0",
+    "mcp_catalog_tools": 153
+  },
+  "bridge": {
+    "api_version": "2.9.2",
+    "software_version": "26.1.116.1010",
+    "process_id": 17256,
+    "model_state_schema": 2,
+    "model_edit_preparation": 1
+  },
+  "endpoint": "http://localhost:45125/pythonForQt/",
+  "initial_state": {
+    "model_opened": false,
+    "phase": "start_page",
+    "application_stage": "StartPage",
+    "stage_name": null,
+    "is_base_stage": false,
+    "is_solving": false,
+    "has_result_data": false,
+    "capabilities": {
+      "read_model": false,
+      "prepare_model_edit": false,
+      "modify_model": false,
+      "modify_stage_data": false,
+      "query_results": false,
+      "check_model": false,
+      "run_check": false,
+      "run_analysis": false,
+      "view_model": false
+    }
+  },
+  "state_checks": {
+    "no_model_readiness": {
+      "tool": "get_model_edit_readiness",
+      "arguments": {},
+      "is_error": false,
+      "result": {
+        "status": "probe_failed",
+        "readiness": null,
+        "connection": null,
+        "message": "编辑就绪探测失败（Exception: NO_MODEL：请先打开工程。）。",
+        "action": null
+      }
+    },
+    "no_model_read_rejected": {
+      "tool": "get_model_data",
+      "arguments": {
+        "kind": "summary"
+      },
+      "is_error": true,
+      "result": [
+        "Error executing tool get_model_data: Operation blocked by QiaoTong state (桥通状态禁止操作): 桥通当前状态不允许该操作：operation=model_read, capability=read_model, model_opened=False, phase=start_page, stage_name=None, is_base_stage=False, is_solving=False, has_result_data=False。请先调用 get_model_status，并由用户在桥通中切换到满足条件的状态。"
+      ]
+    },
+    "invalid_node_count_rejected": {
+      "tool": "create_nodes_linear",
+      "arguments": {
+        "count": 0
+      },
+      "is_error": true,
+      "result": [
+        "Error executing tool create_nodes_linear: 1 validation error for create_nodes_linearArguments\ncount\n  Input should be greater than or equal to 1 [type=greater_than_equal, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/greater_than_equal"
+      ]
+    },
+    "new_model_edit_readiness": {
+      "tool": "get_model_edit_readiness",
+      "arguments": {},
+      "is_error": false,
+      "result": {
+        "status": "success",
+        "readiness": {
+          "schema": 1,
+          "ready": true,
+          "state": {
+            "model_opened": true,
+            "phase": "preprocessing",
+            "application_stage": "PreStage",
+            "stage_name": "基本",
+            "is_base_stage": true,
+            "is_solving": false,
+            "has_result_data": false,
+            "capabilities": {
+              "read_model": true,
+              "prepare_model_edit": true,
+              "modify_model": true,
+              "modify_stage_data": true,
+              "query_results": false,
+              "check_model": true,
+              "run_check": false,
+              "run_analysis": true,
+              "view_model": true
+            }
+          },
+          "required_actions": [],
+          "preparation_token": "<redacted>",
+          "results_undoable": false,
+          "expires_in_seconds": 600
+        },
+        "connection": null,
+        "message": null,
+        "action": null
+      }
+    },
+    "solved_model_edit_readiness": {
+      "tool": "get_model_edit_readiness",
+      "arguments": {},
+      "is_error": false,
+      "result": {
+        "status": "success",
+        "readiness": {
+          "schema": 1,
+          "ready": false,
+          "state": {
+            "model_opened": true,
+            "phase": "postprocessing",
+            "application_stage": "PostStage",
+            "stage_name": "运营阶段",
+            "is_base_stage": false,
+            "is_solving": false,
+            "has_result_data": true,
+            "capabilities": {
+              "read_model": true,
+              "prepare_model_edit": true,
+              "modify_model": false,
+              "modify_stage_data": false,
+              "query_results": true,
+              "check_model": true,
+              "run_check": true,
+              "run_analysis": false,
+              "view_model": true
+            }
+          },
+          "required_actions": [
+            "switch_preprocessing",
+            "switch_base_stage",
+            "delete_results"
+          ],
+          "preparation_token": "<redacted>",
+          "results_undoable": false,
+          "expires_in_seconds": 600
+        },
+        "connection": null,
+        "message": null,
+        "action": null
+      }
+    },
+    "postprocessing_write_rejected": {
+      "tool": "create_nodes",
+      "arguments": {
+        "node_data": [
+          [
+            987654,
+            123,
+            456,
+            789
+          ]
+        ],
+        "numbering_type": 2,
+        "start_id": 987654
+      },
+      "is_error": true,
+      "result": [
+        "Error executing tool create_nodes: Operation blocked by QiaoTong state (桥通状态禁止操作): 桥通当前状态不允许该操作：operation=model_write, capability=modify_model, model_opened=True, phase=postprocessing, stage_name=运营阶段, is_base_stage=False, is_solving=False, has_result_data=True。请先调用 get_model_status，并由用户在桥通中切换到满足条件的状态。"
+      ]
+    },
+    "prepare_model_edit_called": false
+  },
+  "cantilever": {
+    "units": {
+      "force": "N",
+      "length": "m",
+      "rotation": "rad"
+    },
+    "nodes": [
+      [
+        1001,
+        0,
+        0,
+        0
+      ],
+      [
+        1002,
+        5,
+        0,
+        0
+      ],
+      [
+        1003,
+        10,
+        0,
+        0
+      ]
+    ],
+    "elements": [
+      {
+        "node_i": 1001,
+        "node_j": 1002,
+        "mat_id": 1,
+        "sec_id": 1,
+        "element_id": 2001
+      },
+      {
+        "node_i": 1002,
+        "node_j": 1003,
+        "mat_id": 1,
+        "sec_id": 1,
+        "element_id": 2002
+      }
+    ],
+    "support": {
+      "node_id": 1001,
+      "dx": true,
+      "dy": true,
+      "dz": true,
+      "rx": true,
+      "ry": true,
+      "rz": true
+    },
+    "load": {
+      "node_id": 1003,
+      "case_name": "MCP_TIP",
+      "fz": -10000
+    },
+    "section_geometry": {
+      "loop_segments": [
+        {
+          "main": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              1.0,
+              0.0
+            ],
+            [
+              1.0,
+              1.0
+            ],
+            [
+              0.0,
+              1.0
+            ]
+          ]
+        }
+      ],
+      "sec_property": [
+        1.0000001,
+        0.82821684,
+        0.82821684,
+        0.140577435524,
+        0.083333341654,
+        0.083333341654,
+        -0.0,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        4.0,
+        0.0,
+        0.5,
+        0.5,
+        -0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        -0.5,
+        -0.5,
+        -0.5,
+        -0.0,
+        -0.0,
+        1.0,
+        1.0,
+        0.125000012,
+        0.125001498
+      ],
+      "shear_consider": true,
+      "bias_type": "中心",
+      "index": 1,
+      "name": "MCP_TEST_RECT",
+      "sec_type": "矩形"
+    },
+    "material": {
+      "material_type_id": 1,
+      "name": "MCP_TEST_C50",
+      "construct_factor": 1.0,
+      "material_id": 1,
+      "material_type": "concrete",
+      "standard": 1,
+      "database": "C50",
+      "modified": false,
+      "creep_id": -1,
+      "check_type": 1,
+      "user_standard": 1,
+      "properties": [
+        34500000000.0,
+        50000000.0,
+        32400000.0,
+        2650000.0,
+        1830000.0
+      ],
+      "model": 3,
+      "parameter_data": [
+        32400000.0,
+        40500000.0,
+        0.01,
+        0.013333333333333334,
+        300000000.0,
+        22344828.0,
+        0.0033
+      ],
+      "material_type_name": "混凝土",
+      "elastic_modulus": 34500000000.0,
+      "elastic_modulus_y": 34500000000.0,
+      "shear_modulus": 14375000000.0,
+      "poisson_ratio": 0.2,
+      "unit_weight": 25000.0,
+      "temperature_coefficient": 1e-05,
+      "construction_coefficient": 1.0,
+      "is_orthotropic": false
+    },
+    "analysis_settings": [
+      {
+        "do_construction_stage": false,
+        "do_creep": false,
+        "do_vibration": false
+      },
+      {
+        "final_stage": "",
+        "static_load_cases": [
+          "MCP_TIP"
+        ],
+        "sink_load_cases": [],
+        "live_load_cases": [],
+        "transversal_load_cases": []
+      }
+    ],
+    "result_case_name": "ST:MCP_TIP",
+    "solve_result": {
+      "tool": "run_analysis",
+      "arguments": {
+        "read_timeout": 120
+      },
+      "is_error": false,
+      "result": {
+        "status": "success",
+        "message": "Analysis successfully completed (结构分析计算完成)"
+      }
+    },
+    "support_reaction": {
+      "node_id": 1001,
+      "fx": 0.0,
+      "fy": 8.077935669463161e-25,
+      "fz": 10000.00000000003,
+      "mx": 3.165266430178253e-25,
+      "my": -100000.00000000015,
+      "mz": 5.816113682013476e-23
+    },
+    "element_forces": [
+      {
+        "element_id": 2001,
+        "force_i": {
+          "Fx": 0.0,
+          "Fy": -8.077935669463161e-25,
+          "Fz": -10000.00000000003,
+          "Mx": -9.176687000000057e-11,
+          "My": -100000.00000000015,
+          "Mz": -5.816113682013476e-23
+        },
+        "force_j": {
+          "Fx": 0.0,
+          "Fy": -8.077935669463161e-25,
+          "Fz": -10000.00000000003,
+          "Mx": -9.176687000000057e-11,
+          "My": -50000.0,
+          "Mz": -4.8467614016778965e-23
+        }
+      },
+      {
+        "element_id": 2002,
+        "force_i": {
+          "Fx": 0.0,
+          "Fy": -3.2311742677852644e-24,
+          "Fz": -9999.999999999985,
+          "Mx": -9.176687000000001e-11,
+          "My": -50000.00000000006,
+          "Mz": -4.0389678347315804e-23
+        },
+        "force_j": {
+          "Fx": 0.0,
+          "Fy": -3.2311742677852644e-24,
+          "Fz": -9999.999999999985,
+          "Mx": -9.176687000000001e-11,
+          "My": 1.8980785350951704e-21,
+          "Mz": -3.554291694563791e-23
+        }
+      }
+    ],
+    "tip_deformation": {
+      "node_id": 1003,
+      "dx": 0.0,
+      "dy": -8.650084181203953e-17,
+      "dz": -0.0011678050118558224,
+      "rx": -4.533231732522853e-19,
+      "ry": 0.00017391302956521962,
+      "rz": 0.00017391302956521962
+    },
+    "hand_calculation": {
+      "formula": "F*L^3/(3*E*Iy) + F*L/(G*Az)",
+      "length_m": 10.0,
+      "force_N": -10000.0,
+      "elastic_modulus_Pa": 34500000000.0,
+      "shear_modulus_Pa": 14375000000.0,
+      "Iy_m4": 0.083333341654,
+      "shear_area_Az_m2": 0.82821684,
+      "bending_deflection_m": -0.001159420174089287,
+      "shear_deflection_m": -8.399396635222286e-06,
+      "total_deflection_m": -0.0011678195707245094,
+      "actual_dz_m": -0.0011678050118558224,
+      "relative_error": 1.246671065631895e-05,
+      "relative_error_percent": 0.001246671065631895,
+      "scope": "Reaction, bending moment and translation only; HTTP Rz is incorrect."
+    },
+    "orthogonal_case": {
+      "load": {
+        "node_id": 1003,
+        "case_name": "MCP_TIP_Y",
+        "fy": 10000
+      },
+      "result_case_name": "ST:MCP_TIP_Y",
+      "solve_result": {
+        "tool": "run_analysis",
+        "arguments": {
+          "read_timeout": 120
+        },
+        "is_error": false,
+        "result": {
+          "status": "success",
+          "message": "Analysis successfully completed (结构分析计算完成)"
+        }
+      },
+      "tip_deformation": {
+        "node_id": 1003,
+        "dx": 0.0,
+        "dy": 0.0011678050118558224,
+        "dz": 8.650084181203954e-17,
+        "rx": -6.057581288157116e-19,
+        "ry": -1.2975126271805927e-17,
+        "rz": -1.2975126271805927e-17
+      },
+      "support_reaction": {
+        "node_id": 1001,
+        "fx": 0.0,
+        "fy": -10000.00000000003,
+        "fz": -7.270142102516845e-24,
+        "mx": 2.0194839173657902e-25,
+        "my": 7.431700815906108e-23,
+        "mz": -100000.00000000015
+      }
+    }
+  },
+  "b1_filtered_queries": [
+    {
+      "tool": "query_model_data",
+      "arguments": {
+        "request": {
+          "kind": "nodes",
+          "node_ids": [
+            1001,
+            1002,
+            1003
+          ],
+          "limit": 1,
+          "offset": 0
+        }
+      },
+      "is_error": false,
+      "result": {
+        "status": "success",
+        "data": {
+          "offset": 0,
+          "limit": 1,
+          "items": [
+            {
+              "node_id": 1001,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            }
+          ],
+          "has_more": true,
+          "missing_node_ids": []
+        }
+      }
+    },
+    {
+      "tool": "query_model_data",
+      "arguments": {
+        "request": {
+          "kind": "nodes",
+          "node_ids": [
+            1001,
+            1002,
+            1003
+          ],
+          "limit": 1,
+          "offset": 1
+        }
+      },
+      "is_error": false,
+      "result": {
+        "status": "success",
+        "data": {
+          "offset": 1,
+          "limit": 1,
+          "items": [
+            {
+              "node_id": 1002,
+              "x": 5.0,
+              "y": 0.0,
+              "z": 0.0
+            }
+          ],
+          "has_more": true,
+          "missing_node_ids": []
+        }
+      }
+    },
+    {
+      "tool": "query_model_data",
+      "arguments": {
+        "request": {
+          "kind": "nodes",
+          "near": [
+            5,
+            0,
+            0
+          ],
+          "tolerance": 0.01
+        }
+      },
+      "is_error": false,
+      "result": {
+        "status": "success",
+        "data": {
+          "offset": 0,
+          "limit": 20,
+          "items": [
+            {
+              "node_id": 1002,
+              "x": 5.0,
+              "y": 0.0,
+              "z": 0.0
+            }
+          ],
+          "has_more": false,
+          "missing_node_ids": []
+        }
+      }
+    },
+    {
+      "tool": "query_model_data",
+      "arguments": {
+        "request": {
+          "kind": "elements",
+          "node_ids": 1002,
+          "element_type": "beam"
+        }
+      },
+      "is_error": false,
+      "result": {
+        "status": "success",
+        "data": {
+          "offset": 0,
+          "limit": 20,
+          "items": [
+            {
+              "index": 2001,
+              "mat_id": 1,
+              "beta_angle": 0.0,
+              "ele_type": 1,
+              "sec_id": 1,
+              "node_i": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "node_j": [
+                5.0,
+                0.0,
+                0.0
+              ],
+              "node_ids": [
+                1001,
+                1002
+              ]
+            },
+            {
+              "index": 2002,
+              "mat_id": 1,
+              "beta_angle": 0.0,
+              "ele_type": 1,
+              "sec_id": 1,
+              "node_i": [
+                5.0,
+                0.0,
+                0.0
+              ],
+              "node_j": [
+                10.0,
+                0.0,
+                0.0
+              ],
+              "node_ids": [
+                1002,
+                1003
+              ]
+            }
+          ],
+          "has_more": false,
+          "missing_element_ids": []
+        }
+      }
+    },
+    {
+      "tool": "query_model_data",
+      "arguments": {
+        "request": {
+          "kind": "boundaries",
+          "boundary_type": "general_support",
+          "node_ids": 1001
+        }
+      },
+      "is_error": false,
+      "result": {
+        "status": "success",
+        "data": {
+          "offset": 0,
+          "limit": 20,
+          "items": [
+            {
+              "index": 1,
+              "node_id": 1001,
+              "boundary_info": [
+                true,
+                true,
+                true,
+                true,
+                true,
+                true
+              ],
+              "group_name": "默认边界组"
+            }
+          ],
+          "has_more": false,
+          "missing_boundary_ids": [],
+          "missing_node_ids": [],
+          "searched_group_count": 1,
+          "candidate_count": 1,
+          "matched_count": 1
+        }
+      }
+    },
+    {
+      "tool": "query_model_data",
+      "arguments": {
+        "request": {
+          "kind": "loads",
+          "load_family": "nodal_force",
+          "case_names": [
+            "MCP_TIP"
+          ]
+        }
+      },
+      "is_error": false,
+      "result": {
+        "status": "success",
+        "data": {
+          "offset": 0,
+          "limit": 20,
+          "items": [
+            {
+              "node_id": 1003,
+              "case_name": "MCP_TIP",
+              "load_info": [
+                0.0,
+                0.0,
+                -10000.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "group_name": "默认荷载组",
+              "index": 1
+            }
+          ],
+          "has_more": false,
+          "missing_load_ids": []
+        }
+      }
+    },
+    {
+      "tool": "query_model_data",
+      "arguments": {
+        "request": {
+          "kind": "node_local_axes",
+          "node_ids": [
+            1001,
+            1002,
+            1003
+          ]
+        }
+      },
+      "is_error": false,
+      "result": {
+        "status": "success",
+        "data": {
+          "offset": 0,
+          "limit": 20,
+          "items": [],
+          "has_more": false,
+          "missing_node_ids": [
+            1001,
+            1002,
+            1003
+          ]
+        }
+      }
+    },
+    {
+      "tool": "query_model_data",
+      "arguments": {
+        "request": {
+          "kind": "section_summaries",
+          "query": "MCP_TEST",
+          "section_ids": [
+            1
+          ]
+        }
+      },
+      "is_error": false,
+      "result": {
+        "status": "success",
+        "data": {
+          "total": 1,
+          "offset": 0,
+          "limit": 50,
+          "items": [
+            {
+              "section_id": 1,
+              "name": "MCP_TEST_RECT",
+              "section_type": "矩形",
+              "is_tapered": false
+            }
+          ],
+          "truncated": false,
+          "missing_section_ids": []
+        }
+      }
+    }
+  ],
+  "deformation_endpoint_issue": {
+    "request": {
+      "http_method": "POST",
+      "url": "http://localhost:45125/pythonForQt/",
+      "headers": {
+        "Content-Type": "GET-DEFORMATION"
+      },
+      "json_body": {
+        "ids": [
+          1003
+        ],
+        "stage_id": -1,
+        "case_name": "ST:MCP_TIP"
+      }
+    },
+    "response": [
+      {
+        "node_id": 1003,
+        "dx": 0.0,
+        "dy": -8.650084181203953e-17,
+        "dz": -0.0011678050118558224,
+        "rx": -4.533231732522853e-19,
+        "ry": 0.00017391302956521962,
+        "rz": 0.00017391302956521962
+      }
+    ],
+    "sqlite_source": {
+      "relative_path": "Brdi3DBridge_cantilever-static/cantilever-static_001.ard",
+      "sha256": "26e9933cb43c6343b7683c56a19b97563b51afec50e9ce888751a5d556022d38",
+      "query": "SELECT * FROM NodeDisplacement WHERE NodeId=1003",
+      "rows": [
+        {
+          "NodeId": 1003,
+          "Dx": 0.0,
+          "Dy": -8.650084181203953e-17,
+          "Dz": -0.0011678050118558224,
+          "Rx": -4.533231732522853e-19,
+          "Ry": 0.00017391302956521962,
+          "Rz": -1.2975126271805935e-17
+        }
+      ]
+    },
+    "finding": "HTTP rz equals ry but differs from the correct Rz in the solver database. Reproduced without qtmodel/MCP response conversion."
+  },
+  "live_load_system_issue": {
+    "tool": "configure_live_load_system",
+    "arguments": {
+      "system": "china_transversal",
+      "clear_existing": false
+    },
+    "is_error": true,
+    "result": [
+      "Error executing tool configure_live_load_system: Error configuring live-load system (设置活载体系失败): 未知参数：clear_existing"
+    ]
+  },
+  "transversal_empty_queries": [
+    {
+      "tool": "get_transversal_data",
+      "arguments": {
+        "kind": "vehicles"
+      },
+      "is_error": false,
+      "result": {
+        "status": "success",
+        "data": [],
+        "total": 0,
+        "offset": 0,
+        "limit": 50,
+        "has_more": false
+      }
+    },
+    {
+      "tool": "get_transversal_data",
+      "arguments": {
+        "kind": "lanes"
+      },
+      "is_error": false,
+      "result": {
+        "status": "success",
+        "data": [],
+        "total": 0,
+        "offset": 0,
+        "limit": 50,
+        "has_more": false
+      }
+    },
+    {
+      "tool": "get_transversal_data",
+      "arguments": {
+        "kind": "cases"
+      },
+      "is_error": false,
+      "result": {
+        "status": "success",
+        "data": [],
+        "total": 0,
+        "offset": 0,
+        "limit": 50,
+        "has_more": false
+      }
+    }
+  ],
+  "reinforcement_snapshot_issues": {
+    "fixture_source": "tests/fixtures/check_snapshots.json; native fields retained, test material/name/points adapted to this isolated model.",
+    "material_ids": {
+      "concrete": 1,
+      "reinforcement": 2
+    },
+    "referenced_structure_group": [
+      {
+        "group_id": 1,
+        "name": "默认结构组",
+        "node_count": 0,
+        "element_count": 0
+      }
+    ],
+    "calls": [
+      {
+        "tool": "set_section_reinforcement",
+        "arguments": {
+          "definition": {
+            "section_id_name": "1",
+            "section_reference_id": 1,
+            "section_type": "Section",
+            "generation_method": 1,
+            "has_parameters": true,
+            "has_outer": false,
+            "has_inner": false,
+            "outer_type": 0,
+            "inner_type": 0,
+            "outer": [
+              [
+                0.03,
+                2,
+                0.1,
+                5,
+                0.04,
+                1
+              ]
+            ],
+            "inner": [],
+            "parts": [],
+            "points": [
+              [
+                0.05,
+                0.05,
+                0.02,
+                2
+              ],
+              [
+                0.95,
+                0.05,
+                0.02,
+                2
+              ],
+              [
+                0.95,
+                0.95,
+                0.02,
+                2
+              ],
+              [
+                0.05,
+                0.95,
+                0.02,
+                2
+              ]
+            ]
+          }
+        },
+        "is_error": true,
+        "result": [
+          "Error executing tool set_section_reinforcement: Error writing model check snapshot (写入基础模型检算快照失败): Unknown command please check command header (Parameter 'header')\r\nActual value was SET-SECTION-REINFORCEMENT."
+        ]
+      },
+      {
+        "tool": "set_check_stirrup_snapshot",
+        "arguments": {
+          "definition": {
+            "StirrupTypeId": 3,
+            "StirrupTypeName": "MCP_TEST_STIRRUP",
+            "StirrupType": 0,
+            "ReinforcementTypeId": 2,
+            "LimbsNumber": 2,
+            "LoopsNumber": 0,
+            "StirrupDiameter": 12.0,
+            "StirrupSpacing": 0.1,
+            "CoreDiameter": 0.0
+          }
+        },
+        "is_error": true,
+        "result": [
+          "Error executing tool set_check_stirrup_snapshot: Error writing model check snapshot (写入基础模型检算快照失败): Unknown command please check command header (Parameter 'header')\r\nActual value was SET-CHECK-STIRRUP."
+        ]
+      },
+      {
+        "tool": "manage_check_case_definition",
+        "arguments": {
+          "request": {
+            "action": "set",
+            "definition": {
+              "family": "concrete",
+              "index": 1,
+              "name": "MCP_TEST_CONCRETE",
+              "standard": 0,
+              "structure_type": 0,
+              "group_names": [
+                "默认结构组"
+              ],
+              "component_force_type": 0,
+              "force_components": [
+                true,
+                true,
+                true,
+                true,
+                true,
+                true
+              ],
+              "calculation_setting": 0,
+              "seismic_import_type": 0,
+              "strengthening_method": 0
+            }
+          }
+        },
+        "is_error": true,
+        "result": [
+          "Error executing tool manage_check_case_definition: Error writing model check snapshot (写入基础模型检算快照失败): Unknown command please check command header (Parameter 'header')\r\nActual value was SET-CHECK-CASE."
+        ]
+      }
+    ],
+    "native_export_comparison": {
+      "before_sha256": "34a51bfa116ba0fd986fd38609ff94a664166b9b25ede657a5780e66e01eca72",
+      "after_sha256": "34a51bfa116ba0fd986fd38609ff94a664166b9b25ede657a5780e66e01eca72",
+      "bytes_equal": true,
+      "ast_equal": true,
+      "before_bytes": 2555,
+      "after_bytes": 2555,
+      "scope": "Native Python export comparison only; export code was never executed."
+    },
+    "dependent_element_stirrup_assignment_executed": false
+  },
+  "not_executed": [
+    "B2 vehicle/lane/case definition-to-solve flow after the live-load system rejection.",
+    "B3 successful snapshot roundtrip, element assignments, material overrides, undo/redo and concrete check run.",
+    "B4 AASHTO, BS and EN1991 definition-to-result flows; shared live-load system prerequisite not satisfied.",
+    "Non-empty local-axis/spans queries and full B1 directory/detail engineering acceptance.",
+    "Bridge software upgrade, repository push, Git tags or package publication."
+  ],
+  "closeout": {
+    "active_model": "cantilever-rotations.bfmd",
+    "model_state": {
+      "model_opened": true,
+      "phase": "preprocessing",
+      "application_stage": "PreStage",
+      "stage_name": "基本",
+      "is_base_stage": true,
+      "is_solving": false,
+      "has_result_data": true,
+      "capabilities": {
+        "read_model": true,
+        "prepare_model_edit": true,
+        "modify_model": false,
+        "modify_stage_data": false,
+        "query_results": false,
+        "check_model": true,
+        "run_check": true,
+        "run_analysis": false,
+        "view_model": true
+      }
+    },
+    "saved_reinforcement_model": true,
+    "tunnel_stopped": true,
+    "windows_test_directory_basename": "qiao-mcp-live-20261012-c00d16e7",
+    "local_archive_relative_path": "reference-docs/0.5.0-live-20261012/qiao-mcp-live-20261012.zip",
+    "archive_sha256": "a05e63659b3bcae9d5c5a6e6a16d273aaf1c50fef3ad001a17a55e496f252be1",
+    "archive_bytes": 350784
+  }
+}
