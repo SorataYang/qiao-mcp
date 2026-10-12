@@ -5,15 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.0] - Unreleased
+## [0.5.0] - 2026-10-12
 
 This release includes all changes since the published 0.3.3. The work previously
 labeled 0.4.0 was never released separately and is included here. B1–B4 add 20 tools
 and one workflow prompt: 153 tools (151 with output schemas), 7 resources and
-5 prompts. This version is prepared locally; no release is published.
+5 prompts.
 
 Upgrading from 0.3.3 changes the `add_nodal_mass` parameters; see **Changed** below
 and the [migration guidance](README.md#upgrading-from-033).
+
+### Known backend limitations
+
+Live testing with QiaoTong **26.1.116.1010** and qtmodel **2.9.2** passed basic
+cantilever reaction, moment and translation checks, plus a subset of B1 queries
+and state guards. Full engineering acceptance remains incomplete:
+
+- The server's `GET-DEFORMATION` response returns an incorrect `rz`; the solver
+  database retains the correct Rz. No replacement value is synthesized by Qiao-MCP.
+- Live-load system selection rejects `clear_existing`, blocking the transversal
+  workflow. International workflows share this prerequisite and were not run.
+- The section-reinforcement, check-stirrup and check-case snapshot commands are
+  unknown to that server build, so the full B3 workflow could not be verified.
+
+Use a QiaoTong build that supports the required commands and check results against
+the [live validation record](docs/0.5.0-live-validation.md). A successful version or
+connection check alone does not establish feature support. BS axle-force units
+also remain unconfirmed upstream.
 
 ### Added
 
@@ -109,6 +127,11 @@ and the [migration guidance](README.md#upgrading-from-033).
   offline suite. 2.6.4, 2.8.2 and 2.9.1 have no failures, with missing-feature
   skips recorded separately. The two existing 2.6.3 `get_load_group_names`
   contract failures remain visible. See [validation](docs/0.5.0-validation.md).
+- **Tool selection guidance.** Section geometry evaluation, stored-property
+  queries and model-wide recalculation now name their distinct scopes. Group
+  membership guidance points to the existing dedicated removal tool. Server
+  instructions also distinguish group, node-edit and stage-view alternatives;
+  existing tool names and call signatures are retained.
 
 - **qtmodel 2.9 support.** The dependency range is now `qtmodel>=2.6.3,!=2.9.0,<2.10`
   and the lock uses 2.9.2 (identical to upstream `8ae651e` apart from its unbumped
@@ -386,7 +409,7 @@ and the [migration guidance](README.md#upgrading-from-033).
 - **Minimum QiaoTong version is now 2.6.3** (qtmodel API version 2.6.3)
   - Previous versions (0.1.x, 0.2.x) required qtmodel 2.6.2
   - Users must upgrade QiaoTong software to 2.6.3+ before installing qiao-mcp 0.3.0
-  - See [Version Compatibility](README.md#version-compatibility) for the full compatibility matrix
+  - See [Version Compatibility](README.md#compatibility) for the full compatibility matrix
 
 ### Added
 
@@ -439,7 +462,7 @@ and the [migration guidance](README.md#upgrading-from-033).
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
-[0.5.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.3...develop
+[0.5.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.3...v0.5.0
 [0.3.3]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.0...v0.3.1

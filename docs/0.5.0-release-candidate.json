@@ -1,0 +1,81 @@
+{
+  "prepared_at_utc": "2026-10-12T03:30:26.799333+00:00",
+  "status": "prepared_locally_not_published",
+  "version": "0.5.0",
+  "proposed_release_date": "2026-10-12",
+  "proposed_tag": "v0.5.0",
+  "published_version_observed": "0.3.3",
+  "environment": {
+    "qiao-mcp": "0.5.0",
+    "qtmodel": "2.9.2",
+    "mcp": "1.29.0"
+  },
+  "change_scope": "Release documentation, tool docstrings and server tool-selection instructions; tool implementations and call signatures unchanged from 407a9c7.",
+  "checks": {
+    "ruff": "passed",
+    "mypy": {
+      "status": "passed",
+      "source_files": 26
+    },
+    "offline_pytest": {
+      "tests": 1768,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "passed": 1768,
+      "excluded": "tests/test_end_to_end.py"
+    },
+    "release_checker": "passed",
+    "twine_strict": "passed",
+    "mcp_stdio": {
+      "status": "passed",
+      "version": "0.5.0",
+      "tools": 153,
+      "output_schemas": 151,
+      "top_level_parameters": 596,
+      "described_top_level_parameters": 596,
+      "annotated_tools": 153,
+      "resources": 7,
+      "prompts": 5,
+      "endpoint": "http://localhost:1/pythonForQt/"
+    }
+  },
+  "artifacts": [
+    {
+      "filename": "qiao_mcp-0.5.0-py3-none-any.whl",
+      "sha256": "7bb9ec19ea546b79ecee8f4f57c0edc293d0eb74e2350f8fb5668b380fa822b8"
+    },
+    {
+      "filename": "qiao_mcp-0.5.0.tar.gz",
+      "sha256": "ebd388e3369fd643524b2a99283b1ac75d2f5a003bf9163edd2a346731a0239a"
+    }
+  ],
+  "local_archive_directory": "reference-docs/0.5.0-release-ready-20261012",
+  "glama": {
+    "public_overall_tier": "B",
+    "public_overall_score": 3.3,
+    "public_scored_tools": 132,
+    "new_online_score_obtained": false,
+    "tdqs_lint": {
+      "package": "tdqs==0.1.0",
+      "spec_version": "1.2",
+      "input": "catalog.json",
+      "error_count": 0,
+      "warning_count": 39,
+      "info_count": 2,
+      "strict_warning_threshold_exit_code": 1,
+      "warning_rule": "shadow-candidate",
+      "note": "Invocation-cost candidates need semantic review; this offline lint is not a new TDQS score or Glama evaluation."
+    }
+  },
+  "live_engineering": {
+    "rerun": false,
+    "record": "0.5.0-live-validation.md",
+    "limitations": [
+      "QiaoTong 26.1.116.1010 returns incorrect HTTP Rz",
+      "clear_existing is rejected",
+      "three B3 snapshot commands are unknown",
+      "B4 international workflows not run"
+    ]
+  }
+}
