@@ -43,6 +43,8 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 
 本版完成 B1–B4，新增 20 个工具和 1 个工作流提示模板。本地验证与待完成的工程端检查
 见 [验收记录](docs/0.5.0-validation.md)。
+已发布的基线是 0.3.3；此前标为 0.4.0 的本地改动合入计划发布的 0.5.0，无需补发中间版本。
+升级前请看[从 0.3.3 升级](#从-033-升级)和[本地发布准备记录](docs/0.5.0-release.md)。
 
 `get_model_edit_readiness` 在模型读写被阻断时仍可调用；`success` 仅表示收到响应，不表示可以编辑，应查看原始 `readiness` 对象。
 工具不会保存/重用准备令牌，不切阶段、不删除结果。
@@ -333,15 +335,14 @@ Qiao-MCP 的版本号独立于 `qtmodel`：本项目可以自行迭代（修 bug
 | Qiao-MCP        | qtmodel       | 桥通软件                               |
 |-----------------|---------------|----------------------------------------|
 | 0.5.0（待发布） | 2.6.3 – 2.9.x，不含 2.9.0 | 配 2.9.x 时桥通须上报模型状态；新命令须服务端支持 |
-| 0.4.0          | 2.6.3 – 2.9.x，不含 2.9.0 | 2.6.3+；配 2.9.x 时桥通须上报模型状态  |
 | 0.3.2 – 0.3.3  | 2.6.3 – 2.8.x | 2.6.3+；2.8.x 不再要求两侧版本精确一致 |
 | 0.3.0 – 0.3.1   | 2.6.3 – 2.6.x | 2.6.3（qtmodel 强制精确匹配）          |
 | 0.2.x           | 2.5.0 – 2.5.x | 2.5.0                                  |
 
-**最低版本已知限制：** qtmodel 2.6.3 缺少 `get_load_group_names`，不能使用一键建桥工作流工具。这是早于 0.4.0 参数扩展的既有问题；这些工作流请使用 2.6.4 或更新版本（仍排除 2.9.0）。
+**最低版本已知限制：** qtmodel 2.6.3 缺少 `get_load_group_names`，不能使用一键建桥工作流工具。这是既有问题；这些工作流请使用 2.6.4 或更新版本（仍排除 2.9.0）。
 依赖范围不代表所有构建均有全部新能力：缺方法或参数不兼容时，工具会在写入前明确拒绝。
 具体差异见 [六组构建兼容矩阵](docs/0.5.0-validation.md)。
-PyPI 2.9.2 与参考源码 `0687ffe` 各通过全部 1733 项离线测试；这些测试验证软件契约，
+PyPI 2.9.2 与参考源码 `0687ffe` 均通过完整离线测试；这些测试验证软件契约，
 桥通工程端验收仍待完成。
 
 两侧版本的匹配方式在 qtmodel 2.8.2 发生了变化：
@@ -351,16 +352,31 @@ PyPI 2.9.2 与参考源码 `0687ffe` 各通过全部 1733 项离线测试；这�
 
 不同构建可能都标记为 qtmodel 2.8.2：PyPI 上的 wheel（2026-08-20）不含 `QtServer.get_model_state`，而同版本号的上游源码已带上它。Qiao-MCP 按能力而非版本号探测——没有该方法时跳过模型状态守卫（`guard_unavailable`），行为与 0.3.1 一致；有该方法时，每个工具都会按桥通上报的状态放行或拦截。qtmodel 2.9.0 是首个带该方法的 PyPI 正式发布，因此在 2.9.x 上守卫始终生效。
 
+### 从 0.3.3 升级
+
+0.5.0 修正了 `add_nodal_mass` 的字段布局，包含不兼容的参数变更：
+
+- 三向相同的平动质量用 `mass`，如 `{"node_id": 1, "mass": 10}`。
+  可选的 `mass_x`/`mass_y`/`mass_z` 覆盖各方向；省略的方向取 `mass`，其默认值为零。
+- 移除 `mass_rm`。根据实际需要的转动惯量轴选择 `rot_x`、`rot_y` 或 `rot_z`，
+  不要机械地重命名旧参数。
+- 三向不等的质量要求 SDK 支持 `mass_xyz`（目前支持的 PyPI 2.9 版本为 2.9.1 和
+  2.9.2）；旧版在写入前明确拒绝。
+
+旧版曾将部分平动质量参数写入转动惯量字段。升级软件包不会修复已有模型，应回读此前
+写入的节点质量，按原定工程值核对。徐变/材料校验、小数工期及上述模型状态要求的变化
+见[更新日志](CHANGELOG.md)。
+
 ### qtmodel 2.9 上游对齐
 
 当前参考仓库为 `0687ffe`，虽标为 2.9.2，但与 PyPI 2.9.2 wheel 内容不同。
-0.4.0 使用的基准 `8ae651e` 除旧版本标记外与该 wheel 一致；之后的变化见
+此前本地基准 `8ae651e` 除旧版本标记外与该 wheel 一致；之后的变化见
 [API 对齐记录](docs/0.5.0-upstream-alignment.md)。
 
 - **写入安全：** 写命令的响应丢失时抛 `CommandOutcomeUnknownError`，不再自动重发。本项目将其报为"结果未知"，并提示客户端先回读模型，不要重试。
 - **客户端校验：** 许多写接口会在下发前拒绝不合法的数值。本项目的参数 schema 已对齐：徐变/收缩曲线不能为空，截面特性表只能是 26 或 29 项，各规范的徐变参数个数固定，自定义材料必须提供 `data_info`。
 - **节点质量字段：** `add_nodal_mass` 的 `mass_info` 实为 `(平动质量, 绕X, 绕Y, 绕Z 转动惯量)`，并新增 `mass_xyz` 表达各向不同的平动质量。本项目已按此布局下发（字段修正见更新日志）。
-- **现有工具补齐新参数：** 施工阶段支持小数工期和 `sub_steps`；`create_material` 增加 `is_orthotropic` / `ey`；`set_support`、`add_elastic_support` 增加 `coordinate`、`extra_enabled` 和 8 项 `extra_parameters`，单向弹性支承另支持正负轴 `axis_direction`；`add_influence_plane` 增加 `always_divided_by_beam_shape`，`create_live_load_case` 增加与子工况等长的布尔列表 `sub_case_optimized`。省略选项保持旧行为，显式指定则在写入前按真实签名检查；旧版会截断的小数工期创建请求改为明确报错。这些参数在 0.4.0 补齐，当前 0.5.0 目录为 153 个工具。
+- **现有工具补齐新参数：** 施工阶段支持小数工期和 `sub_steps`；`create_material` 增加 `is_orthotropic` / `ey`；`set_support`、`add_elastic_support` 增加 `coordinate`、`extra_enabled` 和 8 项 `extra_parameters`，单向弹性支承另支持正负轴 `axis_direction`；`add_influence_plane` 增加 `always_divided_by_beam_shape`，`create_live_load_case` 增加与子工况等长的布尔列表 `sub_case_optimized`。省略选项保持旧行为，显式指定则在写入前按真实签名检查；旧版会截断的小数工期创建请求改为明确报错。这些参数随 0.5.0 发布，其目录为 153 个工具。
 - **运营设置与级联删除：** `configure_operation_stage` 显式提供横向在内的四类工况列表；网关的 `update_operation_stage_setting` 仍可调用，必须同时提供全部需计算的列表，省略/空列表会关闭对应分析。`remove_material` 默认 `cascade=True`，连同相关钢束特性和钢束删除；`remove_tendon_property` 默认 `False`，设为 `True` 会无弹窗删除引用钢束及其荷载。删除前须确认范围，不指定名称和编号会删除全部对象。
 - **专用工具与长尾接口：** 0.5.0 为横向、国际/规划车道、模型配筋/检算快照和编辑就绪诊断提供专用工具。精确删除对象（`delete_model_object`）、系数、有效宽度、统计及结构合并等仍经网关调用。每次 MDB 写操作及明确列出的 CDB 模型快照操作都会调用 `update_model` 提交。
 - **网关禁用：** `post_python_file`（读取本地文件并发往任意 URL 执行）、`prepare_model_edit`（可能不可逆地删除结果，应由宿主程序在用户确认后调用）、`export_api_help`（把 SDK 帮助写到本机任意路径），以及原有的 `ensure_running`、`set_url`、`set_version`、`export_qt_helper` 和 `wait_solve`（默认无限期轮询，请用 `run_analysis`）。

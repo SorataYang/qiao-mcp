@@ -13,7 +13,7 @@ uv sync                                        # 安装依赖(含 ruff/mypy/pyte
 uv run qiao-mcp                                # 启动服务器(stdio;无需桥通运行也能启动)
 npx @modelcontextprotocol/inspector uv run qiao-mcp   # MCP Inspector 手动测试
 
-uv run ruff check src/ tests/                  # Lint
+uv run ruff check src/ tests/ scripts/         # Lint
 uv run mypy src/qiao_mcp/                      # 类型检查(渐进式,不强制全量注解)
 uv run pytest tests/ --ignore=tests/test_end_to_end.py -q   # 离线全量测试(默认应这样跑)
 
@@ -94,3 +94,8 @@ src/qiao_mcp/
 ## 发版注意
 
 发版同步 `pyproject.toml`、`server.json` 顶层与 packages 里的 `version`、`uv.lock` 的本项目版本、`CHANGELOG.md` 和 README 兼容表。`qiao_mcp.__version__` 从已安装分发元数据读取，MCP 握手使用同一版本。`scripts/check_mcp_package.py` 检查构建 wheel 的实际握手、目录、结构化结果和错误通道。GitHub 的 pypi 发布环境配置了人工审批；开发分支只发布 TestPyPI，正式 PyPI 由 v* 标签触发。
+
+发布 workflow 复用 CI，只有完整离线检查通过才上传同一份产物。`scripts/check_release.py`
+检查版本/tag、wheel/sdist 元数据和源码一致性；`--tag` 只校验，不创建标签。
+当前已发布基线为 0.3.3，原 0.4.0 本地改动并入待发布的 0.5.0，参见
+`docs/0.5.0-release.md`。推送 develop 会触发 TestPyPI 上传，并非仅同步代码。

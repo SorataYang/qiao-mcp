@@ -7,35 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0] - Unreleased
 
-B1–B4 add 20 tools and one workflow prompt: 153 tools (151 with output schemas),
-7 resources and 5 prompts. This version is prepared locally; no release is published.
+This release includes all changes since the published 0.3.3. The work previously
+labeled 0.4.0 was never released separately and is included here. B1–B4 add 20 tools
+and one workflow prompt: 153 tools (151 with output schemas), 7 resources and
+5 prompts. This version is prepared locally; no release is published.
 
-### Changed
-
-- Audited upstream `0687ffe`, including native factor/flange definitions,
-  effective-width calculations, statistics, compound merges and the new
-  concrete-check signature. Gateway tests cover real SDK transport, permissions,
-  one-commit writes and explicit rejection on older clients. Model weight-query
-  documentation now specifies fixed N instead of display units.
-- **Compatibility validation.** PyPI 2.9.2 and source `0687ffe` each pass all
-  1,733 offline tests. 2.6.4, 2.8.2 and 2.9.1 have no failures, with missing-feature
-  skips recorded separately. The two existing 2.6.3 `get_load_group_names`
-  contract failures remain visible. See [validation](docs/0.5.0-validation.md).
-
-### Fixed
-
-- Support tools now enable additional parameters when only their values are
-  supplied, matching current upstream semantics on older supporting SDKs too.
-  Explicit False still clears them; omitted values preserve the existing setting.
-  A failed commit reports that the support command may already have changed the model.
-- **Concrete checking validates returned completion states.** Older SDK waiters
-  may return stopped failure/cancellation states without raising. The provider
-  preserves that status and `run_concrete_check` reports non-success states as
-  errors; imports and solves are never replayed automatically.
-- **CDB model snapshots require model-write permission and a model commit.**
-  An explicit nine-method set shares the dedicated/gateway commit path. Legacy
-  CDB queries, file operations and solvers keep their existing behavior. A failed
-  commit reports that the preceding command already ran and must not be replayed.
+Upgrading from 0.3.3 changes the `add_nodal_mass` parameters; see **Changed** below
+and the [migration guidance](README.md#upgrading-from-033).
 
 ### Added
 
@@ -99,10 +77,6 @@ B1–B4 add 20 tools and one workflow prompt: 153 tools (151 with output schemas
   output; paged details send limit/offset to the server. Summaries are not promised
   to be lossless write-back snapshots.
 
-## [0.4.0] - 2026-09-29
-
-### Added
-
 - **Existing tools expose qtmodel 2.9 options without growing the tool catalog.**
   Construction stages accept `sub_steps`; materials accept `is_orthotropic` / `ey`;
   general and elastic supports accept `coordinate`, `extra_enabled` and the
@@ -117,14 +91,31 @@ B1–B4 add 20 tools and one workflow prompt: 153 tools (151 with output schemas
   `remove_material` defaults to `cascade=True`; `remove_tendon_property` defaults
   to `False`, with `True` deleting referenced tendons and loads without a dialog.
   Both deletion methods target all objects when neither name nor index is supplied.
+- **Release checks run before either registry upload.** CI and publishing share
+  the locked environment, lint, type checks, offline suite and wheel/stdio check.
+  `scripts/check_release.py` verifies version/tag alignment, dependencies, Python
+  requirements, source modules, README and entry points across the checkout,
+  wheel and source distribution. Only the checked artifacts reach publication;
+  failed TestPyPI lookups are not treated as permission to upload.
 
 ### Changed
+
+- Audited upstream `0687ffe`, including native factor/flange definitions,
+  effective-width calculations, statistics, compound merges and the new
+  concrete-check signature. Gateway tests cover real SDK transport, permissions,
+  one-commit writes and explicit rejection on older clients. Model weight-query
+  documentation now specifies fixed N instead of display units.
+- **Compatibility validation.** PyPI 2.9.2 and source `0687ffe` each pass the complete
+  offline suite. 2.6.4, 2.8.2 and 2.9.1 have no failures, with missing-feature
+  skips recorded separately. The two existing 2.6.3 `get_load_group_names`
+  contract failures remain visible. See [validation](docs/0.5.0-validation.md).
 
 - **qtmodel 2.9 support.** The dependency range is now `qtmodel>=2.6.3,!=2.9.0,<2.10`
   and the lock uses 2.9.2 (identical to upstream `8ae651e` apart from its unbumped
   version label). Every direct mdb/odb/cdb call and model query was checked against
-  2.9.2; signatures only gained optional parameters. The offline suite passes on
-  2.6.4, 2.8.2, 2.9.1 and 2.9.2. A pre-existing 2.6.3 limitation remains:
+  actual SDK signatures, including the newer source-only concrete-check changes.
+  The offline suite passes on 2.6.4, 2.8.2, 2.9.1 and 2.9.2.
+  A pre-existing 2.6.3 limitation remains:
   it lacks `get_load_group_names`, required by the one-shot bridge workflows.
   2.9.0 is excluded: its `add_section` validates
   `sec_property` even when it is omitted, so creating a section without explicit
@@ -139,6 +130,19 @@ B1–B4 add 20 tools and one workflow prompt: 153 tools (151 with output schemas
   `add_creep_function`'s `creep_data`; qtmodel 2.9 rejects empty curves.
 
 ### Fixed
+
+- Support tools now enable additional parameters when only their values are
+  supplied, matching current upstream semantics on older supporting SDKs too.
+  Explicit False still clears them; omitted values preserve the existing setting.
+  A failed commit reports that the support command may already have changed the model.
+- **Concrete checking validates returned completion states.** Older SDK waiters
+  may return stopped failure/cancellation states without raising. The provider
+  preserves that status and `run_concrete_check` reports non-success states as
+  errors; imports and solves are never replayed automatically.
+- **CDB model snapshots require model-write permission and a model commit.**
+  An explicit nine-method set shares the dedicated/gateway commit path. Legacy
+  CDB queries, file operations and solvers keep their existing behavior. A failed
+  commit reports that the preceding command already ran and must not be replayed.
 
 - **Construction-stage updates retain fractional durations.** The tool now exposes
   a number rather than an integer. Stage creation refuses older clients that
@@ -435,8 +439,7 @@ B1–B4 add 20 tools and one workflow prompt: 153 tools (151 with output schemas
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
-[0.5.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.4.0...develop
-[0.4.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.3...v0.4.0
+[0.5.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.3...develop
 [0.3.3]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.0...v0.3.1
