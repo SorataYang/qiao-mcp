@@ -1261,11 +1261,18 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def calculate_section_property() -> str:
         """
-        Recalculate properties for all sections in the model (重新计算所有截面特性).
+        Recalculate and store properties for all existing model sections
+        (重新计算并保存模型中所有截面的特性).
 
-        Call this after creating or modifying section geometry to ensure
-        Area, Iy, Iz, J etc. are up-to-date.
-        (在创建或修改截面几何后调用，确保面积、惯性矩等特性值为最新)
+        Use after changing stored section geometry. This model-write operation
+        requires an editable model and updates section properties such as area
+        and inertias. It returns a completion message, not the property values.
+        Read values with get_model_data(kind="section_property", sec_id=...).
+
+        For a trial polygon or line-width geometry, use calc_section_property:
+        it returns calculated values without creating or updating model sections.
+        (修改已有截面几何后使用，须允许模型写入；返回完成消息，数值经
+        get_model_data 回读。试算几何用 calc_section_property，不修改已有截面。)
         """
         try:
             provider.calculate_section_property()

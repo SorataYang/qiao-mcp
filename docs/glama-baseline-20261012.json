@@ -1,0 +1,114 @@
+{
+  "observed_at_utc": "2026-10-12T03:15:19.958446+00:00",
+  "source_url": "https://glama.ai/mcp/servers/SorataYang/qiao-mcp",
+  "rubric_url": "https://tdqs.dev/",
+  "repository_default_branch": "main",
+  "server_scores": {
+    "license": 100,
+    "maintenance": "A",
+    "quality": "B"
+  },
+  "server_quality": {
+    "coherenceJustifications": {
+      "completeness": {
+        "justification": "The core domain is remarkably well covered: full node/element/section lifecycle, boundary conditions, loads, construction stages, tendons, moving loads, concrete checks, results, display, file I/O, and one-click bridge templates. Notable gaps exist (no material update/delete, no load-case/load-group deletion, no tendon removal, no boundary-group removal/rename), but the list_qtmodel_api + call_qtmodel_api escape hatch prevents dead ends for long-tail operations.",
+        "score": 4
+      },
+      "disambiguation": {
+        "justification": "Several tool pairs have genuinely unclear boundaries: add_elements_to_group is a subset of add_to_structure_group, switch_display_stage and change_construct_stage both switch the displayed stage (one by name, one by ID), update_node with new_id duplicates update_node_id, and calc_section_property vs calculate_ection_property are near-identically named while doing different things. Long, detailed descriptions mitigate confusion, but an agent will frequently select the wrong tool among these overlapping pairs.",
+        "score": 2
+      },
+      "naming_consistency": {
+        "justification": "The dominant snake_case verb_noun pattern is highly consistent across 132 tools: create_* for builders, add_* for properties/loads, set_* for settings, apply_* for loads, update_* for modifications, remove_* for deletion, get_* for queries. Notable deviations: calc vs calculate, tapper (misspelled) vs tapered, and switch_display_stage vs change_construct_stage use different verbs for the same operation — but these are minor against the overall strong pattern.",
+        "score": 4
+      },
+      "tool_count_appropriateness": {
+        "justification": "At 132 tools this is a very large surface —well beyond even the 25+ 'too many' threshold. The bridge-engineering domain is genuinely broad (modeling, loads, tendons, construction stages, moving loads, concrete checking, visualization), which justifies substantic coverage, but the set contains clear redundancy (6 update_element_* variants, two group-add tools, two stage-switch tools, multiple tendon query splits) that could be consolidated.",
+        "score": 2
+      }
+    },
+    "coherenceScore": 3,
+    "coherenceSummary": "Qiao-MCP is a comprehensive bridge-FEA automation server with strong verb_noun naming and thorough domain coverage, but its 132-tool surface is bloated and contains several confusing near-duplicate pairs that undermine tool selection. The detailed descriptions and escape-hatch design keep it usable despite the coherence issues.",
+    "coherenceTier": "B",
+    "completeness": 4,
+    "descriptionQualityScore": 3.4,
+    "descriptionQualityTier": "B",
+    "disambiguation": 2,
+    "meanTdqs": 3.8,
+    "minTdqs": 2.7,
+    "namingConsistency": 4,
+    "overallScore": 3.3,
+    "overallTier": "B",
+    "scoredAt": "2026-09-09T17:50:38.437293Z",
+    "scoredToolCount": 132,
+    "toolCount": 132,
+    "toolCountAppropriateness": 2
+  },
+  "catalog": {
+    "tools": 132,
+    "output_schemas": 0,
+    "top_level_parameters": 543,
+    "described_top_level_parameters": 0,
+    "annotations": 132,
+    "tool_tiers": {
+      "C": 10,
+      "A": 93,
+      "B": 29
+    },
+    "schema_observed_at": "2026-08-30T01:25:53.624327Z",
+    "schema_release_version": "0.3.1"
+  },
+  "lowest_tools": [
+    {
+      "name": "assign_tendon_elements",
+      "score": 2.7,
+      "tier": "C"
+    },
+    {
+      "name": "activate_structure",
+      "score": 2.9,
+      "tier": "C"
+    },
+    {
+      "name": "add_beam_section_temperature",
+      "score": 2.9,
+      "tier": "C"
+    },
+    {
+      "name": "add_cable_length_load",
+      "score": 2.9,
+      "tier": "C"
+    },
+    {
+      "name": "add_distribute_plane_load",
+      "score": 2.9,
+      "tier": "C"
+    },
+    {
+      "name": "add_initial_tension_load",
+      "score": 2.9,
+      "tier": "C"
+    },
+    {
+      "name": "add_plate_element_load",
+      "score": 2.9,
+      "tier": "C"
+    },
+    {
+      "name": "add_system_temperature",
+      "score": 2.9,
+      "tier": "C"
+    },
+    {
+      "name": "add_time_history_function",
+      "score": 2.9,
+      "tier": "C"
+    },
+    {
+      "name": "update_node_id",
+      "score": 2.9,
+      "tier": "C"
+    }
+  ],
+  "note": "Public Glama baseline, not a new score for the locally prepared 0.5.0 catalog."
+}

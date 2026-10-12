@@ -573,16 +573,14 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         add_elements_to_group is a convenience wrapper that reaches the same
         underlying call with only element_ids, so it can do nothing this cannot.
 
-        This tool cannot take members out. remove_structure_group deletes the
-        whole group; to drop individual members use the escape hatch:
-        call_qtmodel_api(api_object="mdb",
-                         method="remove_structure_from_group", kwargs={...}).
+        Use remove_from_structure_group to remove selected members while keeping
+        the group and model entities. remove_structure_group deletes the group.
 
         (写模型并刷新。是向组内现有成员追加、而非替换；结构组须已存在。node_ids 与
         element_ids 可只传一个或都传。选型：优先用本工具，它是通用形式；
         add_elements_to_group 只是仅传 element_ids 的便捷封装，能做的事本工具都能做。
-        本工具不能移除成员；remove_structure_group 是删掉整个组，移除单个成员需经逃生舱调
-        remove_structure_from_group。)
+        移除指定成员用 remove_from_structure_group，保留组和模型实体；
+        删除整个组用 remove_structure_group。)
 
         Args:
             group_name: Name of the structure group, must already exist
@@ -621,6 +619,13 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         """
         Remove nodes and/or elements from an existing structure group
         (从结构组中移除节点和/或单元).
+
+        Use to change group membership after add_to_structure_group. Supply
+        explicit node_ids and/or element_ids; the group and the model's nodes
+        and elements remain. This writes group membership and refreshes the
+        model. Use remove_structure_group to delete the group itself.
+        (显式指定要移出的节点/单元，仅修改成员关系并刷新模型，保留组和模型实体；
+        删除整个组用 remove_structure_group。)
 
         Args:
             group_name: Name of the structure group (结构组名称)
