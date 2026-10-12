@@ -378,6 +378,14 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Compute section properties from raw geometry, without creating a section
         (按几何直接计算截面特性，不创建截面).
 
+        Use to evaluate a candidate polygon or line-width shape before storing
+        it in the model. Returns calculated values in the message; existing
+        model sections are unchanged. To read an existing section, use
+        get_model_data(kind="section_property", sec_id=...). To recompute and
+        store properties for every model section, use calculate_section_property.
+        (用于候选几何试算；读取已有截面用 get_model_data，重新计算并保存模型中
+        全部截面特性用 calculate_section_property。)
+
         Provide EXACTLY ONE of loop_segments or sec_lines (二者恰选其一).
 
         Args:

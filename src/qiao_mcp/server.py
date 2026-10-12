@@ -78,6 +78,11 @@ _SERVER_INSTRUCTIONS = (
     "View:     set_view_angle, save_model_screenshot\n"
     "Gateway:  list_qtmodel_api, call_qtmodel_api — 长尾 API 先检索真实签名再调用\n"
     "State:    get_model_status — 在建模或修改前确认模型是否打开、当前处于前/后处理或求解阶段、是否为基本阶段以及当前允许的操作\n"
+    "\n## Choosing Similar Tools\n"
+    "Section properties: calc_section_property evaluates supplied geometry; get_model_data(kind=section_property, sec_id=...) reads a stored section; calculate_section_property rewrites properties for all existing sections.\n"
+    "Group members: prefer add_to_structure_group for nodes/elements; add_elements_to_group is its element-only convenience tool. remove_from_structure_group removes memberships; remove_structure_group removes the group.\n"
+    "Node edits: update_node sets absolute coordinates and can also change the ID; update_node_id changes only one ID; move_nodes applies relative offsets; renumber_nodes handles bulk numbering.\n"
+    "Stage views: switch_display_stage selects the modeling view by stage name; change_construct_stage selects the results view by integer stage index. Neither starts analysis.\n"
 )
 
 # ── Initialize MCP Server ─────────────────────────────────────────────
