@@ -1,0 +1,491 @@
+{
+  "source": "qtmodel-release 0687ffe tests/fixtures; decoded JSON literals from executed QiaoTong C# logs, no script execution",
+  "calls": [
+    {
+      "source": "reinforcement_command_logs.json entry 1",
+      "method": "set_section_reinforcement",
+      "kwargs": {
+        "definition": {
+          "section_id_name": "1",
+          "section_reference_id": 1,
+          "section_type": "Section",
+          "generation_method": 1,
+          "has_parameters": true,
+          "has_outer": false,
+          "has_inner": false,
+          "outer_type": 0,
+          "inner_type": 0,
+          "outer": [
+            [
+              0.03,
+              1.0,
+              0.1,
+              5.0,
+              0.04,
+              1.0
+            ]
+          ],
+          "inner": [],
+          "parts": [],
+          "points": [
+            [
+              1.0,
+              2.0,
+              0.02,
+              1.0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "source": "reinforcement_command_logs.json entry 2",
+      "method": "set_check_stirrup",
+      "kwargs": {
+        "original_id": null,
+        "definition": {
+          "StirrupTypeId": 1,
+          "StirrupTypeName": "箍筋\"\\\n",
+          "StirrupType": 0,
+          "ReinforcementTypeId": 1,
+          "LimbsNumber": 2,
+          "LoopsNumber": 0,
+          "StirrupDiameter": 12.0,
+          "StirrupSpacing": 0.1,
+          "CoreDiameter": 0.0
+        }
+      }
+    },
+    {
+      "source": "reinforcement_command_logs.json entry 3",
+      "method": "set_element_stirrups",
+      "kwargs": {
+        "shear": null,
+        "torsion": [
+          [
+            1,
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "source": "reinforcement_command_logs.json entry 6",
+      "method": "remove_check_material",
+      "kwargs": {
+        "index": 1
+      }
+    },
+    {
+      "source": "reinforcement_command_logs.json entry 7",
+      "method": "set_check_material",
+      "kwargs": {
+        "definition": {
+          "index": 1,
+          "name": "混凝土\"\n",
+          "kind": 1,
+          "standard": 9,
+          "model": 7,
+          "elastic_modulus": 30000000000.0,
+          "properties": {
+            "Fcuk": 0.0,
+            "Fck": 0.0,
+            "Ftk": 0.0,
+            "Ftd": 0.0,
+            "FcPrime": 0.0,
+            "Fr": 0.0,
+            "Fcu": 0.0
+          },
+          "parameters": {
+            "Fck": 25.5,
+            "N": 2.0,
+            "AlphaCc": 0.85,
+            "EpsilonC2": 0.002,
+            "EpsilonCu2": 0.0035,
+            "UltimateLimitStateFactor": 1.5,
+            "AccidentalLimitStateFactor": 1.2,
+            "ServiceabilityLimitStateFactor": 1.0
+          }
+        }
+      }
+    },
+    {
+      "source": "reinforcement_command_logs.json entry 8",
+      "method": "remove_section_reinforcement_by_name",
+      "kwargs": {
+        "section_id_name": "G7-2"
+      }
+    },
+    {
+      "source": "reinforcement_command_logs.json entry 9",
+      "method": "set_steel_bar_material_convention",
+      "kwargs": {
+        "new_format": true
+      }
+    },
+    {
+      "source": "reinforcement_snapshot_roundtrip_logs.json entry 1",
+      "method": "set_section_reinforcement",
+      "kwargs": {
+        "definition": {
+          "section_id_name": "1",
+          "section_reference_id": 1,
+          "section_type": "Section",
+          "generation_method": 1,
+          "has_parameters": true,
+          "has_outer": false,
+          "has_inner": false,
+          "outer_type": 0,
+          "inner_type": 0,
+          "outer": [
+            [
+              0.03,
+              1.0,
+              0.1,
+              5.0,
+              0.04,
+              1.0
+            ]
+          ],
+          "inner": [],
+          "parts": [
+            [
+              1.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.02,
+              0.0,
+              0.1,
+              4.0,
+              0.04,
+              1.0
+            ]
+          ],
+          "points": [
+            [
+              1.0,
+              2.0,
+              0.02,
+              1.0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "source": "reinforcement_snapshot_roundtrip_logs.json entry 2",
+      "method": "set_check_stirrup",
+      "kwargs": {
+        "definition": {
+          "StirrupTypeId": 3,
+          "StirrupTypeName": "箍筋\"\\\n",
+          "StirrupType": 0,
+          "ReinforcementTypeId": 1,
+          "LimbsNumber": 2,
+          "LoopsNumber": 0,
+          "StirrupDiameter": 12.0,
+          "StirrupSpacing": 0.1,
+          "CoreDiameter": 0.0
+        },
+        "original_id": null
+      }
+    },
+    {
+      "source": "reinforcement_snapshot_roundtrip_logs.json entry 3",
+      "method": "set_element_stirrups",
+      "kwargs": {
+        "shear": [
+          [
+            1,
+            3,
+            0,
+            3,
+            0
+          ]
+        ],
+        "torsion": [
+          [
+            1,
+            3,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "source": "reinforcement_snapshot_roundtrip_logs.json entry 4",
+      "method": "set_check_stirrup",
+      "kwargs": {
+        "definition": {
+          "StirrupTypeId": 8,
+          "StirrupTypeName": "renamed",
+          "StirrupType": 0,
+          "ReinforcementTypeId": 1,
+          "LimbsNumber": 2,
+          "LoopsNumber": 0,
+          "StirrupDiameter": 12.0,
+          "StirrupSpacing": 0.1,
+          "CoreDiameter": 0.0
+        },
+        "original_id": 3
+      }
+    },
+    {
+      "source": "reinforcement_snapshot_roundtrip_logs.json entry 5",
+      "method": "set_element_stirrups",
+      "kwargs": {
+        "shear": [],
+        "torsion": null
+      }
+    },
+    {
+      "source": "reinforcement_snapshot_roundtrip_logs.json entry 6",
+      "method": "set_check_material",
+      "kwargs": {
+        "definition": {
+          "index": 2,
+          "name": "混凝土\"\n",
+          "kind": 1,
+          "standard": 9,
+          "model": 7,
+          "elastic_modulus": 30000000000.0,
+          "properties": {
+            "Fcuk": 0.0,
+            "Fck": 0.0,
+            "Ftk": 0.0,
+            "Ftd": 0.0,
+            "FcPrime": 0.0,
+            "Fr": 0.0,
+            "Fcu": 0.0
+          },
+          "parameters": {
+            "Fck": 25.5,
+            "N": 2.0,
+            "AlphaCc": 0.85,
+            "EpsilonC2": 0.002,
+            "EpsilonCu2": 0.0035,
+            "UltimateLimitStateFactor": 1.5,
+            "AccidentalLimitStateFactor": 1.2,
+            "ServiceabilityLimitStateFactor": 1.0
+          }
+        }
+      }
+    },
+    {
+      "source": "reinforcement_snapshot_roundtrip_logs.json entry 7",
+      "method": "remove_check_material",
+      "kwargs": {
+        "index": 2
+      }
+    },
+    {
+      "source": "reinforcement_snapshot_roundtrip_logs.json entry 8",
+      "method": "remove_section_reinforcement_by_name",
+      "kwargs": {
+        "section_id_name": "1"
+      }
+    },
+    {
+      "source": "reinforcement_snapshot_roundtrip_logs.json entry 9",
+      "method": "set_steel_bar_material_convention",
+      "kwargs": {
+        "new_format": false
+      }
+    },
+    {
+      "source": "spec_check_case_logs.json entry 1",
+      "method": "set_check_case",
+      "kwargs": {
+        "definition": {
+          "family": "concrete",
+          "index": 1,
+          "name": "concrete",
+          "standard": 0,
+          "structure_type": 0,
+          "group_names": [
+            "group"
+          ],
+          "component_force_type": 0,
+          "force_components": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "calculation_setting": 0,
+          "seismic_import_type": 0,
+          "strengthening_method": 0
+        }
+      }
+    },
+    {
+      "source": "spec_check_case_logs.json entry 2",
+      "method": "set_check_case",
+      "kwargs": {
+        "definition": {
+          "family": "concrete",
+          "index": 1,
+          "name": "concrete",
+          "standard": 0,
+          "structure_type": 0,
+          "group_names": [
+            "group"
+          ],
+          "component_force_type": 0,
+          "force_components": [
+            false,
+            true,
+            false,
+            true,
+            false,
+            true
+          ],
+          "calculation_setting": 0,
+          "seismic_import_type": 0,
+          "strengthening_method": 0
+        }
+      }
+    },
+    {
+      "source": "spec_check_case_logs.json entry 3",
+      "method": "remove_check_case_snapshot",
+      "kwargs": {
+        "family": "concrete",
+        "index": 1
+      }
+    },
+    {
+      "source": "spec_check_case_logs.json entry 4",
+      "method": "set_check_case",
+      "kwargs": {
+        "definition": {
+          "family": "seismic",
+          "index": 1,
+          "name": "seismic",
+          "standard": 0,
+          "structure_type": 0,
+          "group_names": [
+            "group"
+          ],
+          "component_force_type": 0,
+          "force_components": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "calculation_setting": 0,
+          "seismic_import_type": 0,
+          "strengthening_method": 0
+        }
+      }
+    },
+    {
+      "source": "spec_check_case_logs.json entry 5",
+      "method": "set_check_case",
+      "kwargs": {
+        "definition": {
+          "family": "seismic",
+          "index": 1,
+          "name": "seismic",
+          "standard": 0,
+          "structure_type": 0,
+          "group_names": [
+            "group"
+          ],
+          "component_force_type": 0,
+          "force_components": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "calculation_setting": 0,
+          "seismic_import_type": 1,
+          "strengthening_method": 0
+        }
+      }
+    },
+    {
+      "source": "spec_check_case_logs.json entry 6",
+      "method": "remove_check_case_snapshot",
+      "kwargs": {
+        "family": "seismic",
+        "index": 1
+      }
+    },
+    {
+      "source": "spec_check_case_logs.json entry 7",
+      "method": "set_check_case",
+      "kwargs": {
+        "definition": {
+          "family": "strengthening",
+          "index": 1,
+          "name": "strengthening",
+          "standard": 0,
+          "structure_type": 0,
+          "group_names": [
+            "group"
+          ],
+          "component_force_type": 0,
+          "force_components": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "calculation_setting": 0,
+          "seismic_import_type": 0,
+          "strengthening_method": 0
+        }
+      }
+    },
+    {
+      "source": "spec_check_case_logs.json entry 8",
+      "method": "set_check_case",
+      "kwargs": {
+        "definition": {
+          "family": "strengthening",
+          "index": 1,
+          "name": "strengthening",
+          "standard": 0,
+          "structure_type": 0,
+          "group_names": [
+            "group"
+          ],
+          "component_force_type": 0,
+          "force_components": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "calculation_setting": 0,
+          "seismic_import_type": 0,
+          "strengthening_method": 2
+        }
+      }
+    },
+    {
+      "source": "spec_check_case_logs.json entry 9",
+      "method": "remove_check_case_snapshot",
+      "kwargs": {
+        "family": "strengthening",
+        "index": 1
+      }
+    }
+  ]
+}

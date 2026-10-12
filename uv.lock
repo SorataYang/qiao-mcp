@@ -1045,7 +1045,7 @@ wheels = [
 
 [[package]]
 name = "qiao-mcp"
-version = "0.3.3"
+version = "0.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
@@ -1060,6 +1060,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "mypy" },
+    { name = "packaging" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -1071,28 +1072,29 @@ requires-dist = [
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=3.0.1" },
     { name = "psutil", specifier = ">=5.9" },
-    { name = "qtmodel", specifier = ">=2.6.3,<2.9" },
+    { name = "qtmodel", specifier = ">=2.6.3,!=2.9.0,<2.10" },
     { name = "requests", specifier = ">=2.32.5" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "mypy", specifier = ">=2.3.0" },
+    { name = "packaging", specifier = ">=22" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "ruff", specifier = ">=0.15.21" },
 ]
 
 [[package]]
 name = "qtmodel"
-version = "2.8.2"
+version = "2.9.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "psutil" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/61/c3/860e1dc7b09fa013a91aeec6589d767de4e3cc41fa0595fb45e9d1f3ee24/qtmodel-2.8.2.tar.gz", hash = "sha256:3be91c5772ebd25abf4e05d36b61cfe1cd0ed6c01e69a1b1dd72afb4da1f604c", size = 462920, upload-time = "2026-08-20T09:18:14.818Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ab/95/1501af7391187a759da93ef572fb18c9cd0cacb834897c4e55993b557ca3/qtmodel-2.9.2.tar.gz", hash = "sha256:af3eedcc466dfd4db76c6e7d1bcc72245c062448e5ae805882d4880ebcbf09db", size = 571343, upload-time = "2026-09-22T14:59:12.364Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d5/e8/a29b66f97b628b0a16c38731956d1bceb247077f5986150bdb039324a4d5/qtmodel-2.8.2-py3-none-any.whl", hash = "sha256:47fe29385856e297cc7939f642cca50dffec92aa9c368e06d0b5daf97dae08ba", size = 263254, upload-time = "2026-08-20T09:16:26.615Z" },
+    { url = "https://files.pythonhosted.org/packages/8d/e1/bbdd86a6cb81e14af007cd760b60d3257833c9b1dde952fe6fbc4c5fb2b0/qtmodel-2.9.2-py3-none-any.whl", hash = "sha256:3a363eca79c6fa48f6786c986301ee4a43c87f16a4d133ff8fa48c44fe443a41", size = 329343, upload-time = "2026-09-22T14:59:09.021Z" },
 ]
 
 [[package]]

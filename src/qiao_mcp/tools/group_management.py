@@ -15,6 +15,7 @@ from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError
+from qiao_mcp.tools.schemas import NonnegativeNumber
 
 
 def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -158,16 +159,13 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         element_ids. Use add_to_structure_group when you also have nodes to add,
         or to do nodes and elements in one call.
 
-        Neither tool can take members out. remove_structure_group deletes the
-        whole group; to drop individual members use the escape hatch:
-        call_qtmodel_api(api_object="mdb",
-                         method="remove_structure_from_group", kwargs={...}).
+        Use remove_from_structure_group to remove selected members while keeping
+        the group and model entities. remove_structure_group deletes the group.
 
         (写模型并刷新。是向组内现有成员追加、而非替换；结构组须已存在。选型：本工具是便捷
         封装，底层与 add_to_structure_group 走同一个调用、只是仅传 element_ids。需要同时
-        加节点、或一次加节点+单元时用 add_to_structure_group。两者都不能移除成员；
-        remove_structure_group 是删掉整个组，要移除单个成员需经逃生舱调
-        remove_structure_from_group。)
+        加节点、或一次加节点+单元时用 add_to_structure_group。移除指定成员用
+        remove_from_structure_group，保留组和模型实体；删除整个组用 remove_structure_group。)
 
         Args:
             group_name: Structure group name, must already exist
@@ -234,7 +232,7 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
     def update_construction_stage(
         name: str,
         new_name: str = "",
-        duration: int = 0,
+        duration: NonnegativeNumber = 0,
         active_structures: list[list] | None = None,
         delete_structures: list[str] | None = None,
         active_boundaries: list[list] | None = None,
@@ -242,6 +240,7 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         active_loads: list[list] | None = None,
         delete_loads: list[list] | None = None,
         temp_loads: list[str] | None = None,
+        sub_steps: list[NonnegativeNumber] | None = None,
     ) -> str:
         """
         Update an existing construction stage (修改施工阶段).
@@ -253,16 +252,21 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         Args:
             name: Existing stage name (现有阶段名称)
             new_name: New stage name (新名称)
-            duration: Stage duration in days (阶段时长，天)
-            active_structures: Structures to activate [[name, age, mat_id, time_param_id], ...]
-                               (激活的结构组信息 [[名称, 材龄, 材料号, 时间参数号], ...])
+            duration: Stage duration in days, including fractional days (阶段时长，天，支持小数)
+            active_structures: Structures to activate [[name, age, install_method, weight_stage_id], ...]
+                               (激活结构组 [[名称, 龄期, 安装方法, 计自重施工阶段号], ...])
             delete_structures: Structure group names to deactivate (钝化的结构组名称列表)
             active_boundaries: Boundaries to activate [[name, position], ...]
                                (激活的边界组信息 [[名称, 位置], ...])
             delete_boundaries: Boundary group names to deactivate (钝化的边界组名称列表)
-            active_loads: Loads to activate [[name, day], ...] (激活的荷载组信息 [[名称, 天数], ...])
-            delete_loads: Loads to deactivate [[name, day], ...] (钝化的荷载组信息 [[名称, 天数], ...])
+            active_loads: Loads to activate [[name, time], ...]; time=0 start, 1 end
+                          (激活荷载组 [[名称, 时间], ...]；0=阶段开始，1=阶段结束)
+            delete_loads: Loads to deactivate [[name, time], ...]; time=0 start, 1 end
+                          (钝化荷载组 [[名称, 时间], ...]；0=阶段开始，1=阶段结束)
             temp_loads: Temporary load group names (临时荷载组名称列表)
+            sub_steps: Sub-step durations in days; None omits the option, [] clears
+                       sub-steps. Requires a supporting qtmodel build
+                       (子步时长列表；省略不传，空列表清除子步，需新版 qtmodel)
         """
         try:
             kwargs: dict[str, Any] = {"name": name, "new_name": new_name, "duration": duration}
@@ -280,6 +284,8 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["delete_loads"] = [tuple(item) for item in delete_loads]
             if temp_loads is not None:
                 kwargs["temp_loads"] = temp_loads
+            if sub_steps is not None:
+                kwargs["sub_steps"] = sub_steps
 
             provider.update_construction_stage(**kwargs)
             return f"Successfully updated construction stage '{name}' (成功修改施工阶段 '{name}')"

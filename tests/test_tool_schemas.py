@@ -20,7 +20,7 @@ def catalog(fake_provider):
 
 def test_complete_catalog_has_documented_inputs_and_output_contracts(catalog):
     tools = asyncio.run(catalog.list_tools())
-    assert len(tools) == 133
+    assert len(tools) == 153
     image_tools = {"save_model_screenshot", "plot_analysis_result"}
     for tool in tools:
         assert tool.description
@@ -34,6 +34,32 @@ def test_complete_catalog_has_documented_inputs_and_output_contracts(catalog):
         else:
             assert tool.outputSchema is not None, tool.name
             assert "status" in tool.outputSchema["properties"], tool.name
+
+
+def test_qtmodel_options_have_nullable_defaults_and_constrained_schemas(catalog):
+    tools = {tool.name: tool for tool in asyncio.run(catalog.list_tools())}
+    options = {
+        "create_material": ["is_orthotropic", "ey"],
+        "set_support": ["coordinate", "extra_enabled", "extra_parameters"],
+        "add_elastic_support": ["coordinate", "extra_enabled", "extra_parameters", "axis_direction"],
+        "add_construction_stage": ["sub_steps"],
+        "update_construction_stage": ["sub_steps"],
+        "add_influence_plane": ["always_divided_by_beam_shape"],
+        "create_live_load_case": ["sub_case_optimized"],
+    }
+    for tool, parameters in options.items():
+        for name in parameters:
+            schema = tools[tool].inputSchema["properties"][name]
+            assert schema["default"] is None
+            assert {"type": "null"} in schema["anyOf"]
+            assert name not in tools[tool].inputSchema.get("required", [])
+    for name in ("add_construction_stage", "update_construction_stage"):
+        duration = tools[name].inputSchema["properties"]["duration"]
+        assert duration["type"] == "number"
+    for name in ("set_support", "add_elastic_support"):
+        variants = tools[name].inputSchema["properties"]["extra_parameters"]["anyOf"]
+        vector = next(item for item in variants if item.get("type") == "array")
+        assert vector["minItems"] == vector["maxItems"] == 8
 
 
 def test_schema_exposes_ranges_enums_lengths_and_workflow_fields(catalog):
@@ -56,6 +82,18 @@ def test_schema_exposes_ranges_enums_lengths_and_workflow_fields(catalog):
 
 @pytest.mark.parametrize("name, arguments", [
     ("create_material", {"name": "Invalid", "mat_type": 99}),
+    ("create_material", {"name": "M", "mat_type": 1, "ey": 0}),
+    ("create_material", {"name": "M", "mat_type": 1, "ey": float("inf")}),
+    ("add_construction_stage", {"name": "S", "duration": -1}),
+    ("update_construction_stage", {"name": "S", "duration": float("nan")}),
+    ("add_construction_stage", {"name": "S", "duration": 2, "sub_steps": [-0.25]}),
+    ("update_construction_stage", {"name": "S", "sub_steps": [float("inf")]}),
+    ("set_support", {"node_id": 1, "coordinate": 2}),
+    ("set_support", {"node_id": 1, "extra_parameters": [0] * 7}),
+    ("add_elastic_support", {"node_id": 1, "spring_values": [0] * 6, "extra_parameters": [0] * 9}),
+    ("add_elastic_support", {"node_id": 1, "spring_values": [0] * 6, "axis_direction": 6}),
+    ("create_live_load_case", {"name": "MV", "influence_plane": "P", "span": 50,
+                               "sub_cases": [["V", 1, ["L"]]], "sub_case_optimized": [1]}),
     ("create_nodes_linear", {"count": 0}),
     ("get_model_data", {"kind": "unknown"}),
     ("get_model_data", {"kind": "nodes", "limit": 501}),
@@ -77,6 +115,13 @@ def test_schema_exposes_ranges_enums_lengths_and_workflow_fields(catalog):
     ("add_spectrum_case", {"name": "RS", "info_x": ["F"]}),
     ("add_time_history_function", {"name": "TH", "function_info": [[0, 0, 1]]}),
     ("add_creep_function", {"name": "C", "creep_data": [[0, float("nan")]]}),
+    ("add_creep_function", {"name": "C", "creep_data": []}),
+    ("add_shrink_function", {"name": "S", "shrink_data": []}),
+    ("add_shrink_function", {"name": "S"}),
+    ("add_time_parameter", {"name": "T", "code_index": 10}),
+    ("update_section_property", {"index": 1, "sec_property": [0.0] * 27}),
+    ("update_section_property", {"index": 1, "sec_property": [0.0] * 25}),
+    ("add_nodal_mass", {"node_id": 1, "mass": -1.0}),
     ("add_distribute_plane_load", {"index": -1, "case_name": "L", "type_name": "P", "point1": [0, 0]}),
     ("create_tendon_2d", {"name": "T", "property_name": "P", "control_points": [[0, 0, 0]], "point_insert": [0, 0]}),
     ("add_tendon_3d", {"name": "T", "property_name": "P", "control_points": [[0, 0, 0]], "point_insert": [0, 0, 0]}),
@@ -112,12 +157,14 @@ def test_spring_type_and_direction_are_validated_before_writing(catalog, fake_pr
 def test_combination_keeps_native_type_name_factor_order(catalog, fake_provider):
     _, result = asyncio.run(catalog.call_tool("add_load_combine", {
         "name": "Envelope", "combine_type": 3,
-        "combine_info": [["ST", "Dead", 1.2], ["CS", "合计值", 1.0]],
+        "combine_info": [["ST", "Dead", 1.2], ["CS", "合计值", 1.0], ["TV", "横向工况", 1.0]],
     }))
     assert result["status"] == "success"
     kwargs = fake_provider._mdb.last("add_load_combine")[2]
     assert kwargs["combine_type"] == 3
-    assert kwargs["combine_info"] == [("ST", "Dead", 1.2), ("CS", "合计值", 1.0)]
+    assert kwargs["combine_info"] == [
+        ("ST", "Dead", 1.2), ("CS", "合计值", 1.0), ("TV", "横向工况", 1.0),
+    ]
 
 
 @pytest.mark.parametrize("node_data", [

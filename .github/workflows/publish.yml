@@ -10,21 +10,9 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-
-      - name: Build
-        run: uv build
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
+    uses: ./.github/workflows/ci.yml
+    with:
+      upload_artifacts: true
 
   publish-testpypi:
     needs: build
@@ -42,20 +30,19 @@ jobs:
           path: dist/
       - name: Install uv
         uses: astral-sh/setup-uv@v4
-
-      - name: Get version
-        id: version
-        run: |
-          # 匹配 wheel 文件名中任意段数的版本号（如 0.1.233.0）
-          VERSION=$(ls dist/*.whl | grep -oP '(?<=-)[0-9]+(?:\.[0-9]+)+(?=-)')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+        with:
+          version: "0.11.6"
 
       - name: Check if version exists on TestPyPI
         id: check
         run: |
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-            "https://test.pypi.org/pypi/qiao-mcp/${{ steps.version.outputs.version }}/json")
-          echo "exists=$([[ "$HTTP_CODE" == "200" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+          package_http_code=$(curl -sS -o /dev/null -w "%{http_code}" \
+            "https://test.pypi.org/pypi/qiao-mcp/${{ needs.build.outputs.version }}/json")
+          case "$package_http_code" in
+            200) echo "exists=true" >> "$GITHUB_OUTPUT" ;;
+            404) echo "exists=false" >> "$GITHUB_OUTPUT" ;;
+            *) echo "Unexpected TestPyPI response: $package_http_code" >&2; exit 1 ;;
+          esac
 
       - name: Publish to TestPyPI
         if: steps.check.outputs.exists == 'false'
@@ -66,7 +53,7 @@ jobs:
 
       - name: Skip - version already exists
         if: steps.check.outputs.exists == 'true'
-        run: echo "Version ${{ steps.version.outputs.version }} already exists on TestPyPI, skipping."
+        run: echo "Version ${{ needs.build.outputs.version }} already exists on TestPyPI, skipping."
 
   publish-pypi:
     needs: build
@@ -84,6 +71,8 @@ jobs:
           path: dist/
       - name: Install uv
         uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.11.6"
 
       - name: Publish to PyPI
         run: uvx twine upload dist/*
