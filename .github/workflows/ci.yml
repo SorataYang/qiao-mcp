@@ -4,6 +4,16 @@ on:
   push:
     branches: [develop, main]
   pull_request:
+  workflow_call:
+    inputs:
+      upload_artifacts:
+        description: Upload the distributions after all checks pass
+        type: boolean
+        default: false
+    outputs:
+      version:
+        description: Verified distribution version
+        value: ${{ jobs.quality.outputs.version }}
 
 permissions:
   contents: read
@@ -11,6 +21,8 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -21,19 +33,39 @@ jobs:
         run: uv python install 3.11
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --locked --all-extras --dev
 
       - name: Ruff (lint)
-        run: uv run ruff check src/ tests/
+        run: uv run --locked ruff check src/ tests/ scripts/
 
       - name: Mypy (type check)
-        run: uv run mypy src/qiao_mcp/
+        run: uv run --locked mypy src/qiao_mcp/
 
       - name: Pytest
-        run: uv run pytest tests/ --ignore=tests/test_end_to_end.py -q
+        run: uv run --locked pytest tests/ --ignore=tests/test_end_to_end.py -q
 
       - name: Build distribution
         run: uv build
 
+      - name: Check release metadata and source contents
+        id: release
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            uv run --locked python scripts/check_release.py dist --tag "$GITHUB_REF_NAME" --github-output "$GITHUB_OUTPUT"
+          else
+            uv run --locked python scripts/check_release.py dist --github-output "$GITHUB_OUTPUT"
+          fi
+
       - name: Check packaged MCP protocol and catalog without QiaoTong
-        run: uv run python scripts/check_mcp_package.py dist/*.whl
+        run: uv run --locked python scripts/check_mcp_package.py dist/*.whl
+
+      - name: Upload verified distributions
+        if: inputs.upload_artifacts == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+          if-no-files-found: error
