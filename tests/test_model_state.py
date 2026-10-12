@@ -264,8 +264,8 @@ def test_real_provider_enforces_upstream_snapshot_when_api_present(monkeypatch):
 
     上游 QtServer.get_model_state 的返回结构见 reference_codes/…/core/qt_server.py：
     status="model_state"，快照放在 model_state 下并带 capabilities。PyPI 2.8.2 wheel
-    没有该方法，本地 CI 走的是 guard_unavailable；这条测试替下一版 qtmodel 把真实
-    路径也钉住，避免"能力探测到了却没按能力拦"的回归。
+    没有该方法（走 guard_unavailable），2.9.0 起的正式发布带上了它；这条测试用替身
+    钉住"有 API 时按快照拦截"，不依赖所装版本，避免"能力探测到了却没按能力拦"的回归。
     """
     from qtmodel.core.qt_server import QtServer
 
@@ -283,3 +283,39 @@ def test_real_provider_enforces_upstream_snapshot_when_api_present(monkeypatch):
     provider.ensure_operation_allowed("model_read")
     with pytest.raises(RuntimeError, match="capability=modify_model"):
         provider.ensure_operation_allowed("model_write")
+
+
+def test_real_qtserver_state_translation_drives_guard(monkeypatch):
+    """用所装 qtmodel 自带的 get_model_state 解析握手，而不是替身。
+
+    2.9.0 起 PyPI 正式发布带上该方法，守卫对所有用户生效：握手缺 model_state
+    （桥通偏旧）必须 fail closed，快照在 server.model_state 下时按能力放行。
+    """
+    from qtmodel.core.qt_server import QtServer
+
+    if not hasattr(QtServer, "get_model_state"):
+        pytest.skip("installed qtmodel predates QtServer.get_model_state")
+    handshake = {
+        "status": "connected",
+        "connected": True,
+        "compatible": True,
+        "client": {"qtmodel_version": "test"},
+        "server": {"service": "qiaotong-python-api"},
+    }
+    monkeypatch.setattr(
+        QtServer, "get_connection_status", classmethod(lambda cls: dict(handshake))
+    )
+    provider = QtModelProvider.__new__(QtModelProvider)
+    provider._available = True
+    provider._unavailable_reason = ""
+
+    assert provider.get_model_state()["status"] == "state_unknown"
+    with pytest.raises(RuntimeError, match="模型状态不可用"):
+        provider.ensure_operation_allowed("model_read")
+
+    handshake["server"] = {
+        "service": "qiaotong-python-api",
+        "model_state": ready_model_state()["model_state"],
+    }
+    assert provider.get_model_state()["status"] == "model_state"
+    provider.ensure_operation_allowed("model_write")

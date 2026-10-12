@@ -1,6 +1,6 @@
 [project]
 name = "qiao-mcp"
-version = "0.3.3"
+version = "0.5.0"
 description = "MCP server for intelligent bridge structural design and analysis (桥梁智能设计 MCP 服务器)"
 readme = "README.md"
 authors = [
@@ -29,11 +29,18 @@ dependencies = [
     # 2.6.x 曾对桥通做精确版本握手（QT_VERSION 硬编码，不匹配即拒连），故上界一度收在
     # <2.7。2.8.2 起该握手被移除（get_connection_status 恒返回 compatible=True），
     # 跨次版本不再强制用户同步升级桥通，上界因此放宽到 <2.9。
+    # 2.9.x 已逐方法核对 provider 的全部直调与模型查询，所需参数仍兼容；
+    # 源码 0687ffe 已移除混凝土检算的旧窗口参数，不能假定所有签名只增不减。
+    # 上界为 <2.10。2.9 的补丁版之间仍会增删模块（2.9.2 删掉了 2.9.1 的
+    # mdb_combination_definitions / mdb_property_operations），故不放开到 <3。
+    # 排除 2.9.0：其 add_section / add_custom_section 在未传 sec_property 时也按
+    # "26 或 29 项"校验（上游 86fe001 引入、b8c4cdb 修复），不给截面特性的建截面调用
+    # 全部在客户端被拒；2.9.1 起正常。
     # 下界保持 2.6.3：模型状态守卫按能力探测而非版本判断——PyPI 的 2.8.2 wheel 打包自
-    # 上游 340e94e，早于 get_model_state 特性（67e2f03）合入，故没有该方法；上游源码
-    # （如 fb19a6a）同样标 2.8.2 却已带上它。守卫检测到 API 缺失时自动降级放行，
+    # 上游 340e94e，早于 get_model_state 特性（67e2f03）合入，故没有该方法；2.9.0 起的
+    # 正式发布带上了它。守卫检测到 API 缺失时自动降级放行，
     # 详见 QtModelProvider.get_model_state 的分层降级说明。
-    "qtmodel>=2.6.3,<2.9",
+    "qtmodel>=2.6.3,!=2.9.0,<2.10",
     "requests>=2.32.5",
 ]
 
@@ -87,6 +94,7 @@ ignore_missing_imports = true
 [dependency-groups]
 dev = [
     "mypy>=2.3.0",
+    "packaging>=22",
     "pytest>=9.1.1",
     "ruff>=0.15.21",
 ]

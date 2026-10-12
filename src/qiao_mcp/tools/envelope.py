@@ -32,7 +32,7 @@ class ToolInputError(ToolError):
 
 
 # 只读工具前缀：不改变模型状态，可安全重复调用
-_READONLY_PREFIXES = ("get_", "list_", "find_", "calc_")
+_READONLY_PREFIXES = ("get_", "list_", "find_", "calc_", "query_")
 # 破坏性工具前缀/名称：删除或清空模型数据
 _DESTRUCTIVE_PREFIXES = ("remove_", "delete_")
 _DESTRUCTIVE_NAMES = {
@@ -46,6 +46,20 @@ _DESTRUCTIVE_NAMES = {
     "manage_check_stirrup",  # 可删除箍筋定义
     "assign_element_stirrup",  # 可删除所有单元箍筋
     "manage_check_case_file",  # 可替换当前检算工况或覆盖文件
+    "configure_live_load_system",  # 显式允许时可清理旧体系定义
+    "configure_operation_stage",  # 完整替换各类运营工况选择
+    "set_transversal_vehicle",  # 按同名或编号完整覆盖
+    "set_transversal_lane",
+    "set_transversal_case",
+    "set_international_vehicle",
+    "create_en1991_vehicle",
+    "set_planned_lane",
+    "set_international_live_load_case",
+    "set_section_reinforcement",
+    "set_check_stirrup_snapshot",
+    "set_element_stirrups",
+    "manage_check_material",
+    "manage_check_case_definition",
 }
 # 逃生舱：可调用任意 qtmodel 方法，对外部世界开放
 _OPEN_WORLD_NAMES = {"call_qtmodel_api"}
@@ -53,6 +67,7 @@ _OPEN_WORLD_NAMES = {"call_qtmodel_api"}
 _CONNECTION_NAMES = {
     "check_qiaotong_connection",
     "get_model_status",
+    "get_model_edit_readiness",
     "list_qtmodel_api",
     "call_qtmodel_api",  # 具体 mdb/odb/cdb 权限由 provider.call_api 再判断
 }
@@ -64,6 +79,7 @@ _STAGE_WRITE_NAMES = {
     "update_construction_stage",
     "set_self_weight_stage",
     "configure_analysis",
+    "configure_operation_stage",
 }
 _RESULT_NAMES = {
     "get_analysis_results",
@@ -87,6 +103,13 @@ _CHECK_READ_NAMES = {
 _CHECK_RUN_NAMES = {
     "run_concrete_check",
 }
+_MODEL_WRITE_NAMES = {
+    "set_international_vehicle", "create_en1991_vehicle",
+    "set_planned_lane", "set_international_live_load_case",
+    "set_section_reinforcement", "remove_section_reinforcement",
+    "set_check_stirrup_snapshot", "set_element_stirrups",
+    "manage_check_material", "manage_check_case_definition",
+}
 
 
 def _operation_for(name: str) -> str:
@@ -95,6 +118,8 @@ def _operation_for(name: str) -> str:
         return "connection"
     if name in _LIFECYCLE_NAMES:
         return "lifecycle"
+    if name in _MODEL_WRITE_NAMES:
+        return "model_write"
     if name == "run_analysis":
         return "analysis_run"
     if name in _CHECK_RUN_NAMES:
@@ -145,6 +170,38 @@ def _normalize(result: Any) -> Any:
         return {"status": "success", "message": result}
     # 其它类型（如 MCP Image / 富内容对象）原样透传，交由 FastMCP 序列化
     return result
+
+
+# 后端"写命令已发出、结果未收到"的异常类名。qtmodel 2.9 起写命令遇断连、读超时
+# 或 504 时抛 CommandOutcomeUnknownError 且不再自动重发（2.8.2 会重发一次，可能
+# 重复写入）。按类名识别，envelope 不必导入具体后端。
+_OUTCOME_UNKNOWN_ERRORS = frozenset({"CommandOutcomeUnknownError"})
+
+
+def _outcome_unknown(error: BaseException) -> bool:
+    """Whether a lost-reply write error appears anywhere in the exception chain.
+
+    工具普遍以 ``raise ToolError(...) from e`` 包装后端异常，故沿
+    __cause__/__context__ 链查找，而不只看最外层。
+    """
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen:
+        if type(current).__name__ in _OUTCOME_UNKNOWN_ERRORS:
+            return True
+        seen.add(id(current))
+        current = current.__cause__ or current.__context__
+    return False
+
+
+def _outcome_unknown_error(error: BaseException) -> ToolError:
+    return ToolError(
+        f"{error} — OUTCOME UNKNOWN: the command was sent but its reply was lost, so "
+        "the model may or may not have changed. Do NOT retry automatically: read the "
+        "affected objects back (or call get_model_status) and let the user decide. "
+        "(写命令已发出但未收到结果，模型可能已改也可能未改；切勿自动重试，"
+        "先回读相关对象或调用 get_model_status，再由用户决定。)"
+    )
 
 
 # ── docstring Args → JSON Schema 参数描述 ────────────────────────────────
@@ -287,14 +344,24 @@ def _wrap(fn: Callable, provider: Any = None, operation: str = "connection") -> 
         @functools.wraps(fn)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             ensure_allowed()
-            return _normalize(await fn(*args, **kwargs))
+            try:
+                return _normalize(await fn(*args, **kwargs))
+            except Exception as e:
+                if not _outcome_unknown(e):
+                    raise
+                raise _outcome_unknown_error(e) from e
 
     else:
 
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             ensure_allowed()
-            return _normalize(fn(*args, **kwargs))
+            try:
+                return _normalize(fn(*args, **kwargs))
+            except Exception as e:
+                if not _outcome_unknown(e):
+                    raise
+                raise _outcome_unknown_error(e) from e
 
     # Bare dict has no output schema in FastMCP 1.29. Preserve explicit response
     # models, and describe normalized text/dict envelopes with concrete models.

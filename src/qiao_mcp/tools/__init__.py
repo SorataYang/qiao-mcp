@@ -15,6 +15,8 @@ from mcp.server.fastmcp import Context, FastMCP
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
 from qiao_mcp.tools.schemas import (
+    CurvePoints,
+    FiniteNumber,
     FiveNumbers,
     FourNumbers,
     FunctionReference,
@@ -23,10 +25,16 @@ from qiao_mcp.tools.schemas import (
     NodeRows,
     NonnegativeNumber,
     PositiveInteger,
+    PositiveNumber,
     SectionLoop,
+    SectionProperties,
+    SupportExtraParameters,
     ThreeNumbers,
     TwoNumbers,
 )
+
+# qtmodel wait_solve 判为成功的状态集合（与其源码一致）
+_SOLVE_SUCCESS_STATES = frozenset({"succeeded", "success", "completed", "complete"})
 
 
 def _describe_ids(ids: list[int]) -> str:
@@ -497,8 +505,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 (1叠加、2判别、3包络、4平方和开根、5绝对值和、6混合)
             combine_info: Components [[case_type, case_name, factor], ...], in that order.
                 Types: ST=static, CS=construction stage, CB=combination, MV=moving load,
-                SM=settlement, RS=response spectrum, TH=time history. None/[] creates
-                an empty definition (先类型、再工况名、最后系数；省略时组合为空)
+                SM=settlement, RS=response spectrum, TH=time history, TV=transverse
+                moving-load case from transversal analysis (qtmodel 2.9+, uses the case
+                name directly). None/[] creates an empty definition
+                (先类型、再工况名、最后系数；TV 为横向移动荷载工况；省略时组合为空)
             describe: Description (描述说明)
             index: ID index, -1 for auto (编号，-1自动生成)
 
@@ -537,6 +547,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         standard: int = 1,
         database: str = "",
         data_info: FourNumbers | None = None,
+        is_orthotropic: bool | None = None,
+        ey: PositiveNumber | None = None,
     ) -> str:
         """
         Create a material in the bridge model (创建材料).
@@ -547,13 +559,28 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                       3=Prestress(预应力), 4=Rebar(钢筋), 5=Custom(自定义), 6=Composite(组合)
             standard: Code standard index, starts from 1 (规范序号，从1开始)
             database: Material database name, e.g. 'C50', 'Q345' (数据库名称)
-            data_info: Custom material properties [E, γ, ν, α] for mat_type=5
-                       自定义材料参数 [弹性模量, 容重, 泊松比, 热膨胀系数]
+            data_info: Custom material properties [E, γ, ν, α]; required for mat_type=5
+                       自定义材料参数 [弹性模量, 容重, 泊松比, 热膨胀系数]，mat_type=5 时必填
+            is_orthotropic: Enable orthotropic material behavior. None keeps the
+                            upstream default (False); explicit values require a
+                            supporting qtmodel build (是否正交异性；省略保持默认，需新版)
+            ey: Elastic modulus along the element local Y axis, in Pa. None keeps
+                the upstream default (3.45e10); use with is_orthotropic=True
+                (单元局部Y向弹性模量，Pa；用于正交异性材料，需新版 qtmodel)
         """
         try:
+            if mat_type == 5 and data_info is None:
+                raise ToolInputError(
+                    "mat_type=5 (custom) requires data_info [E, γ, ν, α] "
+                    "(自定义材料必须提供 data_info)"
+                )
             kwargs: dict[str, Any] = {}
             if data_info:
                 kwargs["data_info"] = data_info
+            if is_orthotropic is not None:
+                kwargs["is_orthotropic"] = is_orthotropic
+            if ey is not None:
+                kwargs["ey"] = ey
             provider.add_material(
                 name=name,
                 mat_type=mat_type,
@@ -570,8 +597,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def add_time_parameter(
         name: str,
-        code_index: int = 1,
-        time_parameter: list[float] | None = None,
+        code_index: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 1000] = 1,
+        time_parameter: list[FiniteNumber] | None = None,
         creep_data: list[FunctionReference] | None = None,
         shrink_data: str = "",
         index: int = -1,
@@ -584,38 +611,66 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         other materials then reference; it applies no load by itself. Creep
         analysis must also be turned on with configure_analysis(do_creep=True).
 
-        When using custom functions, create them first with add_creep_function
-        and add_shrink_function, then pass their NAMES here. creep_data is
-        NOT a time-value table — that format belongs to add_creep_function.
+        Custom functions use code_index=1000: create them first with
+        add_creep_function and add_shrink_function, then pass their NAMES here.
+        creep_data is NOT a time-value table — that format belongs to
+        add_creep_function.
 
         (写模型并刷新。这是一个命名定义，由其它材料引用，自身不施加荷载。徐变分析
-        还需用 configure_analysis(do_creep=True) 打开。自定义函数须先用
-        add_creep_function / add_shrink_function 建好，再把"函数名"传进来。
+        还需用 configure_analysis(do_creep=True) 打开。自定义函数须配 code_index=1000：
+        先用 add_creep_function / add_shrink_function 建好，再把"函数名"传进来。
         creep_data 不是时间-数值表——那种格式属于 add_creep_function。)
 
         Args:
             name: Creep-and-shrinkage material name (收缩徐变材料名)
-            code_index: Design code used when no custom functions are given
-                        (未给自定义函数时采用的规范):
+            code_index: Design code, or 1000 for user-defined functions
+                        (规范编号；1000 为用户自定义函数):
                         1=JTG 3362-2018(公规，默认) | 2=JTG D62-2004(公规)
                         3=JTJ 023-85(公规) | 4=TB 10092-2017(铁规)
                         5=GB 50157-2013(地铁) | 6=ageing theory(老化理论)
                         7=BS 5400-4-1990 | 8=AASHTO LRFD 2017
-                        1000=AASHTO LRFD 2017 (same as 8; listed by upstream)
-            time_parameter: Code-specific extra parameters; omit to keep the
-                            code's defaults
-                            (规范关联的额外参数列表，省略则用规范默认值)
-            creep_data: Custom creep functions as [[function_name, age], ...],
-                        where function_name is from add_creep_function and age
-                        is the loading age in days. NOT [[time, value]].
-                        (自定义徐变：[[函数名, 加载龄期(天)], ...]；函数名来自
-                        add_creep_function。不是 [[时间, 数值]]。)
-            shrink_data: Name of a shrinkage function from add_shrink_function;
-                         empty string means none
-                         (收缩函数名，来自 add_shrink_function；空字符串表示不用)
+                        9=BS EN 1992-2:2005 | 1000=user-defined(用户自定义)
+            time_parameter: Code-specific parameters for codes 1–9; omit to keep
+                            the code's defaults. When given, the count is fixed per
+                            code: 1→4, 2→3, 3→4, 4→5, 5→3, 6→4, 7→4, 8→2, 9→5
+                            (规范 1–9 的参数表，省略则用规范默认值；给出时个数按规范固定)
+            creep_data: Required with code_index=1000 and only allowed there:
+                        [[function_name, age], ...], where function_name is from
+                        add_creep_function and age is the loading age in days.
+                        NOT [[time, value]].
+                        (仅 code_index=1000 使用且必填：[[函数名, 加载龄期(天)], ...]；
+                        函数名来自 add_creep_function。不是 [[时间, 数值]]。)
+            shrink_data: Name of a shrinkage function from add_shrink_function,
+                         used with code_index=1000; empty string means none
+                         (收缩函数名，来自 add_shrink_function，配合 1000 使用；空字符串表示不用)
             index: Material ID, -1 to auto-assign (材料编号，-1 自动生成)
         """
         try:
+            # 各规范参数个数与 qtmodel 2.9 客户端校验一致（上游以桥通 C# 日志核对）
+            parameter_counts = (4, 3, 4, 5, 3, 4, 4, 2, 5)
+            if code_index == 1000:
+                if not creep_data:
+                    raise ToolInputError(
+                        "code_index=1000 (user-defined) requires creep_data "
+                        "[[function_name, age], ...] (用户自定义须提供 creep_data)"
+                    )
+                if time_parameter is not None:
+                    raise ToolInputError(
+                        "time_parameter applies to design codes 1–9, not code_index=1000 "
+                        "(time_parameter 只用于规范 1–9)"
+                    )
+            else:
+                if creep_data is not None:
+                    raise ToolInputError(
+                        "Custom creep functions require code_index=1000; design code "
+                        f"{code_index} ignores creep_data (自定义徐变函数须配 code_index=1000)"
+                    )
+                expected = parameter_counts[code_index - 1]
+                if time_parameter is not None and len(time_parameter) != expected:
+                    raise ToolInputError(
+                        f"code_index={code_index} takes {expected} time_parameter values, "
+                        f"got {len(time_parameter)} (该规范参数个数应为 {expected})"
+                    )
             kwargs: dict[str, Any] = {
                 "name": name,
                 "code_index": code_index,
@@ -638,7 +693,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def add_creep_function(
         name: str,
-        creep_data: list[TwoNumbers],
+        creep_data: CurvePoints,
         scale_factor: float = 1.0,
     ) -> str:
         """
@@ -664,7 +719,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def add_shrink_function(
         name: str,
-        shrink_data: list[TwoNumbers] | None = None,
+        shrink_data: CurvePoints,
         scale_factor: float = 1.0,
     ) -> str:
         """
@@ -672,15 +727,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
         Args:
             name: Function name (函数名称)
-            shrink_data: Shrinkage strain over time [[time(days), strain], ...]
-                         (收缩应变表 [[天数, 应变], ...])
+            shrink_data: Shrinkage strain over time [[time(days), strain], ...];
+                         at least one point
+                         (收缩应变表 [[天数, 应变], ...]，至少一个点)
             scale_factor: Scale factor (比例系数)
         """
         try:
-            kwargs: dict[str, Any] = {"name": name, "scale_factor": scale_factor}
-            if shrink_data is not None:
-                kwargs["shrink_data"] = [tuple(item) for item in shrink_data]
-            provider.add_shrink_function(**kwargs)
+            provider.add_shrink_function(
+                name=name,
+                shrink_data=[tuple(item) for item in shrink_data],
+                scale_factor=scale_factor,
+            )
             return f"Successfully added shrink function '{name}' (成功添加收缩函数)"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
@@ -1172,7 +1229,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def update_section_property(
         index: int,
-        sec_property: list[float],
+        sec_property: SectionProperties,
         side_i: bool = True
     ) -> str:
         """
@@ -1184,9 +1241,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
         Args:
             index: Section ID (截面编号)
-            sec_property: List of up to 29 section properties in order:
+            sec_property: The complete property table, in QiaoTong UI order:
+                          exactly 26 values (legacy layout) or 29 values (full layout)
                           [Area, Asy, Asz, Ixx, Iyy, Izz, ...]
-                          (截面特性列表，按顺序: 面积, 剪切面积y, 剪切面积z, 扭转惯性矩, 抗弯惯性矩y, 抗弯惯性矩z, ...)
+                          (完整截面特性表，按桥通界面顺序：26 项旧格式或 29 项完整格式，
+                          依次为面积、剪切面积y、剪切面积z、扭转惯性矩、抗弯惯性矩y、抗弯惯性矩z …)
             side_i: For tapered sections, True=I-end, False=J-end (变截面时 True=I端, False=J端)
         """
         try:
@@ -1202,11 +1261,18 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def calculate_section_property() -> str:
         """
-        Recalculate properties for all sections in the model (重新计算所有截面特性).
+        Recalculate and store properties for all existing model sections
+        (重新计算并保存模型中所有截面的特性).
 
-        Call this after creating or modifying section geometry to ensure
-        Area, Iy, Iz, J etc. are up-to-date.
-        (在创建或修改截面几何后调用，确保面积、惯性矩等特性值为最新)
+        Use after changing stored section geometry. This model-write operation
+        requires an editable model and updates section properties such as area
+        and inertias. It returns a completion message, not the property values.
+        Read values with get_model_data(kind="section_property", sec_id=...).
+
+        For a trial polygon or line-width geometry, use calc_section_property:
+        it returns calculated values without creating or updating model sections.
+        (修改已有截面几何后使用，须允许模型写入；返回完成消息，数值经
+        get_model_data 回读。试算几何用 calc_section_property，不修改已有截面。)
         """
         try:
             provider.calculate_section_property()
@@ -1226,6 +1292,9 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         ry: bool = False,
         rz: bool = False,
         group_name: str = "",
+        coordinate: Literal[0, 1] | None = None,
+        extra_enabled: bool | None = None,
+        extra_parameters: SupportExtraParameters | None = None,
     ) -> str:
         """
         Set support boundary conditions on nodes (设置节点支承).
@@ -1240,12 +1309,29 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             ry: Fix Y rotation (固定Y转动), default False
             rz: Fix Z rotation (固定Z转动), default False
             group_name: Boundary group name (边界组名)
+            coordinate: 0=global, 1=node coordinate system; None preserves the
+                        existing setting on overwrite or uses the creation default
+                        (0=整体，1=节点坐标系；省略时覆盖保留原值、新增用默认值)
+            extra_enabled: Enable additional support parameters. None enables them
+                           when extra_parameters is supplied, otherwise preserves the
+                           existing setting. False clears them (提供附加参数时默认启用；
+                           两者均省略保留原设置，False 清空；需新版 qtmodel)
+            extra_parameters: Exactly [static friction, dynamic friction, Dx, Dy, Dz,
+                              Rx, Ry, Rz]; supplying this enables it unless explicitly
+                              disabled. None preserves it. Requires a supporting
+                              qtmodel build (静摩擦、动摩擦、Dx/Dy/Dz/Rx/Ry/Rz，共8项)
         """
         try:
             boundary_info = [dx, dy, dz, rx, ry, rz]
             kwargs: dict[str, Any] = {}
             if group_name:
                 kwargs["group_name"] = group_name
+            for key, value in {
+                "coordinate": coordinate, "extra_enabled": extra_enabled,
+                "extra_parameters": extra_parameters,
+            }.items():
+                if value is not None:
+                    kwargs[key] = value
             provider.add_general_support(
                 node_id=node_id, boundary_info=boundary_info, **kwargs
             )
@@ -1895,19 +1981,27 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def add_nodal_mass(
         node_id: int | list[int] | str,
-        mass_x: float = 0.0,
-        mass_y: float = 0.0,
-        mass_z: float = 0.0,
-        mass_rm: float = 0.0,
+        mass: NonnegativeNumber = 0.0,
+        mass_x: NonnegativeNumber | None = None,
+        mass_y: NonnegativeNumber | None = None,
+        mass_z: NonnegativeNumber | None = None,
+        rot_x: NonnegativeNumber = 0.0,
+        rot_y: NonnegativeNumber = 0.0,
+        rot_z: NonnegativeNumber = 0.0,
     ) -> str:
         """
         Attach a lumped mass to nodes for dynamic analysis (添加节点集中质量).
 
         Writes to the model and refreshes it. This is a MASS property, not a
         load: it belongs to no load case and contributes inertia only, never
-        static force. Mass is per-direction, so a mass that should resist
-        vertical motion must be given in mass_z — setting only mass_x leaves
-        the vertical direction massless.
+        static force.
+
+        A physical point mass (equipment, ballast block) has the same
+        translational mass in every direction — pass it as `mass`. Use
+        mass_x / mass_y / mass_z only to override a direction on purpose, e.g. a
+        mass that should act vertically only. Direction-specific values need
+        qtmodel 2.9+ and are rejected on older builds rather than merged.
+        rot_x / rot_y / rot_z are rotational mass moments of inertia.
 
         Only matters once an eigenvalue run exists: enable it with
         configure_analysis(do_vibration=True). Mass from dead load is usually
@@ -1919,29 +2013,40 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         force → apply_nodal_force.
 
         (写模型并刷新。这是质量属性、不是荷载：不属于任何荷载工况，只贡献惯性、
-        不产生静力。质量按方向给出，要抵抗竖向运动的质量必须写在 mass_z——只填 mass_x
-        会让竖向没有质量。仅在有自振分析时起作用，用 configure_analysis(do_vibration=True)
-        开启。恒载的质量通常由 add_load_to_mass 单独提供；本工具用于模型未按荷载计入的
-        离散物件（设备、压重块）。选型：节点离散质量用本工具；把已有工况折算为质量用
-        add_load_to_mass；静力向下的力用 apply_nodal_force。)
+        不产生静力。实体点质量在各方向相同，用 mass 给出；只有刻意让某方向不同时
+        （如仅竖向参与）才用 mass_x/mass_y/mass_z 覆盖，需 qtmodel 2.9+，旧版直接拒绝
+        而不静默合并。rot_x/rot_y/rot_z 为转动惯量。仅在有自振分析时起作用，用
+        configure_analysis(do_vibration=True) 开启。恒载的质量通常由 add_load_to_mass
+        单独提供；本工具用于模型未按荷载计入的离散物件。选型：节点离散质量用本工具；
+        把已有工况折算为质量用 add_load_to_mass；静力向下的力用 apply_nodal_force。)
 
         Args:
             node_id: Node ID(s) — int, list, or "XtoYbyN" range string
                      (节点编号，支持整数、列表或 "XtoYbyN" 范围字符串)
-            mass_x: Translational mass acting along global X (整体X向平动质量)
-            mass_y: Translational mass acting along global Y (整体Y向平动质量)
-            mass_z: Translational mass acting along global Z — the vertical
-                    direction in a normal model (整体Z向平动质量，常规模型中即竖向)
-            mass_rm: Rotational mass moment of inertia. Upstream passes this as
-                     the fourth component and labels it as being about X, while
-                     flagging its own list as indicative — verify against your
-                     QiaoTong version before relying on it.
-                     (转动质量惯矩。上游按第四个分量下发并标注为绕X，但其 docstring
-                     自称取值表仅为示例，依赖前请对照所用桥通版本核实。)
+            mass: Translational mass applied along global X, Y and Z
+                  (三向平动质量，整体坐标系)
+            mass_x: Optional X translational mass; defaults to mass
+                    (可选，单独指定整体X向平动质量，默认取 mass)
+            mass_y: Optional Y translational mass; defaults to mass
+                    (可选，单独指定整体Y向平动质量，默认取 mass)
+            mass_z: Optional Z translational mass — vertical in a normal model;
+                    defaults to mass (可选，单独指定整体Z向即竖向平动质量，默认取 mass)
+            rot_x: Rotational mass moment of inertia about global X (绕整体X轴转动惯量)
+            rot_y: Rotational mass moment of inertia about global Y (绕整体Y轴转动惯量)
+            rot_z: Rotational mass moment of inertia about global Z (绕整体Z轴转动惯量)
         """
         try:
-            mass_info = (mass_x, mass_y, mass_z, mass_rm)
-            provider.add_nodal_mass(node_id=node_id, mass_info=mass_info)
+            translational = tuple(
+                mass if value is None else value for value in (mass_x, mass_y, mass_z)
+            )
+            rotation = (rot_x, rot_y, rot_z)
+            if not any(translational) and not any(rotation):
+                raise ToolInputError(
+                    "Give a nonzero mass or rotational inertia (质量与转动惯量不能全为零)"
+                )
+            provider.add_nodal_mass(
+                node_id=node_id, mass_xyz=translational, rotation=rotation
+            )
             return f"Successfully added nodal mass to node(s) {node_id} (成功添加节点质量)"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
@@ -2242,10 +2347,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def add_construction_stage(
         name: str,
-        duration: float,
+        duration: NonnegativeNumber,
         active_structures: list[list] | None = None,
         active_boundaries: list[list] | None = None,
         active_loads: list[list] | None = None,
+        sub_steps: list[NonnegativeNumber] | None = None,
     ) -> str:
         """
         Add a construction stage and say what becomes active in it
@@ -2281,9 +2387,13 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
         Args:
             name: Stage name (施工阶段名称)
-            duration: Stage duration in days. Upstream stores this as an
-                      integer, so a fractional value is truncated
-                      (时长，单位天；上游按整数存储，小数会被截断)
+            duration: Stage duration in days, including fractional days. Fractional
+                      durations require a qtmodel build exposing sub_steps; older
+                      builds are rejected rather than silently truncating the value
+                      (时长，单位天，支持小数；旧版不支持时明确报错，不截断)
+            sub_steps: Sub-step durations in days, e.g. [0.25, 1.5]. None omits the
+                       option; [] explicitly supplies no sub-steps. Requires a
+                       supporting qtmodel build (子步时长列表；省略保持旧行为，需新版)
             active_structures: Structure groups to activate (激活结构组):
                 [[group_name, age, install_method, weight_stage_id], ...]
                 age: concrete age in days at activation (激活时龄期，天)
@@ -2310,6 +2420,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["active_boundaries"] = [tuple(b) for b in active_boundaries]
             if active_loads:
                 kwargs["active_loads"] = [tuple(l) for l in active_loads]
+            if sub_steps is not None:
+                kwargs["sub_steps"] = sub_steps
             provider.add_construction_stage(name=name, duration=duration, **kwargs)
             return f"Successfully added construction stage '{name}' (成功添加施工阶段 '{name}')"
         except ToolError:
@@ -2364,8 +2476,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
         Use this after all loads, boundaries, and analysis settings are configured.
         Solving can take a long time; it runs in a worker thread so the connection
-        stays responsive, with periodic progress heartbeats.
+        stays responsive, with periodic progress heartbeats. Success is reported only
+        when QiaoTong's final solve state is a success; a solve the user terminated in
+        QiaoTong, or any other unfinished state, is an error.
         求解可能耗时较长，在工作线程中执行以保持连接不阻塞，并周期性上报进度。
+        只有桥通报告的最终状态为成功时才报完成；用户在桥通中终止求解等未完成状态均报错。
 
         Args:
             read_timeout: Max total solve time in seconds, default 3600
@@ -2389,7 +2504,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             while True:
                 done, _ = await asyncio.wait({solve}, timeout=5)
                 if done:
-                    await solve  # 传播求解线程中的异常
+                    status = await solve  # 传播求解线程中的异常
                     break
                 elapsed += 5
                 try:
@@ -2399,6 +2514,16 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                     )
                 except Exception:
                     pass  # 进度上报失败不应影响求解
+            # 用户终止等结局不抛错而是返回状态，必须核对后才能宣告完成
+            state = str(status.get("state", "")).lower() if isinstance(status, dict) else ""
+            if state and state not in _SOLVE_SUCCESS_STATES:
+                message = status.get("message") or ""
+                raise ToolError(
+                    f"Analysis did not complete: state={state}"
+                    + (f", message={message}" if message else "")
+                    + ". No new results are available; check the model and rerun. "
+                    f"(结构分析未完成：状态 {state}，没有新的计算结果，请检查后重新求解)"
+                )
             return "Analysis successfully completed (结构分析计算完成)"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
@@ -2486,6 +2611,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         case_name: str = "",
         limit: int = 100,
         offset: int = 0,
+        case_name_mode: Literal["static", "full"] = "static",
     ) -> str:
         """
         Get analysis results from the bridge model (获取分析结果).
@@ -2497,10 +2623,14 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             stage_id: Construction stage (施工阶段): -1=operation(运营), 0=envelope(包络),
                       n=stage n (第n阶段)
             case_name: Load case name for operation stage (运营阶段荷载工况名).
-                       For stage_id=-1, the tool automatically adds "ST:" prefix if missing.
-                       (运营阶段查询时工具会自动添加 "ST:" 前缀)
+                       static mode adds "ST:" when missing for stage_id=-1.
+                       full mode passes a verified complete result identifier unchanged.
             limit: Max items per page, default 100 (单页条数上限)
             offset: Pagination offset (翻页偏移)
+            case_name_mode: static preserves the legacy ordinary static-case prefix;
+                full requires a nonempty complete identifier confirmed by QiaoTong
+                results/UI and passes it unchanged. Do not infer TV:/MV: result
+                prefixes from combination type codes (完整工况名模式不猜测前缀).
 
         Returns:
             Deformation results (变形): List of dicts with keys
@@ -2514,10 +2644,13 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             from qiao_mcp.tools.queries import _paginate
 
             kwargs: dict[str, Any] = {}
+            if case_name_mode not in {"static", "full"}:
+                raise ToolInputError("case_name_mode must be static or full")
+            if case_name_mode == "full" and not case_name.strip():
+                raise ToolInputError("full mode requires a verified complete case_name (完整模式须提供已核实的工况标识)")
             if case_name:
-                # 运营阶段查询：qtmodel 要求工况名加 "ST:" 前缀
-                # Operation stage queries require "ST:" prefix in qtmodel
-                if stage_id == -1 and not case_name.startswith("ST:"):
+                # Preserve the original static-case convention only in static mode.
+                if case_name_mode == "static" and stage_id == -1 and not case_name.startswith("ST:"):
                     kwargs["case_name"] = f"ST:{case_name}"
                 else:
                     kwargs["case_name"] = case_name

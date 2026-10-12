@@ -12,7 +12,14 @@ from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
-from qiao_mcp.tools.schemas import BoundaryKind, ConstraintTerm, SixFlags, SixNumbers, SpringValues
+from qiao_mcp.tools.schemas import (
+    BoundaryKind,
+    ConstraintTerm,
+    SixFlags,
+    SixNumbers,
+    SpringValues,
+    SupportExtraParameters,
+)
 
 
 def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -138,6 +145,10 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         spring_values: SpringValues,
         support_type: Literal[1, 2, 3] = 1,
         group_name: str = "",
+        coordinate: Literal[0, 1] | None = None,
+        extra_enabled: bool | None = None,
+        extra_parameters: SupportExtraParameters | None = None,
+        axis_direction: Literal[0, 1, 2, 3, 4, 5] | None = None,
     ) -> str:
         """
         Add elastic spring supports on nodes (添加弹性支承/弹簧支座).
@@ -155,6 +166,19 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
             support_type: Support type (支承类型): 1=linear(线性),
                           2=tension-only(受拉), 3=compression-only(受压)
             group_name: Boundary group name (边界组名)
+            coordinate: 0=global, 1=node coordinate system. None preserves existing
+                        values on overwrite, or uses defaults on creation (整体/节点
+                        坐标系；省略时覆盖保留原值、新增用默认值，需新版 qtmodel)
+            extra_enabled: Enable additional parameters; None enables them when
+                           extra_parameters is supplied, otherwise preserves the
+                           existing setting. False clears them (提供附加参数时默认启用；
+                           两者均省略保留原设置，False 清空；需新版 qtmodel)
+            extra_parameters: Exactly [static friction, dynamic friction, Dx, Dy, Dz,
+                              Rx, Ry, Rz]; None preserves existing values on overwrite
+                              (静摩擦、动摩擦、Dx/Dy/Dz/Rx/Ry/Rz，共8项，需新版 qtmodel)
+            axis_direction: Signed axis for support_type=2/3 only: 0/1=+X/-X,
+                            2/3=+Y/-Y, 4/5=+Z/-Z. Must match spring_values[0].
+                            None omits the option (单向支承正负轴，须与刚度方向一致，需新版)
 
         Example:
             add_elastic_support(1, spring_values=[1e6,0,1e6,0,0,0])           # linear
@@ -169,6 +193,19 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
                 raise ToolInputError(f"support_type={support_type} requires {expected_size} spring_values")
             if support_type in (2, 3) and spring_values[0] not in (1, 2, 3):
                 raise ToolInputError("Spring direction must be 1=X, 2=Y or 3=Z (弹簧方向编号应为1/2/3)")
+            if axis_direction is not None and (
+                support_type == 1 or axis_direction // 2 + 1 != spring_values[0]
+            ):
+                raise ToolInputError(
+                    "axis_direction requires a matching unidirectional spring axis "
+                    "(axis_direction 仅用于单向支承，且须与 spring_values 方向一致)"
+                )
+            for key, value in {
+                "coordinate": coordinate, "extra_enabled": extra_enabled,
+                "extra_parameters": extra_parameters, "axis_direction": axis_direction,
+            }.items():
+                if value is not None:
+                    kwargs[key] = value
             provider.add_elastic_support(
                 node_id=node_id,
                 support_type=support_type,

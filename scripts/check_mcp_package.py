@@ -1,7 +1,7 @@
 """Check a built wheel over stdio without calling bridge operations.
 
 Run with the project's installed dependencies:
-    uv run python scripts/check_mcp_package.py dist/qiao_mcp-0.3.3-py3-none-any.whl
+    uv run python scripts/check_mcp_package.py dist/qiao_mcp-0.5.0-py3-none-any.whl
 """
 
 import argparse
@@ -39,13 +39,18 @@ async def inspect_package(wheel: Path, expected_tools: int, output: Path | None)
             resources = (await session.list_resources()).resources
             prompts = (await session.list_prompts()).prompts
             connection = await session.call_tool("check_qiaotong_connection", {})
+            readiness = await session.call_tool("get_model_edit_readiness", {})
+            invalid_query = await session.call_tool("query_model_data", {
+                "request": {"kind": "nodes", "near": [0, 0, 0]},
+            })
             invalid = await session.call_tool("create_nodes_linear", {"count": 0})
 
     assert initialized.serverInfo.name == "qiao-mcp"
     assert initialized.serverInfo.version == expected_version, initialized.serverInfo
     assert initialized.instructions and "get_model_status" in initialized.instructions
     assert len(tools) == expected_tools, f"Expected {expected_tools} tools, got {len(tools)}"
-    assert len(resources) == 7 and len(prompts) == 4
+    assert len(resources) == 7 and len(prompts) == 5
+    assert "analyze_transversal" in {prompt.name for prompt in prompts}
     parameters = [
         (tool.name, name, schema)
         for tool in tools for name, schema in tool.inputSchema.get("properties", {}).items()
@@ -60,6 +65,9 @@ async def inspect_package(wheel: Path, expected_tools: int, output: Path | None)
     assert not connection.isError and connection.structuredContent
     assert connection.structuredContent["connection_status"] == "software_not_running"
     assert connection.structuredContent["connected"] is False
+    assert not readiness.isError and readiness.structuredContent
+    assert readiness.structuredContent["status"] in {"not_connected", "api_unavailable"}
+    assert invalid_query.isError, "Invalid nested query inputs must use the MCP error channel"
     assert invalid.isError, "Invalid arguments must use the MCP error channel"
     if output:
         output.write_text(json.dumps({
@@ -82,7 +90,7 @@ async def inspect_package(wheel: Path, expected_tools: int, output: Path | None)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("wheel", type=Path)
-    parser.add_argument("--expected-tools", type=int, default=133)
+    parser.add_argument("--expected-tools", type=int, default=153)
     parser.add_argument("--output", type=Path, help="Write the inspected protocol catalog as JSON")
     args = parser.parse_args()
     asyncio.run(asyncio.wait_for(

@@ -7,16 +7,78 @@ node tandems (节点纵列) → influence planes (影响面) → lane lines (车
 → standard vehicles (标准车辆) → live load cases (活载工况).
 """
 
-from typing import Literal
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import StrictBool
 
 from qiao_mcp.providers import BridgeProvider
-from qiao_mcp.tools.envelope import ToolError
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.live_load_schemas import LiveLoadCaseNames, LiveLoadSystem
+from qiao_mcp.tools.schemas import MessageResult
 
 
 def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
     """Register moving load MCP tools."""
+
+    @mcp.tool()
+    def configure_live_load_system(
+        system: LiveLoadSystem, clear_existing: StrictBool = False,
+    ) -> MessageResult:
+        """Explicitly select the bridge live-load system (选择活载体系).
+
+        Existing incompatible definitions can block a switch. Set clear_existing
+        only when the user chose to delete those definitions; references in
+        combinations/operation settings may still block deletion. Never retry a
+        rejected switch with clearing enabled automatically. Does not run analysis.
+
+        Args:
+            system: china_longitudinal=中国纵向, aashto=AASHTO,
+                china_transversal=中国横向, bs=BS, en1991=EN1991.
+            clear_existing: Explicitly allow clearing old live-load definitions
+                during the switch (允许清理旧活载；默认 False).
+        """
+        try:
+            provider.configure_live_load_system(system, clear_existing=clear_existing)
+            return MessageResult(status="success", message=f"Live-load system set to {system} (活载体系已设置)")
+        except Exception as exc:
+            raise ToolError(f"Error configuring live-load system (设置活载体系失败): {exc}") from exc
+
+    @mcp.tool()
+    def configure_operation_stage(
+        final_stage: str,
+        static_load_cases: LiveLoadCaseNames,
+        sink_load_cases: LiveLoadCaseNames,
+        live_load_cases: LiveLoadCaseNames,
+        transversal_load_cases: LiveLoadCaseNames,
+        do_analysis: StrictBool = True,
+    ) -> MessageResult:
+        """Replace all operation-stage analysis selections (完整设置运营阶段).
+
+        Each case list is required: [] disables that family. Read the current
+        analysis_context first and include every family that should remain
+        enabled. Names must match existing definitions. This only commits settings;
+        use run_analysis separately to solve. It does not switch the displayed stage.
+
+        Args:
+            final_stage: Exact final construction-stage name to inherit; an empty
+                string delegates stage selection to QiaoTong (最终施工阶段名).
+            static_load_cases: Complete ordinary static case names; [] disables (静力工况).
+            sink_load_cases: Complete settlement case names; [] disables (沉降工况).
+            live_load_cases: Complete longitudinal/influence-plane live-load case
+                names; [] disables (纵向活载工况).
+            transversal_load_cases: Complete transversal case names; [] disables (横向工况).
+            do_analysis: Whether operation-stage analysis is enabled (是否计算运营阶段).
+        """
+        try:
+            provider.configure_operation_stage(
+                final_stage=final_stage, static_load_cases=static_load_cases,
+                sink_load_cases=sink_load_cases, live_load_cases=live_load_cases,
+                transversal_load_cases=transversal_load_cases, do_analysis=do_analysis,
+            )
+            return MessageResult(status="success", message="Operation-stage selections replaced (运营阶段设置已完整替换)")
+        except Exception as exc:
+            raise ToolError(f"Error configuring operation stage (设置运营阶段失败): {exc}") from exc
 
     @mcp.tool()
     def add_node_tandem(
@@ -50,6 +112,7 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
     def add_influence_plane(
         name: str,
         tandem_names: list[str],
+        always_divided_by_beam_shape: bool | None = None,
     ) -> str:
         """
         Define an influence plane from node tandems (添加影响面).
@@ -60,9 +123,16 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         Args:
             name: Influence plane name (影响面名称, e.g. "影响面1")
             tandem_names: Node tandem names (节点纵列名称列表)
+            always_divided_by_beam_shape: Always divide by beam shape. None keeps the
+                                         upstream default (False); explicit values
+                                         require a supporting qtmodel build
+                                         (是否始终按梁形划分；省略保持默认，需新版)
         """
         try:
-            provider.add_influence_plane(name=name, tandem_names=tandem_names)
+            kwargs: dict[str, Any] = {}
+            if always_divided_by_beam_shape is not None:
+                kwargs["always_divided_by_beam_shape"] = always_divided_by_beam_shape
+            provider.add_influence_plane(name=name, tandem_names=tandem_names, **kwargs)
             return f"Influence plane '{name}' created (影响面 '{name}' 创建成功)"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
@@ -162,6 +232,7 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         influence_plane: str,
         span: float,
         sub_cases: list[list],
+        sub_case_optimized: list[StrictBool] | None = None,
     ) -> str:
         """
         Create a moving live load case (创建活载工况).
@@ -176,18 +247,31 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
             span: Bridge span in meters (跨度，单位m)
             sub_cases: Sub-case list, each item [vehicle_name, factor, [lane names...]]
                        (子工况信息 [[车辆名, 系数, [车道名...]], ...])
+            sub_case_optimized: Optimization flag for each sub-case, in the same order
+                                and with exactly the same length as sub_cases. None
+                                keeps legacy behavior; explicit lists require a
+                                supporting qtmodel build (各子工况优化标志，等长布尔列表，需新版)
 
         Example:
             create_live_load_case(name="活载工况1", influence_plane="影响面1", span=100,
                                   sub_cases=[["公路I级", 1.0, ["车道1", "车道2"]]])
         """
         try:
+            kwargs: dict[str, Any] = {}
+            if sub_case_optimized is not None:
+                if len(sub_case_optimized) != len(sub_cases):
+                    raise ToolInputError(
+                        "sub_case_optimized must have the same length as sub_cases "
+                        "(子工况优化标志数量必须与子工况一致)"
+                    )
+                kwargs["sub_case_optimized"] = sub_case_optimized
             formatted = [(str(v), float(f), list(lanes)) for v, f, lanes in sub_cases]
             provider.add_live_load_case(
                 name=name,
                 influence_plane=influence_plane,
                 span=span,
                 sub_case=formatted,
+                **kwargs,
             )
             return (
                 f"Live load case '{name}' created on plane '{influence_plane}' "

@@ -14,7 +14,12 @@ from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError
-from qiao_mcp.tools.schemas import ApiObject, ConnectionResult, ModelStateResult
+from qiao_mcp.tools.schemas import (
+    ApiObject,
+    ConnectionResult,
+    ModelEditReadinessResult,
+    ModelStateResult,
+)
 
 
 def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
@@ -127,6 +132,23 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             raise ToolError(f"Error checking model status (模型状态查询失败): {e}") from e
 
     @mcp.tool()
+    def get_model_edit_readiness() -> ModelEditReadinessResult:
+        """Diagnose why the current model cannot be edited (只读检查编辑准备项).
+
+        Available even when model reads/writes are blocked, including solving,
+        postprocessing and an unknown model state. The readiness object contains
+        only bridge-reported fields: success means a response was received, NOT
+        that editing is safe. Missing API, connection failure and unknown data
+        are reported explicitly. Any preparation_token is opaque and must not
+        be cached or reused. This tool never calls prepare_model_edit, switches
+        stages or deletes results; ask the user to handle preparation in QiaoTong.
+        """
+        try:
+            return ModelEditReadinessResult.model_validate(provider.get_model_edit_readiness())
+        except Exception as e:
+            raise ToolError(f"Error checking edit readiness (编辑就绪诊断失败): {e}") from e
+
+    @mcp.tool()
     def list_qtmodel_api(api_object: ApiObject, pattern: str = "") -> str:
         """
         Discover qtmodel API methods and their real signatures (检索 qtmodel API 方法及签名).
@@ -143,6 +165,18 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Updated source builds also expose reset_*_setting analysis resets and
         copy_thicknesses / arrange_thickness_ids / remove_thicknesses through mdb.
         Search "reset_" or "thickness" to check availability in the installed build.
+        qtmodel 2.9 adds, among others, transversal analysis (search "transversal"),
+        international and planned-lane live loads ("international", "planned"),
+        strengthening ("strengthen"), exact object deletion ("delete_model_object")
+        and complete reinforcement/check snapshots on cdb ("snapshot", "set_").
+        Search "update_operation_stage_setting" for transversal_load_cases support;
+        search "remove_material" / "remove_tendon_property" for cascade defaults.
+        Current source also adds mass/stiffness factor definitions ("_factor"),
+        flange definitions/effective-width calculation ("flange", "effective_width"),
+        model statistics ("statistics", "weight_table"), merge_node_groups,
+        merge_frame_elements, merge_plate_elements and move_nodes_by_offsets.
+        These long-tail methods remain available here; common transversal,
+        international and model-check snapshots also have dedicated tools.
 
         Args:
             api_object: Which database to inspect (数据库对象):
@@ -181,12 +215,33 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         against the real signature before dispatch, so a wrong parameter name
         fails fast with the correct signature rather than corrupting the model.
 
-        Destructive/long-running methods (initial 清空模型, do_solve 求解) are
-        blocked here — use initialize_model / run_analysis instead.
-        （清空模型、求解等危险或长耗时操作已禁止经此调用，请用对应专用工具。）
+        Destructive/long-running methods (initial 清空模型, do_solve/wait_solve 求解)
+        are blocked here — use initialize_model / run_analysis instead. So are methods
+        that act on the MCP host or the connection rather than the bridge model
+        (post_python_file, ensure_running, set_url, set_version, export_api_help,
+        export_qt_helper) and prepare_model_edit, which can irreversibly delete
+        results and is reserved for the host application after explicit user approval.
+        （清空模型、求解等危险或长耗时操作已禁止经此调用，请用对应专用工具；
+        作用于 MCP 主机或连接目标的方法，以及可能不可逆删除结果的
+        prepare_model_edit 同样禁止。）
 
-        MDB get_/query_/calc_ methods are read-only model operations; other MDB
-        methods, including calculate_section_property, require model-write permission.
+        MDB get_/query_/calc_ methods are read-only model operations, as are the
+        local helpers list_parameter_section_types, build_parameter_section_*_spec
+        and generate_curve_node_data, and resolve_node_selection. Other MDB methods,
+        including calculate_section_property and calculate_effective_width,
+        require model-write permission.
+        Every MDB write is committed with update_model afterwards, as QiaoTong
+        requires; project/file/view management calls (save_file, close_project,
+        undo_model, update_to_pre, …) are not.
+        （MDB 写方法调用后统一以 update_model 提交；工程、文件和视图管理命令除外。）
+
+        CDB base-model snapshots also require model-write permission and one
+        update_model commit: set_section_reinforcement,
+        remove_section_reinforcement_by_name, set_check_stirrup,
+        set_element_stirrups, set_check_material, remove_check_material,
+        set_check_case, remove_check_case_snapshot and
+        set_steel_bar_material_convention. Legacy CDB queries/files/solvers do not
+        get an MDB commit (新快照操作基础模型；既有 CSAN 操作保留原权限和提交语义).
 
         New MDB management APIs are available here without additional wrapper tools.
         copy_thicknesses / remove_thicknesses accept positive integer IDs or lists,
@@ -194,6 +249,39 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         delete settings, and arrange_thickness_ids renumbers thickness references;
         only call them when that change is intended.
         （板厚批量操作不接受区间字符串；重置会删除分析设置，整理板厚会更改编号。）
+
+        On supporting source builds, get_mass_factor/get_stiffness_factor use
+        None for all definitions and [] for none. Their update methods preserve
+        omitted fields; supplying element_ids/group_names replaces the selection.
+        calculate_effective_width writes generated width/factor definitions and
+        is committed once. get_element_weight/get_element_weight_table and
+        material weight statistics use fixed N, independent of display units.
+        Merges may remove nodes/elements/associated loads; use explicit targets
+        and the actual returned merged_count, not a guessed count.
+
+        Current cdb.solve_concrete_check starts a background task and no longer
+        accepts show_view/modal/auto_close/sync. Prefer run_concrete_check for
+        named-case import and bounded waiting. cdb.remove_section_reinforcement
+        uses sec_id/position for current CSAN data; the base-model snapshot tool
+        uses remove_section_reinforcement_by_name and commits separately.
+
+        Operation analysis: mdb.update_operation_stage_setting accepts
+        transversal_load_cases on supporting builds. Pass the existing final_stage
+        and ALL desired static_load_cases / sink_load_cases / live_load_cases too:
+        omitted or empty lists disable their corresponding analysis, not preserve it.
+        The transversal cases must already exist; None/[] disables transversal analysis.
+        （运营阶段设置为整体替换：需同时提供最终阶段及所有需计算的工况列表，
+        省略/空列表会关闭对应分析；transversal_load_cases 引用已建横向工况。）
+
+        Deletion: mdb.remove_material defaults to cascade=True on qtmodel 2.9 and
+        also deletes associated tendon properties and tendons; cascade=False retains
+        tendon properties. mdb.remove_tendon_property defaults to cascade=False,
+        refusing deletion of referenced properties; True deletes referencing tendons
+        AND their loads without a dialog. With neither name nor index these methods
+        delete ALL materials/properties. Discover the installed signature first and
+        confirm the target and cascade scope with the user before calling.
+        （删除材料默认级联删除相关钢束特性和钢束；删除钢束特性默认不级联，
+        True 会无弹窗删除引用钢束及其荷载。不指定名称/编号会删除全部，调用前须确认范围。）
 
         Args:
             api_object: Database object (数据库对象): "mdb", "odb", "cdb"

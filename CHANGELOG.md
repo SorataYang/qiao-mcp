@@ -5,7 +5,211 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] - 2026-10-12
+
+This release includes all changes since the published 0.3.3. The work previously
+labeled 0.4.0 was never released separately and is included here. B1–B4 add 20 tools
+and one workflow prompt: 153 tools (151 with output schemas), 7 resources and
+5 prompts.
+
+Upgrading from 0.3.3 changes the `add_nodal_mass` parameters; see **Changed** below
+and the [migration guidance](README.md#upgrading-from-033).
+
+### Known backend limitations
+
+Live testing with QiaoTong **26.1.116.1010** and qtmodel **2.9.2** passed basic
+cantilever reaction, moment and translation checks, plus a subset of B1 queries
+and state guards. Full engineering acceptance remains incomplete:
+
+- The server's `GET-DEFORMATION` response returns an incorrect `rz`; the solver
+  database retains the correct Rz. No replacement value is synthesized by Qiao-MCP.
+- Live-load system selection rejects `clear_existing`, blocking the transversal
+  workflow. International workflows share this prerequisite and were not run.
+- The section-reinforcement, check-stirrup and check-case snapshot commands are
+  unknown to that server build, so the full B3 workflow could not be verified.
+
+Use a QiaoTong build that supports the required commands and check results against
+the [live validation record](docs/0.5.0-live-validation.md). A successful version or
+connection check alone does not establish feature support. BS axle-force units
+also remain unconfirmed upstream.
+
+### Added
+
+- **EN1991 factories, planned lanes and international cases.** Standard factories
+  expose only effective options; user factories retain separate axle, length and
+  HSLM controls. Dedicated planned lanes commit without inventing a getter.
+  Typed international cases check vehicle standards and EN1991 duplicate lanes,
+  preserve complete factor objects, and use authoritative server validation for
+  lane/plane references. Three offline workflows cover definition-to-result order.
+- **International vehicles and complete readback.** AASHTO, BS and EN1991 use
+  separate typed parameter schemas, full add/update definitions and actual-ID
+  readback. Native units are passed unchanged, including AASHTO percent `r`;
+  BS axle-force units remain undocumented upstream and require verified exports.
+  Vehicle/case queries preserve all fields with explicit local selection/pages.
+- **Material and check-case snapshots.** Typed set/reset material overrides and
+  set/remove concrete, seismic and strengthening definitions preserve native
+  enums, stored units, six force flags and backend-owned properties. Existing
+  concrete checking still imports the named model case before solving; the new
+  definitions do not claim seismic/strengthening solver support.
+- **Stirrup snapshots and bulk element assignments.** New tools preserve native
+  field names, stored dimensions and model enums. Renumbering takes original_id;
+  shear/torsion rows are fixed at five/three entries. None retains a family, []
+  clears it, and zero means unassigned. Legacy CSAN tools keep their interfaces.
+- **Complete section reinforcement snapshots.** New set/remove tools use model
+  identifiers including I/J ends and tapered groups. Required fields preserve
+  inactive parameter rows and actual points, use six-entry layer rows and model
+  length units, and remain separate from legacy current-CSAN tools.
+- **Complete result identifiers and a transversal workflow prompt.**
+  `get_analysis_results(case_name_mode="full")` passes a verified case identifier
+  unchanged; the default retains ordinary static `ST:` naming. The new
+  `analyze_transversal` prompt connects diagnosis, definitions, actual IDs,
+  explicit settings, solving and result queries without guessing result prefixes.
+- **Transversal cases and explicit deletion.** Case definitions verify real
+  vehicle/lane IDs before writing and construct reduction strings from typed
+  positive factors. Deletion requires a name/ID, defaults to no cascade, and
+  preserves backend rejection for references in combinations or operation settings.
+- **Transversal vehicles and lanes.** Complete, typed add/update definitions use
+  fixed kN/m, preserve ordered lane nodes and map distribution widths to the
+  native field. Each write commits once and reads back the actual ID; missing or
+  ambiguous readback reports the already-committed write. Native connectivity
+  rejection is preserved. `get_transversal_data` returns paged definitions.
+- **Explicit live-load configuration.** `configure_live_load_system` supports the
+  five native systems and defaults to `clear_existing=False`.
+  `configure_operation_stage` requires all four case lists, including empty ones,
+  so replacing settings cannot silently omit a family. Both commit once without
+  starting analysis; unavailable client parameters fail before writes.
+- **Read-only edit diagnostics.**
+  `get_model_edit_readiness` returns bridge-owned preparation diagnostics even
+  when model operations are blocked, without switching stages or deleting results.
+  Missing client APIs, unavailable connections and unknown responses never imply
+  editing is safe; preparation tokens are returned opaquely, not retained/reused.
+- **`query_model_data` uses kind-specific, closed input schemas** for nodes,
+  elements, boundaries, static loads, node local axes and section summaries.
+  It validates filters and preserves native pagination metadata without a second
+  slice. Missing APIs fail explicitly; there is no full-download fallback.
+  Qiao-MCP caps lists/pages at 500; section summaries use the upstream 100-ID,
+  100-item limit.
+- **`get_model_data` adds nine catalog/detail kinds**: material summaries/detail,
+  load-case summaries/detail, load-combination summaries/detail, construction-stage
+  summaries, actual element-end sections and spans. Existing kinds keep their text
+  output; paged details send limit/offset to the server. Summaries are not promised
+  to be lossless write-back snapshots.
+
+- **Existing tools expose qtmodel 2.9 options without growing the tool catalog.**
+  Construction stages accept `sub_steps`; materials accept `is_orthotropic` / `ey`;
+  general and elastic supports accept `coordinate`, `extra_enabled` and the
+  eight-value `extra_parameters`; unidirectional elastic supports also accept
+  `axis_direction`. Influence planes accept `always_divided_by_beam_shape`, and
+  live-load cases accept a parallel `sub_case_optimized` boolean list.
+  Options default to `None` (omitted), preserving explicit `False`, `0` and `[]`.
+  Unsupported options fail before writes on older qtmodel builds.
+- **Gateway guidance covers operation-stage and deletion options.**
+  `update_operation_stage_setting` accepts `transversal_load_cases` on supporting
+  builds; its lists replace analysis selections rather than partially update them.
+  `remove_material` defaults to `cascade=True`; `remove_tendon_property` defaults
+  to `False`, with `True` deleting referenced tendons and loads without a dialog.
+  Both deletion methods target all objects when neither name nor index is supplied.
+- **Release checks run before either registry upload.** CI and publishing share
+  the locked environment, lint, type checks, offline suite and wheel/stdio check.
+  `scripts/check_release.py` verifies version/tag alignment, dependencies, Python
+  requirements, source modules, README and entry points across the checkout,
+  wheel and source distribution. Only the checked artifacts reach publication;
+  failed TestPyPI lookups are not treated as permission to upload.
+
+### Changed
+
+- Audited upstream `0687ffe`, including native factor/flange definitions,
+  effective-width calculations, statistics, compound merges and the new
+  concrete-check signature. Gateway tests cover real SDK transport, permissions,
+  one-commit writes and explicit rejection on older clients. Model weight-query
+  documentation now specifies fixed N instead of display units.
+- **Compatibility validation.** PyPI 2.9.2 and source `0687ffe` each pass the complete
+  offline suite. 2.6.4, 2.8.2 and 2.9.1 have no failures, with missing-feature
+  skips recorded separately. The two existing 2.6.3 `get_load_group_names`
+  contract failures remain visible. See [validation](docs/0.5.0-validation.md).
+- **Tool selection guidance.** Section geometry evaluation, stored-property
+  queries and model-wide recalculation now name their distinct scopes. Group
+  membership guidance points to the existing dedicated removal tool. Server
+  instructions also distinguish group, node-edit and stage-view alternatives;
+  existing tool names and call signatures are retained.
+
+- **qtmodel 2.9 support.** The dependency range is now `qtmodel>=2.6.3,!=2.9.0,<2.10`
+  and the lock uses 2.9.2 (identical to upstream `8ae651e` apart from its unbumped
+  version label). Every direct mdb/odb/cdb call and model query was checked against
+  actual SDK signatures, including the newer source-only concrete-check changes.
+  The offline suite passes on 2.6.4, 2.8.2, 2.9.1 and 2.9.2.
+  A pre-existing 2.6.3 limitation remains:
+  it lacks `get_load_group_names`, required by the one-shot bridge workflows.
+  2.9.0 is excluded: its `add_section` validates
+  `sec_property` even when it is omitted, so creating a section without explicit
+  properties fails on the client. The minor bound stays: 2.9.2 removed two modules
+  that 2.9.1 shipped.
+- **The model-state guard now applies to PyPI installs.** 2.9.0 is the first release
+  wheel with `QtServer.get_model_state`; with an older QiaoTong that does not report
+  model state, tools fail closed (`state_unknown`) instead of writing unguarded.
+- **BREAKING: `add_nodal_mass` takes `mass`, optional `mass_x`/`mass_y`/`mass_z`
+  and `rot_x`/`rot_y`/`rot_z`; `mass_rm` is removed.** See Fixed.
+- **`add_shrink_function` requires a nonempty `shrink_data`**, as does
+  `add_creep_function`'s `creep_data`; qtmodel 2.9 rejects empty curves.
+
+### Fixed
+
+- Support tools now enable additional parameters when only their values are
+  supplied, matching current upstream semantics on older supporting SDKs too.
+  Explicit False still clears them; omitted values preserve the existing setting.
+  A failed commit reports that the support command may already have changed the model.
+- **Concrete checking validates returned completion states.** Older SDK waiters
+  may return stopped failure/cancellation states without raising. The provider
+  preserves that status and `run_concrete_check` reports non-success states as
+  errors; imports and solves are never replayed automatically.
+- **CDB model snapshots require model-write permission and a model commit.**
+  An explicit nine-method set shares the dedicated/gateway commit path. Legacy
+  CDB queries, file operations and solvers keep their existing behavior. A failed
+  commit reports that the preceding command already ran and must not be replayed.
+
+- **Construction-stage updates retain fractional durations.** The tool now exposes
+  a number rather than an integer. Stage creation refuses older clients that
+  truncate fractional durations; integer durations remain compatible. Stage docs
+  also correct installation/self-weight fields and start/end load flags.
+- **Nodal mass was written into the wrong fields.** QiaoTong's `mass_info` is
+  `(translational mass, inertia about X, Y, Z)` — confirmed by QiaoTong's own export
+  logs, the query documentation and the 2.9 docstring. `mass_y`/`mass_z` were sent
+  as rotational inertias, and a mass given only as `mass_z` had no translational
+  mass at all. Isotropic masses now use the layout every build accepts;
+  direction-specific masses use 2.9's `mass_xyz` and are rejected by older builds
+  rather than merged.
+- **Creep code `1000` means user-defined functions**, not AASHTO (which is `8`);
+  added `9` = BS EN 1992-2:2005. `add_time_parameter` rejects custom functions
+  without `code_index=1000`, `1000` without `creep_data`, and code parameter lists
+  of the wrong length (1→4, 2→3, 3→4, 4→5, 5→3, 6→4, 7→4, 8→2, 9→5 values).
+- **`run_analysis` no longer reports success for an unfinished solve.** qtmodel
+  returns, rather than raises, when the user terminates the solve in QiaoTong or
+  when the solver stops in a non-success state; the final state is now checked.
+- **Lost write replies are reported as "outcome unknown".** qtmodel 2.9 raises
+  `CommandOutcomeUnknownError` instead of silently resending a write (2.8.2 resent
+  once, which could apply it twice). The error now tells the client not to retry and
+  to read the model back first.
+- **Validation matches qtmodel 2.9.** Custom materials (`mat_type=5`) require
+  `data_info`; `update_section_property` takes exactly 26 or 29 values; load
+  combinations accept `TV` (transverse moving-load case).
+
+### Security
+
+- **The API gateway blocks methods that act outside the bridge model.** qtmodel
+  2.9's `post_python_file` reads any local file and posts it to any URL for
+  execution; `prepare_model_edit` can irreversibly delete results and is meant for
+  the host after user approval. Both are blocked, together with `ensure_running`,
+  `set_url` and `set_version`, and with `export_api_help`/`export_qt_helper`, which
+  write SDK help to any path on the MCP host. `wait_solve` is blocked like
+  `do_solve`: it polls without a time limit by default; use `run_analysis`.
+- **Every MDB write made through the gateway is committed.** 2.9 write APIs such as
+  `delete_model_object` require `update_model`; previously only `add_`/`update_`/
+  `remove_` methods were committed. Project, file and view commands are not.
+  Methods that change nothing although their names lack a `get_`/`query_`/`calc_`
+  prefix — the local helpers `list_parameter_section_types`,
+  `build_parameter_section_*_spec` and `generate_curve_node_data`, and
+  `resolve_node_selection` — are treated as reads: they need no write permission and
+  trigger no commit.
 
 ## [0.3.3] - 2026-09-15
 
@@ -205,7 +409,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Minimum QiaoTong version is now 2.6.3** (qtmodel API version 2.6.3)
   - Previous versions (0.1.x, 0.2.x) required qtmodel 2.6.2
   - Users must upgrade QiaoTong software to 2.6.3+ before installing qiao-mcp 0.3.0
-  - See [Version Compatibility](README.md#version-compatibility) for the full compatibility matrix
+  - See [Version Compatibility](README.md#compatibility) for the full compatibility matrix
 
 ### Added
 
@@ -258,7 +462,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
-[Unreleased]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.3...develop
+[0.5.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.3...v0.5.0
 [0.3.3]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.0...v0.3.1

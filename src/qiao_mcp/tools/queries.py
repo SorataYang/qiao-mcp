@@ -2,7 +2,9 @@
 MCP Query Tools — read-only information retrieval from the bridge model.
 桥梁模型只读信息查询工具（合并版）
 
-Four consolidated tools replace the former 52 single-purpose wrappers:
+The four consolidated tools replace the former 52 single-purpose wrappers;
+query_model_data adds native server filtering and pagination:
+    query_model_data    — server-side typed filters and native query pages (服务端筛选分页)
     get_model_data      — entity/load/stage data by kind (按类型查询模型数据)
     find_entities       — locate nodes/elements by coordinates or attributes (按条件定位)
     calc_section_property — compute properties from raw geometry (按几何计算截面特性)
@@ -15,6 +17,7 @@ import json
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import StrictInt, TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
@@ -22,6 +25,8 @@ from qiao_mcp.tools.schemas import (
     EntitySearch,
     FiveNumbers,
     ModelDataKind,
+    ModelQuery,
+    ModelQueryResult,
     NonnegativeNumber,
     PageLimit,
     PageOffset,
@@ -36,6 +41,19 @@ MAX_LIMIT = 500
 _OVERVIEW_KINDS = frozenset(
     {"summary", "analysis_context", "project_metadata", "check_context", "structure_group_summaries"}
 )
+
+
+_CATALOG_KINDS = frozenset({
+    "material_summaries", "material_detail", "load_case_summaries", "load_case_detail",
+    "load_combination_summaries", "load_combination_detail", "construction_stage_summaries",
+    "element_section", "spans",
+})
+_DETAIL_ID_PARAMETERS = {
+    "material_detail": "material_id", "load_case_detail": "load_case_id",
+    "load_combination_detail": "combination_id", "element_section": "ele_id",
+}
+_SERVER_PAGED_DETAILS = frozenset({"load_case_detail", "load_combination_detail"})
+_MODEL_QUERY_ADAPTER: TypeAdapter[ModelQuery] = TypeAdapter(ModelQuery)
 
 
 def _fmt(obj: Any) -> str:
@@ -67,9 +85,39 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     """Register consolidated read-only query tools."""
 
     @mcp.tool()
+    def query_model_data(request: ModelQuery) -> ModelQueryResult:
+        """Filter and paginate model records on the bridge (服务端筛选分页查询).
+
+        Unlike get_model_data, this never downloads all records for local
+        filtering. Requires a qtmodel/QiaoTong build supporting the chosen
+        endpoint; missing APIs fail explicitly. Filters are intersected by the
+        server. IDs accept a positive integer or list (section_summaries: list
+        only), not range strings. Names must be lists, not a single string.
+        Node queries require at least one filter; near/tolerance are paired.
+        Qiao-MCP caps input lists/pages at 500, or 100 for section summaries.
+        The data object preserves native pagination fields without inventing
+        totals or slicing again. Consult has_more/truncated when present.
+
+        Args:
+            request: Typed query selected by kind: nodes, elements, boundaries,
+                loads, node_local_axes or section_summaries. Each kind has its
+                own filters and limit/offset; see the nested input Schema.
+        """
+        try:
+            query = _MODEL_QUERY_ADAPTER.validate_python(request)
+            filters = query.model_dump(exclude={"kind"}, exclude_none=True)
+            return ModelQueryResult(status="success", data=provider.query_model_data(query.kind, **filters))
+        except ToolError:
+            raise
+        except ValueError as e:
+            raise ToolInputError(f"Invalid model query (查询参数无效): {e}") from e
+        except Exception as e:
+            raise ToolError(f"Error querying model data (服务端查询失败): {e}") from e
+
+    @mcp.tool()
     def get_model_data(
         kind: ModelDataKind,
-        ids: int | list[int] | str | None = None,
+        ids: StrictInt | list[StrictInt] | str | None = None,
         name: str = "",
         sec_id: int | None = None,
         position: Literal[0, 1] = 0,
@@ -110,7 +158,16 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 "summary" (模型状态与实体数量), "analysis_context" (分析设置与已求解阶段),
                 "project_metadata" (工程名称/单位/人员/日期), "check_context" (设计活载与检算上下文),
                 "structure_group_summaries" (各结构组的节点/单元数量, 不展开成员)
-            ids: Entity IDs for nodes/elements, int/list/range string "1to10" (编号)
+                ── 轻量目录与详情 Native catalogs (需支持对应 API; 不支持时明确报错) ──
+                "material_summaries" / "material_detail" (材料摘要/详情),
+                "load_case_summaries" / "load_case_detail" (荷载工况摘要/分页详情),
+                "load_combination_summaries" / "load_combination_detail" (组合摘要/分页详情),
+                "construction_stage_summaries" (施工阶段摘要, stage_id 随阶段顺序变化),
+                "element_section" (单元插值后的实际端部截面, 需 ids 和可选 position),
+                "spans" (跨度定义及单元/支承成员)。摘要不是无损写回快照。
+            ids: Entity IDs for nodes/elements, int/list/range string "1to10" (编号).
+                New *_detail and element_section require one positive integer
+                or a one-item integer list, not a range string (新详情仅接受单个正整数编号).
             name: Group name, for group_elements/group_nodes (结构组名)
             sec_id: Section ID, for section_detail/section_shape/section_property (截面号)
             position: Tapered section end, for section_detail (变截面位置 0起/1末)
@@ -199,6 +256,20 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 if stage_id is None:
                     raise ToolInputError("stage_groups requires stage_id (需要提供 stage_id)")
                 data = provider.get_groups_of_stage(stage_id)
+            elif kind in _CATALOG_KINDS:
+                options: dict[str, Any] = {}
+                if kind in _DETAIL_ID_PARAMETERS:
+                    entity_id = ids[0] if isinstance(ids, list) and len(ids) == 1 else ids
+                    if type(entity_id) is not int or entity_id <= 0:
+                        raise ToolInputError(f"{kind} requires one positive integer in ids (需要单个正整数编号)")
+                    options[_DETAIL_ID_PARAMETERS[kind]] = entity_id
+                if kind == "element_section":
+                    options["position"] = position
+                if kind in _SERVER_PAGED_DETAILS:
+                    options.update(limit=limit, offset=offset)
+                data = provider.get_model_catalog_data(kind, **options)
+                if kind in _SERVER_PAGED_DETAILS:
+                    return f"{kind}:\n{_fmt(data)}"
             elif kind in _OVERVIEW_KINDS:
                 data = provider.get_model_overview(kind)
             else:
@@ -244,7 +315,7 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 "elements_by_material" (按材料名找单元, 需 name),
                 "elements_by_section" (按截面号找单元, 需 index),
                 "element_type" (查单元类型, 需 ids),
-                "element_weight" (查单元重量, 需 ids),
+                "element_weight" (查单元重量，固定 N、包含材料构造系数，不随显示单位变化；需 ids),
                 "span_supports" (跨径支承信息, 需 span_info_name),
                 "span_elements" (跨径单元信息, 需 span_info_name)
             x: X coordinate, used by the point-search modes (点查找坐标X)
@@ -306,6 +377,14 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         """
         Compute section properties from raw geometry, without creating a section
         (按几何直接计算截面特性，不创建截面).
+
+        Use to evaluate a candidate polygon or line-width shape before storing
+        it in the model. Returns calculated values in the message; existing
+        model sections are unchanged. To read an existing section, use
+        get_model_data(kind="section_property", sec_id=...). To recompute and
+        store properties for every model section, use calculate_section_property.
+        (用于候选几何试算；读取已有截面用 get_model_data，重新计算并保存模型中
+        全部截面特性用 calculate_section_property。)
 
         Provide EXACTLY ONE of loop_segments or sec_lines (二者恰选其一).
 

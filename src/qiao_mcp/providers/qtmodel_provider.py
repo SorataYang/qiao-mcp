@@ -208,7 +208,7 @@ class QtModelProvider(BridgeProvider):
                 ),
                 "action": (
                     "如需状态感知保护，请安装带 get_model_state 的 qtmodel 构建"
-                    "（上游源码 ≥ 5f4f4eb，或 2.8.2 之后的正式发布）并同步升级桥通。"
+                    "（2.9.0 起的 PyPI 正式发布，或上游源码 ≥ 5f4f4eb）并同步升级桥通。"
                 ),
             }
         try:
@@ -226,6 +226,39 @@ class QtModelProvider(BridgeProvider):
                 "message": f"探测模型状态失败（{type(e).__name__}: {e}）。",
                 "action": "确认桥通软件已启动并重试。",
             }
+
+    def get_model_edit_readiness(self) -> dict[str, Any]:
+        """Read edit preparation diagnostics without requiring edit permission."""
+        method = getattr(self._mdb, "get_model_edit_readiness", None)
+        if not callable(method):
+            return {
+                "status": "api_unavailable",
+                "message": "当前 qtmodel 不提供 get_model_edit_readiness，无法判断编辑就绪状态。",
+                "action": "请安装支持该 API 的 qtmodel；不要据此尝试修改模型。",
+            }
+        connection = self.get_connection_status()
+        if connection.get("status") == "probe_failed":
+            return {"status": "probe_failed", "connection": connection,
+                    "message": "连接探测失败，编辑就绪状态未知。"}
+        if connection.get("connected") is not True or connection.get("compatible") is False:
+            return {"status": "not_connected", "connection": connection,
+                    "message": "桥通连接不可用，编辑就绪状态未知。"}
+        try:
+            result = self._parse(method())
+        except NotImplementedError as e:
+            return {"status": "server_unsupported", "message": str(e),
+                    "action": "请升级桥通以支持编辑就绪诊断。"}
+        except Exception as e:
+            return {"status": "probe_failed",
+                    "message": f"编辑就绪探测失败（{type(e).__name__}: {e}）。"}
+        if not isinstance(result, dict) or not result:
+            return {
+                "status": "state_unknown",
+                "message": "桥通未返回有效编辑就绪数据，服务端可能不支持该接口；不能认定可编辑。",
+                "action": "请检查桥通版本；不要自动切换阶段或删除结果。",
+            }
+        # The bridge owns all readiness fields. Never infer ready=True or retain its token.
+        return {"status": "success", "readiness": result}
 
     def ensure_operation_allowed(self, operation: str) -> None:
         """Fail closed when the current bridge state rejects an MCP operation.
@@ -415,9 +448,12 @@ class QtModelProvider(BridgeProvider):
         "船舶撞击荷载" | "汽车撞击荷载" | "用户定义荷载"
 
         ### Result Query (结果查询) — operation stage load case naming
-        When querying operation stage results (stage_id=-1), the load case name is
-        automatically prefixed with "ST:" by get_analysis_results tool. You only need
-        to provide the original load case name when you created it.
+        For ordinary static operation results (stage_id=-1), get_analysis_results
+        defaults to case_name_mode="static" and adds "ST:" to the original name.
+        For transversal/international or other result families, first obtain the
+        complete result identifier from QiaoTong results/UI, then use
+        case_name_mode="full" to pass it unchanged. Never infer result prefixes
+        from the TV/MV combination type codes.
 
         Example:
         • Create load case: add_load_case(name='荷载1', case_type='恒载')
@@ -459,10 +495,279 @@ class QtModelProvider(BridgeProvider):
             ) from exc
         return options
 
+    def _optional_mdb_parameters(self, method: str, **values: Any) -> dict[str, Any]:
+        """Check all opt-in parameters before issuing any write."""
+        options = {}
+        for parameter, value in values.items():
+            options.update(self._optional_mdb_parameter(method, parameter, value))
+        return options
+
+    def _validated_method(self, api_object: str, method: str, kwargs: dict[str, Any]):
+        """Resolve an explicit capability and bind every argument before writes."""
+        import inspect
+
+        self._require_available()
+        fn = getattr(self._resolve_api_object(api_object), method, None)
+        if not callable(fn):
+            raise ValueError(
+                f"Installed qtmodel does not support {api_object}.{method} "
+                "(当前 qtmodel 缺少该接口，请安装支持此功能的版本)"
+            )
+        try:
+            inspect.signature(fn).bind(**kwargs)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Installed qtmodel does not support these {api_object}.{method} arguments "
+                f"(当前接口参数不兼容，尚未写入): {exc}"
+            ) from exc
+        return fn
+
+    def _execute_model_command(self, fn, method: str, kwargs: dict[str, Any]) -> Any:
+        """Commit one successful model command; never replay after a lost reply."""
+        result = fn(**kwargs)
+        try:
+            self._mdb.update_model()
+        except Exception as exc:
+            raise RuntimeError(
+                f"{method} completed but update_model failed. The model may have changed; "
+                "read it back before retrying (命令已执行但提交失败，模型可能已改变；请先回读，勿自动重试). "
+                f"{exc}"
+            ) from exc
+        return self._parse(result)
+
+    def configure_live_load_system(self, system: str, clear_existing: bool = False) -> Any:
+        """Change the live-load system only on an explicit configuration call."""
+        systems = {"china_longitudinal": 0, "aashto": 1, "china_transversal": 2, "bs": 3, "en1991": 4}
+        if system not in systems:
+            raise ValueError(f"Unknown live-load system: {system}")
+        kwargs = {"kind": systems[system], "clear_existing": clear_existing}
+        method = "set_live_load_type"
+        fn = self._validated_method("mdb", method, kwargs)
+        return self._execute_model_command(fn, method, kwargs)
+
+    def configure_operation_stage(
+        self, final_stage: str, static_load_cases: list[str], sink_load_cases: list[str],
+        live_load_cases: list[str], transversal_load_cases: list[str], do_analysis: bool = True,
+    ) -> Any:
+        """Replace all operating-stage selections, including explicit empty lists."""
+        kwargs = {
+            "final_stage": final_stage, "static_load_cases": static_load_cases,
+            "sink_load_cases": sink_load_cases, "live_load_cases": live_load_cases,
+            "transversal_load_cases": transversal_load_cases, "do_analysis": do_analysis,
+        }
+        method = "update_operation_stage_setting"
+        fn = self._validated_method("mdb", method, kwargs)
+        return self._execute_model_command(fn, method, kwargs)
+
+    # ── Transversal model definitions ─────────────────────────────────
+
+    def get_transversal_data(self, kind: str, name: str = "", index: int = -1) -> list[dict]:
+        """Read complete definitions with native exact selectors."""
+        if kind not in {"vehicles", "lanes", "cases"}:
+            raise ValueError(f"Unknown transversal data kind: {kind}")
+        kwargs = {"name": name, "index": index}
+        method = f"get_transversal_{kind}"
+        fn = self._validated_method("mdb", method, kwargs)
+        result = self._parse(fn(**kwargs))
+        if not isinstance(result, list) or any(not isinstance(item, dict) for item in result):
+            raise RuntimeError(f"{method} returned no valid definition list (未返回有效定义列表)")
+        return result
+
+    def set_transversal_data(self, kind: str, action: str, definition: dict[str, Any]) -> dict:
+        """Write one complete definition, commit once, and resolve its real ID."""
+        if kind not in {"vehicle", "lane", "case"} or action not in {"add", "update"}:
+            raise ValueError("Unsupported transversal kind/action")
+        kwargs = dict(definition)
+        kwargs.setdefault("index", -1)
+        if kind == "lane":
+            kwargs["load_factors"] = kwargs.pop("distribution_widths")
+        if kind == "case":
+            factors = kwargs["reduction_factors"]
+            greater = kwargs.pop("greater_lane_factor")
+            kwargs["reduction_factors"] = f"{len(factors)}|" + ",".join(str(value) for value in [*factors, greater])
+        if action == "add" and "new_name" in kwargs:
+            raise ValueError("new_name is only valid for update")
+        method = f"{action}_transversal_{kind}"
+        fn = self._validated_method("mdb", method, kwargs)
+        target_name = kwargs.get("new_name") or kwargs["name"]
+        selectors = {"name": target_name, "index": kwargs["index"]}
+        plural = {"vehicle": "vehicles", "lane": "lanes", "case": "cases"}[kind]
+        # Fail before mutation if the required readback capability is absent.
+        self._validated_method("mdb", f"get_transversal_{plural}", selectors)
+        if kind == "case":
+            for family, key in (("vehicles", "vehicle_id"), ("lanes", "lane_id")):
+                records = self.get_transversal_data(family, index=kwargs[key])
+                if len(records) != 1 or type(records[0].get("index")) is not int or records[0]["index"] != kwargs[key]:
+                    raise ValueError(f"No unique transversal {key}={kwargs[key]} (请先回读并使用已有车辆/车道编号)")
+        self._execute_model_command(fn, method, kwargs)
+        try:
+            records = self.get_transversal_data(plural, **selectors)
+            matches = [item for item in records if item.get("name") == target_name
+                       and (kwargs["index"] == -1 or item.get("index") == kwargs["index"])]
+            if len(matches) != 1 or type(matches[0].get("index")) is not int or matches[0]["index"] <= 0:
+                raise ValueError("Cannot resolve a unique positive object ID (无法确认唯一的实际编号)")
+            return matches[0]
+        except Exception as exc:
+            raise RuntimeError(
+                f"{method} was committed, but readback failed. Do not repeat the write; "
+                f"use get_transversal_data (写入已提交，但回读失败；请查询核对，勿重复写入): {exc}"
+            ) from exc
+
+    def remove_transversal_data(
+        self, kind: str, name: str = "", index: int = -1, cascade: bool | None = None,
+    ) -> Any:
+        """Delete an explicit target; never change references or escalate cascade."""
+        if kind not in {"vehicle", "lane", "case"} or (not name and index == -1):
+            raise ValueError("A supported kind and explicit deletion target are required")
+        kwargs: dict[str, Any] = {"name": name, "index": index}
+        if kind == "case":
+            if cascade is not None:
+                raise ValueError("Transversal case deletion has no cascade option")
+        else:
+            kwargs["cascade"] = False if cascade is None else cascade
+        method = f"remove_transversal_{kind}"
+        fn = self._validated_method("mdb", method, kwargs)
+        return self._execute_model_command(fn, method, kwargs)
+
+    # ── International model definitions ───────────────────────────────
+
+    _INTERNATIONAL_QUERIES = {
+        "vehicles": "get_international_vehicles",
+        "cases": "get_international_live_load_cases",
+    }
+
+    def get_international_live_load_data(self, kind: str) -> list[dict]:
+        """Read the complete native list; these endpoints have no selectors/pages."""
+        if kind not in self._INTERNATIONAL_QUERIES:
+            raise ValueError(f"Unknown international data kind: {kind}")
+        method = self._INTERNATIONAL_QUERIES[kind]
+        fn = self._validated_method("mdb", method, {})
+        result = self._parse(fn())
+        if not isinstance(result, list) or any(not isinstance(item, dict) for item in result):
+            raise RuntimeError(f"{method} returned no valid definition list (未返回有效定义列表)")
+        return result
+
+    def _commit_international_definition(
+        self, method: str, kwargs: dict[str, Any], kind: str, expected_standard: str | None = None,
+    ) -> dict:
+        fn = self._validated_method("mdb", method, kwargs)
+        # An unavailable getter must fail before the definition is written.
+        self._validated_method("mdb", self._INTERNATIONAL_QUERIES[kind], {})
+        self._execute_model_command(fn, method, kwargs)
+        target_name = kwargs.get("new_name") or kwargs["name"]
+        try:
+            records = self.get_international_live_load_data(kind)
+            matches = [item for item in records if item.get("name") == target_name]
+            if len(matches) != 1 or type(matches[0].get("index")) is not int or matches[0]["index"] <= 0:
+                raise ValueError("Cannot resolve a unique positive object ID (无法确认唯一的实际编号)")
+            # Update locates by name and ignores a supplied compatibility index.
+            if method.startswith("add_") and kwargs.get("index", -1) != -1 and matches[0]["index"] != kwargs["index"]:
+                raise ValueError("The readback ID does not match the explicit add ID")
+            standard = kwargs.get("standard", expected_standard)
+            if standard is not None and matches[0].get("standard") != standard:
+                raise ValueError("The readback standard does not match the written vehicle")
+            return matches[0]
+        except Exception as exc:
+            raise RuntimeError(
+                f"{method} was committed, but readback failed. Do not repeat the write; "
+                "use get_international_live_load_data (写入已提交，但回读失败；请查询核对，勿重复写入): "
+                f"{exc}"
+            ) from exc
+
+    def set_international_vehicle(self, action: str, definition: dict[str, Any]) -> dict:
+        if action not in {"add", "update"}:
+            raise ValueError("Unsupported international vehicle action")
+        kwargs = dict(definition)
+        kwargs.setdefault("index", -1)
+        if action == "add" and "new_name" in kwargs:
+            raise ValueError("new_name is only valid for update")
+        return self._commit_international_definition(f"{action}_international_vehicle", kwargs, "vehicles")
+
+    def create_en1991_vehicle(self, source: str, options: dict[str, Any]) -> dict:
+        if source not in {"standard", "user"}:
+            raise ValueError("Unsupported EN1991 vehicle source")
+        return self._commit_international_definition(
+            f"add_international_{source}_vehicle", dict(options), "vehicles", expected_standard="EN1991",
+        )
+
+    def set_planned_lane(self, action: str, definition: dict[str, Any]) -> Any:
+        if action not in {"add", "update"}:
+            raise ValueError("Unsupported planned lane action")
+        kwargs = dict(definition)
+        if action == "add" and "new_name" in kwargs:
+            raise ValueError("new_name is only valid for update")
+        method = f"{action}_planned_lane_line"
+        fn = self._validated_method("mdb", method, kwargs)
+        return self._execute_model_command(fn, method, kwargs)
+
+    def set_international_live_load_case(self, action: str, standard: str, definition: dict[str, Any]) -> dict:
+        if action not in {"add", "update"} or standard not in {"AASHTO", "BS", "EN1991"}:
+            raise ValueError("Unsupported international case action/standard")
+        kwargs = dict(definition)
+        kwargs.setdefault("index", -1)
+        if action == "add" and "new_name" in kwargs:
+            raise ValueError("new_name is only valid for update")
+        method = f"{action}_international_live_load_case"
+        self._validated_method("mdb", method, kwargs)
+        self._validated_method("mdb", self._INTERNATIONAL_QUERIES["cases"], {})
+        records = self.get_international_live_load_data("vehicles")
+        for sub_case in kwargs["sub_cases"]:
+            name = sub_case["vehicle_name"]
+            matches = [item for item in records if item.get("name") == name]
+            if len(matches) != 1 or matches[0].get("standard") != standard:
+                raise ValueError(f"No unique {standard} vehicle named {name!r} (请先核对车辆名称及规范)")
+        # No lane/plane query exists. The command's server-side validation checks
+        # those references without inventing local definitions or silently fixing them.
+        return self._commit_international_definition(method, kwargs, "cases")
+
     # ── Generic API gateway (逃生舱) ───────────────────────────────────
 
-    # 危险/长耗时操作必须走各自带防护的专用工具，禁止经逃生舱直呼
-    _API_BLOCKLIST = {"initial", "do_solve"}
+    # 禁止经逃生舱直呼的方法：
+    # - initial / do_solve / wait_solve：危险或长耗时（wait_solve 默认无限期轮询），
+    #   必须走各自带防护的专用工具；
+    # - prepare_model_edit（2.9）：按确认切换阶段或删除结果，删除不可撤销；上游
+    #   明确它只能由宿主在用户确认后调用，不能交给模型；
+    # - post_python_file（2.9）/ ensure_running / set_url / set_version：作用于 MCP
+    #   所在主机或改写连接目标——读任意本地文件并 POST 到任意 URL 让桥通执行、启动
+    #   任意可执行文件、把后续请求改发别处——都超出"操作桥通模型"的范围；
+    # - export_api_help（2.9）/ export_qt_helper：把 SDK 帮助写到 MCP 主机任意路径，
+    #   对操作模型无用，却能覆盖本地文件。export_file 同样写本机，但导出的是模型
+    #   交付物，与专用工具 save_model 同属正当用途，故保留。
+    _API_BLOCKLIST = {
+        "initial", "do_solve", "wait_solve", "prepare_model_edit",
+        "post_python_file", "ensure_running", "set_url", "set_version",
+        "export_api_help", "export_qt_helper",
+    }
+    # 名称不带 get_/query_/calc_ 前缀、却不改模型的 mdb 方法：前四个是纯本地计算
+    # （不连桥通），resolve_node_selection 只在桥通内解析节点条件。按读操作守卫，
+    # 调用后也不提交。未列出的方法一律按写处理（fail closed）。
+    _API_MDB_READS = {
+        "list_parameter_section_types", "build_parameter_section_copy_spec",
+        "build_parameter_section_update_spec", "generate_curve_node_data",
+        "resolve_node_selection",
+    }
+    # 桥通把每条 mdb 写命令放进当前复合命令，由 update_model 作为一条可撤销命令提交
+    # （2.9 的 delete_model_object 等明确要求调用方提交）。以下工程/文件/视图管理
+    # 命令不进复合命令，调用后不追加提交——close_project 之后更是无模型可提交。
+    _API_NO_COMMIT = {
+        "update_model", "undo_model", "redo_model", "update_to_pre", "update_to_post",
+        "save_file", "open_file", "close_project", "export_file",
+    }
+    # These CDB methods edit base-model snapshots, unlike legacy CSAN operations.
+    # Keep the list explicit: CDB queries, files and solvers must not commit MDB.
+    _API_CDB_MODEL_WRITES = frozenset({
+        "set_steel_bar_material_convention", "set_section_reinforcement",
+        "remove_section_reinforcement_by_name", "set_check_stirrup", "set_element_stirrups",
+        "set_check_material", "remove_check_material", "set_check_case", "remove_check_case_snapshot",
+    })
+
+    def write_check_snapshot(self, method: str, **kwargs: Any) -> Any:
+        """Dispatch an explicit base-model snapshot command with model permissions."""
+        if method not in self._API_CDB_MODEL_WRITES:
+            raise ValueError(f"Not a model snapshot method: {method}")
+        self.ensure_operation_allowed("model_write")
+        fn = self._validated_method("cdb", method, kwargs)
+        return self._execute_model_command(fn, method, kwargs)
 
     def _resolve_api_object(self, api_object: str):
         obj = {"mdb": self._mdb, "odb": self._odb, "cdb": self._cdb}.get(api_object)
@@ -513,11 +818,14 @@ class QtModelProvider(BridgeProvider):
         if api_object == "mdb":
             operation = (
                 "model_read"
-                if method.startswith(("get_", "query_", "calc_"))
+                if method.startswith(("get_", "query_", "calc_")) or method in self._API_MDB_READS
                 else "model_write"
             )
         elif api_object == "cdb":
-            operation = "check_run" if method.startswith(("solve", "run", "do_")) else "check_write"
+            if method in self._API_CDB_MODEL_WRITES:
+                operation = "model_write"
+            else:
+                operation = "check_run" if method.startswith(("solve", "run", "do_")) else "check_write"
         elif method.startswith(("set_", "save_", "plot_", "change_", "display_", "reset_")):
             operation = "view"
         elif any(
@@ -541,10 +849,13 @@ class QtModelProvider(BridgeProvider):
             raise ValueError(
                 f"Arguments do not match (参数不匹配): {e}. Real signature (真实签名): {method}{sig}"
             ) from e
-        result = self._parse(fn(**kwargs))
-        if api_object == "mdb" and method.startswith(("add_", "update_", "remove_")):
-            self._mdb.update_model()
-        return result
+        if (
+            api_object == "mdb"
+            and operation == "model_write"
+            and method not in self._API_NO_COMMIT
+        ) or (api_object == "cdb" and method in self._API_CDB_MODEL_WRITES):
+            return self._execute_model_command(fn, method, kwargs)
+        return self._parse(fn(**kwargs))
 
     # ── Model Information ──────────────────────────────────────────────
 
@@ -639,6 +950,45 @@ class QtModelProvider(BridgeProvider):
         if not callable(method):
             raise AttributeError(f"qtmodel has no model query '{fn_name}'")
         return self._parse(method(*args, **kwargs))
+
+    def query_model_data(self, kind: str, **filters: Any) -> dict[str, Any]:
+        """Use native server filtering/pagination, never full-download fallbacks."""
+        methods = {
+            "nodes": "query_node_data", "elements": "query_element_data",
+            "boundaries": "query_boundary_data", "loads": "query_load_data",
+            "node_local_axes": "query_node_local_axis_data",
+            "section_summaries": "query_section_summaries",
+        }
+        if kind not in methods:
+            raise ValueError(f"Unknown model query kind: {kind}")
+        self._require_available()
+        result = self._query_model(methods[kind], **filters)
+        if not isinstance(result, dict) or not result:
+            raise RuntimeError(
+                f"{methods[kind]} returned no valid query page; the bridge may not support it "
+                "(未返回有效查询页，请检查桥通是否支持该接口；不会回退到全量查询)"
+            )
+        return result
+
+    def get_model_catalog_data(self, kind: str, **options: Any) -> Any:
+        """Read native summaries/details while retaining backend-owned fields."""
+        methods = {
+            "material_summaries": "get_material_summaries",
+            "material_detail": "get_material_detail",
+            "load_case_summaries": "get_load_case_summaries",
+            "load_case_detail": "get_load_case_detail",
+            "load_combination_summaries": "get_load_combination_summaries",
+            "load_combination_detail": "get_load_combination_detail",
+            "construction_stage_summaries": "get_construction_stage_summaries",
+            "element_section": "get_element_section", "spans": "get_span_data",
+        }
+        if kind not in methods:
+            raise ValueError(f"Unknown model catalog kind: {kind}")
+        self._require_available()
+        result = self._query_model(methods[kind], **options)
+        if result is None or isinstance(result, str):
+            raise RuntimeError(f"{methods[kind]} returned no valid model data (未返回有效模型数据)")
+        return result
 
     def _safe_get(self, fn_name: str, *args, **kwargs) -> Any:
         """Call an optional model query, returning None on error."""
@@ -983,13 +1333,20 @@ class QtModelProvider(BridgeProvider):
         mat_type: int,
         standard: int = 1,
         database: str = "",
+        *,
+        is_orthotropic: bool | None = None,
+        ey: float | None = None,
         **kwargs,
     ) -> None:
         self._require_available()
+        options = self._optional_mdb_parameters(
+            "add_material", is_orthotropic=is_orthotropic, ey=ey
+        )
         params = {"name": name, "mat_type": mat_type, "standard": standard}
         if database:
             params["database"] = database
         params.update(kwargs)
+        params.update(options)
         self._mdb.add_material(**params)
         self._mdb.update_model()
 
@@ -1003,7 +1360,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_creep_function(name=name, creep_data=creep_data, scale_factor=scale_factor)
         self._mdb.update_model()
 
-    def add_shrink_function(self, name: str, shrink_data: list | None = None, scale_factor: float = 1) -> None:
+    def add_shrink_function(self, name: str, shrink_data: list, scale_factor: float = 1) -> None:
         self._require_available()
         self._mdb.add_shrink_function(name=name, shrink_data=shrink_data, scale_factor=scale_factor)
         self._mdb.update_model()
@@ -1200,13 +1557,21 @@ class QtModelProvider(BridgeProvider):
 
 
     def add_general_support(
-        self, node_id: Any, boundary_info: list, **kwargs
+        self, node_id: Any, boundary_info: list, *, coordinate: int | None = None,
+        extra_enabled: bool | None = None, extra_parameters: list[float] | None = None,
+        **kwargs,
     ) -> None:
         self._require_available()
-        self._mdb.add_general_support(
-            node_id=node_id, boundary_info=boundary_info, **kwargs
+        if extra_parameters is not None and extra_enabled is None:
+            extra_enabled = True
+        options = self._optional_mdb_parameters(
+            "add_general_support", coordinate=coordinate, extra_enabled=extra_enabled,
+            extra_parameters=extra_parameters,
         )
-        self._mdb.update_model()
+        arguments = {"node_id": node_id, "boundary_info": boundary_info, **options, **kwargs}
+        method = "add_general_support"
+        fn = self._validated_method("mdb", method, arguments)
+        self._execute_model_command(fn, method, arguments)
 
     def add_elastic_link(
         self, link_type: int, start_id: int, end_id: int, **kwargs
@@ -1373,9 +1738,21 @@ class QtModelProvider(BridgeProvider):
 
     # ── Construction Stage Operations ──────────────────────────────────
 
-    def add_construction_stage(self, name: str, duration: float, **kwargs) -> None:
+    def add_construction_stage(
+        self, name: str, duration: float, *, sub_steps: list[float] | None = None, **kwargs
+    ) -> None:
         self._require_available()
-        self._mdb.add_construction_stage(name=name, duration=duration, **kwargs)
+        # sub_steps 与 ADD 的浮点工期在上游同一变更引入；旧版会 int(duration)。
+        if not float(duration).is_integer():
+            try:
+                self._optional_mdb_parameter("add_construction_stage", "sub_steps", [])
+            except ValueError as exc:
+                raise ValueError(
+                    "Installed qtmodel does not support fractional duration for "
+                    "add_construction_stage; upgrade qtmodel (旧版会截断小数工期，请升级)"
+                ) from exc
+        options = self._optional_mdb_parameter("add_construction_stage", "sub_steps", sub_steps)
+        self._mdb.add_construction_stage(name=name, duration=duration, **options, **kwargs)
         self._mdb.update_model()
 
     def merge_all_stages(self, name: str, **kwargs) -> None:
@@ -1388,9 +1765,12 @@ class QtModelProvider(BridgeProvider):
         self._mdb.remove_construction_stage(name=name)
         self._mdb.update_model()
 
-    def update_construction_stage(self, name: str, **kwargs) -> None:
+    def update_construction_stage(
+        self, name: str, *, sub_steps: list[float] | None = None, **kwargs
+    ) -> None:
         self._require_available()
-        self._mdb.update_construction_stage(name=name, **kwargs)
+        options = self._optional_mdb_parameter("update_construction_stage", "sub_steps", sub_steps)
+        self._mdb.update_construction_stage(name=name, **options, **kwargs)
         self._mdb.update_model()
 
     def switch_display_stage(self, stage_name: str) -> None:
@@ -1420,9 +1800,39 @@ class QtModelProvider(BridgeProvider):
         self._mdb.update_bulking_setting(**kwargs)
         self._mdb.update_model()
 
-    def add_nodal_mass(self, node_id, **kwargs) -> None:
+    def add_nodal_mass(
+        self,
+        node_id,
+        mass_xyz: tuple[float, float, float],
+        rotation: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    ) -> None:
+        """Add a lumped nodal mass in QiaoTong's native field layout.
+
+        qtmodel 的 mass_info 是 (平动质量, 绕X, 绕Y, 绕Z 转动惯量)，并非 2.8.2
+        docstring 自称"示例"的 (mx, my, mz, mrx)——桥通 C# 导出日志、
+        get_node_mass_data 的返回说明与 2.9 docstring 三方一致。旧格式只有一个平动
+        质量；2.9 起可另传 mass_xyz=(mX, mY, mZ) 表达各向不同的平动质量，导出日志中
+        此时 mass_info 首项取 mZ。
+
+        三向相等时始终走旧格式（任何版本的桥通都认）；三向不等时必须由 qtmodel 提供
+        mass_xyz，旧版直接拒绝，而不是把三个值静默合并成一个。
+        """
         self._require_available()
-        self._mdb.add_nodal_mass(node_id=node_id, **kwargs)
+        mass_x, mass_y, mass_z = mass_xyz
+        options: dict[str, Any] = {}
+        if not (mass_x == mass_y == mass_z):
+            try:
+                options = self._optional_mdb_parameter(
+                    "add_nodal_mass", "mass_xyz", [mass_x, mass_y, mass_z]
+                )
+            except ValueError as exc:
+                raise ValueError(
+                    "Direction-specific translational masses need a qtmodel build whose "
+                    "add_nodal_mass accepts mass_xyz (2.9.0+); older builds carry one "
+                    "translational mass for all directions "
+                    "(各向不同的平动质量需要支持 mass_xyz 的 qtmodel 2.9.0+，旧版只能三向相同)"
+                ) from exc
+        self._mdb.add_nodal_mass(node_id=node_id, mass_info=[mass_z, *rotation], **options)
         self._mdb.update_model()
 
     def add_load_to_mass(self, name: str, factor: float = 1.0) -> None:
@@ -1450,8 +1860,8 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_time_history_case(**kwargs)
         self._mdb.update_model()
 
-    def run_analysis(self, read_timeout: int = 3600, show_view: bool = False) -> None:
-        """启动后台求解并轮询至任务真正结束。
+    def run_analysis(self, read_timeout: int = 3600, show_view: bool = False) -> Any:
+        """启动后台求解并轮询至任务真正结束，返回 qtmodel 给出的最终状态。
 
         do_solve 有两条互斥路径，由 sync 选择：
 
@@ -1466,10 +1876,13 @@ class QtModelProvider(BridgeProvider):
 
         本方法要的正是后一条：MCP 工具承诺 read_timeout 是总时限、且求解期间
         连接保持响应（工作线程 + 进度心跳），只有轮询路径能兑现。sync 参数在
-        2.5.0–2.8.2 全部支持范围内都存在，可无条件传入。
+        2.5.0–2.9.x 全部支持范围内都存在，可无条件传入。
 
         求解失败/取消时 qtmodel 抛 RuntimeError，超时抛 TimeoutError，
-        均由上层转为 ToolError。
+        均由上层转为 ToolError。但 wait_solve 并非对所有未成功的结局都抛错：
+        用户在桥通中终止求解时返回 canceled 状态，is_running 为 false 而状态
+        不在成功集合时也原样返回（2.8.2 甚至先判 is_running，连 failed 也会
+        静默返回）。故必须把最终状态交给调用方核对，不能以"没抛错"当成功。
 
         show_view=True 请求桥通显示分析进度窗口，不改变后台求解和轮询语义。
         旧版 do_solve 没有该参数时拒绝显式开启；默认调用保持旧版兼容。
@@ -1478,7 +1891,7 @@ class QtModelProvider(BridgeProvider):
         options = self._optional_mdb_parameter(
             "do_solve", "show_view", True if show_view else None
         )
-        self._mdb.do_solve(
+        return self._mdb.do_solve(
             wait=True,
             sync=False,
             poll_interval=2.0,
@@ -1491,9 +1904,14 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         return self._mdb.add_node_tandem(*args, **kwargs)
 
-    def add_influence_plane(self, *args, **kwargs):
+    def add_influence_plane(
+        self, *args, always_divided_by_beam_shape: bool | None = None, **kwargs
+    ):
         self._require_available()
-        return self._mdb.add_influence_plane(*args, **kwargs)
+        options = self._optional_mdb_parameter(
+            "add_influence_plane", "always_divided_by_beam_shape", always_divided_by_beam_shape
+        )
+        return self._mdb.add_influence_plane(*args, **options, **kwargs)
 
     # ── Result Extraction ──────────────────────────────────────────────
 
@@ -1817,15 +2235,17 @@ class QtModelProvider(BridgeProvider):
         wait: bool = True,
         max_wait: float | None = None,
         poll_interval: float = 5.0,
-    ) -> None:
-        """同步指定检算工况后启动检算；wait=True 时轮询至后台任务结束。
+    ) -> Any:
+        """同步指定检算工况后启动检算；返回启动或等待结束后的原生状态。
 
         2.5.0 起 solve_concrete_check 不再接受 name，改为对"当前检算数据"求解，
         故先用 import_concrete_check_case 把目标工况同步为当前 CSAN 检算数据。
+        旧版等待器在 is_running=False 时直接返回，失败/取消也可能不抛错；
+        调用方必须核对返回状态后再报告成功。
         """
         self._require_available()
         self._cdb.import_concrete_check_case(case_name=name)
-        self._cdb.solve_concrete_check(
+        return self._cdb.solve_concrete_check(
             wait=wait,
             poll_interval=poll_interval,
             max_wait=max_wait,
@@ -2100,13 +2520,23 @@ class QtModelProvider(BridgeProvider):
         self._mdb.update_model()
 
     def add_elastic_support(
-        self, node_id: Any, support_type: int = 1, boundary_info: list | None = None, **kwargs
+        self, node_id: Any, support_type: int = 1, boundary_info: list | None = None,
+        *, coordinate: int | None = None, extra_enabled: bool | None = None,
+        extra_parameters: list[float] | None = None, axis_direction: int | None = None,
+        **kwargs,
     ) -> None:
         self._require_available()
-        self._mdb.add_elastic_support(
-            node_id=node_id, support_type=support_type, boundary_info=boundary_info, **kwargs
+        if extra_parameters is not None and extra_enabled is None:
+            extra_enabled = True
+        options = self._optional_mdb_parameters(
+            "add_elastic_support", coordinate=coordinate, extra_enabled=extra_enabled,
+            extra_parameters=extra_parameters, axis_direction=axis_direction,
         )
-        self._mdb.update_model()
+        arguments = {"node_id": node_id, "support_type": support_type,
+                     "boundary_info": boundary_info, **options, **kwargs}
+        method = "add_elastic_support"
+        fn = self._validated_method("mdb", method, arguments)
+        self._execute_model_command(fn, method, arguments)
 
     # ── Moving Loads ───────────────────────────────────────────────────
 
@@ -2125,9 +2555,14 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_lane_line(name=name, **kwargs)
         self._mdb.update_model()
 
-    def add_live_load_case(self, name: str, **kwargs) -> None:
+    def add_live_load_case(
+        self, name: str, *, sub_case_optimized: list[bool] | None = None, **kwargs
+    ) -> None:
         self._require_available()
-        self._mdb.add_live_load_case(name=name, **kwargs)
+        options = self._optional_mdb_parameter(
+            "add_live_load_case", "sub_case_optimized", sub_case_optimized
+        )
+        self._mdb.add_live_load_case(name=name, **options, **kwargs)
         self._mdb.update_model()
 
     def get_live_load_results(self, case_name: str, result_type: str, ids: Any) -> Any:

@@ -2,7 +2,7 @@
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
 PositiveNumber = Annotated[float, Field(gt=0, allow_inf_nan=False)]
 FiniteNumber = Annotated[float, Field(allow_inf_nan=False)]
@@ -18,13 +18,31 @@ NodeRows = Annotated[list[ThreeNumbers | FourNumbers], Field(min_length=1)]
 SixFlags = Annotated[list[bool], Field(min_length=6, max_length=6)]
 SixNumbers = Annotated[list[FiniteNumber], Field(min_length=6, max_length=6)]
 SpringValues = TwoNumbers | SixNumbers
+SupportExtraParameters = Annotated[list[FiniteNumber], Field(min_length=8, max_length=8)]
 NonemptyName = Annotated[str, Field(min_length=1)]
 TendonNames = NonemptyName | Annotated[list[NonemptyName], Field(min_length=1)]
 FunctionReference = tuple[NonemptyName, FiniteNumber]
+# 时间-数值曲线（徐变/收缩函数）；qtmodel 2.9 起空表在客户端即被拒绝
+CurvePoints = Annotated[list[TwoNumbers], Field(min_length=1)]
 ConstraintTerm = tuple[PositiveInteger, Literal[1, 2, 3, 4, 5, 6], FiniteNumber]
-LoadCaseKind = Literal["ST", "CS", "CB", "MV", "SM", "RS", "TH"]
+# TV 为横向移动荷载工况（qtmodel 2.9 横向分析），直接使用工况名
+LoadCaseKind = Literal["ST", "CS", "CB", "MV", "SM", "RS", "TH", "TV"]
 LoadCombinationItem = tuple[LoadCaseKind, NonemptyName, FiniteNumber]
 SectionLoop = Annotated[list[TwoNumbers], Field(min_length=3)]
+
+
+def _section_property_layout(values: list[float]) -> list[float]:
+    if len(values) not in (26, 29):
+        raise ValueError("sec_property must contain 26 (legacy) or 29 (full) values")
+    return values
+
+
+# 截面特性表只有两种布局：26 项旧格式与 29 项完整格式（qtmodel 2.9 客户端校验）
+SectionProperties = Annotated[
+    list[FiniteNumber],
+    Field(min_length=26, max_length=29),
+    AfterValidator(_section_property_layout),
+]
 
 
 def _database_name(value: Any) -> Any:
@@ -41,6 +59,9 @@ ModelDataKind = Literal[
     "node_masses", "tendon_properties", "deviation_parameters", "deviation_loads", "stages",
     "stage_elements", "stage_nodes", "stage_groups", "summary", "analysis_context",
     "project_metadata", "check_context", "structure_group_summaries",
+    "material_summaries", "material_detail", "load_case_summaries", "load_case_detail",
+    "load_combination_summaries", "load_combination_detail", "construction_stage_summaries",
+    "element_section", "spans",
 ]
 EntitySearch = Literal[
     "node_at_point", "elements_at_point", "elements_by_material", "elements_by_section",
@@ -78,6 +99,102 @@ PlotResultKind = Literal[
 ]
 
 
+QueryId = Annotated[int, Field(strict=True, gt=0)]
+QueryIds = QueryId | Annotated[list[QueryId], Field(min_length=1, max_length=500)]
+QueryName = Annotated[str, Field(min_length=1, pattern=r"\S")]
+QueryNames = Annotated[list[QueryName], Field(min_length=1, max_length=500)]
+
+
+class ModelQueryPage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    offset: Annotated[int, Field(strict=True, ge=0)] = Field(default=0, description="Server-side offset, starting at zero.")
+    limit: Annotated[int, Field(strict=True, ge=1, le=500)] = Field(
+        default=20, description="Server-side page size; Qiao-MCP caps it at 500 (not a declared server limit).",
+    )
+
+
+class SpatialModelQuery(ModelQueryPage):
+    node_ids: QueryIds | None = Field(default=None, description="Positive node ID or a nonempty list, at most 500 IDs.")
+    structure_group_names: QueryNames | None = Field(default=None, description="Structure group names, intersected with other filters.")
+    near: ThreeNumbers | None = Field(default=None, description="Global point [x,y,z] in model length units; requires tolerance.")
+    tolerance: PositiveNumber | None = Field(default=None, description="Positive Euclidean distance from near, in model length units.")
+    bbox: SixNumbers | None = Field(default=None, description="Global bounding box [xmin,ymin,zmin,xmax,ymax,zmax].")
+
+    @model_validator(mode="after")
+    def validate_spatial_filters(self):
+        if (self.near is None) != (self.tolerance is None):
+            raise ValueError("near and tolerance must be supplied together (near 与 tolerance 必须配对)")
+        if self.bbox is not None and any(self.bbox[i] > self.bbox[i + 3] for i in range(3)):
+            raise ValueError("bbox minimum must not exceed maximum (包围框下界不能大于上界)")
+        return self
+
+
+class NodesQuery(SpatialModelQuery):
+    kind: Literal["nodes"] = Field(description="Filter node records on the bridge.")
+
+    @model_validator(mode="after")
+    def require_filter(self):
+        if all(value is None for value in (self.node_ids, self.structure_group_names, self.near, self.bbox)):
+            raise ValueError("nodes requires at least one filter (节点查询至少需要一个筛选条件)")
+        return self
+
+
+class NodeLocalAxesQuery(SpatialModelQuery):
+    kind: Literal["node_local_axes"] = Field(description="Filter node local coordinate systems; coord_info contains basis vectors, not angles.")
+
+
+class ElementsQuery(ModelQueryPage):
+    kind: Literal["elements"] = Field(description="Filter element records on the bridge.")
+    element_ids: QueryIds | None = Field(default=None, description="Element ID or list of IDs.")
+    structure_group_names: QueryNames | None = Field(default=None, description="Structure group names.")
+    element_type: Literal["", "beam", "link", "cable", "plate"] = Field(default="", description="Element family; empty means no type filter.")
+    node_ids: QueryIds | None = Field(default=None, description="Connected node ID or list of IDs.")
+    node_match: Literal["any", "all"] = Field(default="any", description="Match any or all of the supplied node IDs.")
+    material_ids: QueryIds | None = Field(default=None, description="Material ID or list of IDs.")
+    section_ids: QueryIds | None = Field(default=None, description="Beam/link/cable section ID or list of IDs.")
+    thickness_ids: QueryIds | None = Field(default=None, description="Plate thickness ID or list of IDs; not a beam section ID.")
+
+
+class BoundariesQuery(ModelQueryPage):
+    kind: Literal["boundaries"] = Field(description="Filter one boundary family on the bridge.")
+    boundary_type: Literal[
+        "general_support", "elastic_support", "elastic_link", "master_slave_constraint",
+        "beam_end_constraint", "constraint_equation",
+    ] = Field(description="Native query boundary family (different from the deletion tool's kind names).")
+    boundary_ids: QueryIds | None = Field(default=None, description="Boundary ID or list of IDs.")
+    group_names: QueryNames | None = Field(default=None, description="Boundary group names.")
+    node_ids: QueryIds | None = Field(default=None, description="Target node ID or list of IDs.")
+    element_ids: QueryIds | None = Field(default=None, description="Target element ID or list of IDs.")
+
+
+class LoadsQuery(ModelQueryPage):
+    kind: Literal["loads"] = Field(description="Filter one static load family on the bridge.")
+    load_family: Literal[
+        "nodal_force", "nodal_displacement", "beam_concentrated_load", "beam_distributed_load",
+        "plate_concentrated_load", "plate_line_load", "plate_area_load",
+    ] = Field(description="Native static load family; this endpoint does not query moving-load definitions.")
+    load_ids: QueryIds | None = Field(default=None, description="Load record ID or list of IDs.")
+    target_ids: QueryIds | None = Field(default=None, description="Target node/element ID or list, according to load_family.")
+    case_names: QueryNames | None = Field(default=None, description="Load case names.")
+    group_names: QueryNames | None = Field(default=None, description="Load group names.")
+
+
+class SectionSummariesQuery(ModelQueryPage):
+    kind: Literal["section_summaries"] = Field(description="Filter lightweight section summaries, not full geometry.")
+    section_ids: Annotated[list[QueryId], Field(min_length=1, max_length=100)] | None = Field(
+        default=None, description="At most 100 explicit section IDs, preserving order; no range strings.",
+    )
+    query: str = Field(default="", description="Case-insensitive substring of the section name.")
+    section_type: str = Field(default="", description="Exact native section type name; empty means no type filter.")
+    limit: Annotated[int, Field(strict=True, ge=1, le=100)] = Field(default=50, description="Page size, 1..100 as required by the upstream contract.")
+
+
+ModelQuery = Annotated[
+    NodesQuery | ElementsQuery | BoundariesQuery | LoadsQuery | NodeLocalAxesQuery | SectionSummariesQuery,
+    Field(discriminator="kind"),
+]
+
+
 class ObjectResult(BaseModel):
     """The common envelope; backend-owned fields are preserved."""
 
@@ -108,6 +225,23 @@ class ModelStateResult(ObjectResult):
         default=None, description="Backend snapshot: model_opened, phase, stage_name, capabilities and result availability.",
     )
     message: str | None = Field(default=None, description="State explanation or reason state reporting is unavailable.")
+
+
+class ModelQueryResult(ObjectResult):
+    data: dict[str, Any] = Field(
+        description="Bridge-owned query page, including items and any total/has_more/truncated metadata; never paginated again.",
+    )
+
+
+class ModelEditReadinessResult(ObjectResult):
+    readiness: dict[str, Any] | None = Field(
+        default=None, description="Unmodified bridge readiness response, including any opaque preparation_token; null when unknown.",
+    )
+    connection: dict[str, Any] | None = Field(
+        default=None, description="Connection diagnostic when the readiness query cannot be sent.",
+    )
+    message: str | None = Field(default=None, description="Diagnostic explanation; success does not itself mean editable.")
+    action: str | None = Field(default=None, description="Suggested manual action; no automatic state changes are performed.")
 
 
 class BridgeWorkflowResult(MessageResult):

@@ -1,0 +1,790 @@
+{
+  "source": "qtmodel-release 0687ffe tests/fixtures/p1_composite_logs.json and planned-lane-loop-logs.json; C# command exports",
+  "extraction": "Only AST literal arguments and constant JSON strings were decoded; no log code was executed.",
+  "notes": "Vehicle exports include inactive parameters from other standards. Typed tools accept the documented active fields for their standard; the gateway preserves the whole native export. These fixtures verify transport, not engineering validity or BS axle-force units.",
+  "calls": [
+    {
+      "source": "p1_composite_logs.json",
+      "method": "add_international_vehicle",
+      "kwargs": {
+        "name": "AASHTO车辆'\\\n甲",
+        "index": 71,
+        "standard": "AASHTO",
+        "vehicle_type": 0,
+        "definition_mode": 2,
+        "parameters": {
+          "dynamic_coefficient": 1.33,
+          "r": 0.0,
+          "dist": 0.0,
+          "d2": 0.0,
+          "d3": 0.0,
+          "w": 0.0,
+          "w1": 0.0,
+          "w2": 0.0,
+          "w3": 0.0,
+          "l_invert1": 0.0,
+          "l_invert2": 0.0,
+          "l1": 0.0,
+          "l2": 0.0,
+          "pa": 0.0,
+          "d1": 0.0,
+          "pb": 0.0,
+          "d": 0.0,
+          "d4": 0.0,
+          "d5": 0.0,
+          "d6": 0.0,
+          "number_of_units": 0.0,
+          "uniform_load1": 80.5,
+          "uniform_load2": 0.0,
+          "loaded_length1": 12.5,
+          "loaded_length2": 0.0,
+          "spacing1": 3.75,
+          "spacing2": 0.0,
+          "load_number": 0.0,
+          "train_length": 0.0,
+          "load_gap": 0.0,
+          "point_load": 0.0,
+          "fai1": 0.0,
+          "fai2": 0.0,
+          "alpha": 0.0,
+          "support_gap": 0.0,
+          "displacement_bias": 0.0,
+          "hslm_a_kind": 4.0
+        },
+        "load_items": [
+          [
+            140.0,
+            2.5
+          ],
+          [
+            150.0,
+            3.0
+          ]
+        ],
+        "consider_point_load": true,
+        "consider_displacement_bias": true
+      }
+    },
+    {
+      "source": "p1_composite_logs.json",
+      "method": "update_international_vehicle",
+      "kwargs": {
+        "name": "原名'\\\n",
+        "new_name": "AASHTO车辆'\\\n甲",
+        "index": 71,
+        "standard": "AASHTO",
+        "vehicle_type": 0,
+        "definition_mode": 2,
+        "parameters": {
+          "dynamic_coefficient": 1.33,
+          "r": 0.0,
+          "dist": 0.0,
+          "d2": 0.0,
+          "d3": 0.0,
+          "w": 0.0,
+          "w1": 0.0,
+          "w2": 0.0,
+          "w3": 0.0,
+          "l_invert1": 0.0,
+          "l_invert2": 0.0,
+          "l1": 0.0,
+          "l2": 0.0,
+          "pa": 0.0,
+          "d1": 0.0,
+          "pb": 0.0,
+          "d": 0.0,
+          "d4": 0.0,
+          "d5": 0.0,
+          "d6": 0.0,
+          "number_of_units": 0.0,
+          "uniform_load1": 80.5,
+          "uniform_load2": 0.0,
+          "loaded_length1": 12.5,
+          "loaded_length2": 0.0,
+          "spacing1": 3.75,
+          "spacing2": 0.0,
+          "load_number": 0.0,
+          "train_length": 0.0,
+          "load_gap": 0.0,
+          "point_load": 0.0,
+          "fai1": 0.0,
+          "fai2": 0.0,
+          "alpha": 0.0,
+          "support_gap": 0.0,
+          "displacement_bias": 0.0,
+          "hslm_a_kind": 4.0
+        },
+        "load_items": [
+          [
+            140.0,
+            2.5
+          ],
+          [
+            150.0,
+            3.0
+          ]
+        ],
+        "consider_point_load": true,
+        "consider_displacement_bias": true
+      }
+    },
+    {
+      "source": "p1_composite_logs.json",
+      "method": "add_international_live_load_case",
+      "kwargs": {
+        "index": 8,
+        "name": "AASHTO工况'\\\n",
+        "influence_plane": "影响面'\\甲",
+        "span": 25.5,
+        "save_sub_case_result": true,
+        "sub_cases": [
+          {
+            "vehicle_name": "AASHTO车辆'\\\n甲",
+            "lane_names": [
+              "车道'一"
+            ],
+            "factor": 1.25,
+            "optimized": false,
+            "lane_count": 0,
+            "hb_lane_names": []
+          }
+        ],
+        "highway_factor": {
+          "ReduceCode": 0,
+          "CrossReduceCoefficient": {
+            "CrossReduceSet": {
+              "1": 0.8,
+              "2": 0.6
+            },
+            "Code": 0
+          },
+          "ImpactCoefficient": {
+            "IsDefinedByUser": true,
+            "ImpactValue": 1.4,
+            "Span": 1.0,
+            "FillThick": 0.5,
+            "Rise": 1.0,
+            "LambDa": 1.0,
+            "BaseFrequency": 14.0,
+            "Code": 0,
+            "BridgeKind": 0
+          },
+          "LongitudeReduceCoefficient": {
+            "IsDefinedByUser": true,
+            "Value": 0.9,
+            "Code": 0,
+            "Span": 0.0
+          },
+          "FatigueImpactCoefficient": {
+            "IsDefinedByUser": false,
+            "ImpactValue": 1.0,
+            "Span": 1.0,
+            "FillThick": 0.5,
+            "Rise": 1.0,
+            "LambDa": 1.0,
+            "BaseFrequency": 14.0,
+            "Code": 0,
+            "BridgeKind": 0
+          },
+          "IsCalculatedFatigue": false,
+          "FatigueLaneLineCount": 1
+        }
+      }
+    },
+    {
+      "source": "p1_composite_logs.json",
+      "method": "update_international_live_load_case",
+      "kwargs": {
+        "index": 8,
+        "name": "原工况",
+        "new_name": "AASHTO工况'\\\n",
+        "influence_plane": "影响面'\\甲",
+        "span": 25.5,
+        "save_sub_case_result": true,
+        "sub_cases": [
+          {
+            "vehicle_name": "AASHTO车辆'\\\n甲",
+            "lane_names": [
+              "车道'一"
+            ],
+            "factor": 1.25,
+            "optimized": false,
+            "lane_count": 0,
+            "hb_lane_names": []
+          }
+        ],
+        "highway_factor": {
+          "ReduceCode": 0,
+          "CrossReduceCoefficient": {
+            "CrossReduceSet": {
+              "1": 0.8,
+              "2": 0.6
+            },
+            "Code": 0
+          },
+          "ImpactCoefficient": {
+            "IsDefinedByUser": true,
+            "ImpactValue": 1.4,
+            "Span": 1.0,
+            "FillThick": 0.5,
+            "Rise": 1.0,
+            "LambDa": 1.0,
+            "BaseFrequency": 14.0,
+            "Code": 0,
+            "BridgeKind": 0
+          },
+          "LongitudeReduceCoefficient": {
+            "IsDefinedByUser": true,
+            "Value": 0.9,
+            "Code": 0,
+            "Span": 0.0
+          },
+          "FatigueImpactCoefficient": {
+            "IsDefinedByUser": false,
+            "ImpactValue": 1.0,
+            "Span": 1.0,
+            "FillThick": 0.5,
+            "Rise": 1.0,
+            "LambDa": 1.0,
+            "BaseFrequency": 14.0,
+            "Code": 0,
+            "BridgeKind": 0
+          },
+          "IsCalculatedFatigue": false,
+          "FatigueLaneLineCount": 1
+        }
+      }
+    },
+    {
+      "source": "p1_composite_logs.json",
+      "method": "add_international_vehicle",
+      "kwargs": {
+        "name": "BS车辆'\\\n甲",
+        "index": 71,
+        "standard": "BS",
+        "vehicle_type": 0,
+        "definition_mode": 2,
+        "parameters": {
+          "dynamic_coefficient": 1.33,
+          "r": 0.0,
+          "dist": 0.0,
+          "d2": 0.0,
+          "d3": 0.0,
+          "w": 0.0,
+          "w1": 0.0,
+          "w2": 0.0,
+          "w3": 0.0,
+          "l_invert1": 0.0,
+          "l_invert2": 0.0,
+          "l1": 0.0,
+          "l2": 0.0,
+          "pa": 0.0,
+          "d1": 0.0,
+          "pb": 0.0,
+          "d": 0.0,
+          "d4": 0.0,
+          "d5": 0.0,
+          "d6": 0.0,
+          "number_of_units": 0.0,
+          "uniform_load1": 80.5,
+          "uniform_load2": 0.0,
+          "loaded_length1": 12.5,
+          "loaded_length2": 0.0,
+          "spacing1": 3.75,
+          "spacing2": 0.0,
+          "load_number": 0.0,
+          "train_length": 0.0,
+          "load_gap": 0.0,
+          "point_load": 0.0,
+          "fai1": 0.0,
+          "fai2": 0.0,
+          "alpha": 0.0,
+          "support_gap": 0.0,
+          "displacement_bias": 0.0,
+          "hslm_a_kind": 4.0
+        },
+        "load_items": [
+          [
+            140.0,
+            2.5
+          ],
+          [
+            150.0,
+            3.0
+          ]
+        ],
+        "consider_point_load": true,
+        "consider_displacement_bias": true
+      }
+    },
+    {
+      "source": "p1_composite_logs.json",
+      "method": "update_international_vehicle",
+      "kwargs": {
+        "name": "原名'\\\n",
+        "new_name": "BS车辆'\\\n甲",
+        "index": 71,
+        "standard": "BS",
+        "vehicle_type": 0,
+        "definition_mode": 2,
+        "parameters": {
+          "dynamic_coefficient": 1.33,
+          "r": 0.0,
+          "dist": 0.0,
+          "d2": 0.0,
+          "d3": 0.0,
+          "w": 0.0,
+          "w1": 0.0,
+          "w2": 0.0,
+          "w3": 0.0,
+          "l_invert1": 0.0,
+          "l_invert2": 0.0,
+          "l1": 0.0,
+          "l2": 0.0,
+          "pa": 0.0,
+          "d1": 0.0,
+          "pb": 0.0,
+          "d": 0.0,
+          "d4": 0.0,
+          "d5": 0.0,
+          "d6": 0.0,
+          "number_of_units": 0.0,
+          "uniform_load1": 80.5,
+          "uniform_load2": 0.0,
+          "loaded_length1": 12.5,
+          "loaded_length2": 0.0,
+          "spacing1": 3.75,
+          "spacing2": 0.0,
+          "load_number": 0.0,
+          "train_length": 0.0,
+          "load_gap": 0.0,
+          "point_load": 0.0,
+          "fai1": 0.0,
+          "fai2": 0.0,
+          "alpha": 0.0,
+          "support_gap": 0.0,
+          "displacement_bias": 0.0,
+          "hslm_a_kind": 4.0
+        },
+        "load_items": [
+          [
+            140.0,
+            2.5
+          ],
+          [
+            150.0,
+            3.0
+          ]
+        ],
+        "consider_point_load": true,
+        "consider_displacement_bias": true
+      }
+    },
+    {
+      "source": "p1_composite_logs.json",
+      "method": "add_international_live_load_case",
+      "kwargs": {
+        "index": 8,
+        "name": "BS工况'\\\n",
+        "influence_plane": "影响面'\\甲",
+        "span": 25.5,
+        "save_sub_case_result": true,
+        "sub_cases": [
+          {
+            "vehicle_name": "BS车辆'\\\n甲",
+            "lane_names": [
+              "车道'一"
+            ],
+            "factor": 1.25,
+            "optimized": false,
+            "lane_count": 0,
+            "hb_lane_names": []
+          }
+        ],
+        "highway_factor": {
+          "ReduceCode": 0,
+          "CrossReduceCoefficient": {
+            "CrossReduceSet": {
+              "1": 0.8,
+              "2": 0.6
+            },
+            "Code": 0
+          },
+          "ImpactCoefficient": {
+            "IsDefinedByUser": true,
+            "ImpactValue": 1.4,
+            "Span": 1.0,
+            "FillThick": 0.5,
+            "Rise": 1.0,
+            "LambDa": 1.0,
+            "BaseFrequency": 14.0,
+            "Code": 0,
+            "BridgeKind": 0
+          },
+          "LongitudeReduceCoefficient": {
+            "IsDefinedByUser": true,
+            "Value": 0.9,
+            "Code": 0,
+            "Span": 0.0
+          },
+          "FatigueImpactCoefficient": {
+            "IsDefinedByUser": false,
+            "ImpactValue": 1.0,
+            "Span": 1.0,
+            "FillThick": 0.5,
+            "Rise": 1.0,
+            "LambDa": 1.0,
+            "BaseFrequency": 14.0,
+            "Code": 0,
+            "BridgeKind": 0
+          },
+          "IsCalculatedFatigue": false,
+          "FatigueLaneLineCount": 1
+        }
+      }
+    },
+    {
+      "source": "p1_composite_logs.json",
+      "method": "update_international_live_load_case",
+      "kwargs": {
+        "index": 8,
+        "name": "原工况",
+        "new_name": "BS工况'\\\n",
+        "influence_plane": "影响面'\\甲",
+        "span": 25.5,
+        "save_sub_case_result": true,
+        "sub_cases": [
+          {
+            "vehicle_name": "BS车辆'\\\n甲",
+            "lane_names": [
+              "车道'一"
+            ],
+            "factor": 1.25,
+            "optimized": false,
+            "lane_count": 0,
+            "hb_lane_names": []
+          }
+        ],
+        "highway_factor": {
+          "ReduceCode": 0,
+          "CrossReduceCoefficient": {
+            "CrossReduceSet": {
+              "1": 0.8,
+              "2": 0.6
+            },
+            "Code": 0
+          },
+          "ImpactCoefficient": {
+            "IsDefinedByUser": true,
+            "ImpactValue": 1.4,
+            "Span": 1.0,
+            "FillThick": 0.5,
+            "Rise": 1.0,
+            "LambDa": 1.0,
+            "BaseFrequency": 14.0,
+            "Code": 0,
+            "BridgeKind": 0
+          },
+          "LongitudeReduceCoefficient": {
+            "IsDefinedByUser": true,
+            "Value": 0.9,
+            "Code": 0,
+            "Span": 0.0
+          },
+          "FatigueImpactCoefficient": {
+            "IsDefinedByUser": false,
+            "ImpactValue": 1.0,
+            "Span": 1.0,
+            "FillThick": 0.5,
+            "Rise": 1.0,
+            "LambDa": 1.0,
+            "BaseFrequency": 14.0,
+            "Code": 0,
+            "BridgeKind": 0
+          },
+          "IsCalculatedFatigue": false,
+          "FatigueLaneLineCount": 1
+        }
+      }
+    },
+    {
+      "source": "p1_composite_logs.json",
+      "method": "add_international_vehicle",
+      "kwargs": {
+        "name": "EN1991车辆'\\\n甲",
+        "index": 71,
+        "standard": "EN1991",
+        "vehicle_type": 1,
+        "definition_mode": 2,
+        "parameters": {
+          "dynamic_coefficient": 1.33,
+          "r": 0.0,
+          "dist": 0.0,
+          "d2": 0.0,
+          "d3": 0.0,
+          "w": 0.0,
+          "w1": 0.0,
+          "w2": 0.0,
+          "w3": 0.0,
+          "l_invert1": 0.0,
+          "l_invert2": 0.0,
+          "l1": 0.0,
+          "l2": 0.0,
+          "pa": 0.0,
+          "d1": 0.0,
+          "pb": 0.0,
+          "d": 0.0,
+          "d4": 0.0,
+          "d5": 0.0,
+          "d6": 0.0,
+          "number_of_units": 0.0,
+          "uniform_load1": 80.5,
+          "uniform_load2": 0.0,
+          "loaded_length1": 12.5,
+          "loaded_length2": 0.0,
+          "spacing1": 3.75,
+          "spacing2": 0.0,
+          "load_number": 0.0,
+          "train_length": 0.0,
+          "load_gap": 0.0,
+          "point_load": 0.0,
+          "fai1": 0.0,
+          "fai2": 0.0,
+          "alpha": 0.0,
+          "support_gap": 0.0,
+          "displacement_bias": 0.0,
+          "hslm_a_kind": 4.0
+        },
+        "load_items": [
+          [
+            140.0,
+            2.5
+          ],
+          [
+            150.0,
+            3.0
+          ]
+        ],
+        "consider_point_load": true,
+        "consider_displacement_bias": true
+      }
+    },
+    {
+      "source": "p1_composite_logs.json",
+      "method": "update_international_vehicle",
+      "kwargs": {
+        "name": "原名'\\\n",
+        "new_name": "EN1991车辆'\\\n甲",
+        "index": 71,
+        "standard": "EN1991",
+        "vehicle_type": 1,
+        "definition_mode": 2,
+        "parameters": {
+          "dynamic_coefficient": 1.33,
+          "r": 0.0,
+          "dist": 0.0,
+          "d2": 0.0,
+          "d3": 0.0,
+          "w": 0.0,
+          "w1": 0.0,
+          "w2": 0.0,
+          "w3": 0.0,
+          "l_invert1": 0.0,
+          "l_invert2": 0.0,
+          "l1": 0.0,
+          "l2": 0.0,
+          "pa": 0.0,
+          "d1": 0.0,
+          "pb": 0.0,
+          "d": 0.0,
+          "d4": 0.0,
+          "d5": 0.0,
+          "d6": 0.0,
+          "number_of_units": 0.0,
+          "uniform_load1": 80.5,
+          "uniform_load2": 0.0,
+          "loaded_length1": 12.5,
+          "loaded_length2": 0.0,
+          "spacing1": 3.75,
+          "spacing2": 0.0,
+          "load_number": 0.0,
+          "train_length": 0.0,
+          "load_gap": 0.0,
+          "point_load": 0.0,
+          "fai1": 0.0,
+          "fai2": 0.0,
+          "alpha": 0.0,
+          "support_gap": 0.0,
+          "displacement_bias": 0.0,
+          "hslm_a_kind": 4.0
+        },
+        "load_items": [
+          [
+            140.0,
+            2.5
+          ],
+          [
+            150.0,
+            3.0
+          ]
+        ],
+        "consider_point_load": true,
+        "consider_displacement_bias": true
+      }
+    },
+    {
+      "source": "p1_composite_logs.json",
+      "method": "add_international_live_load_case",
+      "kwargs": {
+        "index": 8,
+        "name": "EN1991工况'\\\n",
+        "influence_plane": "影响面'\\甲",
+        "span": 25.5,
+        "save_sub_case_result": true,
+        "sub_cases": [
+          {
+            "vehicle_name": "EN1991车辆'\\\n甲",
+            "lane_names": [
+              "车道'一"
+            ],
+            "factor": 1.25,
+            "optimized": false,
+            "lane_count": 0,
+            "hb_lane_names": []
+          }
+        ],
+        "highway_factor": {
+          "ReduceCode": 0,
+          "CrossReduceCoefficient": {
+            "CrossReduceSet": {
+              "1": 0.8,
+              "2": 0.6
+            },
+            "Code": 0
+          },
+          "ImpactCoefficient": {
+            "IsDefinedByUser": true,
+            "ImpactValue": 1.4,
+            "Span": 1.0,
+            "FillThick": 0.5,
+            "Rise": 1.0,
+            "LambDa": 1.0,
+            "BaseFrequency": 14.0,
+            "Code": 0,
+            "BridgeKind": 0
+          },
+          "LongitudeReduceCoefficient": {
+            "IsDefinedByUser": true,
+            "Value": 0.9,
+            "Code": 0,
+            "Span": 0.0
+          },
+          "FatigueImpactCoefficient": {
+            "IsDefinedByUser": false,
+            "ImpactValue": 1.0,
+            "Span": 1.0,
+            "FillThick": 0.5,
+            "Rise": 1.0,
+            "LambDa": 1.0,
+            "BaseFrequency": 14.0,
+            "Code": 0,
+            "BridgeKind": 0
+          },
+          "IsCalculatedFatigue": false,
+          "FatigueLaneLineCount": 1
+        }
+      }
+    },
+    {
+      "source": "p1_composite_logs.json",
+      "method": "update_international_live_load_case",
+      "kwargs": {
+        "index": 8,
+        "name": "原工况",
+        "new_name": "EN1991工况'\\\n",
+        "influence_plane": "影响面'\\甲",
+        "span": 25.5,
+        "save_sub_case_result": true,
+        "sub_cases": [
+          {
+            "vehicle_name": "EN1991车辆'\\\n甲",
+            "lane_names": [
+              "车道'一"
+            ],
+            "factor": 1.25,
+            "optimized": false,
+            "lane_count": 0,
+            "hb_lane_names": []
+          }
+        ],
+        "highway_factor": {
+          "ReduceCode": 0,
+          "CrossReduceCoefficient": {
+            "CrossReduceSet": {
+              "1": 0.8,
+              "2": 0.6
+            },
+            "Code": 0
+          },
+          "ImpactCoefficient": {
+            "IsDefinedByUser": true,
+            "ImpactValue": 1.4,
+            "Span": 1.0,
+            "FillThick": 0.5,
+            "Rise": 1.0,
+            "LambDa": 1.0,
+            "BaseFrequency": 14.0,
+            "Code": 0,
+            "BridgeKind": 0
+          },
+          "LongitudeReduceCoefficient": {
+            "IsDefinedByUser": true,
+            "Value": 0.9,
+            "Code": 0,
+            "Span": 0.0
+          },
+          "FatigueImpactCoefficient": {
+            "IsDefinedByUser": false,
+            "ImpactValue": 1.0,
+            "Span": 1.0,
+            "FillThick": 0.5,
+            "Rise": 1.0,
+            "LambDa": 1.0,
+            "BaseFrequency": 14.0,
+            "Code": 0,
+            "BridgeKind": 0
+          },
+          "IsCalculatedFatigue": false,
+          "FatigueLaneLineCount": 1
+        }
+      }
+    },
+    {
+      "source": "planned-lane-loop-logs.json",
+      "method": "add_planned_lane_line",
+      "kwargs": {
+        "name": "旧车道",
+        "influence_name": "面",
+        "tandem_name": "纵列",
+        "offset": -1.5,
+        "lane_width": 8.25,
+        "vehicle_number": 3,
+        "direction": 1
+      }
+    },
+    {
+      "source": "planned-lane-loop-logs.json",
+      "method": "update_planned_lane_line",
+      "kwargs": {
+        "name": "旧车道",
+        "new_name": "新车道",
+        "influence_name": "面",
+        "tandem_name": "纵列",
+        "offset": 2.0,
+        "lane_width": 9.5,
+        "vehicle_number": 2,
+        "direction": 0
+      }
+    }
+  ]
+}
