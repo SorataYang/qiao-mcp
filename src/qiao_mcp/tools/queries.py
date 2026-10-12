@@ -439,9 +439,16 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             node_id: Node ID for concurrent reactions (并发反力节点号)
             mode: Mode number for modal results (振型阶数)
             stage_id: Construction stage (施工阶段号, -1=运营)
-            result_kind: Result kind flag (结果种类)
-            envelop_type: Envelope type (包络类型)
-            increment_type: Increment type (增量类型)
+            result_kind: For elastic_link_force / constraint_equation_force:
+                construction-stage component 1=total, 2=prestress, 3=creep/shrinkage,
+                4=dead load; ignored by other kinds (施工阶段分量：合计/预应力/收缩徐变/恒载)
+            envelop_type: For elastic_link_force / constraint_equation_force:
+                1=maximum, 2=minimum; ignored by other kinds
+                (连接/约束方程力的包络：1最大、2最小，其他种类不使用)
+            increment_type: For elastic_link_force / constraint_equation_force /
+                cable_element_length: 1=total, 2=increment. Operation-stage cable
+                length returns only the completed-bridge value; other kinds ignore
+                this flag (1全量、2增量；运营阶段索长仅返回成桥值)
             limit: Max items per page (单页条数上限)
             offset: Pagination offset (翻页偏移)
         """

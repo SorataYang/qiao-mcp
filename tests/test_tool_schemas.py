@@ -127,6 +127,8 @@ def test_schema_exposes_ranges_enums_lengths_and_workflow_fields(catalog):
     ("add_tendon_3d", {"name": "T", "property_name": "P", "control_points": [[0, 0, 0]], "point_insert": [0, 0, 0]}),
     ("add_constraint_equation", {"name": "CE", "slave_node": 1, "master_info": [[2, 7, 1.0]]}),
     ("add_beam_section_temperature", {"element_id": 1, "case_name": "T", "sec_type": 3}),
+    ("add_custom_temperature", {"element_id": 1, "case_name": "T", "temperature_data": [[3, 0.2, 10]]}),
+    ("add_custom_temperature", {"element_id": 1, "case_name": "T", "temperature_data": [[1, 0.2, 10, 5]]}),
     ("remove_boundary", {"remove_id": 1, "kind": "unknown"}),
     ("update_element", {"old_id": 1, "ele_type": 5}),
     ("set_view_angle", {"angle_preset": "unknown"}),
@@ -152,6 +154,36 @@ def test_spring_type_and_direction_are_validated_before_writing(catalog, fake_pr
                 "node_id": 1, "support_type": 2, "spring_values": values,
             }))
     assert fake_provider._mdb.count("add_elastic_support") == 0
+
+
+@pytest.mark.parametrize("rows", [
+    [[2, 0.5, -10], [1, 0.25, 12.5], [2, 0.5, -10]],
+    [[0.5, -10], [0.25, 12.5]],  # accepted legacy pairs must not acquire an inferred reference
+    [],
+    None,
+])
+def test_custom_temperature_reaches_real_sdk_without_shape_or_value_conversion(
+    catalog, fake_provider, monkeypatch, rows,
+):
+    from qtmodel import mdb
+    from qtmodel.core.qt_server import QtServer
+
+    sent = Mock(return_value=None)
+    monkeypatch.setattr(QtServer, "send_dict", sent)
+    monkeypatch.setattr(fake_provider, "_mdb", mdb)
+    monkeypatch.setattr(fake_provider, "ensure_operation_allowed", Mock())
+    _, result = asyncio.run(catalog.call_tool("add_custom_temperature", {
+        "element_id": [7, 9], "case_name": "TEMP", "orientation": 2,
+        "temperature_data": rows,
+    }))
+    assert result["status"] == "success"
+    args, _ = sent.call_args_list[0]
+    assert args[0] == "ADD-CUSTOM-TEMPERATURE"
+    assert args[1] == {
+        "element_id": [7, 9], "case_name": "TEMP", "group_name": "默认荷载组",
+        "orientation": 2, "temperature_data": None if rows is None else [tuple(row) for row in rows],
+    }
+    assert len(sent.call_args_list) == 2  # definition, followed by the existing UI refresh
 
 
 def test_combination_keeps_native_type_name_factor_order(catalog, fake_provider):

@@ -415,7 +415,7 @@ class QtModelProvider(BridgeProvider):
 
         ### Self-Weight (自重) — QiaoTong (桥通) computes it automatically from geometry
         Self-weight in QiaoTong is NOT a load case and NOT an element load. The solver
-        computes it from section area × material unit weight × gravity. What you control
+        computes it from geometry, material properties and project gravity. What you control
         is WHICH construction stage accounts for each structure group's self-weight.
 
         CORRECT approach:
@@ -456,7 +456,7 @@ class QtModelProvider(BridgeProvider):
         from the TV/MV combination type codes.
 
         Example:
-        • Create load case: add_load_case(name='荷载1', case_type='恒载')
+        • Create load case: create_load_case(name='荷载1', case_type='恒载')
         • Query results: get_analysis_results(result_type='deformation', case_name='荷载1', stage_id=-1)
           (The tool converts it to 'ST:荷载1' automatically)
 
