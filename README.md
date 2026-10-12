@@ -53,11 +53,13 @@ Support overrides preserve omitted coordinate/additional settings. Supplying
 `extra_parameters` enables them unless `extra_enabled=False` explicitly clears
 them; this behavior also applies to older SDKs that support these options.
 
-### 0.5.0: queries, transversal analysis, check snapshots and international loads (unreleased)
+### 0.5.0: queries, transversal analysis, check snapshots and international loads
 
-This version completes B1–B4 with 20 new tools and one workflow prompt. The published
-baseline is 0.3.3; unpublished work previously labeled 0.4.0 is included in the planned
-0.5.0 release. See [upgrading from 0.3.3](#upgrading-from-033).
+This version implements B1–B4 with 20 new tools and one workflow prompt. It includes all
+changes since 0.3.3, including work previously labeled 0.4.0. See
+[upgrading from 0.3.3](#upgrading-from-033). New commands require a supporting QiaoTong
+build. Live testing confirmed basic statics and partial B1 coverage; see the
+[known backend limitations](#live-tested-backend-limitations).
 
 `get_model_edit_readiness` is read-only and remains accessible when model operations are blocked. Its `success`
 status means a response was received, not that editing is safe; inspect the raw
@@ -391,7 +393,7 @@ where it belongs: in the dependency constraint.
 
 | Qiao-MCP           | qtmodel       | QiaoTong software                          |
 |--------------------|---------------|--------------------------------------------|
-| 0.5.0 (unreleased)  | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
+| 0.5.0              | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
 | 0.3.2 – 0.3.3     | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
 | 0.3.0 – 0.3.1      | 2.6.3 – 2.6.x | 2.6.3 (exact match enforced by qtmodel)    |
 | 0.2.x              | 2.5.0 – 2.5.x | 2.5.0                                      |
@@ -401,8 +403,8 @@ one-shot bridge workflow tools cannot run on that version. This is an existing
 limitation; use 2.6.4 or later for those workflows (2.9.0 remains excluded). The
 dependency range does not guarantee every new tool on every build: missing methods or
 incompatible parameters fail explicitly before writes. PyPI 2.9.2 and reference
-`0687ffe` each pass the complete offline suite. Engineering validation against QiaoTong
-remains pending; these tests verify software contracts.
+`0687ffe` each pass the complete offline suite. These tests verify software contracts;
+complete engineering acceptance remains pending.
 
 How the two sides are matched changed in qtmodel 2.8.2:
 
@@ -421,6 +423,26 @@ Qiao-MCP detects the capability rather than the version — without it the
 model-state guard is skipped (`guard_unavailable`) and tools behave as in 0.3.1;
 with it, every tool is gated on the state QiaoTong reports. qtmodel 2.9.0 is the
 first PyPI release that includes it, so on 2.9.x the guard is always active.
+
+### Live-tested backend limitations
+
+Live testing on 2026-10-12 used QiaoTong **26.1.116.1010** with qtmodel **2.9.2**.
+An isolated cantilever model passed reaction, bending-moment and translation checks;
+tip displacement differed from the shear-inclusive hand calculation by about 0.00125%.
+The same run confirmed these backend limitations:
+
+- `GET-DEFORMATION` returns an incorrect `rz`, equal to `ry` in the tested cases.
+  The solver database contains the correct Rz. Do not rely on the API Rz from
+  this build; Qiao-MCP does not invent a replacement value.
+- `configure_live_load_system` is rejected with `未知参数：clear_existing`.
+  The transversal workflow stops at system selection. International workflows
+  share that prerequisite and were not run; individual international interfaces
+  were not established as unsupported by this test.
+- `SET-SECTION-REINFORCEMENT`, `SET-CHECK-STIRRUP` and `SET-CHECK-CASE` are rejected
+  as unknown commands. Full reinforcement/check-snapshot acceptance remains open.
+
+`connected` or `compatible` does not certify these features. Use a supporting QiaoTong
+build. BS axle-force units also remain unconfirmed upstream.
 
 ### Upgrading from 0.3.3
 
