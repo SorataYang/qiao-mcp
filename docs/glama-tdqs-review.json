@@ -1,0 +1,891 @@
+{
+  "spec_version": "1.2",
+  "raw_report": "dist/glama-0.5.1-candidate-20261012/tdqs-lint.json",
+  "raw_sha256": "50a34512c63441ff7c77789fd5033fb91b45b5e58619542d0315271f714fccbc",
+  "strict_exit_code": 1,
+  "severity_counts": {
+    "error": 0,
+    "warning": 39,
+    "info": 2
+  },
+  "classification_method": "Manual source/SDK purpose review, not a calibrated semantic-model evaluation.",
+  "findings": [
+    {
+      "message": "save_model_screenshot has no output schema, so the description has to explain return values itself. Providing one lets the description spend those words elsewhere.",
+      "rule": "no-output-schema",
+      "severity": "info",
+      "tool": "save_model_screenshot"
+    },
+    {
+      "message": "plot_analysis_result has no output schema, so the description has to explain return values itself. Providing one lets the description spend those words elsewhere.",
+      "rule": "no-output-schema",
+      "severity": "info",
+      "tool": "plot_analysis_result"
+    },
+    {
+      "message": "create_beam_element (invocation cost 4) may be shadowed by activate_structure (cost 0): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "create_beam_element"
+    },
+    {
+      "message": "create_section_from_properties (invocation cost 5) may be shadowed by add_beam_constraint (cost 1): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "create_section_from_properties"
+    },
+    {
+      "message": "add_effective_width (invocation cost 7) may be shadowed by add_distribute_plane_load (cost 3): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_effective_width"
+    },
+    {
+      "message": "remove_section (invocation cost 5) may be shadowed by add_beam_constraint (cost 1): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "remove_section"
+    },
+    {
+      "message": "set_support (invocation cost 5) may be shadowed by add_beam_constraint (cost 1): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "set_support"
+    },
+    {
+      "message": "apply_nodal_force (invocation cost 6) may be shadowed by add_check_stirrup (cost 2): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "apply_nodal_force"
+    },
+    {
+      "message": "apply_beam_distributed_load (invocation cost 6) may be shadowed by add_check_stirrup (cost 2): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "apply_beam_distributed_load"
+    },
+    {
+      "message": "add_system_temperature (invocation cost 7) may be shadowed by add_distribute_plane_load (cost 3): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_system_temperature"
+    },
+    {
+      "message": "add_gradient_temperature (invocation cost 7) may be shadowed by add_distribute_plane_load (cost 3): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_gradient_temperature"
+    },
+    {
+      "message": "add_custom_temperature (invocation cost 6) may be shadowed by add_check_stirrup (cost 2): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_custom_temperature"
+    },
+    {
+      "message": "add_beam_section_temperature (invocation cost 6) may be shadowed by add_check_stirrup (cost 2): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_beam_section_temperature"
+    },
+    {
+      "message": "add_initial_tension_load (invocation cost 6) may be shadowed by add_check_stirrup (cost 2): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_initial_tension_load"
+    },
+    {
+      "message": "add_cable_length_load (invocation cost 6) may be shadowed by add_check_stirrup (cost 2): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_cable_length_load"
+    },
+    {
+      "message": "add_plate_element_load (invocation cost 6) may be shadowed by add_check_stirrup (cost 2): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_plate_element_load"
+    },
+    {
+      "message": "add_support_settlement (invocation cost 7) may be shadowed by add_distribute_plane_load (cost 3): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_support_settlement"
+    },
+    {
+      "message": "add_nodal_mass (invocation cost 5) may be shadowed by add_beam_constraint (cost 1): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_nodal_mass"
+    },
+    {
+      "message": "add_elements_to_group (invocation cost 4) may be shadowed by activate_structure (cost 0): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_elements_to_group"
+    },
+    {
+      "message": "create_tendon_2d (invocation cost 4) may be shadowed by activate_structure (cost 0): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "create_tendon_2d"
+    },
+    {
+      "message": "apply_prestress (invocation cost 5) may be shadowed by add_beam_constraint (cost 1): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "apply_prestress"
+    },
+    {
+      "message": "add_tendon_3d (invocation cost 4) may be shadowed by activate_structure (cost 0): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_tendon_3d"
+    },
+    {
+      "message": "assign_tendon_elements (invocation cost 5) may be shadowed by add_beam_constraint (cost 1): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "assign_tendon_elements"
+    },
+    {
+      "message": "add_master_slave_link (invocation cost 4) may be shadowed by activate_structure (cost 0): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_master_slave_link"
+    },
+    {
+      "message": "add_elastic_support (invocation cost 8) may be shadowed by add_elements_to_group (cost 4): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_elastic_support"
+    },
+    {
+      "message": "configure_operation_stage (invocation cost 5) may be shadowed by add_beam_constraint (cost 1): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "configure_operation_stage"
+    },
+    {
+      "message": "add_node_tandem (invocation cost 4) may be shadowed by activate_structure (cost 0): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "add_node_tandem"
+    },
+    {
+      "message": "create_live_load_case (invocation cost 4) may be shadowed by activate_structure (cost 0): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "create_live_load_case"
+    },
+    {
+      "message": "set_transversal_vehicle (invocation cost 16) may be shadowed by add_elastic_support (cost 8): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "set_transversal_vehicle"
+    },
+    {
+      "message": "set_transversal_lane (invocation cost 7) may be shadowed by add_distribute_plane_load (cost 3): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "set_transversal_lane"
+    },
+    {
+      "message": "set_transversal_case (invocation cost 11) may be shadowed by add_nodal_mass (cost 5): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "set_transversal_case"
+    },
+    {
+      "message": "remove_transversal_data (invocation cost 6) may be shadowed by add_check_stirrup (cost 2): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "remove_transversal_data"
+    },
+    {
+      "message": "set_international_vehicle (invocation cost 18) may be shadowed by add_elastic_support (cost 8): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "set_international_vehicle"
+    },
+    {
+      "message": "create_en1991_vehicle (invocation cost 7) may be shadowed by add_distribute_plane_load (cost 3): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "create_en1991_vehicle"
+    },
+    {
+      "message": "set_planned_lane (invocation cost 11) may be shadowed by add_nodal_mass (cost 5): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "set_planned_lane"
+    },
+    {
+      "message": "set_international_live_load_case (invocation cost 12) may be shadowed by add_beam_section_temperature (cost 6): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "set_international_live_load_case"
+    },
+    {
+      "message": "manage_check_material (invocation cost 17) may be shadowed by add_elastic_support (cost 8): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "manage_check_material"
+    },
+    {
+      "message": "manage_check_case_definition (invocation cost 20) may be shadowed by add_elastic_support (cost 8): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "manage_check_case_definition"
+    },
+    {
+      "message": "set_check_stirrup_snapshot (invocation cost 12) may be shadowed by add_beam_section_temperature (cost 6): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "set_check_stirrup_snapshot"
+    },
+    {
+      "message": "set_section_reinforcement (invocation cost 16) may be shadowed by add_elastic_support (cost 8): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "set_section_reinforcement"
+    },
+    {
+      "message": "query_model_data (invocation cost 15) may be shadowed by add_effective_width (cost 7): if both can answer the same question, an agent tends toward the cheaper call. Only the coherence evaluation can confirm the purposes overlap; if they do, make them disjoint and say so in both descriptions, or collapse the pair.",
+      "rule": "shadow-candidate",
+      "severity": "warning",
+      "tool": "query_model_data"
+    }
+  ],
+  "shadow_review": [
+    {
+      "cheaperSibling": "activate_structure",
+      "cheaperSiblingInvocationCost": 0,
+      "invocationCost": 4,
+      "tool": "create_beam_element",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "创建梁单元改变模型拓扑；activate_structure 只过滤显示。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 239
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 203
+      }
+    },
+    {
+      "cheaperSibling": "add_beam_constraint",
+      "cheaperSiblingInvocationCost": 1,
+      "invocationCost": 5,
+      "tool": "create_section_from_properties",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "创建/覆盖截面特性定义；add_beam_constraint 设置梁端释放，不提供截面。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 996
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 225
+      }
+    },
+    {
+      "cheaperSibling": "add_distribute_plane_load",
+      "cheaperSiblingInvocationCost": 3,
+      "invocationCost": 7,
+      "tool": "add_effective_width",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "修改边界组中的刚度/形心系数；add_distribute_plane_load 放置面荷载图式。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1189
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2013
+      }
+    },
+    {
+      "cheaperSibling": "add_beam_constraint",
+      "cheaperSiblingInvocationCost": 1,
+      "invocationCost": 5,
+      "tool": "remove_section",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "删除截面定义；add_beam_constraint 增加梁端约束，不能代替删除。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1290
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 225
+      }
+    },
+    {
+      "cheaperSibling": "add_beam_constraint",
+      "cheaperSiblingInvocationCost": 1,
+      "invocationCost": 5,
+      "tool": "set_support",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "约束节点自由度；add_beam_constraint 释放梁端与节点的连接，作用对象不同。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1363
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 225
+      }
+    },
+    {
+      "cheaperSibling": "add_check_stirrup",
+      "cheaperSiblingInvocationCost": 2,
+      "invocationCost": 6,
+      "tool": "apply_nodal_force",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "在节点加集中力/矩；add_check_stirrup 定义检算箍筋。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1494
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 211
+      }
+    },
+    {
+      "cheaperSibling": "add_check_stirrup",
+      "cheaperSiblingInvocationCost": 2,
+      "invocationCost": 6,
+      "tool": "apply_beam_distributed_load",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "沿梁分布力/矩；add_check_stirrup 是配筋定义，不是外荷载。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1563
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 211
+      }
+    },
+    {
+      "cheaperSibling": "add_distribute_plane_load",
+      "cheaperSiblingInvocationCost": 3,
+      "invocationCost": 7,
+      "tool": "add_system_temperature",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "指定单元均匀温度；add_distribute_plane_load 是既有面荷载图式的空间放置。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1604
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2013
+      }
+    },
+    {
+      "cheaperSibling": "add_distribute_plane_load",
+      "cheaperSiblingInvocationCost": 3,
+      "invocationCost": 7,
+      "tool": "add_gradient_temperature",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "截面线性温差；add_distribute_plane_load 不是温度剖面。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1653
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2013
+      }
+    },
+    {
+      "cheaperSibling": "add_check_stirrup",
+      "cheaperSiblingInvocationCost": 2,
+      "invocationCost": 6,
+      "tool": "add_custom_temperature",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "梁截面温度点表；add_check_stirrup 是钢筋几何/材料定义。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1704
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 211
+      }
+    },
+    {
+      "cheaperSibling": "add_check_stirrup",
+      "cheaperSiblingInvocationCost": 2,
+      "invocationCost": 6,
+      "tool": "add_beam_section_temperature",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "规范温度剖面；add_check_stirrup 不生成温度荷载。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1760
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 211
+      }
+    },
+    {
+      "cheaperSibling": "add_check_stirrup",
+      "cheaperSiblingInvocationCost": 2,
+      "invocationCost": 6,
+      "tool": "add_initial_tension_load",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "索/杆初始轴力荷载；add_check_stirrup 不提供张拉控制。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1821
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 211
+      }
+    },
+    {
+      "cheaperSibling": "add_check_stirrup",
+      "cheaperSiblingInvocationCost": 2,
+      "invocationCost": 6,
+      "tool": "add_cable_length_load",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "索无应力长度荷载；add_check_stirrup 不修改索长。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1884
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 211
+      }
+    },
+    {
+      "cheaperSibling": "add_check_stirrup",
+      "cheaperSiblingInvocationCost": 2,
+      "invocationCost": 6,
+      "tool": "add_plate_element_load",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "板单元外荷载；add_check_stirrup 是检算箍筋属性。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1936
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 211
+      }
+    },
+    {
+      "cheaperSibling": "add_distribute_plane_load",
+      "cheaperSiblingInvocationCost": 3,
+      "invocationCost": 7,
+      "tool": "add_support_settlement",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "节点强制位移；add_distribute_plane_load 是面荷载，不是位移边界。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2095
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2013
+      }
+    },
+    {
+      "cheaperSibling": "add_beam_constraint",
+      "cheaperSiblingInvocationCost": 1,
+      "invocationCost": 5,
+      "tool": "add_nodal_mass",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "节点惯性质量；add_beam_constraint 是梁端自由度释放，不生成质量。",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2152
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 225
+      }
+    },
+    {
+      "cheaperSibling": "activate_structure",
+      "cheaperSiblingInvocationCost": 0,
+      "invocationCost": 4,
+      "tool": "add_elements_to_group",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "持久修改结构组成员；activate_structure 只影响显示过滤。真正便利关系是 add_to_structure_group。",
+      "source": {
+        "path": "src/qiao_mcp/tools/group_management.py",
+        "line": 145
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 203
+      }
+    },
+    {
+      "cheaperSibling": "activate_structure",
+      "cheaperSiblingInvocationCost": 0,
+      "invocationCost": 4,
+      "tool": "create_tendon_2d",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "新增钢束几何；activate_structure 不创建钢束或模型实体。",
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 81
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 203
+      }
+    },
+    {
+      "cheaperSibling": "add_beam_constraint",
+      "cheaperSiblingInvocationCost": 1,
+      "invocationCost": 5,
+      "tool": "apply_prestress",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "对命名钢束加预应力；add_beam_constraint 设置梁端释放。",
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 139
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 225
+      }
+    },
+    {
+      "cheaperSibling": "activate_structure",
+      "cheaperSiblingInvocationCost": 0,
+      "invocationCost": 4,
+      "tool": "add_tendon_3d",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "新增空间钢束；activate_structure 只控制可见性。",
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 227
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 203
+      }
+    },
+    {
+      "cheaperSibling": "add_beam_constraint",
+      "cheaperSiblingInvocationCost": 1,
+      "invocationCost": 5,
+      "tool": "assign_tendon_elements",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "声明全模型预应力单元集合；add_beam_constraint 设置梁端自由度，不声明钢束宿主。",
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 272
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 225
+      }
+    },
+    {
+      "cheaperSibling": "activate_structure",
+      "cheaperSiblingInvocationCost": 0,
+      "invocationCost": 4,
+      "tool": "add_master_slave_link",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "建立节点自由度从属关系；activate_structure 是可见性过滤。",
+      "source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 100
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 203
+      }
+    },
+    {
+      "cheaperSibling": "add_elements_to_group",
+      "cheaperSiblingInvocationCost": 4,
+      "invocationCost": 8,
+      "tool": "add_elastic_support",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "弹簧支承及刚度；add_elements_to_group 只增加结构组成员。",
+      "source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 143
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/group_management.py",
+        "line": 145
+      }
+    },
+    {
+      "cheaperSibling": "add_beam_constraint",
+      "cheaperSiblingInvocationCost": 1,
+      "invocationCost": 5,
+      "tool": "configure_operation_stage",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "完整替换运营阶段工况选择；add_beam_constraint 不配置求解工况。",
+      "source": {
+        "path": "src/qiao_mcp/tools/moving_load.py",
+        "line": 48
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 225
+      }
+    },
+    {
+      "cheaperSibling": "activate_structure",
+      "cheaperSiblingInvocationCost": 0,
+      "invocationCost": 4,
+      "tool": "add_node_tandem",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "定义用于车道/影响面的有序节点纵列；activate_structure 不创建纵列。",
+      "source": {
+        "path": "src/qiao_mcp/tools/moving_load.py",
+        "line": 84
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 203
+      }
+    },
+    {
+      "cheaperSibling": "activate_structure",
+      "cheaperSiblingInvocationCost": 0,
+      "invocationCost": 4,
+      "tool": "create_live_load_case",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "定义移动荷载工况；activate_structure 不生成工况或结果。",
+      "source": {
+        "path": "src/qiao_mcp/tools/moving_load.py",
+        "line": 230
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 203
+      }
+    },
+    {
+      "cheaperSibling": "add_elastic_support",
+      "cheaperSiblingInvocationCost": 8,
+      "invocationCost": 16,
+      "tool": "set_transversal_vehicle",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "完整横向车辆轴载/几何；add_elastic_support 设置支承刚度。",
+      "source": {
+        "path": "src/qiao_mcp/tools/transversal.py",
+        "line": 28
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 143
+      }
+    },
+    {
+      "cheaperSibling": "add_distribute_plane_load",
+      "cheaperSiblingInvocationCost": 3,
+      "invocationCost": 7,
+      "tool": "set_transversal_lane",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "定义有序梁链车道与分配宽度；add_distribute_plane_load 将面荷载图式放置到平面。",
+      "source": {
+        "path": "src/qiao_mcp/tools/transversal.py",
+        "line": 49
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2013
+      }
+    },
+    {
+      "cheaperSibling": "add_nodal_mass",
+      "cheaperSiblingInvocationCost": 5,
+      "invocationCost": 11,
+      "tool": "set_transversal_case",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "组合横向车/道引用和折减系数；add_nodal_mass 给节点惯性质量。",
+      "source": {
+        "path": "src/qiao_mcp/tools/transversal.py",
+        "line": 70
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2152
+      }
+    },
+    {
+      "cheaperSibling": "add_check_stirrup",
+      "cheaperSiblingInvocationCost": 2,
+      "invocationCost": 6,
+      "tool": "remove_transversal_data",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "按明确身份删除横向对象并处理引用；add_check_stirrup 新增箍筋定义。",
+      "source": {
+        "path": "src/qiao_mcp/tools/transversal.py",
+        "line": 91
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 211
+      }
+    },
+    {
+      "cheaperSibling": "add_elastic_support",
+      "cheaperSiblingInvocationCost": 8,
+      "invocationCost": 18,
+      "tool": "set_international_vehicle",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "按规范定义完整车辆；add_elastic_support 不表示车轴或车辆标准。",
+      "source": {
+        "path": "src/qiao_mcp/tools/international_load.py",
+        "line": 28
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 143
+      }
+    },
+    {
+      "cheaperSibling": "add_distribute_plane_load",
+      "cheaperSiblingInvocationCost": 3,
+      "invocationCost": 7,
+      "tool": "create_en1991_vehicle",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "欧规原生车辆工厂；add_distribute_plane_load 不生成列车/车轴。",
+      "source": {
+        "path": "src/qiao_mcp/tools/international_load.py",
+        "line": 80
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2013
+      }
+    },
+    {
+      "cheaperSibling": "add_nodal_mass",
+      "cheaperSiblingInvocationCost": 5,
+      "invocationCost": 11,
+      "tool": "set_planned_lane",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "完整规划车道和线位选择；add_nodal_mass 不表示行车路线。",
+      "source": {
+        "path": "src/qiao_mcp/tools/international_load.py",
+        "line": 103
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2152
+      }
+    },
+    {
+      "cheaperSibling": "add_beam_section_temperature",
+      "cheaperSiblingInvocationCost": 6,
+      "invocationCost": 12,
+      "tool": "set_international_live_load_case",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "国际车辆/车道子工况与因子；add_beam_section_temperature 是规范温度荷载。",
+      "source": {
+        "path": "src/qiao_mcp/tools/international_load.py",
+        "line": 127
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1760
+      }
+    },
+    {
+      "cheaperSibling": "add_elastic_support",
+      "cheaperSiblingInvocationCost": 8,
+      "invocationCost": 17,
+      "tool": "manage_check_material",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "设置/恢复模型检算材料覆盖；add_elastic_support 不修改材料。",
+      "source": {
+        "path": "src/qiao_mcp/tools/check_snapshots.py",
+        "line": 35
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 143
+      }
+    },
+    {
+      "cheaperSibling": "add_elastic_support",
+      "cheaperSiblingInvocationCost": 8,
+      "invocationCost": 20,
+      "tool": "manage_check_case_definition",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "完整模型检算工况快照或删除；add_elastic_support 是边界支承。",
+      "source": {
+        "path": "src/qiao_mcp/tools/check_snapshots.py",
+        "line": 57
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 143
+      }
+    },
+    {
+      "cheaperSibling": "add_beam_section_temperature",
+      "cheaperSiblingInvocationCost": 6,
+      "invocationCost": 12,
+      "tool": "set_check_stirrup_snapshot",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "完整模型箍筋快照，可显式改号并迁移引用；add_beam_section_temperature 是温度荷载。",
+      "source": {
+        "path": "src/qiao_mcp/tools/check_snapshots.py",
+        "line": 82
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1760
+      }
+    },
+    {
+      "cheaperSibling": "add_elastic_support",
+      "cheaperSiblingInvocationCost": 8,
+      "invocationCost": 16,
+      "tool": "set_section_reinforcement",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "完整截面配筋及实际钢筋点；add_elastic_support 是节点弹簧。",
+      "source": {
+        "path": "src/qiao_mcp/tools/check_snapshots.py",
+        "line": 126
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 143
+      }
+    },
+    {
+      "cheaperSibling": "add_effective_width",
+      "cheaperSiblingInvocationCost": 7,
+      "invocationCost": 15,
+      "tool": "query_model_data",
+      "classification": "不同目的/对象/副作用，保留",
+      "reason": "只读服务端筛选/分页；add_effective_width 写入模型边界系数，读写权限也不同。",
+      "source": {
+        "path": "src/qiao_mcp/tools/queries.py",
+        "line": 88
+      },
+      "other_source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1189
+      }
+    }
+  ],
+  "image_exceptions": [
+    "save_model_screenshot",
+    "plot_analysis_result"
+  ],
+  "online_score_obtained": false
+}

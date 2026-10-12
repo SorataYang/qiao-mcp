@@ -1,0 +1,4949 @@
+{
+  "baseline_0_3_1": {
+    "tools": 132,
+    "description_characters": 76205,
+    "top_level_parameters": 543,
+    "described_parameters": 0,
+    "output_schemas": 0
+  },
+  "published_0_5_0": {
+    "tools": 153,
+    "description_characters": 153192,
+    "top_level_parameters": 596,
+    "described_parameters": 596,
+    "output_schemas": 151
+  },
+  "candidate_0_5_1": {
+    "tools": 153,
+    "description_characters": 84402,
+    "top_level_parameters": 596,
+    "described_parameters": 596,
+    "output_schemas": 151
+  },
+  "baseline_sha256": "729ee21f6ec78be70796abf7db78adebef3b22873d19e065304419841b392b66",
+  "candidate_catalog": "dist/glama-0.5.1-candidate-20261012/catalog.json",
+  "candidate_catalog_sha256": "19350e89686e9c5de22dc96de791e4f573d69e5d22a8872c1e201b1a9ab3a1df",
+  "compatibility": {
+    "all_names_preserved": true,
+    "all_parameter_names_required_sets_defaults_preserved": true,
+    "all_output_schemas_preserved": true,
+    "all_596_parameter_descriptions_match_original_args": true,
+    "input_schema_changes": [
+      "add_custom_temperature"
+    ],
+    "temperature_change": "new three-value rows added; exact old two-value item schema remains an accepted union member",
+    "cross_tool_references_preserved": true,
+    "unknown_instruction_tool_references": [],
+    "bilingual_information_preserved": true
+  },
+  "parameter_description_changes": [
+    {
+      "name": "activate_structure",
+      "fields": [
+        "node_ids",
+        "element_ids"
+      ]
+    },
+    {
+      "name": "add_beam_section_temperature",
+      "fields": [
+        "t1",
+        "t2",
+        "t3",
+        "t4",
+        "thick"
+      ]
+    },
+    {
+      "name": "add_cable_length_load",
+      "fields": [
+        "length"
+      ]
+    },
+    {
+      "name": "add_creep_function",
+      "fields": [
+        "name",
+        "creep_data",
+        "scale_factor"
+      ]
+    },
+    {
+      "name": "add_custom_temperature",
+      "fields": [
+        "orientation",
+        "temperature_data"
+      ]
+    },
+    {
+      "name": "add_distribute_plane_load",
+      "fields": [
+        "coord_system"
+      ]
+    },
+    {
+      "name": "add_initial_tension_load",
+      "fields": [
+        "tension"
+      ]
+    },
+    {
+      "name": "add_shrink_function",
+      "fields": [
+        "scale_factor"
+      ]
+    },
+    {
+      "name": "add_support_settlement",
+      "fields": [
+        "node_id",
+        "case_name",
+        "group_name"
+      ]
+    },
+    {
+      "name": "add_system_temperature",
+      "fields": [
+        "temperature"
+      ]
+    },
+    {
+      "name": "apply_nodal_force",
+      "fields": [
+        "fx",
+        "fy",
+        "fz",
+        "mx",
+        "my",
+        "mz"
+      ]
+    },
+    {
+      "name": "apply_prestress",
+      "fields": [
+        "force"
+      ]
+    },
+    {
+      "name": "create_load_case",
+      "fields": [
+        "name"
+      ]
+    },
+    {
+      "name": "create_nodes",
+      "fields": [
+        "merge_error"
+      ]
+    },
+    {
+      "name": "create_section_from_properties",
+      "fields": [
+        "sec_property"
+      ]
+    },
+    {
+      "name": "get_special_results",
+      "fields": [
+        "result_kind",
+        "envelop_type",
+        "increment_type"
+      ]
+    },
+    {
+      "name": "get_tendon_position_result",
+      "fields": [
+        "name"
+      ]
+    },
+    {
+      "name": "renumber_nodes",
+      "fields": [
+        "ids",
+        "new_ids"
+      ]
+    },
+    {
+      "name": "update_element",
+      "fields": [
+        "node_i",
+        "node_j"
+      ]
+    }
+  ],
+  "annotation_changes": [
+    {
+      "name": "calculate_section_property",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "configure_analysis",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "configure_check_analysis",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "create_line_width_section",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "create_material",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "create_polygon_section",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "create_section",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "create_section_from_properties",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "merge_operation_stage",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "move_nodes",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "renumber_elements",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "renumber_nodes",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "revert_local_orientation",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "set_gravity",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "set_self_weight_stage",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "set_support",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "update_bulking_setting",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "update_construction_stage",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "update_element",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "update_element_beta",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "update_element_id",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "update_element_material",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "update_element_nodes",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "update_element_section",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "update_node",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "update_node_id",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "update_section_bias",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "update_section_property",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "update_structure_group_name",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "update_vertical_steel_tendon",
+      "before": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "after": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    }
+  ],
+  "tools": [
+    {
+      "name": "activate_structure",
+      "source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 203
+      },
+      "old_0_3_1_description_chars": 210,
+      "published_0_5_0_description_chars": 617,
+      "candidate_description_chars": 668,
+      "source_docstring_chars": 899,
+      "parameter_names": [
+        "node_ids",
+        "element_ids"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "node_ids",
+        "element_ids"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "view",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_beam_constraint",
+      "source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 225
+      },
+      "old_0_3_1_description_chars": 849,
+      "published_0_5_0_description_chars": 1202,
+      "candidate_description_chars": 681,
+      "source_docstring_chars": 1032,
+      "parameter_names": [
+        "beam_id",
+        "release_i",
+        "release_j",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_beam_section_temperature",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1760
+      },
+      "old_0_3_1_description_chars": 586,
+      "published_0_5_0_description_chars": 1373,
+      "candidate_description_chars": 907,
+      "source_docstring_chars": 1689,
+      "parameter_names": [
+        "element_id",
+        "case_name",
+        "code_index",
+        "sec_type",
+        "t1",
+        "t2",
+        "t3",
+        "t4",
+        "thick",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "t1",
+        "t2",
+        "t3",
+        "t4",
+        "thick"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_cable_length_load",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1884
+      },
+      "old_0_3_1_description_chars": 307,
+      "published_0_5_0_description_chars": 1187,
+      "candidate_description_chars": 818,
+      "source_docstring_chars": 1416,
+      "parameter_names": [
+        "element_id",
+        "case_name",
+        "length",
+        "tension_type",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "length"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_check_load_combination",
+      "source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 86
+      },
+      "old_0_3_1_description_chars": 717,
+      "published_0_5_0_description_chars": 717,
+      "candidate_description_chars": 58,
+      "source_docstring_chars": 611,
+      "parameter_names": [
+        "name",
+        "standard",
+        "kind",
+        "load_case_factors",
+        "combine_method"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "check_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_check_stirrup",
+      "source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 211
+      },
+      "old_0_3_1_description_chars": 728,
+      "published_0_5_0_description_chars": 728,
+      "candidate_description_chars": 49,
+      "source_docstring_chars": 622,
+      "parameter_names": [
+        "stirrup_id",
+        "name",
+        "stirrup_type",
+        "material_id",
+        "limbs_number",
+        "loops_number",
+        "diameter",
+        "spacing",
+        "core_diameter"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "check_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_constraint_equation",
+      "source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 289
+      },
+      "old_0_3_1_description_chars": 860,
+      "published_0_5_0_description_chars": 860,
+      "candidate_description_chars": 391,
+      "source_docstring_chars": 730,
+      "parameter_names": [
+        "name",
+        "slave_node",
+        "slave_dof",
+        "master_info",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_construction_stage",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2546
+      },
+      "old_0_3_1_description_chars": 779,
+      "published_0_5_0_description_chars": 3464,
+      "candidate_description_chars": 1800,
+      "source_docstring_chars": 3293,
+      "parameter_names": [
+        "name",
+        "duration",
+        "active_structures",
+        "active_boundaries",
+        "active_loads",
+        "sub_steps"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "stage_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_creep_function",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 715
+      },
+      "old_0_3_1_description_chars": 297,
+      "published_0_5_0_description_chars": 297,
+      "candidate_description_chars": 746,
+      "source_docstring_chars": 1247,
+      "parameter_names": [
+        "name",
+        "creep_data",
+        "scale_factor"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "name",
+        "creep_data",
+        "scale_factor"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_custom_temperature",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1704
+      },
+      "old_0_3_1_description_chars": 380,
+      "published_0_5_0_description_chars": 1059,
+      "candidate_description_chars": 1315,
+      "source_docstring_chars": 1790,
+      "parameter_names": [
+        "element_id",
+        "case_name",
+        "orientation",
+        "temperature_data",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "orientation",
+        "temperature_data"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_distribute_plane_load",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2013
+      },
+      "old_0_3_1_description_chars": 567,
+      "published_0_5_0_description_chars": 2504,
+      "candidate_description_chars": 1351,
+      "source_docstring_chars": 2339,
+      "parameter_names": [
+        "index",
+        "case_name",
+        "type_name",
+        "point1",
+        "point2",
+        "point3",
+        "plate_ids",
+        "coord_system",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "coord_system"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_effective_width",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1189
+      },
+      "old_0_3_1_description_chars": 352,
+      "published_0_5_0_description_chars": 2046,
+      "candidate_description_chars": 1261,
+      "source_docstring_chars": 1864,
+      "parameter_names": [
+        "element_ids",
+        "factor_i",
+        "factor_j",
+        "dz_i",
+        "dz_j",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_elastic_link",
+      "source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 29
+      },
+      "old_0_3_1_description_chars": 1158,
+      "published_0_5_0_description_chars": 1158,
+      "candidate_description_chars": 284,
+      "source_docstring_chars": 980,
+      "parameter_names": [
+        "start_node_id",
+        "end_node_id",
+        "link_type",
+        "stiffness_values",
+        "kx",
+        "gap",
+        "friction",
+        "beta_angle",
+        "dis_ratio",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_elastic_support",
+      "source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 143
+      },
+      "old_0_3_1_description_chars": 971,
+      "published_0_5_0_description_chars": 1969,
+      "candidate_description_chars": 325,
+      "source_docstring_chars": 1727,
+      "parameter_names": [
+        "node_id",
+        "spring_values",
+        "support_type",
+        "group_name",
+        "coordinate",
+        "extra_enabled",
+        "extra_parameters",
+        "axis_direction"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_elements_to_group",
+      "source": {
+        "path": "src/qiao_mcp/tools/group_management.py",
+        "line": 145
+      },
+      "old_0_3_1_description_chars": 213,
+      "published_0_5_0_description_chars": 1166,
+      "candidate_description_chars": 849,
+      "source_docstring_chars": 1004,
+      "parameter_names": [
+        "group_name",
+        "element_ids"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_gradient_temperature",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1653
+      },
+      "old_0_3_1_description_chars": 479,
+      "published_0_5_0_description_chars": 1115,
+      "candidate_description_chars": 881,
+      "source_docstring_chars": 1237,
+      "parameter_names": [
+        "element_id",
+        "case_name",
+        "temperature",
+        "section_oriental",
+        "element_type",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_influence_plane",
+      "source": {
+        "path": "src/qiao_mcp/tools/moving_load.py",
+        "line": 112
+      },
+      "old_0_3_1_description_chars": 353,
+      "published_0_5_0_description_chars": 662,
+      "candidate_description_chars": 189,
+      "source_docstring_chars": 572,
+      "parameter_names": [
+        "name",
+        "tandem_names",
+        "always_divided_by_beam_shape"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_initial_tension_load",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1821
+      },
+      "old_0_3_1_description_chars": 401,
+      "published_0_5_0_description_chars": 1613,
+      "candidate_description_chars": 938,
+      "source_docstring_chars": 1771,
+      "parameter_names": [
+        "element_id",
+        "case_name",
+        "tension",
+        "tension_type",
+        "application_type",
+        "stiffness",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "tension"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_load_combine",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 487
+      },
+      "old_0_3_1_description_chars": 551,
+      "published_0_5_0_description_chars": 1707,
+      "candidate_description_chars": 743,
+      "source_docstring_chars": 1489,
+      "parameter_names": [
+        "name",
+        "combine_type",
+        "combine_info",
+        "describe",
+        "index"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_load_to_mass",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2233
+      },
+      "old_0_3_1_description_chars": 205,
+      "published_0_5_0_description_chars": 205,
+      "candidate_description_chars": 60,
+      "source_docstring_chars": 163,
+      "parameter_names": [
+        "name",
+        "factor"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_master_slave_link",
+      "source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 100
+      },
+      "old_0_3_1_description_chars": 699,
+      "published_0_5_0_description_chars": 699,
+      "candidate_description_chars": 224,
+      "source_docstring_chars": 593,
+      "parameter_names": [
+        "master_node_id",
+        "slave_node_ids",
+        "dof_constraints",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_nodal_mass",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2152
+      },
+      "old_0_3_1_description_chars": 302,
+      "published_0_5_0_description_chars": 2447,
+      "candidate_description_chars": 1746,
+      "source_docstring_chars": 2492,
+      "parameter_names": [
+        "node_id",
+        "mass",
+        "mass_x",
+        "mass_y",
+        "mass_z",
+        "rot_x",
+        "rot_y",
+        "rot_z"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_node_tandem",
+      "source": {
+        "path": "src/qiao_mcp/tools/moving_load.py",
+        "line": 84
+      },
+      "old_0_3_1_description_chars": 558,
+      "published_0_5_0_description_chars": 558,
+      "candidate_description_chars": 237,
+      "source_docstring_chars": 468,
+      "parameter_names": [
+        "name",
+        "node_ids",
+        "order_by_x"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_parametric_reinforcement",
+      "source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 167
+      },
+      "old_0_3_1_description_chars": 624,
+      "published_0_5_0_description_chars": 624,
+      "candidate_description_chars": 61,
+      "source_docstring_chars": 534,
+      "parameter_names": [
+        "section_id",
+        "position",
+        "has_outer",
+        "has_inner",
+        "outer_rebar_info",
+        "inner_rebar_info"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "check_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_plate_element_load",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1936
+      },
+      "old_0_3_1_description_chars": 436,
+      "published_0_5_0_description_chars": 2347,
+      "candidate_description_chars": 1114,
+      "source_docstring_chars": 2353,
+      "parameter_names": [
+        "element_id",
+        "case_name",
+        "load_type",
+        "load_place",
+        "coord_system",
+        "list_load",
+        "list_xy",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_shrink_function",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 758
+      },
+      "old_0_3_1_description_chars": 295,
+      "published_0_5_0_description_chars": 346,
+      "candidate_description_chars": 487,
+      "source_docstring_chars": 848,
+      "parameter_names": [
+        "name",
+        "shrink_data",
+        "scale_factor"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "scale_factor"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_spectrum_case",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2297
+      },
+      "old_0_3_1_description_chars": 422,
+      "published_0_5_0_description_chars": 1965,
+      "candidate_description_chars": 1420,
+      "source_docstring_chars": 2010,
+      "parameter_names": [
+        "name",
+        "description",
+        "kind",
+        "info_x",
+        "info_y",
+        "info_z"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_spectrum_function",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2253
+      },
+      "old_0_3_1_description_chars": 293,
+      "published_0_5_0_description_chars": 1166,
+      "candidate_description_chars": 506,
+      "source_docstring_chars": 996,
+      "parameter_names": [
+        "name",
+        "factor",
+        "kind",
+        "function_info"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_standard_vehicle",
+      "source": {
+        "path": "src/qiao_mcp/tools/moving_load.py",
+        "line": 187
+      },
+      "old_0_3_1_description_chars": 769,
+      "published_0_5_0_description_chars": 769,
+      "candidate_description_chars": 104,
+      "source_docstring_chars": 647,
+      "parameter_names": [
+        "name",
+        "standard_code",
+        "load_type",
+        "load_length",
+        "factor"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_support_settlement",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2095
+      },
+      "old_0_3_1_description_chars": 539,
+      "published_0_5_0_description_chars": 539,
+      "candidate_description_chars": 869,
+      "source_docstring_chars": 1397,
+      "parameter_names": [
+        "node_id",
+        "case_name",
+        "dz",
+        "dx",
+        "dy",
+        "rx",
+        "ry",
+        "rz",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "node_id",
+        "case_name",
+        "group_name"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_system_temperature",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1604
+      },
+      "old_0_3_1_description_chars": 280,
+      "published_0_5_0_description_chars": 914,
+      "candidate_description_chars": 982,
+      "source_docstring_chars": 1343,
+      "parameter_names": [
+        "element_id",
+        "case_name",
+        "temperature",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "temperature"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_tapper_section_group",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1075
+      },
+      "old_0_3_1_description_chars": 498,
+      "published_0_5_0_description_chars": 2139,
+      "candidate_description_chars": 1341,
+      "source_docstring_chars": 2110,
+      "parameter_names": [
+        "name",
+        "ids",
+        "factor_w",
+        "factor_h",
+        "ref_w",
+        "ref_h",
+        "dis_w",
+        "dis_h"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_tendon_3d",
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 227
+      },
+      "old_0_3_1_description_chars": 675,
+      "published_0_5_0_description_chars": 839,
+      "candidate_description_chars": 30,
+      "source_docstring_chars": 717,
+      "parameter_names": [
+        "name",
+        "property_name",
+        "control_points",
+        "point_insert",
+        "num",
+        "line_type",
+        "position_type",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_thickness",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1152
+      },
+      "old_0_3_1_description_chars": 280,
+      "published_0_5_0_description_chars": 738,
+      "candidate_description_chars": 192,
+      "source_docstring_chars": 624,
+      "parameter_names": [
+        "name",
+        "t",
+        "thick_type",
+        "index",
+        "t_out"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_time_history_case",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2422
+      },
+      "old_0_3_1_description_chars": 297,
+      "published_0_5_0_description_chars": 2187,
+      "candidate_description_chars": 1737,
+      "source_docstring_chars": 2073,
+      "parameter_names": [
+        "name",
+        "duration",
+        "time_step",
+        "description",
+        "index"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_time_history_function",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2366
+      },
+      "old_0_3_1_description_chars": 251,
+      "published_0_5_0_description_chars": 1526,
+      "candidate_description_chars": 1101,
+      "source_docstring_chars": 1632,
+      "parameter_names": [
+        "name",
+        "factor",
+        "kind",
+        "function_info"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_time_parameter",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 613
+      },
+      "old_0_3_1_description_chars": 421,
+      "published_0_5_0_description_chars": 2407,
+      "candidate_description_chars": 1049,
+      "source_docstring_chars": 2415,
+      "parameter_names": [
+        "name",
+        "code_index",
+        "time_parameter",
+        "creep_data",
+        "shrink_data",
+        "index"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_to_structure_group",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 616
+      },
+      "old_0_3_1_description_chars": 499,
+      "published_0_5_0_description_chars": 1453,
+      "candidate_description_chars": 944,
+      "source_docstring_chars": 1251,
+      "parameter_names": [
+        "group_name",
+        "node_ids",
+        "element_ids"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "add_traffic_lane",
+      "source": {
+        "path": "src/qiao_mcp/tools/moving_load.py",
+        "line": 143
+      },
+      "old_0_3_1_description_chars": 656,
+      "published_0_5_0_description_chars": 656,
+      "candidate_description_chars": 163,
+      "source_docstring_chars": 558,
+      "parameter_names": [
+        "name",
+        "influence_name",
+        "tandem_name",
+        "offset",
+        "lane_width",
+        "optimize",
+        "direction"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "apply_beam_distributed_load",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1563
+      },
+      "old_0_3_1_description_chars": 537,
+      "published_0_5_0_description_chars": 537,
+      "candidate_description_chars": 52,
+      "source_docstring_chars": 455,
+      "parameter_names": [
+        "element_id",
+        "case_name",
+        "direction",
+        "load_values",
+        "load_positions",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "apply_nodal_force",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1494
+      },
+      "old_0_3_1_description_chars": 468,
+      "published_0_5_0_description_chars": 2079,
+      "candidate_description_chars": 1405,
+      "source_docstring_chars": 2136,
+      "parameter_names": [
+        "node_id",
+        "case_name",
+        "fx",
+        "fy",
+        "fz",
+        "mx",
+        "my",
+        "mz",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "fx",
+        "fy",
+        "fz",
+        "mx",
+        "my",
+        "mz"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "apply_prestress",
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 139
+      },
+      "old_0_3_1_description_chars": 420,
+      "published_0_5_0_description_chars": 1191,
+      "candidate_description_chars": 734,
+      "source_docstring_chars": 1176,
+      "parameter_names": [
+        "case_name",
+        "tendon_name",
+        "force",
+        "tension_type",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "force"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "assign_element_stirrup",
+      "source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 494
+      },
+      "old_0_3_1_description_chars": 772,
+      "published_0_5_0_description_chars": 772,
+      "candidate_description_chars": 147,
+      "source_docstring_chars": 666,
+      "parameter_names": [
+        "action",
+        "element_id",
+        "stirrup_i_y",
+        "stirrup_i_x",
+        "stirrup_j_y",
+        "stirrup_j_x",
+        "stirrup_i",
+        "stirrup_j"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "check_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "assign_tendon_elements",
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 272
+      },
+      "old_0_3_1_description_chars": 107,
+      "published_0_5_0_description_chars": 987,
+      "candidate_description_chars": 926,
+      "source_docstring_chars": 1113,
+      "parameter_names": [
+        "ids"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "calc_section_property",
+      "source": {
+        "path": "src/qiao_mcp/tools/queries.py",
+        "line": 373
+      },
+      "old_0_3_1_description_chars": 347,
+      "published_0_5_0_description_chars": 882,
+      "candidate_description_chars": 582,
+      "source_docstring_chars": 760,
+      "parameter_names": [
+        "loop_segments",
+        "sec_lines"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "calculate_section_property",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1339
+      },
+      "old_0_3_1_description_chars": 243,
+      "published_0_5_0_description_chars": 694,
+      "candidate_description_chars": 694,
+      "source_docstring_chars": 604,
+      "parameter_names": [],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "call_qtmodel_api",
+      "source": {
+        "path": "src/qiao_mcp/tools/api_gateway.py",
+        "line": 205
+      },
+      "old_0_3_1_description_chars": 959,
+      "published_0_5_0_description_chars": 5120,
+      "candidate_description_chars": 4299,
+      "source_docstring_chars": 4534,
+      "parameter_names": [
+        "api_object",
+        "method",
+        "kwargs"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "connection",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "change_construct_stage",
+      "source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 309
+      },
+      "old_0_3_1_description_chars": 150,
+      "published_0_5_0_description_chars": 970,
+      "candidate_description_chars": 644,
+      "source_docstring_chars": 832,
+      "parameter_names": [
+        "stage"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "view",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "check_qiaotong_connection",
+      "source": {
+        "path": "src/qiao_mcp/tools/api_gateway.py",
+        "line": 29
+      },
+      "old_0_3_1_description_chars": 1240,
+      "published_0_5_0_description_chars": 1488,
+      "candidate_description_chars": 1488,
+      "source_docstring_chars": 1302,
+      "parameter_names": [],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "connection",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "configure_analysis",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2636
+      },
+      "old_0_3_1_description_chars": 459,
+      "published_0_5_0_description_chars": 459,
+      "candidate_description_chars": 37,
+      "source_docstring_chars": 385,
+      "parameter_names": [
+        "do_construction_stage",
+        "do_creep",
+        "do_vibration",
+        "vibration_modes",
+        "solver_type"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "stage_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "configure_check_analysis",
+      "source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 363
+      },
+      "old_0_3_1_description_chars": 2988,
+      "published_0_5_0_description_chars": 2988,
+      "candidate_description_chars": 596,
+      "source_docstring_chars": 2594,
+      "parameter_names": [
+        "kind",
+        "settings"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "check_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "configure_live_load_system",
+      "source": {
+        "path": "src/qiao_mcp/tools/moving_load.py",
+        "line": 25
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 657,
+      "candidate_description_chars": 345,
+      "source_docstring_chars": 576,
+      "parameter_names": [
+        "system",
+        "clear_existing"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "configure_operation_stage",
+      "source": {
+        "path": "src/qiao_mcp/tools/moving_load.py",
+        "line": 48
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 1027,
+      "candidate_description_chars": 351,
+      "source_docstring_chars": 914,
+      "parameter_names": [
+        "final_stage",
+        "static_load_cases",
+        "sink_load_cases",
+        "live_load_cases",
+        "transversal_load_cases",
+        "do_analysis"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "stage_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_beam_element",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 239
+      },
+      "old_0_3_1_description_chars": 1004,
+      "published_0_5_0_description_chars": 1242,
+      "candidate_description_chars": 284,
+      "source_docstring_chars": 1080,
+      "parameter_names": [
+        "node_i",
+        "node_j",
+        "mat_id",
+        "sec_id",
+        "element_id",
+        "beta_angle",
+        "ele_type",
+        "initial_type",
+        "initial_value"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_beam_elements_linear",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 291
+      },
+      "old_0_3_1_description_chars": 2304,
+      "published_0_5_0_description_chars": 2304,
+      "candidate_description_chars": 1321,
+      "source_docstring_chars": 2014,
+      "parameter_names": [
+        "mat_id",
+        "sec_id",
+        "node_ids",
+        "node_id_start",
+        "count",
+        "element_id_start",
+        "beta_angle",
+        "ele_type"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_boundary_group",
+      "source": {
+        "path": "src/qiao_mcp/tools/group_management.py",
+        "line": 92
+      },
+      "old_0_3_1_description_chars": 265,
+      "published_0_5_0_description_chars": 265,
+      "candidate_description_chars": 170,
+      "source_docstring_chars": 215,
+      "parameter_names": [
+        "name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_continuous_beam_bridge",
+      "source": {
+        "path": "src/qiao_mcp/tools/workflows.py",
+        "line": 241
+      },
+      "old_0_3_1_description_chars": 608,
+      "published_0_5_0_description_chars": 1514,
+      "candidate_description_chars": 811,
+      "source_docstring_chars": 1345,
+      "parameter_names": [
+        "spans",
+        "num_elements_per_span",
+        "material_name",
+        "section_name",
+        "self_weight_case"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_elements",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 409
+      },
+      "old_0_3_1_description_chars": 658,
+      "published_0_5_0_description_chars": 658,
+      "candidate_description_chars": 194,
+      "source_docstring_chars": 576,
+      "parameter_names": [
+        "element_data"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_en1991_vehicle",
+      "source": {
+        "path": "src/qiao_mcp/tools/international_load.py",
+        "line": 80
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 829,
+      "candidate_description_chars": 522,
+      "source_docstring_chars": 740,
+      "parameter_names": [
+        "request"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_line_width_section",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 940
+      },
+      "old_0_3_1_description_chars": 218,
+      "published_0_5_0_description_chars": 1532,
+      "candidate_description_chars": 1431,
+      "source_docstring_chars": 1765,
+      "parameter_names": [
+        "name",
+        "sec_lines"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_live_load_case",
+      "source": {
+        "path": "src/qiao_mcp/tools/moving_load.py",
+        "line": 230
+      },
+      "old_0_3_1_description_chars": 714,
+      "published_0_5_0_description_chars": 1044,
+      "candidate_description_chars": 339,
+      "source_docstring_chars": 898,
+      "parameter_names": [
+        "name",
+        "influence_plane",
+        "span",
+        "sub_cases",
+        "sub_case_optimized"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_load_case",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 454
+      },
+      "old_0_3_1_description_chars": 606,
+      "published_0_5_0_description_chars": 606,
+      "candidate_description_chars": 335,
+      "source_docstring_chars": 599,
+      "parameter_names": [
+        "name",
+        "case_type"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "name"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_load_group",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 434
+      },
+      "old_0_3_1_description_chars": 282,
+      "published_0_5_0_description_chars": 282,
+      "candidate_description_chars": 169,
+      "source_docstring_chars": 224,
+      "parameter_names": [
+        "name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_material",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 547
+      },
+      "old_0_3_1_description_chars": 549,
+      "published_0_5_0_description_chars": 1020,
+      "candidate_description_chars": 769,
+      "source_docstring_chars": 1614,
+      "parameter_names": [
+        "name",
+        "mat_type",
+        "standard",
+        "database",
+        "data_info",
+        "is_orthotropic",
+        "ey"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_nodes",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 94
+      },
+      "old_0_3_1_description_chars": 814,
+      "published_0_5_0_description_chars": 1032,
+      "candidate_description_chars": 197,
+      "source_docstring_chars": 935,
+      "parameter_names": [
+        "node_data",
+        "intersected",
+        "is_merged",
+        "merge_error",
+        "numbering_type",
+        "start_id"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "merge_error"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_nodes_linear",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 137
+      },
+      "old_0_3_1_description_chars": 1645,
+      "published_0_5_0_description_chars": 1645,
+      "candidate_description_chars": 508,
+      "source_docstring_chars": 1427,
+      "parameter_names": [
+        "count",
+        "start_x",
+        "start_y",
+        "start_z",
+        "spacing_x",
+        "spacing_y",
+        "spacing_z",
+        "start_id",
+        "is_merged",
+        "merge_error"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_polygon_section",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 894
+      },
+      "old_0_3_1_description_chars": 289,
+      "published_0_5_0_description_chars": 1496,
+      "candidate_description_chars": 984,
+      "source_docstring_chars": 1310,
+      "parameter_names": [
+        "name",
+        "loop_segments"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_section",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 796
+      },
+      "old_0_3_1_description_chars": 3299,
+      "published_0_5_0_description_chars": 3299,
+      "candidate_description_chars": 665,
+      "source_docstring_chars": 3159,
+      "parameter_names": [
+        "name",
+        "sec_type",
+        "sec_info",
+        "mat_combine",
+        "box_num",
+        "box_height",
+        "symmetry",
+        "chamfer_info"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_section_from_properties",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 996
+      },
+      "old_0_3_1_description_chars": 497,
+      "published_0_5_0_description_chars": 497,
+      "candidate_description_chars": 462,
+      "source_docstring_chars": 1020,
+      "parameter_names": [
+        "name",
+        "area",
+        "ix",
+        "iy",
+        "iz",
+        "sec_property"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "sec_property"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_simple_beam_bridge",
+      "source": {
+        "path": "src/qiao_mcp/tools/workflows.py",
+        "line": 183
+      },
+      "old_0_3_1_description_chars": 809,
+      "published_0_5_0_description_chars": 1751,
+      "candidate_description_chars": 849,
+      "source_docstring_chars": 1542,
+      "parameter_names": [
+        "span",
+        "num_elements",
+        "material_name",
+        "section_name",
+        "section_width",
+        "section_height",
+        "self_weight_case"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_structure_group",
+      "source": {
+        "path": "src/qiao_mcp/tools/group_management.py",
+        "line": 25
+      },
+      "old_0_3_1_description_chars": 413,
+      "published_0_5_0_description_chars": 413,
+      "candidate_description_chars": 184,
+      "source_docstring_chars": 347,
+      "parameter_names": [
+        "name",
+        "element_ids"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_tapered_section",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1043
+      },
+      "old_0_3_1_description_chars": 390,
+      "published_0_5_0_description_chars": 390,
+      "candidate_description_chars": 69,
+      "source_docstring_chars": 324,
+      "parameter_names": [
+        "name",
+        "begin_id",
+        "end_id",
+        "shear_consider",
+        "sec_normalize"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_tendon_2d",
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 81
+      },
+      "old_0_3_1_description_chars": 1231,
+      "published_0_5_0_description_chars": 1385,
+      "candidate_description_chars": 425,
+      "source_docstring_chars": 1191,
+      "parameter_names": [
+        "name",
+        "property_name",
+        "control_points",
+        "point_insert",
+        "num",
+        "line_type",
+        "position_type",
+        "symmetry",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "create_tendon_property",
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 22
+      },
+      "old_0_3_1_description_chars": 1157,
+      "published_0_5_0_description_chars": 1157,
+      "candidate_description_chars": 45,
+      "source_docstring_chars": 995,
+      "parameter_names": [
+        "name",
+        "material_name",
+        "tendon_type",
+        "duct_type",
+        "steel_type",
+        "area",
+        "duct_diameter",
+        "friction",
+        "deviation",
+        "anchorage_slip",
+        "steel_detail"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "display_ids",
+      "source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 182
+      },
+      "old_0_3_1_description_chars": 228,
+      "published_0_5_0_description_chars": 228,
+      "candidate_description_chars": 57,
+      "source_docstring_chars": 186,
+      "parameter_names": [
+        "node_id",
+        "element_id"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "view",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "find_entities",
+      "source": {
+        "path": "src/qiao_mcp/tools/queries.py",
+        "line": 295
+      },
+      "old_0_3_1_description_chars": 954,
+      "published_0_5_0_description_chars": 1128,
+      "candidate_description_chars": 67,
+      "source_docstring_chars": 950,
+      "parameter_names": [
+        "by",
+        "x",
+        "y",
+        "z",
+        "tolerance",
+        "name",
+        "index",
+        "ids",
+        "span_info_name",
+        "limit",
+        "offset"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "get_analysis_results",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2810
+      },
+      "old_0_3_1_description_chars": 1145,
+      "published_0_5_0_description_chars": 1485,
+      "candidate_description_chars": 419,
+      "source_docstring_chars": 1291,
+      "parameter_names": [
+        "result_type",
+        "ids",
+        "stage_id",
+        "case_name",
+        "limit",
+        "offset",
+        "case_name_mode"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "result_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "get_check_data",
+      "source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 292
+      },
+      "old_0_3_1_description_chars": 1957,
+      "published_0_5_0_description_chars": 1957,
+      "candidate_description_chars": 137,
+      "source_docstring_chars": 1675,
+      "parameter_names": [
+        "kind",
+        "element_id",
+        "stress_type",
+        "combine_type",
+        "name",
+        "limit",
+        "offset"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "check_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "get_international_live_load_data",
+      "source": {
+        "path": "src/qiao_mcp/tools/international_load.py",
+        "line": 52
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 792,
+      "candidate_description_chars": 345,
+      "source_docstring_chars": 703,
+      "parameter_names": [
+        "kind",
+        "name",
+        "index",
+        "limit",
+        "offset"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "get_live_load_results",
+      "source": {
+        "path": "src/qiao_mcp/tools/moving_load.py",
+        "line": 286
+      },
+      "old_0_3_1_description_chars": 401,
+      "published_0_5_0_description_chars": 401,
+      "candidate_description_chars": 144,
+      "source_docstring_chars": 335,
+      "parameter_names": [
+        "case_name",
+        "result_type",
+        "element_ids"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "result_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "get_model_data",
+      "source": {
+        "path": "src/qiao_mcp/tools/queries.py",
+        "line": 118
+      },
+      "old_0_3_1_description_chars": 2066,
+      "published_0_5_0_description_chars": 3007,
+      "candidate_description_chars": 127,
+      "source_docstring_chars": 2621,
+      "parameter_names": [
+        "kind",
+        "ids",
+        "name",
+        "sec_id",
+        "position",
+        "stage_id",
+        "limit",
+        "offset"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "get_model_edit_readiness",
+      "source": {
+        "path": "src/qiao_mcp/tools/api_gateway.py",
+        "line": 135
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 630,
+      "candidate_description_chars": 630,
+      "source_docstring_chars": 565,
+      "parameter_names": [],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "connection",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "get_model_info",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2783
+      },
+      "old_0_3_1_description_chars": 229,
+      "published_0_5_0_description_chars": 229,
+      "candidate_description_chars": 229,
+      "source_docstring_chars": 187,
+      "parameter_names": [],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "get_model_status",
+      "source": {
+        "path": "src/qiao_mcp/tools/api_gateway.py",
+        "line": 118
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 396,
+      "candidate_description_chars": 396,
+      "source_docstring_chars": 339,
+      "parameter_names": [],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "connection",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "get_special_results",
+      "source": {
+        "path": "src/qiao_mcp/tools/queries.py",
+        "line": 410
+      },
+      "old_0_3_1_description_chars": 1247,
+      "published_0_5_0_description_chars": 1247,
+      "candidate_description_chars": 122,
+      "source_docstring_chars": 1578,
+      "parameter_names": [
+        "kind",
+        "ids",
+        "case_name",
+        "node_id",
+        "mode",
+        "stage_id",
+        "result_kind",
+        "envelop_type",
+        "increment_type",
+        "limit",
+        "offset"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "result_kind",
+        "envelop_type",
+        "increment_type"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "result_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "get_tendon_info",
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 192
+      },
+      "old_0_3_1_description_chars": 217,
+      "published_0_5_0_description_chars": 217,
+      "candidate_description_chars": 502,
+      "source_docstring_chars": 616,
+      "parameter_names": [
+        "tendon_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "get_tendon_length_result",
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 386
+      },
+      "old_0_3_1_description_chars": 61,
+      "published_0_5_0_description_chars": 61,
+      "candidate_description_chars": 61,
+      "source_docstring_chars": 43,
+      "parameter_names": [],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "result_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "get_tendon_loss_results",
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 312
+      },
+      "old_0_3_1_description_chars": 168,
+      "published_0_5_0_description_chars": 1596,
+      "candidate_description_chars": 1273,
+      "source_docstring_chars": 1421,
+      "parameter_names": [
+        "name",
+        "stage_id"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "result_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "get_tendon_position_result",
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 355
+      },
+      "old_0_3_1_description_chars": 119,
+      "published_0_5_0_description_chars": 119,
+      "candidate_description_chars": 837,
+      "source_docstring_chars": 912,
+      "parameter_names": [
+        "name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "name"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "result_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "get_transversal_data",
+      "source": {
+        "path": "src/qiao_mcp/tools/transversal.py",
+        "line": 111
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 691,
+      "candidate_description_chars": 265,
+      "source_docstring_chars": 610,
+      "parameter_names": [
+        "kind",
+        "name",
+        "index",
+        "limit",
+        "offset"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "initialize_model",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 23
+      },
+      "old_0_3_1_description_chars": 659,
+      "published_0_5_0_description_chars": 659,
+      "candidate_description_chars": 478,
+      "source_docstring_chars": 545,
+      "parameter_names": [
+        "confirm"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "lifecycle",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "list_group_members",
+      "source": {
+        "path": "src/qiao_mcp/tools/group_management.py",
+        "line": 113
+      },
+      "old_0_3_1_description_chars": 207,
+      "published_0_5_0_description_chars": 207,
+      "candidate_description_chars": 60,
+      "source_docstring_chars": 165,
+      "parameter_names": [
+        "group_type",
+        "name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "list_qtmodel_api",
+      "source": {
+        "path": "src/qiao_mcp/tools/api_gateway.py",
+        "line": 152
+      },
+      "old_0_3_1_description_chars": 623,
+      "published_0_5_0_description_chars": 2069,
+      "candidate_description_chars": 1611,
+      "source_docstring_chars": 1835,
+      "parameter_names": [
+        "api_object",
+        "pattern"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "connection",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "manage_check_case_definition",
+      "source": {
+        "path": "src/qiao_mcp/tools/check_snapshots.py",
+        "line": 57
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 723,
+      "candidate_description_chars": 495,
+      "source_docstring_chars": 642,
+      "parameter_names": [
+        "request"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "manage_check_case_file",
+      "source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 552
+      },
+      "old_0_3_1_description_chars": 481,
+      "published_0_5_0_description_chars": 480,
+      "candidate_description_chars": 57,
+      "source_docstring_chars": 406,
+      "parameter_names": [
+        "action",
+        "name",
+        "file_path"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "check_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "manage_check_material",
+      "source": {
+        "path": "src/qiao_mcp/tools/check_snapshots.py",
+        "line": 35
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 584,
+      "candidate_description_chars": 438,
+      "source_docstring_chars": 519,
+      "parameter_names": [
+        "request"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "manage_check_stirrup",
+      "source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 433
+      },
+      "old_0_3_1_description_chars": 840,
+      "published_0_5_0_description_chars": 840,
+      "candidate_description_chars": 176,
+      "source_docstring_chars": 718,
+      "parameter_names": [
+        "action",
+        "stirrup_id",
+        "name",
+        "stirrup_type",
+        "material_id",
+        "limbs_number",
+        "loops_number",
+        "diameter",
+        "spacing",
+        "core_diameter"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "check_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "merge_nodes",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 786
+      },
+      "old_0_3_1_description_chars": 646,
+      "published_0_5_0_description_chars": 646,
+      "candidate_description_chars": 292,
+      "source_docstring_chars": 540,
+      "parameter_names": [
+        "ids",
+        "tolerance"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "merge_operation_stage",
+      "source": {
+        "path": "src/qiao_mcp/tools/group_management.py",
+        "line": 189
+      },
+      "old_0_3_1_description_chars": 345,
+      "published_0_5_0_description_chars": 345,
+      "candidate_description_chars": 225,
+      "source_docstring_chars": 287,
+      "parameter_names": [
+        "name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "stage_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "move_nodes",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 255
+      },
+      "old_0_3_1_description_chars": 476,
+      "published_0_5_0_description_chars": 476,
+      "candidate_description_chars": 458,
+      "source_docstring_chars": 740,
+      "parameter_names": [
+        "ids",
+        "offset_x",
+        "offset_y",
+        "offset_z"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "open_model_file",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 83
+      },
+      "old_0_3_1_description_chars": 148,
+      "published_0_5_0_description_chars": 454,
+      "candidate_description_chars": 188,
+      "source_docstring_chars": 388,
+      "parameter_names": [
+        "file_path"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "lifecycle",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "plot_analysis_result",
+      "source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 88
+      },
+      "old_0_3_1_description_chars": 1112,
+      "published_0_5_0_description_chars": 1112,
+      "candidate_description_chars": 136,
+      "source_docstring_chars": 942,
+      "parameter_names": [
+        "result_type",
+        "stage_id",
+        "case_name",
+        "component",
+        "file_path",
+        "return_image"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "result_read",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "query_model_data",
+      "source": {
+        "path": "src/qiao_mcp/tools/queries.py",
+        "line": 88
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 1008,
+      "candidate_description_chars": 678,
+      "source_docstring_chars": 895,
+      "parameter_names": [
+        "request"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "remove_boundary",
+      "source": {
+        "path": "src/qiao_mcp/tools/advanced_boundary.py",
+        "line": 348
+      },
+      "old_0_3_1_description_chars": 885,
+      "published_0_5_0_description_chars": 885,
+      "candidate_description_chars": 48,
+      "source_docstring_chars": 755,
+      "parameter_names": [
+        "remove_id",
+        "kind",
+        "group_name",
+        "extra_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "remove_construction_stage",
+      "source": {
+        "path": "src/qiao_mcp/tools/group_management.py",
+        "line": 214
+      },
+      "old_0_3_1_description_chars": 193,
+      "published_0_5_0_description_chars": 193,
+      "candidate_description_chars": 37,
+      "source_docstring_chars": 151,
+      "parameter_names": [
+        "name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "stage_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "remove_elements",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 749
+      },
+      "old_0_3_1_description_chars": 840,
+      "published_0_5_0_description_chars": 840,
+      "candidate_description_chars": 307,
+      "source_docstring_chars": 718,
+      "parameter_names": [
+        "ids",
+        "remove_free_nodes",
+        "confirm_delete_all"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "remove_from_structure_group",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 671
+      },
+      "old_0_3_1_description_chars": 417,
+      "published_0_5_0_description_chars": 804,
+      "candidate_description_chars": 418,
+      "source_docstring_chars": 682,
+      "parameter_names": [
+        "group_name",
+        "node_ids",
+        "element_ids"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "remove_nodes",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 714
+      },
+      "old_0_3_1_description_chars": 709,
+      "published_0_5_0_description_chars": 709,
+      "candidate_description_chars": 324,
+      "source_docstring_chars": 603,
+      "parameter_names": [
+        "ids",
+        "confirm_delete_all"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "remove_section",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1290
+      },
+      "old_0_3_1_description_chars": 207,
+      "published_0_5_0_description_chars": 207,
+      "candidate_description_chars": 50,
+      "source_docstring_chars": 165,
+      "parameter_names": [
+        "ids"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "remove_section_reinforcement",
+      "source": {
+        "path": "src/qiao_mcp/tools/check_snapshots.py",
+        "line": 150
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 432,
+      "candidate_description_chars": 231,
+      "source_docstring_chars": 383,
+      "parameter_names": [
+        "section_id_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "remove_structure_group",
+      "source": {
+        "path": "src/qiao_mcp/tools/group_management.py",
+        "line": 74
+      },
+      "old_0_3_1_description_chars": 231,
+      "published_0_5_0_description_chars": 231,
+      "candidate_description_chars": 87,
+      "source_docstring_chars": 189,
+      "parameter_names": [
+        "name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "remove_transversal_data",
+      "source": {
+        "path": "src/qiao_mcp/tools/transversal.py",
+        "line": 91
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 556,
+      "candidate_description_chars": 345,
+      "source_docstring_chars": 491,
+      "parameter_names": [
+        "request"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "remove_unused_sections",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 105
+      },
+      "old_0_3_1_description_chars": 84,
+      "published_0_5_0_description_chars": 84,
+      "candidate_description_chars": 84,
+      "source_docstring_chars": 66,
+      "parameter_names": [],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "renumber_elements",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 410
+      },
+      "old_0_3_1_description_chars": 273,
+      "published_0_5_0_description_chars": 273,
+      "candidate_description_chars": 353,
+      "source_docstring_chars": 471,
+      "parameter_names": [
+        "element_ids",
+        "new_ids"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "renumber_nodes",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 221
+      },
+      "old_0_3_1_description_chars": 252,
+      "published_0_5_0_description_chars": 252,
+      "candidate_description_chars": 804,
+      "source_docstring_chars": 1076,
+      "parameter_names": [
+        "ids",
+        "new_ids"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "ids",
+        "new_ids"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "reset_display",
+      "source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 264
+      },
+      "old_0_3_1_description_chars": 49,
+      "published_0_5_0_description_chars": 302,
+      "candidate_description_chars": 518,
+      "source_docstring_chars": 444,
+      "parameter_names": [],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "view",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "revert_local_orientation",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 433
+      },
+      "old_0_3_1_description_chars": 143,
+      "published_0_5_0_description_chars": 941,
+      "candidate_description_chars": 865,
+      "source_docstring_chars": 983,
+      "parameter_names": [
+        "ids"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "run_analysis",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2674
+      },
+      "old_0_3_1_description_chars": 480,
+      "published_0_5_0_description_chars": 1079,
+      "candidate_description_chars": 491,
+      "source_docstring_chars": 941,
+      "parameter_names": [
+        "read_timeout",
+        "show_view"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "analysis_run",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "run_concrete_check",
+      "source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 128
+      },
+      "old_0_3_1_description_chars": 474,
+      "published_0_5_0_description_chars": 621,
+      "candidate_description_chars": 363,
+      "source_docstring_chars": 531,
+      "parameter_names": [
+        "name",
+        "max_wait_seconds"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "check_run",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "save_model_file",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 53
+      },
+      "old_0_3_1_description_chars": 151,
+      "published_0_5_0_description_chars": 976,
+      "candidate_description_chars": 556,
+      "source_docstring_chars": 854,
+      "parameter_names": [
+        "file_path"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_read",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "save_model_screenshot",
+      "source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 41
+      },
+      "old_0_3_1_description_chars": 697,
+      "published_0_5_0_description_chars": 697,
+      "candidate_description_chars": 152,
+      "source_docstring_chars": 599,
+      "parameter_names": [
+        "file_path",
+        "view_angle",
+        "return_image"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "view",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_check_stirrup_snapshot",
+      "source": {
+        "path": "src/qiao_mcp/tools/check_snapshots.py",
+        "line": 82
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 628,
+      "candidate_description_chars": 335,
+      "source_docstring_chars": 555,
+      "parameter_names": [
+        "definition",
+        "original_id"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_element_stirrups",
+      "source": {
+        "path": "src/qiao_mcp/tools/check_snapshots.py",
+        "line": 105
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 640,
+      "candidate_description_chars": 411,
+      "source_docstring_chars": 567,
+      "parameter_names": [
+        "request"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_gravity",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1463
+      },
+      "old_0_3_1_description_chars": 184,
+      "published_0_5_0_description_chars": 184,
+      "candidate_description_chars": 869,
+      "source_docstring_chars": 953,
+      "parameter_names": [
+        "gravity"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_international_live_load_case",
+      "source": {
+        "path": "src/qiao_mcp/tools/international_load.py",
+        "line": 127
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 981,
+      "candidate_description_chars": 654,
+      "source_docstring_chars": 876,
+      "parameter_names": [
+        "request"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_international_vehicle",
+      "source": {
+        "path": "src/qiao_mcp/tools/international_load.py",
+        "line": 28
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 900,
+      "candidate_description_chars": 651,
+      "source_docstring_chars": 803,
+      "parameter_names": [
+        "request"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_planned_lane",
+      "source": {
+        "path": "src/qiao_mcp/tools/international_load.py",
+        "line": 103
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 778,
+      "candidate_description_chars": 533,
+      "source_docstring_chars": 689,
+      "parameter_names": [
+        "request"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_render",
+      "source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 244
+      },
+      "old_0_3_1_description_chars": 141,
+      "published_0_5_0_description_chars": 365,
+      "candidate_description_chars": 239,
+      "source_docstring_chars": 307,
+      "parameter_names": [
+        "flag"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "view",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_section_reinforcement",
+      "source": {
+        "path": "src/qiao_mcp/tools/check_snapshots.py",
+        "line": 126
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 812,
+      "candidate_description_chars": 576,
+      "source_docstring_chars": 723,
+      "parameter_names": [
+        "definition"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_self_weight_stage",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1422
+      },
+      "old_0_3_1_description_chars": 1014,
+      "published_0_5_0_description_chars": 1014,
+      "candidate_description_chars": 655,
+      "source_docstring_chars": 884,
+      "parameter_names": [
+        "stage_name",
+        "structure_group_name",
+        "weight_stage_id"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "stage_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_support",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1363
+      },
+      "old_0_3_1_description_chars": 597,
+      "published_0_5_0_description_chars": 1451,
+      "candidate_description_chars": 50,
+      "source_docstring_chars": 1265,
+      "parameter_names": [
+        "node_id",
+        "dx",
+        "dy",
+        "dz",
+        "rx",
+        "ry",
+        "rz",
+        "group_name",
+        "coordinate",
+        "extra_enabled",
+        "extra_parameters"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_transversal_case",
+      "source": {
+        "path": "src/qiao_mcp/tools/transversal.py",
+        "line": 70
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 644,
+      "candidate_description_chars": 412,
+      "source_docstring_chars": 571,
+      "parameter_names": [
+        "request"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_transversal_lane",
+      "source": {
+        "path": "src/qiao_mcp/tools/transversal.py",
+        "line": 49
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 620,
+      "candidate_description_chars": 398,
+      "source_docstring_chars": 547,
+      "parameter_names": [
+        "request"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_transversal_vehicle",
+      "source": {
+        "path": "src/qiao_mcp/tools/transversal.py",
+        "line": 28
+      },
+      "old_0_3_1_description_chars": null,
+      "published_0_5_0_description_chars": 668,
+      "candidate_description_chars": 426,
+      "source_docstring_chars": 595,
+      "parameter_names": [
+        "request"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_unit",
+      "source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 286
+      },
+      "old_0_3_1_description_chars": 177,
+      "published_0_5_0_description_chars": 516,
+      "candidate_description_chars": 326,
+      "source_docstring_chars": 434,
+      "parameter_names": [
+        "unit_force",
+        "unit_length"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "view",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "set_view_angle",
+      "source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 145
+      },
+      "old_0_3_1_description_chars": 463,
+      "published_0_5_0_description_chars": 463,
+      "candidate_description_chars": 51,
+      "source_docstring_chars": 397,
+      "parameter_names": [
+        "angle_preset",
+        "horizontal",
+        "vertical"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "view",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "setup_concrete_check",
+      "source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 47
+      },
+      "old_0_3_1_description_chars": 414,
+      "published_0_5_0_description_chars": 414,
+      "candidate_description_chars": 52,
+      "source_docstring_chars": 340,
+      "parameter_names": [
+        "name",
+        "standard",
+        "structure_type",
+        "group_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "check_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "switch_display_stage",
+      "source": {
+        "path": "src/qiao_mcp/tools/group_management.py",
+        "line": 298
+      },
+      "old_0_3_1_description_chars": 264,
+      "published_0_5_0_description_chars": 908,
+      "candidate_description_chars": 674,
+      "source_docstring_chars": 778,
+      "parameter_names": [
+        "stage_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "view",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "update_bulking_setting",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2488
+      },
+      "old_0_3_1_description_chars": 287,
+      "published_0_5_0_description_chars": 1682,
+      "candidate_description_chars": 1367,
+      "source_docstring_chars": 1803,
+      "parameter_names": [
+        "do_analysis",
+        "mode_count",
+        "stage_id"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "update_construction_stage",
+      "source": {
+        "path": "src/qiao_mcp/tools/group_management.py",
+        "line": 232
+      },
+      "old_0_3_1_description_chars": 1085,
+      "published_0_5_0_description_chars": 1457,
+      "candidate_description_chars": 178,
+      "source_docstring_chars": 1271,
+      "parameter_names": [
+        "name",
+        "new_name",
+        "duration",
+        "active_structures",
+        "delete_structures",
+        "active_boundaries",
+        "delete_boundaries",
+        "active_loads",
+        "delete_loads",
+        "temp_loads",
+        "sub_steps"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "stage_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "update_element",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 297
+      },
+      "old_0_3_1_description_chars": 647,
+      "published_0_5_0_description_chars": 1889,
+      "candidate_description_chars": 1590,
+      "source_docstring_chars": 2190,
+      "parameter_names": [
+        "old_id",
+        "new_id",
+        "ele_type",
+        "node_i",
+        "node_j",
+        "mat_id",
+        "sec_id",
+        "beta_angle"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [
+        "node_i",
+        "node_j"
+      ],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "update_element_beta",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 532
+      },
+      "old_0_3_1_description_chars": 429,
+      "published_0_5_0_description_chars": 429,
+      "candidate_description_chars": 473,
+      "source_docstring_chars": 619,
+      "parameter_names": [
+        "ids",
+        "beta"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "update_element_id",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 378
+      },
+      "old_0_3_1_description_chars": 156,
+      "published_0_5_0_description_chars": 864,
+      "candidate_description_chars": 587,
+      "source_docstring_chars": 734,
+      "parameter_names": [
+        "old_id",
+        "new_id"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "update_element_material",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 470
+      },
+      "old_0_3_1_description_chars": 342,
+      "published_0_5_0_description_chars": 396,
+      "candidate_description_chars": 384,
+      "source_docstring_chars": 596,
+      "parameter_names": [
+        "ids",
+        "mat_id"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "update_element_nodes",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 564
+      },
+      "old_0_3_1_description_chars": 229,
+      "published_0_5_0_description_chars": 1414,
+      "candidate_description_chars": 1231,
+      "source_docstring_chars": 1398,
+      "parameter_names": [
+        "element_id",
+        "node_i",
+        "node_j"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "update_element_section",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 501
+      },
+      "old_0_3_1_description_chars": 350,
+      "published_0_5_0_description_chars": 400,
+      "candidate_description_chars": 384,
+      "source_docstring_chars": 594,
+      "parameter_names": [
+        "ids",
+        "sec_id"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "update_node",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 120
+      },
+      "old_0_3_1_description_chars": 531,
+      "published_0_5_0_description_chars": 1500,
+      "candidate_description_chars": 888,
+      "source_docstring_chars": 1274,
+      "parameter_names": [
+        "node_id",
+        "x",
+        "y",
+        "z",
+        "new_id"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "update_node_id",
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 185
+      },
+      "old_0_3_1_description_chars": 147,
+      "published_0_5_0_description_chars": 855,
+      "candidate_description_chars": 762,
+      "source_docstring_chars": 901,
+      "parameter_names": [
+        "node_id",
+        "new_id"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "update_section_bias",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1255
+      },
+      "old_0_3_1_description_chars": 558,
+      "published_0_5_0_description_chars": 558,
+      "candidate_description_chars": 47,
+      "source_docstring_chars": 484,
+      "parameter_names": [
+        "index",
+        "bias_type",
+        "center_type",
+        "shear_consider",
+        "bias_point",
+        "side_i"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "update_section_property",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1307
+      },
+      "old_0_3_1_description_chars": 633,
+      "published_0_5_0_description_chars": 769,
+      "candidate_description_chars": 228,
+      "source_docstring_chars": 663,
+      "parameter_names": [
+        "index",
+        "sec_property",
+        "side_i"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "update_structure_group_name",
+      "source": {
+        "path": "src/qiao_mcp/tools/group_management.py",
+        "line": 57
+      },
+      "old_0_3_1_description_chars": 190,
+      "published_0_5_0_description_chars": 190,
+      "candidate_description_chars": 44,
+      "source_docstring_chars": 148,
+      "parameter_names": [
+        "name",
+        "new_name"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "update_vertical_steel_tendon",
+      "source": {
+        "path": "src/qiao_mcp/tools/checking.py",
+        "line": 256
+      },
+      "old_0_3_1_description_chars": 488,
+      "published_0_5_0_description_chars": 488,
+      "candidate_description_chars": 71,
+      "source_docstring_chars": 422,
+      "parameter_names": [
+        "limbs_number",
+        "area",
+        "spacing",
+        "effective_prestress",
+        "fpd"
+      ],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_write",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    },
+    {
+      "name": "validate_model",
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2737
+      },
+      "old_0_3_1_description_chars": 266,
+      "published_0_5_0_description_chars": 266,
+      "candidate_description_chars": 266,
+      "source_docstring_chars": 208,
+      "parameter_names": [],
+      "parameter_descriptions_match_source": true,
+      "changed_parameter_descriptions": [],
+      "output_schema_unchanged": true,
+      "operation_guard": "model_read",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "review_basis": "Original Args-to-schema equality, default/type/output comparison, source dispatch and per-family audit; no live backend semantics inferred."
+    }
+  ],
+  "implementation_commit": "b4ae38f5103c58d3178f6f96cae49bf76794a78d",
+  "short_parameter_review": {
+    "count": 106,
+    "disposition": "名称、ID、分页及简单系数保留简洁说明；专项结果flag补充原生取值/适用类别，缩放含义未明示则公开披露限制。"
+  }
+}

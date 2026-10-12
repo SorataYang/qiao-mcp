@@ -53,9 +53,9 @@ Support overrides preserve omitted coordinate/additional settings. Supplying
 `extra_parameters` enables them unless `extra_enabled=False` explicitly clears
 them; this behavior also applies to older SDKs that support these options.
 
-### 0.5.1 candidate: tool guidance and compatibility
+### 0.5.1: tool guidance and compatibility
 
-The local candidate keeps all 153 tools and existing calls. Complete Args text is
+Version 0.5.1 keeps all 153 tools and existing calls. Complete Args text is
 published in parameter schemas without repeating it in tool descriptions.
 `add_custom_temperature` accepts native `[reference, height, temperature]` rows
 (reference 1=top, 2=bottom; orientation 1=local Z, 2=local Y). Legacy two-value rows
@@ -70,8 +70,7 @@ Tendon definitions, computed losses and coordinates have separate query tools.
 Automatic self-weight is controlled by stages, not by creating a case named 自重.
 
 See the [selection scenarios and catalog decisions](docs/glama-tool-selection.md),
-[audit](docs/glama-improvement-audit.md) and [candidate notes](docs/0.5.1-release-notes.md).
-This candidate is not published; no new Glama score has been obtained.
+[audit](docs/glama-improvement-audit.md) and [release notes](docs/0.5.1-release-notes.md).
 
 ### 0.5.0: queries, transversal analysis, check snapshots and international loads
 
@@ -417,7 +416,7 @@ where it belongs: in the dependency constraint.
 
 | Qiao-MCP           | qtmodel       | QiaoTong software                          |
 |--------------------|---------------|--------------------------------------------|
-| 0.5.1 candidate    | 2.6.3 – 2.9.x, not 2.9.0 | Same backend requirements; offline quality candidate, not yet published |
+| 0.5.1              | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
 | 0.5.0              | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
 | 0.3.2 – 0.3.3     | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
 | 0.3.0 – 0.3.1      | 2.6.3 – 2.6.x | 2.6.3 (exact match enforced by qtmodel)    |
