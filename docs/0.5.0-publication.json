@@ -1,0 +1,74 @@
+{
+  "version": "0.5.0",
+  "tag": "v0.5.0",
+  "release_commit": "9f0c3593bfdae94bf066e72d112dbd4891997652",
+  "release_pull_request": "https://github.com/SorataYang/qiao-mcp/pull/10",
+  "github_release": "https://github.com/SorataYang/qiao-mcp/releases/tag/v0.5.0",
+  "github_release_published_at": "2026-10-12T04:59:34Z",
+  "pypi": "https://pypi.org/project/qiao-mcp/0.5.0/",
+  "testpypi_workflow": {
+    "url": "https://github.com/SorataYang/qiao-mcp/actions/runs/38204618764",
+    "conclusion": "success",
+    "upload": "success"
+  },
+  "pull_request_ci": {
+    "url": "https://github.com/SorataYang/qiao-mcp/actions/runs/38204621613",
+    "conclusion": "success"
+  },
+  "main_ci": {
+    "url": "https://github.com/SorataYang/qiao-mcp/actions/runs/38205061384",
+    "conclusion": "success"
+  },
+  "pypi_workflow": {
+    "url": "https://github.com/SorataYang/qiao-mcp/actions/runs/38205257311",
+    "conclusion": "success",
+    "upload": "success",
+    "environment_approval": "completed_by_user"
+  },
+  "artifacts": [
+    {
+      "filename": "qiao_mcp-0.5.0-py3-none-any.whl",
+      "sha256": "7bb9ec19ea546b79ecee8f4f57c0edc293d0eb74e2350f8fb5668b380fa822b8",
+      "matches_candidate": true,
+      "upload_time": "2026-10-12T04:50:47.843477Z",
+      "url": "https://files.pythonhosted.org/packages/13/d5/9e72ad5386c8697dfad181ab0e1fe4c88a4879b488b9812031e677ab869e/qiao_mcp-0.5.0-py3-none-any.whl"
+    },
+    {
+      "filename": "qiao_mcp-0.5.0.tar.gz",
+      "sha256": "ebd388e3369fd643524b2a99283b1ac75d2f5a003bf9163edd2a346731a0239a",
+      "matches_candidate": true,
+      "upload_time": "2026-10-12T04:50:49.205579Z",
+      "url": "https://files.pythonhosted.org/packages/53/45/f29615a15920372a2150c9f10c310f6642b88de503a537987af70c25a968/qiao_mcp-0.5.0.tar.gz"
+    }
+  ],
+  "candidate_ci_pypi_github_artifact_hashes_match": true,
+  "installed_environment": {
+    "python": "3.11.15",
+    "package_path": "/tmp/qiao-publish-0.5.0-20261012/installed-venv/lib/python3.11/site-packages/qiao_mcp/__init__.py",
+    "versions": {
+      "qiao-mcp": "0.5.0",
+      "qtmodel": "2.9.2",
+      "mcp": "1.30.0",
+      "pydantic": "2.14.1"
+    }
+  },
+  "published_package_stdio": {
+    "passed": true,
+    "version": "0.5.0",
+    "tools": 153,
+    "described_parameters": 596,
+    "output_schemas": 151,
+    "resources": 7,
+    "prompts": 5,
+    "instructions": true,
+    "structured_response": true,
+    "invalid_input_is_error": true
+  },
+  "ci_fix": {
+    "commit": "a6411546418ba2fa5a6f791aee196debf6cfdc3c",
+    "uv": "0.11.6",
+    "reason": "uv 0.13.0 rewrites sdist pyproject.toml; pinning the locally verified frontend preserves source byte equality.",
+    "actionlint": "1.7.12 passed"
+  },
+  "engineering_acceptance": "Partial only; known backend limits are documented in docs/0.5.0-live-validation.md."
+}
