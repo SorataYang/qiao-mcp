@@ -49,6 +49,8 @@ _DESTRUCTIVE_NAMES = {
     "create_polygon_section",
     "create_line_width_section",
     "create_section_from_properties",
+    "create_tendon_2d",  # SDK 同名覆盖
+    "add_tendon_3d",
     "calculate_section_property",  # 重写全部已有截面特性
     "set_support",  # 可替换约束并清空附加参数
     "set_self_weight_stage",  # 重写既有结构组的自重阶段

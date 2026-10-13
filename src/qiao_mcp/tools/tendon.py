@@ -13,6 +13,7 @@ from mcp.server.fastmcp import FastMCP
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
 from qiao_mcp.tools.schemas import (
+    FiniteNumber,
     FourNumbers,
     NonnegativeNumber,
     SelectedIds,
@@ -36,7 +37,7 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         friction: float = 0.25,
         deviation: float = 0.0015,
         anchorage_slip: float = 0.006,
-        steel_detail: list[float] | None = None,
+        steel_detail: list[FiniteNumber] | None = None,
     ) -> str:
         """
         Create a tendon property definition (创建钢束特性).
@@ -55,15 +56,27 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
             friction: Friction coefficient μ (摩阻系数), typically 0.20~0.30
             deviation: Wobble coefficient k (偏差系数), typically 0.0015
             anchorage_slip: Anchorage slip at each end in m (锚固滑移，两端相同), typ. 0.006
-            steel_detail: Advanced override, raw qtmodel steel_detail list
+            steel_detail: Required for steel_type=2; otherwise an advanced override.
+                          Raw qtmodel steel_detail list
                           (高级用法：直接给出原始 steel_detail 列表，覆盖上述四个参数；
                           钢绞线=[面积,孔道直径,摩阻,偏差]，
                           螺纹钢筋=[直径,面积,孔道直径,摩阻,偏差,张拉方式])
         """
         try:
+            if steel_type == 2 and steel_detail is None:
+                raise ToolInputError(
+                    "steel_type=2 requires six steel_detail values "
+                    "[diameter, area, duct diameter, friction, deviation, tension method] "
+                    "(螺纹钢筋须提供六项 steel_detail，不能套用钢绞线四项默认值)"
+                )
             detail = steel_detail if steel_detail is not None else [
                 area, duct_diameter, friction, deviation
             ]
+            expected = 4 if steel_type == 1 else 6
+            if len(detail) != expected:
+                raise ToolInputError(f"steel_type={steel_type} requires {expected} steel_detail values")
+            if steel_type == 2 and detail[5] not in (1, 2):
+                raise ToolInputError("Threaded-bar tension method must be 1 or 2 (张拉方式须为1或2)")
             provider.add_tendon_property(
                 name=name,
                 tendon_type=tendon_type,
