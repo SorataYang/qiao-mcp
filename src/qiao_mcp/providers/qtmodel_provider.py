@@ -526,7 +526,7 @@ class QtModelProvider(BridgeProvider):
         """Commit one successful model command; never replay after a lost reply."""
         result = fn(**kwargs)
         try:
-            self._mdb.update_model()
+            self.update_model()
         except Exception as exc:
             raise RuntimeError(
                 f"{method} completed but update_model failed. The model may have changed; "
@@ -1155,9 +1155,16 @@ class QtModelProvider(BridgeProvider):
         self._mdb.initial()
 
     def update_model(self) -> None:
-        """Refresh the model display in QiaoTong software."""
+        """Commit model changes and preserve uncertainty if that commit fails."""
         self._require_available()
-        self._mdb.update_model()
+        try:
+            self._mdb.update_model()
+        except Exception as exc:
+            raise RuntimeError(
+                "update_model failed; earlier writes may have changed the model. "
+                "Read the model/undo history before retrying "
+                f"(提交失败，之前写入可能已生效；请先回读及检查撤销记录，勿自动重试): {exc}"
+            ) from exc
 
     def save_model_file(self, file_path: str) -> None:
         self._require_available()
@@ -1170,14 +1177,14 @@ class QtModelProvider(BridgeProvider):
     def remove_unused_sections(self) -> None:
         self._require_available()
         self._mdb.remove_unused_sections()
-        self._mdb.update_model()
+        self.update_model()
 
     def add_nodes(self, node_data: list[list[float]], **kwargs) -> None:
         self._require_available()
         if not node_data:
             raise ValueError("node_data cannot be empty")
         self._mdb.add_nodes(node_data=node_data, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_nodes_returning_ids(
         self, node_data: list[list[float]], **kwargs
@@ -1204,7 +1211,7 @@ class QtModelProvider(BridgeProvider):
             raise ValueError("node_data cannot be empty")
 
         self._mdb.add_nodes(node_data=node_data, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
         rows = self._safe_get("get_node_data")
         if rows is None:
@@ -1252,7 +1259,7 @@ class QtModelProvider(BridgeProvider):
         if not ele_data:
             raise ValueError("ele_data cannot be empty")
         self._mdb.add_elements(ele_data=ele_data, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def get_node_coords(self, node_ids: list[int]) -> dict[int, tuple[float, float, float]]:
         """Return {node_id: (x, y, z)} for the requested IDs that actually exist.
@@ -1348,55 +1355,55 @@ class QtModelProvider(BridgeProvider):
         params.update(kwargs)
         params.update(options)
         self._mdb.add_material(**params)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_time_parameter(self, **kwargs) -> None:
         self._require_available()
         self._mdb.add_time_parameter(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_creep_function(self, name: str, creep_data: list, scale_factor: float = 1) -> None:
         self._require_available()
         self._mdb.add_creep_function(name=name, creep_data=creep_data, scale_factor=scale_factor)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_shrink_function(self, name: str, shrink_data: list, scale_factor: float = 1) -> None:
         self._require_available()
         self._mdb.add_shrink_function(name=name, shrink_data=shrink_data, scale_factor=scale_factor)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_thickness(self, *, t_out: float | None = None, **kwargs) -> None:
         self._require_available()
         options = self._optional_mdb_parameter("add_thickness", "t_out", t_out)
         self._mdb.add_thickness(**kwargs, **options)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_effective_width(self, element_ids, **kwargs) -> None:
         self._require_available()
         self._mdb.add_effective_width(element_ids=element_ids, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_tapper_section_group(self, **kwargs) -> None:
         self._require_available()
         self._mdb.add_tapper_section_group(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_section(self, name: str, sec_type: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_section(name=name, sec_type=sec_type, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_tapper_section_by_id(self, name: str, begin_id: int, end_id: int, shear_consider: bool = True, sec_normalize: bool = False) -> None:
         self._require_available()
         self._mdb.add_tapper_section_by_id(name=name, begin_id=begin_id, end_id=end_id, shear_consider=shear_consider, sec_normalize=sec_normalize)
-        self._mdb.update_model()
+        self.update_model()
 
     def remove_section(self, ids: Any) -> None:
         self._require_available()
         if ids is not None:
             ids = self._validate_ids(ids)
         self._mdb.remove_section(ids=ids)
-        self._mdb.update_model()
+        self.update_model()
 
     def update_section_bias(self, index: int, bias_type: str, center_type: str = "质心", shear_consider: bool = True, bias_point: list[float] | None = None, side_i: bool = True) -> None:
         self._require_available()
@@ -1527,6 +1534,7 @@ class QtModelProvider(BridgeProvider):
     def remove_structure_from_group(self, name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.remove_structure_from_group(name=name, **kwargs)
+        self.update_model()
 
     def remove_nodes(self, ids: Any = None) -> None:
         self._require_available()
@@ -1580,7 +1588,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_elastic_link(
             link_type=link_type, start_id=start_id, end_id=end_id, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     def add_beam_constraint(
         self, beam_id: int, info_i: list[bool] | None = None, info_j: list[bool] | None = None, group_name: str = ""
@@ -1594,29 +1602,29 @@ class QtModelProvider(BridgeProvider):
         if group_name:
             kwargs["group_name"] = group_name
         self._mdb.add_beam_constraint(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_constraint_equation(self, **kwargs) -> None:
         self._require_available()
         self._mdb.add_constraint_equation(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def remove_boundary(self, **kwargs) -> None:
         self._require_available()
         self._mdb.remove_boundary(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     # ── Load Operations ────────────────────────────────────────────────
 
     def add_load_group(self, name: str) -> None:
         self._require_available()
         self._mdb.add_load_group(name=name)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_load_case(self, name: str, case_type: str = "施工阶段荷载", desc: str = "") -> None:
         self._require_available()
         self._mdb.add_load_case(name=name, case_type=case_type)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_load_combine(self, index: int = -1, name: str = "", combine_type: int = 1, describe: str = "", combine_info: list[tuple] | None = None) -> None:
         self._require_available()
@@ -1624,7 +1632,7 @@ class QtModelProvider(BridgeProvider):
         if combine_info is not None:
             kwargs["combine_info"] = combine_info
         self._mdb.add_load_combine(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_nodal_force(
         self, node_id: Any, case_name: str, load_info: list, **kwargs
@@ -1633,7 +1641,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_nodal_force(
             node_id=node_id, case_name=case_name, load_info=load_info, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     def add_beam_element_load(
         self, element_id: Any, case_name: str, load_type: int, **kwargs
@@ -1642,7 +1650,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_beam_element_load(
             element_id=element_id, case_name=case_name, load_type=load_type, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     def add_system_temperature(
         self, element_id: Any, case_name: str, temperature: float, **kwargs
@@ -1651,7 +1659,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_element_temperature(
             element_id=element_id, case_name=case_name, temperature=temperature, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     def add_gradient_temperature(
         self, element_id: Any, case_name: str, temperature: float, **kwargs
@@ -1660,38 +1668,38 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_gradient_temperature(
             element_id=element_id, case_name=case_name, temperature=temperature, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
 
     def add_custom_temperature(self, element_id, case_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_custom_temperature(element_id=element_id, case_name=case_name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_beam_section_temperature(self, element_id, case_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_beam_section_temperature(element_id=element_id, case_name=case_name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_initial_tension_load(self, element_id, case_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_initial_tension_load(element_id=element_id, case_name=case_name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_cable_length_load(self, element_id, case_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_cable_length_load(element_id=element_id, case_name=case_name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_plate_element_load(self, element_id, case_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_plate_element_load(element_id=element_id, case_name=case_name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_distribute_plane_load(self, index: int, case_name: str, type_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_distribute_plane_load(index=index, case_name=case_name, type_name=type_name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_support_settlement(
         self, node_id: Any, case_name: str, displacement_info: list, **kwargs
@@ -1701,31 +1709,31 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_node_displacement(
             node_id=node_id, case_name=case_name, load_info=displacement_info, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     # ── Tendon Operations ──────────────────────────────────────────────
 
     def add_tendon_property(self, name: str, tendon_type: int, **kwargs) -> None:
         self._require_available()
         self._mdb.add_tendon_property(name=name, tendon_type=tendon_type, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_tendon_2d(self, name: str, property_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_tendon_2d(name=name, property_name=property_name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_tendon_3d(self, name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_tendon_3d(name=name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_tendon_elements(self, ids: Any) -> None:
         self._require_available()
         if ids is not None:
             ids = self._validate_ids(ids)
         self._mdb.add_tendon_elements(ids=ids)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_pre_stress(
         self, case_name: str, tendon_name: str, force: float, **kwargs
@@ -1734,7 +1742,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_pre_stress(
             case_name=case_name, tendon_name=tendon_name, force=force, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     # ── Construction Stage Operations ──────────────────────────────────
 
@@ -1753,17 +1761,17 @@ class QtModelProvider(BridgeProvider):
                 ) from exc
         options = self._optional_mdb_parameter("add_construction_stage", "sub_steps", sub_steps)
         self._mdb.add_construction_stage(name=name, duration=duration, **options, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def merge_all_stages(self, name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.merge_all_stages(name=name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def remove_construction_stage(self, name: str = "") -> None:
         self._require_available()
         self._mdb.remove_construction_stage(name=name)
-        self._mdb.update_model()
+        self.update_model()
 
     def update_construction_stage(
         self, name: str, *, sub_steps: list[float] | None = None, **kwargs
@@ -1771,34 +1779,34 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         options = self._optional_mdb_parameter("update_construction_stage", "sub_steps", sub_steps)
         self._mdb.update_construction_stage(name=name, **options, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def switch_display_stage(self, stage_name: str) -> None:
         self._require_available()
         self._mdb.update_view_stage(stage_name=stage_name)
-        self._mdb.update_model()
+        self.update_model()
 
     # ── Analysis Operations ────────────────────────────────────────────
 
     def update_project_setting(self, **kwargs) -> None:
         self._require_available()
         self._mdb.update_project_setting(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def update_construction_stage_setting(self, **kwargs) -> None:
         self._require_available()
         self._mdb.update_construction_stage_setting(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def update_self_vibration_setting(self, **kwargs) -> None:
         self._require_available()
         self._mdb.update_self_vibration_setting(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def update_bulking_setting(self, **kwargs) -> None:
         self._require_available()
         self._mdb.update_bulking_setting(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_nodal_mass(
         self,
@@ -1833,32 +1841,32 @@ class QtModelProvider(BridgeProvider):
                     "(各向不同的平动质量需要支持 mass_xyz 的 qtmodel 2.9.0+，旧版只能三向相同)"
                 ) from exc
         self._mdb.add_nodal_mass(node_id=node_id, mass_info=[mass_z, *rotation], **options)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_load_to_mass(self, name: str, factor: float = 1.0) -> None:
         self._require_available()
         self._mdb.add_load_to_mass(name=name, factor=factor)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_spectrum_function(self, **kwargs) -> None:
         self._require_available()
         self._mdb.add_spectrum_function(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_spectrum_case(self, **kwargs) -> None:
         self._require_available()
         self._mdb.add_spectrum_case(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_time_history_function(self, **kwargs) -> None:
         self._require_available()
         self._mdb.add_time_history_function(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_time_history_case(self, **kwargs) -> None:
         self._require_available()
         self._mdb.add_time_history_case(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def run_analysis(self, read_timeout: int = 3600, show_view: bool = False) -> Any:
         """启动后台求解并轮询至任务真正结束，返回 qtmodel 给出的最终状态。
@@ -1902,7 +1910,9 @@ class QtModelProvider(BridgeProvider):
 
     def add_node_tandem(self, *args, **kwargs):
         self._require_available()
-        return self._mdb.add_node_tandem(*args, **kwargs)
+        result = self._mdb.add_node_tandem(*args, **kwargs)
+        self.update_model()
+        return result
 
     def add_influence_plane(
         self, *args, always_divided_by_beam_shape: bool | None = None, **kwargs
@@ -1911,7 +1921,9 @@ class QtModelProvider(BridgeProvider):
         options = self._optional_mdb_parameter(
             "add_influence_plane", "always_divided_by_beam_shape", always_divided_by_beam_shape
         )
-        return self._mdb.add_influence_plane(*args, **options, **kwargs)
+        result = self._mdb.add_influence_plane(*args, **options, **kwargs)
+        self.update_model()
+        return result
 
     # ── Result Extraction ──────────────────────────────────────────────
 
@@ -2472,12 +2484,12 @@ class QtModelProvider(BridgeProvider):
     def add_structure_group(self, name: str) -> None:
         self._require_available()
         self._mdb.add_structure_group(name=name)
-        self._mdb.update_model()
+        self.update_model()
 
     def update_structure_group_name(self, name: str, new_name: str) -> None:
         self._require_available()
         self._mdb.update_structure_group_name(name=name, new_name=new_name)
-        self._mdb.update_model()
+        self.update_model()
 
     def remove_structure_group(self, name: str = "") -> None:
         self._require_available()
@@ -2485,7 +2497,7 @@ class QtModelProvider(BridgeProvider):
             self._mdb.remove_structure_group(name=name)
         else:
             self._mdb.remove_structure_group()
-        self._mdb.update_model()
+        self.update_model()
 
     def add_structure_to_group(
         self, name: str, node_ids: Any = None, element_ids: Any = None
@@ -2495,7 +2507,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_structure_to_group(
             name=name, node_ids=node_ids, element_ids=element_ids
         )
-        self._mdb.update_model()
+        self.update_model()
 
     def add_elements_to_structure_group(self, name: str, element_ids: Any) -> None:
         self.add_structure_to_group(name=name, element_ids=element_ids)
@@ -2508,7 +2520,7 @@ class QtModelProvider(BridgeProvider):
     def add_boundary_group(self, name: str) -> None:
         self._require_available()
         self._mdb.add_boundary_group(name=name)
-        self._mdb.update_model()
+        self.update_model()
 
     # ── Advanced Boundary ──────────────────────────────────────────────
 
@@ -2517,7 +2529,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_master_slave_link(
             master_id=master_id, slave_id=slave_id, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     def add_elastic_support(
         self, node_id: Any, support_type: int = 1, boundary_info: list | None = None,
@@ -2547,13 +2559,13 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_standard_vehicle(
             name=name, standard_code=standard_code, load_type=load_type, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     def add_lane(self, name: str, **kwargs) -> None:
         self._require_available()
         # Real API method is add_lane_line
         self._mdb.add_lane_line(name=name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_live_load_case(
         self, name: str, *, sub_case_optimized: list[bool] | None = None, **kwargs
@@ -2563,7 +2575,7 @@ class QtModelProvider(BridgeProvider):
             "add_live_load_case", "sub_case_optimized", sub_case_optimized
         )
         self._mdb.add_live_load_case(name=name, **options, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def get_live_load_results(self, case_name: str, result_type: str, ids: Any) -> Any:
         self._require_available()
@@ -2600,7 +2612,7 @@ class QtModelProvider(BridgeProvider):
             structure_group_name=structure_group_name,
             weight_stage_id=weight_stage_id,
         )
-        self._mdb.update_model()
+        self.update_model()
 
     # ── Tendon Data ────────────────────────────────────────────────────
 
