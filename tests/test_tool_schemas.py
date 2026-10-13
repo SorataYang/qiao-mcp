@@ -128,6 +128,7 @@ def test_schema_exposes_ranges_enums_lengths_and_workflow_fields(catalog):
     ("add_constraint_equation", {"name": "CE", "slave_node": 1, "master_info": [[2, 7, 1.0]]}),
     ("add_beam_section_temperature", {"element_id": 1, "case_name": "T", "sec_type": 3}),
     ("add_custom_temperature", {"element_id": 1, "case_name": "T", "temperature_data": [[3, 0.2, 10]]}),
+    ("add_custom_temperature", {"element_id": 1, "case_name": "T", "temperature_data": [[0.2, 10]]}),
     ("add_custom_temperature", {"element_id": 1, "case_name": "T", "temperature_data": [[1, 0.2, 10, 5]]}),
     ("remove_boundary", {"remove_id": 1, "kind": "unknown"}),
     ("update_element", {"old_id": 1, "ele_type": 5}),
@@ -170,7 +171,6 @@ def test_spring_type_and_direction_are_validated_before_writing(catalog, fake_pr
 
 @pytest.mark.parametrize("rows", [
     [[2, 0.5, -10], [1, 0.25, 12.5], [2, 0.5, -10]],
-    [[0.5, -10], [0.25, 12.5]],  # accepted legacy pairs must not acquire an inferred reference
     [],
     None,
 ])
