@@ -10,6 +10,7 @@ from qiao_mcp.tools import register_modeling_tools
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
 from qiao_mcp.tools.group_management import register_group_tools
 from qiao_mcp.tools.moving_load import register_moving_load_tools
+from qiao_mcp.tools.tendon import register_tendon_tools
 
 
 @pytest.mark.parametrize("tool, arguments, header", [
@@ -186,3 +187,23 @@ def test_structure_members_include_independent_nodes(fake_provider):
     assert all(value in result["message"] for value in ("nodes", "elements", "7", "8", "9"))
 
 
+@pytest.mark.parametrize("steel_type, detail", [(2, None), (2, [1, 2, 3, 4]), (1, [1] * 6)])
+def test_tendon_property_rejects_wrong_steel_layout_before_writing(fake_provider, steel_type, detail):
+    functions = tool_fns(register_tendon_tools, fake_provider)
+    with pytest.raises(ToolInputError, match="steel_detail"):
+        functions["create_tendon_property"](
+            name="T", material_name="Steel", steel_type=steel_type, steel_detail=detail,
+        )
+    assert fake_provider._mdb.calls == []
+
+
+def test_threaded_bar_sends_six_fields_through_real_sdk(qtmodel_wire):
+    provider, requests = qtmodel_wire
+    functions = tool_fns(register_tendon_tools, provider)
+    detail = [0.032, 0.000804, 0.05, 0.25, 0.0015, 2]
+    functions["create_tendon_property"](
+        name="Bar", material_name="Steel", steel_type=2, steel_detail=detail,
+    )
+    payload = next(p for h, p in requests if h == "ADD-TENDON-PROPERTY")
+    assert payload["steel_type"] == 2
+    assert payload["steel_detail"] == detail
