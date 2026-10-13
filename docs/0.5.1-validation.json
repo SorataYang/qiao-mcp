@@ -1,0 +1,276 @@
+{
+  "candidate_version": "0.5.1",
+  "status": "offline candidate; unreleased",
+  "implementation_commit": "b4ae38f5103c58d3178f6f96cae49bf76794a78d",
+  "branch": "improve/glama-tool-quality",
+  "runtime": {
+    "python": "3.11.15",
+    "qiao-mcp": "0.5.1",
+    "qtmodel": "2.9.2",
+    "mcp": "1.29.0",
+    "pydantic": "2.12.5",
+    "uv": "uv 0.11.6 (65950801c 2026-04-09 aarch64-apple-darwin)",
+    "node": "v24.11.0"
+  },
+  "full_suite": {
+    "command": [
+      "uv",
+      "run",
+      "--locked",
+      "pytest",
+      "tests/",
+      "--ignore=tests/test_end_to_end.py",
+      "-q"
+    ],
+    "exit_code": 0,
+    "duration_seconds": 36.38,
+    "log": "pytest.log",
+    "passed": 1782,
+    "excluded": "tests/test_end_to_end.py"
+  },
+  "final_checks": [
+    {
+      "name": "ruff",
+      "command": [
+        "uv",
+        "run",
+        "--locked",
+        "ruff",
+        "check",
+        "src/",
+        "tests/",
+        "scripts/"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.22
+    },
+    {
+      "name": "mypy",
+      "command": [
+        "uv",
+        "run",
+        "--locked",
+        "mypy",
+        "src/qiao_mcp/"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.58
+    },
+    {
+      "name": "final-metadata-tests",
+      "command": [
+        "uv",
+        "run",
+        "--locked",
+        "pytest",
+        "tests/test_envelope.py",
+        "tests/test_tool_schemas.py",
+        "tests/test_query_tools.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 13.19
+    },
+    {
+      "name": "build",
+      "command": [
+        "uv",
+        "build",
+        "--out-dir",
+        "dist/glama-0.5.1-candidate-20261012/packages"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.1
+    },
+    {
+      "name": "release-check",
+      "command": [
+        "uv",
+        "run",
+        "--locked",
+        "python",
+        "scripts/check_release.py",
+        "dist/glama-0.5.1-candidate-20261012/packages"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.1
+    },
+    {
+      "name": "stdio",
+      "command": [
+        "uv",
+        "run",
+        "--locked",
+        "python",
+        "scripts/check_mcp_package.py",
+        "dist/glama-0.5.1-candidate-20261012/packages/qiao_mcp-0.5.1-py3-none-any.whl",
+        "--output",
+        "dist/glama-0.5.1-candidate-20261012/catalog.json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 1.19
+    },
+    {
+      "name": "final-venv",
+      "command": [
+        "uv",
+        "venv",
+        "--clear",
+        "--python",
+        "3.11",
+        "dist/glama-0.5.1-candidate-20261012/installed-env"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.35
+    },
+    {
+      "name": "final-dependencies",
+      "command": [
+        "uv",
+        "pip",
+        "sync",
+        "--python",
+        "dist/glama-0.5.1-candidate-20261012/installed-env/bin/python",
+        "dist/glama-0.5.1-candidate-20261012/runtime-requirements.txt"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 2.14
+    },
+    {
+      "name": "final-install-wheel",
+      "command": [
+        "uv",
+        "pip",
+        "install",
+        "--python",
+        "dist/glama-0.5.1-candidate-20261012/installed-env/bin/python",
+        "--no-deps",
+        "dist/glama-0.5.1-candidate-20261012/packages/qiao_mcp-0.5.1-py3-none-any.whl"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.03
+    },
+    {
+      "name": "proxy-check",
+      "command": [
+        "uv",
+        "run",
+        "--locked",
+        "python",
+        "scripts/check_mcp_proxy.py",
+        "--python",
+        "dist/glama-0.5.1-candidate-20261012/installed-env/bin/python",
+        "--version",
+        "0.5.1",
+        "--catalog",
+        "dist/glama-0.5.1-candidate-20261012/catalog.json",
+        "--output",
+        "dist/glama-0.5.1-candidate-20261012/proxy-verification.json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 10.65
+    },
+    {
+      "name": "catalog-review",
+      "command": [
+        "uv",
+        "run",
+        "--locked",
+        "python",
+        "dist/glama-0.5.1-candidate-20261012/catalog-review.py"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.47
+    },
+    {
+      "name": "tdqs-lint",
+      "command": [
+        "uvx",
+        "--from",
+        "tdqs==0.1.0",
+        "tdqs",
+        "lint",
+        "--file",
+        "dist/glama-0.5.1-candidate-20261012/catalog.json",
+        "--server-name",
+        "qiao-mcp",
+        "--format",
+        "json",
+        "--output",
+        "dist/glama-0.5.1-candidate-20261012/tdqs-lint.json",
+        "--fail-on",
+        "warning"
+      ],
+      "exit_code": 1,
+      "duration_seconds": 0.62
+    }
+  ],
+  "proxy": {
+    "server_version": "0.5.1",
+    "proxy_version": "6.7.19",
+    "tools": 153,
+    "parameters": 596,
+    "described_parameters": 596,
+    "output_schemas": 151,
+    "resources": 7,
+    "prompts": 5,
+    "instructions_match_direct_stdio": true,
+    "tools_match_candidate_catalog": true,
+    "resources_and_prompts_match": true,
+    "instructions_sha256": "3247f69ce7d8dd20518c10646dcad29f91c1156b1e1e9c49ec9bce29d4984c01",
+    "bridge_operations_called": false,
+    "bridge_endpoint": "http://localhost:1/pythonForQt/",
+    "docker_build_tested": false,
+    "installed_package": {
+      "version": "0.5.1",
+      "module": "/Users/yang/GitHub/qiao-mcp/dist/glama-0.5.1-candidate-20261012/installed-env/lib/python3.11/site-packages/qiao_mcp/__init__.py"
+    },
+    "proxy_process_stopped": true,
+    "local_port_closed": true
+  },
+  "artifacts": [
+    {
+      "filename": "qiao_mcp-0.5.1-py3-none-any.whl",
+      "sha256": "135cbde17ebbd69e2bc89a7b023aa28d8c5ce8a0a2195fa393eba74f6474d0fa"
+    },
+    {
+      "filename": "qiao_mcp-0.5.1.tar.gz",
+      "sha256": "b7ee9e95da64f431c55328aae82a124ad77271eec5b114bdcdc842c492fb4195"
+    }
+  ],
+  "catalog_counts": {
+    "tools": 153,
+    "description_characters": 84402,
+    "top_level_parameters": 596,
+    "described_parameters": 596,
+    "output_schemas": 151
+  },
+  "description_reduction_percent": 44.9,
+  "tdqs": {
+    "spec_version": "1.2",
+    "strict_exit_code": 1,
+    "severity_counts": {
+      "error": 0,
+      "warning": 39,
+      "info": 2
+    },
+    "raw_report": "dist/glama-0.5.1-candidate-20261012/tdqs-lint.json",
+    "raw_sha256": "50a34512c63441ff7c77789fd5033fb91b45b5e58619542d0315271f714fccbc"
+  },
+  "not_performed": [
+    "push",
+    "tag",
+    "PR publication",
+    "PyPI publication",
+    "live engineering test",
+    "Glama online re-score",
+    "Docker build",
+    "uncalibrated/paid semantic scoring"
+  ],
+  "operational_limits": [
+    "Original backend unknowns are retained in the audit, not declared fixed by offline tests.",
+    "No real bridge endpoint was used; package diagnostics targeted localhost:1 only."
+  ],
+  "evidence_directory": "dist/glama-0.5.1-candidate-20261012",
+  "review_bundle": "dist/qiao-mcp-0.5.1-review-20261012.tar.gz"
+}

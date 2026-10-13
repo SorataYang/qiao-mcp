@@ -157,7 +157,9 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         Args:
             case_name: Load case name for the prestress (预应力荷载工况名)
             tendon_name: Tendon name or list of tendon names (钢束名称或名称列表)
-            force: Prestress force in N (预应力张拉力，单位N), e.g. 3000000 = 3000kN
+            force: Native prestress value, forwarded without conversion; the SDK
+                does not declare a fixed unit here. Verify using QiaoTong's
+                prestress definition/export (原生预应力值，不换算；单位须按桥通核验)
             tension_type: Tension end (张拉方式): 0=start(始端), 1=end(末端), 2=both(两端)
             group_name: Load group name (荷载组名)
 
@@ -177,9 +179,9 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
             )
             count = 1 if isinstance(tendon_name, str) else len(tendon_name)
             return (
-                f"Prestress {force/1000:.0f}kN applied to {count} tendon(s) "
+                f"Prestress value {force} (native units) applied to {count} tendon(s) "
                 f"in case '{case_name}' "
-                f"(预应力 {force/1000:.0f}kN 已施加到 {count} 根钢束)"
+                f"(预应力原生值 {force} 已施加到 {count} 根钢束)"
             )
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
@@ -191,7 +193,15 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         tendon_name: str = "",
     ) -> str:
         """
-        Get tendon geometry and prestress loss results (获取钢束信息与损失结果).
+        Read saved tendon definitions, filtered by exact name or all names
+        (按完整名称读取钢束定义，或读取全部钢束).
+
+        Use get_tendon_loss_results for a stage's computed stress/loss distribution
+        and get_tendon_position_result for discretized coordinates. This queries
+        model data and never solves. Returns a message containing native records;
+        a missing requested name returns a not-found message, not an MCP error.
+        Any loss-related definition fields are not a substitute for stage results.
+        (定义查询不求解；阶段损失和离散坐标分别用上述结果工具，未找到名称返回提示消息。)
 
         Args:
             tendon_name: Specific tendon name, or empty string for all tendons
@@ -277,6 +287,11 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         使这些单元计入钢束面积与预应力损失。顺序：先建钢束 → 一次性传入所有钢束
         经过的单元并集 → 再施加预应力。写模型并刷新，非查询。)
 
+        Returns a confirmation. The SDK does not specify whether repeated
+        declarations merge or replace membership; do not use repeated calls
+        as a per-tendon incremental assignment. Verify the declaration in
+        the bridge before repeating a call whose outcome is uncertain.
+
         Args:
             ids: IDs of the elements that tendons pass through — int, list, or
                  "XtoYbyN" range string, e.g. "1to10 15to62 236to293"
@@ -299,7 +314,8 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         Get prestress-loss distribution along one tendon at one construction
         stage (获取一根钢束在指定施工阶段的应力/损失分布).
 
-        Read-only: it does not change the model. Returns a list of points along
+        Read-only: it does not change the model. Returns a message containing
+        the native list of points along
         the tendon / its host beam, each with tendon_name, beam_id, position,
         effective_s (effective stress), instance_s (instantaneous stress),
         except_s (target / control stress) and ratio (effective-stress ratio).
@@ -311,16 +327,16 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         run (run_analysis after configure_analysis(do_construction_stage=True)).
 
         When to use vs. siblings: loss distribution at a stage here; geometry
-        and a summary of losses → get_tendon_info; coordinates along the
+        and saved definitions → get_tendon_info; coordinates along the
         tendon → get_tendon_position_result; unstressed length →
         get_tendon_length_result.
 
-        (只读，不改模型。返回沿钢束/所属梁单元分点的列表，每项含 tendon_name、
+        (只读，不改模型。返回消息内包含沿钢束/所属梁单元分点的原生列表，每项含 tendon_name、
         beam_id、position、effective_s(有效应力)、instance_s(瞬时应力)、
         except_s(期望/控制应力)、ratio(有效应力比)。应力量纲跟随当前工程单位制。
         空列表表示未匹配到钢束或该阶段无结果。前置：钢束须存在、该阶段须已激活
-        此钢束、且已跑过施工阶段分析。选型：某阶段的损失分布用本工具；几何与损失
-        摘要用 get_tendon_info；沿程坐标用 get_tendon_position_result；无应力长度
+        此钢束、且已跑过施工阶段分析。选型：某阶段的损失分布用本工具；保存的几何
+        定义用 get_tendon_info；沿程坐标用 get_tendon_position_result；无应力长度
         用 get_tendon_length_result。)
 
         Args:
@@ -338,10 +354,25 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def get_tendon_position_result(name: str) -> str:
         """
-        Get tendon position/coordinate results (获取钢束坐标结果).
+        Read the bridge's discretized global coordinates for one tendon
+        (读取一根钢束离散后的全局坐标).
+
+        Use this to inspect the resulting tendon path; get_tendon_info reads
+        saved tendon definitions, while get_tendon_loss_results reads stress
+        and loss distributions. Requires an existing tendon and permission to
+        read results. It never starts analysis or changes the model. Whether
+        coordinates are available before a solve depends on the bridge.
+        (核对离散钢束路径用本工具；定义用 get_tendon_info，应力/损失用
+        get_tendon_loss_results。受结果读取权限约束，不自动求解。)
+
+        Returns a message containing the native point list in tendon order.
+        The SDK documents either [x,y,z] rows or {item1,item2,item3} objects,
+        in global coordinates and the current model length unit. Empty data
+        alone does not distinguish a missing name from unavailable geometry;
+        check the definition and bridge state before retrying.
 
         Args:
-            name: Tendon name (钢束名)
+            name: Exact, nonempty name of the existing tendon (已有钢束的完整非空名称)
         """
         try:
             data = provider.get_tendon_position_result(name=name)

@@ -1,0 +1,1428 @@
+{
+  "plan_status": "G0–G5 completed offline on 0.5.1 candidate; G6 publication/online scoring pending",
+  "plan_file": "docs/glama-improvement-plan.md",
+  "scored_baseline": {
+    "source_url": "https://glama.ai/mcp/servers/SorataYang/qiao-mcp",
+    "version": "0.3.1",
+    "scored_at": "2026-09-09T17:50:38.437293Z",
+    "tools": 132,
+    "overall_score": 3.3,
+    "overall_tier": "B",
+    "description_quality": 3.4,
+    "mean_tdqs": 3.8,
+    "min_tdqs": 2.7,
+    "coherence": 3,
+    "disambiguation": 2,
+    "tool_count_appropriateness": 2,
+    "naming_consistency": 4,
+    "completeness": 4,
+    "tool_tiers": {
+      "C": 10,
+      "A": 93,
+      "B": 29
+    },
+    "snapshot_file": "reference-docs/glama-improvement-baseline-20261012/glama-0.3.1.json",
+    "snapshot_sha256": "dc90a9c2aa241d14a9bf383c6e9a2676271ff14060c2d8cf8dd2d60cfb0e567e"
+  },
+  "implementation_base": {
+    "version": "0.5.0",
+    "develop_commit": "8065f31d120ceea0c639e46e275a49a0d7c2407b",
+    "equivalent_main_commit": "fa3ae8d7d215c86240956d5c6c53bf9401c8b097",
+    "tools": 153,
+    "parameters_with_descriptions": 596,
+    "output_schemas": 151,
+    "image_tools_without_output_schema": [
+      "save_model_screenshot",
+      "plot_analysis_result"
+    ],
+    "resources": 7,
+    "prompts": 5,
+    "published_catalog_file": "reference-docs/glama-improvement-baseline-20261012/qiao-mcp-0.5.0-catalog.json",
+    "published_catalog_sha256": "729ee21f6ec78be70796abf7db78adebef3b22873d19e065304419841b392b66",
+    "description_characters": 153192
+  },
+  "audit_summary": {
+    "target_count": 39,
+    "description_already_changed": 34,
+    "unchanged_description_tools": [
+      "add_creep_function",
+      "add_support_settlement",
+      "get_tendon_position_result",
+      "renumber_nodes",
+      "set_gravity"
+    ],
+    "weak_dimension_counts": {
+      "usage_guidelines": 37,
+      "parameter_semantics": 4,
+      "behavioral_transparency": 32,
+      "contextual_completeness": 14
+    },
+    "new_tools_without_0_3_1_score": [
+      "configure_live_load_system",
+      "configure_operation_stage",
+      "create_en1991_vehicle",
+      "get_international_live_load_data",
+      "get_model_edit_readiness",
+      "get_model_status",
+      "get_transversal_data",
+      "manage_check_case_definition",
+      "manage_check_material",
+      "query_model_data",
+      "remove_section_reinforcement",
+      "remove_transversal_data",
+      "set_check_stirrup_snapshot",
+      "set_element_stirrups",
+      "set_international_live_load_case",
+      "set_international_vehicle",
+      "set_planned_lane",
+      "set_section_reinforcement",
+      "set_transversal_case",
+      "set_transversal_lane",
+      "set_transversal_vehicle"
+    ],
+    "important_correction": "Glama coherence reasoning spells calculate_ection_property; both the scored tool list and current tool list actually contain calculate_section_property. This is not a missing API to rename or add.",
+    "confirmed_instruction_name_issue": {
+      "source": "src/qiao_mcp/providers/qtmodel_provider.py:get_llm_instructions",
+      "current_example_name": "add_load_case",
+      "actual_mcp_tool_name": "create_load_case",
+      "action": "Verify example arguments and refer to the actual MCP tool in user-facing instructions."
+    }
+  },
+  "targets": [
+    {
+      "name": "assign_tendon_elements",
+      "baseline_tier": "C",
+      "baseline_score": 2.7,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 2,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 2
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "parameter_semantics",
+        "behavioral_transparency",
+        "contextual_completeness"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 272,
+        "symbol": "assign_tendon_elements"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P0",
+      "review_focus": [
+        "全模型预应力单元声明的作用范围",
+        "ids 格式与创建钢束/声明单元/施加预应力的先后",
+        "重复声明及对既有定义影响的证据"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 262
+      }
+    },
+    {
+      "name": "activate_structure",
+      "baseline_tier": "C",
+      "baseline_score": 2.9,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 3,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 203,
+        "symbol": "activate_structure"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "已有改进且证据充分（含本轮修补）",
+      "priority": "P0",
+      "review_focus": [
+        "隔离显示与结构激活/模型变更的边界",
+        "省略或空选择的范围",
+        "恢复视图、状态守卫与副作用标注"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 203
+      }
+    },
+    {
+      "name": "add_beam_section_temperature",
+      "baseline_tier": "C",
+      "baseline_score": 2.9,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 3,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 2
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency",
+        "contextual_completeness"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1760,
+        "symbol": "add_beam_section_temperature"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P0",
+      "review_focus": [
+        "规范温度、均匀温度、梯度温度及自定义温度的选型",
+        "t1–t4/thick 的规范含义与单位来源",
+        "工况前置条件、重复调用及返回行为"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1637
+      }
+    },
+    {
+      "name": "add_cable_length_load",
+      "baseline_tier": "C",
+      "baseline_score": 2.9,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 5,
+        "usage_guidelines": 2,
+        "parameter_semantics": 2,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 2
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "parameter_semantics",
+        "behavioral_transparency",
+        "contextual_completeness"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1884,
+        "symbol": "add_cable_length_load"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P0",
+      "review_focus": [
+        "索长控制相对索力控制",
+        "length 单位、increment/total 的真实语义",
+        "目标单元、工况及重复调用行为"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1747
+      }
+    },
+    {
+      "name": "add_distribute_plane_load",
+      "baseline_tier": "C",
+      "baseline_score": 2.9,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 3,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 2
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency",
+        "contextual_completeness"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2013,
+        "symbol": "add_distribute_plane_load"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P0",
+      "review_focus": [
+        "图式定义与图式施加的两个步骤",
+        "局部坐标构造、荷载量来源、未指定 plate_ids 的作用范围",
+        "当前未文档化的 coord_system 取值须有证据或明示未知"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1863
+      }
+    },
+    {
+      "name": "add_initial_tension_load",
+      "baseline_tier": "C",
+      "baseline_score": 2.9,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 3,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 2
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency",
+        "contextual_completeness"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1821,
+        "symbol": "add_initial_tension_load"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P0",
+      "review_focus": [
+        "初始索力、索长张拉和钢束预应力的选择条件",
+        "力单位、计算方式与增量/全量语义",
+        "输入前置条件和副作用"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1691
+      }
+    },
+    {
+      "name": "add_plate_element_load",
+      "baseline_tier": "C",
+      "baseline_score": 2.9,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 3,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 2
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency",
+        "contextual_completeness"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1936,
+        "symbol": "add_plate_element_load"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P0",
+      "review_focus": [
+        "逐板施加与平面图式分配的边界",
+        "集中/分布、力/矩下不同输入组合及单位",
+        "重复调用、目标选择与返回行为"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1792
+      }
+    },
+    {
+      "name": "add_system_temperature",
+      "baseline_tier": "C",
+      "baseline_score": 2.9,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 3,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 2
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency",
+        "contextual_completeness"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1604,
+        "symbol": "add_system_temperature"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P0",
+      "review_focus": [
+        "整体温差相对梯度、规范截面和自定义温度的选型",
+        "温差单位和正负号",
+        "工况前置条件及重复调用行为"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1510
+      }
+    },
+    {
+      "name": "add_time_history_function",
+      "baseline_tier": "C",
+      "baseline_score": 2.9,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 3,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2366,
+        "symbol": "add_time_history_function"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P0",
+      "review_focus": [
+        "定义函数、创建工况、绑定地震输入的顺序",
+        "时间/数值单位、kind 与缩放含义",
+        "重名、排序和无效点数据的行为"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2185
+      }
+    },
+    {
+      "name": "update_node_id",
+      "baseline_tier": "C",
+      "baseline_score": 2.9,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 3,
+        "conciseness_structure": 5,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 2
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency",
+        "contextual_completeness"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 185,
+        "symbol": "update_node_id"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P0",
+      "review_focus": [
+        "单节点改号相对坐标编辑和批量改号的选型",
+        "编号冲突及节点引用关系",
+        "状态守卫、刷新与错误返回"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 186
+      }
+    },
+    {
+      "name": "add_nodal_mass",
+      "baseline_tier": "B",
+      "baseline_score": 3,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 3,
+        "parameter_semantics": 2,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "parameter_semantics",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2152,
+        "symbol": "add_nodal_mass"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1982
+      }
+    },
+    {
+      "name": "add_tapper_section_group",
+      "baseline_tier": "B",
+      "baseline_score": 3,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 2
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency",
+        "contextual_completeness"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1075,
+        "symbol": "add_tapper_section_group"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1003
+      }
+    },
+    {
+      "name": "apply_nodal_force",
+      "baseline_tier": "B",
+      "baseline_score": 3,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 2
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency",
+        "contextual_completeness"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1494,
+        "symbol": "apply_nodal_force"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1402
+      }
+    },
+    {
+      "name": "switch_display_stage",
+      "baseline_tier": "B",
+      "baseline_score": 3,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 2,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 3,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "parameter_semantics"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/group_management.py",
+        "line": 298,
+        "symbol": "switch_display_stage"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "已有改进且证据充分（含本轮修补）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/group_management.py",
+        "line": 298
+      }
+    },
+    {
+      "name": "update_element_nodes",
+      "baseline_tier": "B",
+      "baseline_score": 3,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 2
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency",
+        "contextual_completeness"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 564,
+        "symbol": "update_element_nodes"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 510
+      }
+    },
+    {
+      "name": "add_custom_temperature",
+      "baseline_tier": "B",
+      "baseline_score": 3.1,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1704,
+        "symbol": "add_custom_temperature"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1596
+      }
+    },
+    {
+      "name": "add_spectrum_case",
+      "baseline_tier": "B",
+      "baseline_score": 3.1,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 5,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 2
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency",
+        "contextual_completeness"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2297,
+        "symbol": "add_spectrum_case"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2121
+      }
+    },
+    {
+      "name": "add_time_history_case",
+      "baseline_tier": "B",
+      "baseline_score": 3.1,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2422,
+        "symbol": "add_time_history_case"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2235
+      }
+    },
+    {
+      "name": "add_time_parameter",
+      "baseline_tier": "B",
+      "baseline_score": 3.1,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 613,
+        "symbol": "add_time_parameter"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 598
+      }
+    },
+    {
+      "name": "create_line_width_section",
+      "baseline_tier": "B",
+      "baseline_score": 3.1,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 940,
+        "symbol": "create_line_width_section"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "已有改进且证据充分（含本轮修补）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 886
+      }
+    },
+    {
+      "name": "reset_display",
+      "baseline_tier": "B",
+      "baseline_score": 3.1,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 264,
+        "symbol": "reset_display"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "已有改进且证据充分（含本轮修补）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/visualization.py",
+        "line": 257
+      }
+    },
+    {
+      "name": "revert_local_orientation",
+      "baseline_tier": "B",
+      "baseline_score": 3.1,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 433,
+        "symbol": "revert_local_orientation"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 396
+      }
+    },
+    {
+      "name": "update_bulking_setting",
+      "baseline_tier": "B",
+      "baseline_score": 3.1,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2488,
+        "symbol": "update_bulking_setting"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2297
+      }
+    },
+    {
+      "name": "add_effective_width",
+      "baseline_tier": "B",
+      "baseline_score": 3.2,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 5,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 2
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency",
+        "contextual_completeness"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1189,
+        "symbol": "add_effective_width"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1112
+      }
+    },
+    {
+      "name": "get_tendon_loss_results",
+      "baseline_tier": "B",
+      "baseline_score": 3.2,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 5,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 312,
+        "symbol": "get_tendon_loss_results"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "已有改进且证据充分（含本轮修补）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 297
+      }
+    },
+    {
+      "name": "update_element_id",
+      "baseline_tier": "B",
+      "baseline_score": 3.2,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 5,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 378,
+        "symbol": "update_element_id"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 345
+      }
+    },
+    {
+      "name": "add_construction_stage",
+      "baseline_tier": "B",
+      "baseline_score": 3.3,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 5,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2546,
+        "symbol": "add_construction_stage"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2348
+      }
+    },
+    {
+      "name": "add_gradient_temperature",
+      "baseline_tier": "B",
+      "baseline_score": 3.3,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 5,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1653,
+        "symbol": "add_gradient_temperature"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1549
+      }
+    },
+    {
+      "name": "add_load_combine",
+      "baseline_tier": "B",
+      "baseline_score": 3.3,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 5,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 487,
+        "symbol": "add_load_combine"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "已有改进且证据充分（含本轮修补）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 484
+      }
+    },
+    {
+      "name": "apply_prestress",
+      "baseline_tier": "B",
+      "baseline_score": 3.3,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 5,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 139,
+        "symbol": "apply_prestress"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 139
+      }
+    },
+    {
+      "name": "create_polygon_section",
+      "baseline_tier": "B",
+      "baseline_score": 3.3,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 3,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 894,
+        "symbol": "create_polygon_section"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "已有改进且证据充分（含本轮修补）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 840
+      }
+    },
+    {
+      "name": "save_model_file",
+      "baseline_tier": "B",
+      "baseline_score": 3.3,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 3,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 53,
+        "symbol": "save_model_file"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "已有改进且证据充分（含本轮修补）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 53
+      }
+    },
+    {
+      "name": "add_creep_function",
+      "baseline_tier": "B",
+      "baseline_score": 3.4,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 5,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 715,
+        "symbol": "add_creep_function"
+      },
+      "description_changed_in_published_0_5_0": false,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P0",
+      "review_focus": [
+        "自定义徐变曲线相对规范收缩徐变参数的选择条件",
+        "时间与系数、scale_factor 的真实含义",
+        "函数绑定、重名及返回行为"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 694
+      }
+    },
+    {
+      "name": "add_support_settlement",
+      "baseline_tier": "B",
+      "baseline_score": 3.4,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 5,
+        "conciseness_structure": 5,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 2095,
+        "symbol": "add_support_settlement"
+      },
+      "description_changed_in_published_0_5_0": false,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P0",
+      "review_focus": [
+        "强制位移荷载相对支承约束的选择条件",
+        "平动/转角单位与符号",
+        "节点、工况、荷载组前置条件及重复调用行为"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1942
+      }
+    },
+    {
+      "name": "create_continuous_beam_bridge",
+      "baseline_tier": "B",
+      "baseline_score": 3.4,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 3,
+        "parameter_semantics": 4,
+        "conciseness_structure": 3,
+        "behavioral_transparency": 3,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [],
+      "source": {
+        "path": "src/qiao_mcp/tools/workflows.py",
+        "line": 241,
+        "symbol": "create_continuous_beam_bridge"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "已有改进且证据充分（含本轮修补）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/workflows.py",
+        "line": 241
+      }
+    },
+    {
+      "name": "create_material",
+      "baseline_tier": "B",
+      "baseline_score": 3.4,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 5,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 2,
+        "contextual_completeness": 4
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "behavioral_transparency"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 547,
+        "symbol": "create_material"
+      },
+      "description_changed_in_published_0_5_0": true,
+      "audit_state": "已有改进且证据充分（含本轮修补）",
+      "priority": "P1",
+      "review_focus": [
+        "核验旧评分中的使用指引、行为、前置条件及参数含义缺口",
+        "对照当前实现及上游真实契约验证已有说明",
+        "仅修补仍有证据支持的缺口，并记录无需修改的理由"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 544
+      }
+    },
+    {
+      "name": "get_tendon_position_result",
+      "baseline_tier": "B",
+      "baseline_score": 3.4,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 5,
+        "usage_guidelines": 2,
+        "parameter_semantics": 3,
+        "conciseness_structure": 5,
+        "behavioral_transparency": 3,
+        "contextual_completeness": 2
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines",
+        "contextual_completeness"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 355,
+        "symbol": "get_tendon_position_result"
+      },
+      "description_changed_in_published_0_5_0": false,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P0",
+      "review_focus": [
+        "钢束几何定义、坐标查询与分析结果的边界",
+        "是否需要计算、数据来源与坐标系/单位",
+        "不存在钢束和空结果的返回行为"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/tendon.py",
+        "line": 339
+      }
+    },
+    {
+      "name": "renumber_nodes",
+      "baseline_tier": "B",
+      "baseline_score": 3.4,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 5,
+        "usage_guidelines": 2,
+        "parameter_semantics": 3,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 3,
+        "contextual_completeness": 3
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 221,
+        "symbol": "renumber_nodes"
+      },
+      "description_changed_in_published_0_5_0": false,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P0",
+      "review_focus": [
+        "单节点改号与批量/全模型改号的选择条件",
+        "省略参数的全模型作用范围及编号映射",
+        "编号冲突、引用关系及结果失效行为的证据"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/modifications.py",
+        "line": 218
+      }
+    },
+    {
+      "name": "set_gravity",
+      "baseline_tier": "B",
+      "baseline_score": 3.4,
+      "baseline_dimension_scores": {
+        "purpose_clarity": 4,
+        "usage_guidelines": 2,
+        "parameter_semantics": 4,
+        "conciseness_structure": 4,
+        "behavioral_transparency": 3,
+        "contextual_completeness": 4
+      },
+      "weak_dimensions_at_most_2": [
+        "usage_guidelines"
+      ],
+      "source": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1463,
+        "symbol": "set_gravity"
+      },
+      "description_changed_in_published_0_5_0": false,
+      "audit_state": "后端事实暂未证实（本地说明已处理）",
+      "priority": "P0",
+      "review_focus": [
+        "重力设置、自重阶段与手工施加自重的关系",
+        "全局作用范围、m/s² 单位与计算触发条件",
+        "确认何时需要重新分析"
+      ],
+      "source_in_0_5_0": {
+        "path": "src/qiao_mcp/tools/__init__.py",
+        "line": 1386
+      }
+    }
+  ],
+  "audit_file": "docs/glama-improvement-audit.json"
+}
