@@ -81,8 +81,13 @@ _SERVER_INSTRUCTIONS = (
     "\n## Choosing Similar Tools\n"
     "Section properties: calc_section_property evaluates supplied geometry; get_model_data(kind=section_property, sec_id=...) reads a stored section; calculate_section_property rewrites properties for all existing sections.\n"
     "Group members: prefer add_to_structure_group for nodes/elements; add_elements_to_group is its element-only convenience tool. remove_from_structure_group removes memberships; remove_structure_group removes the group.\n"
-    "Node edits: update_node sets absolute coordinates and can also change the ID; update_node_id changes only one ID; move_nodes applies relative offsets; renumber_nodes handles bulk numbering.\n"
+    "Node edits: update_node sets absolute values and reads current coordinates when any component is omitted; update_node_id changes only one ID without that read; move_nodes adds relative offsets on each call. renumber_nodes requires both equal-length lists for a local mapping; either None renumbers the entire model.\n"
     "Stage views: switch_display_stage selects the modeling view by stage name; change_construct_stage selects the results view by integer stage index. Neither starts analysis.\n"
+    "Element edits: update_element reads one record to fill omitted properties present there; fields missing from older responses still use SDK defaults. Its node_i/node_j must be supplied together. update_element_id/material/section/beta/nodes target one property without rebuilding the record; material/section/beta accept batches. Reconnect plates through mdb.update_element_node with all four nodes.\n"
+    "Tendons: get_tendon_info reads saved definitions; get_tendon_loss_results requires solved, activated construction-stage data; get_tendon_position_result reads discretized global coordinates with bridge-dependent pre-solve availability.\n"
+    "Temperature: add_system_temperature calls the selected-element temperature API (SDK says final temperature, no automatic ΔT conversion); add_gradient_temperature uses a linear difference; add_beam_section_temperature uses code parameters; add_custom_temperature uses [top/bottom reference, height, temperature] rows with orientation 1=local Z and 2=local Y.\n"
+    "Cable and tendon loads: add_initial_tension_load controls axial-force input; add_cable_length_load controls unstressed-length input; apply_prestress targets named tendons. These calls use native values; verify units in the relevant bridge definition, without inferring them from similarly named APIs.\n"
+    "Plate loads: add_plate_element_load acts directly on selected plates; add_distribute_plane_load places a previously defined plane-load pattern. Omitting plate_ids from the latter uses all plates; it does not create the pattern.\n"
 )
 
 # ── Initialize MCP Server ─────────────────────────────────────────────

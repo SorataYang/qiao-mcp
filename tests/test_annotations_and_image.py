@@ -38,7 +38,11 @@ def test_readonly_annotation():
 
 
 def test_destructive_annotation():
-    for name in ("remove_nodes", "initialize_model", "open_model_file", "merge_nodes"):
+    for name in (
+        "remove_nodes", "initialize_model", "open_model_file", "merge_nodes",
+        "set_gravity", "create_material", "create_polygon_section",
+        "update_element", "renumber_nodes", "calculate_section_property",
+    ):
         a = _annotations_for(name)
         assert a.destructiveHint is True, f"{name} 应标记为破坏性"
         assert a.readOnlyHint is False

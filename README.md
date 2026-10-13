@@ -11,7 +11,7 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-### 🔧 Tools (153 tools in 0.5.0, grouped)
+### 🔧 Tools (153 tools, grouped)
 
 Tools are organized by workflow area. Highlights per group:
 
@@ -52,6 +52,22 @@ omitting an end keeps all six DOFs connected. Load combination components use
 Support overrides preserve omitted coordinate/additional settings. Supplying
 `extra_parameters` enables them unless `extra_enabled=False` explicitly clears
 them; this behavior also applies to older SDKs that support these options.
+
+### 0.5.1: tool guidance and compatibility
+
+Version 0.5.1 keeps all 153 tools and existing calls. Complete Args text is
+published in parameter schemas without repeating it in tool descriptions.
+`add_custom_temperature` accepts native `[reference, height, temperature]` rows
+(reference 1=top, 2=bottom; orientation 1=local Z, 2=local Y). Legacy two-value rows
+remain unchanged; no reference or unit conversion is inferred.
+
+Choose absolute node edits with `update_node`, offsets with `move_nodes`, and
+numbering with `update_node_id`/`renumber_nodes`. Both lists are required for a
+local renumber mapping; either None selects the whole model. For sections,
+`calc_section_property` evaluates supplied geometry, `get_model_data` reads stored
+properties, and `calculate_section_property` rewrites all existing sections.
+Tendon definitions, computed losses and coordinates have separate query tools.
+Automatic self-weight is controlled by stages, not by creating a case named 自重.
 
 ### 0.5.0: queries, transversal analysis, check snapshots and international loads
 
@@ -393,6 +409,7 @@ where it belongs: in the dependency constraint.
 
 | Qiao-MCP           | qtmodel       | QiaoTong software                          |
 |--------------------|---------------|--------------------------------------------|
+| 0.5.1              | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
 | 0.5.0              | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
 | 0.3.2 – 0.3.3     | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
 | 0.3.0 – 0.3.1      | 2.6.3 – 2.6.x | 2.6.3 (exact match enforced by qtmodel)    |

@@ -216,9 +216,16 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         over re-reading the model when you only need a visual check.
         (截图前隔离局部时用；只需目视检查时用它，而非重新读模型。)
 
+        The SDK treats an omitted node selection as unrestricted; leaving
+        both selections empty restores all structure. Returns a confirmation,
+        not the list of visible objects. Use reset_display for the explicit
+        full-view action. (两类选择均为空会恢复全显，返回确认而非可见对象清单。)
+
         Args:
-            node_ids: Node IDs to activate (要激活的节点号)
-            element_ids: Element IDs to activate (要激活的单元号)
+            node_ids: Node IDs to display; None leaves nodes unrestricted
+                      (要显示的节点号，None 不限定节点)
+            element_ids: Element IDs to display; both selections empty restore
+                         all structure (要显示的单元号，两类选择均为空则全显)
         """
         try:
             kwargs: dict[str, Any] = {}
@@ -262,6 +269,10 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         brings every node/element back into view. Does not change model
         data or results.
         (纯显示操作：撤销 activate_structure 等视图过滤、恢复显示所有节点/单元；不改模型或结果。)
+
+        Use set_view_angle for camera direction, set_render for rendering, or
+        switch_display_stage/change_construct_stage for a particular stage.
+        Returns a confirmation (视角、渲染和阶段选择分别使用对应工具，本调用返回确认).
         """
         try:
             provider.reset_display()
