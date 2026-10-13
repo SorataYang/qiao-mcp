@@ -52,7 +52,8 @@ def test_query_failure_does_not_retry_the_legacy_namespace(fake_provider):
 
     with pytest.raises(RuntimeError, match="query rejected"):
         fake_provider.get_material_data()
-    assert fake_provider.get_model_overview("summary") is None
+    with pytest.raises(RuntimeError, match="query rejected"):
+        fake_provider.get_model_overview("summary")
     legacy.assert_not_called()
 
 
@@ -67,6 +68,16 @@ def test_optional_queries_keep_legacy_odb_support(fake_provider):
 
 
 def test_group_validation_and_boundary_queries_use_mdb(fake_provider):
+    for method in (
+        "get_general_support_data", "get_elastic_link_data", "get_elastic_support_data",
+        "get_master_slave_link_data", "get_beam_constraint_data", "get_node_data", "get_element_data",
+        "get_material_data", "get_stage_names", "get_load_case_names", "get_structure_group_names",
+        "get_boundary_group_names", "get_section_names", "get_group_elements",
+    ):
+        def empty_result(*args, _method=method, **kwargs):
+            fake_provider._mdb.calls.append((_method, args, kwargs))
+            return []
+        setattr(fake_provider._mdb, method, empty_result)
     fake_provider.get_structure_group_elements("主梁")
     fake_provider.get_boundary_data()
     fake_provider.validate_model()

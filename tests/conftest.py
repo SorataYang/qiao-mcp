@@ -71,7 +71,7 @@ def fake_provider():
 
 @pytest.fixture
 def qtmodel_wire(fake_provider, monkeypatch):
-    """Run tools against real MDB constructors without connecting to QiaoTong."""
+    """Run real SDK constructors and MDB/ODB fallbacks without a connection."""
     import json
 
     import qtmodel
@@ -85,6 +85,8 @@ def qtmodel_wire(fake_provider, monkeypatch):
 
     monkeypatch.setattr(QtServer, "send_command", staticmethod(record))
     fake_provider._mdb = qtmodel.mdb
+    fake_provider._odb = qtmodel.odb
+    fake_provider._cdb = qtmodel.cdb
     return fake_provider, requests
 
 

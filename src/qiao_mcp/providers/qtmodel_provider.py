@@ -1004,41 +1004,46 @@ class QtModelProvider(BridgeProvider):
         return result
 
     def _safe_get(self, fn_name: str, *args, **kwargs) -> Any:
-        """Call an optional model query, returning None on error."""
-        fn = self._model_query_method(fn_name)
-        if fn is None:
-            # Fallback: if this python version of qtmodel wrapper is missing the method, 
-            # attempt to send it directly as a REST command header to the running QT Server.
-            try:
-                from qtmodel.core.qt_server import QtServer
-                header = fn_name.replace("_", "-").upper()
-                raw_result = QtServer.send_dict(header=header)
-                return self._parse(raw_result)
-            except Exception:
-                return None
-                
+        """Best-effort geometry read; None means verification was unavailable.
+
+        Only coordinate matching uses this. Ordinary queries must propagate
+        errors, rather than presenting failed reads as an empty model.
+        """
         try:
-            return self._parse(fn(*args, **kwargs))
+            return self._query_model(fn_name, *args, **kwargs)
         except Exception:
             return None
+
+    def _first_model_query(self, *methods: str) -> Any:
+        """Use a legacy alias only when the preferred SDK method is absent."""
+        for method in methods:
+            if callable(self._model_query_method(method)):
+                return self._query_model(method)
+        raise AttributeError(f"qtmodel has none of these model queries: {', '.join(methods)}")
+
+    @staticmethod
+    def _query_list(result: Any, method: str) -> list:
+        if not isinstance(result, list):
+            raise RuntimeError(f"{method} returned no valid list (查询未返回有效列表，不能视为空模型)")
+        return result
 
     @staticmethod
     def _count(result) -> int:
         if isinstance(result, (list, dict)):
             return len(result)
-        return 0
+        raise RuntimeError("Cannot count an unavailable query result (无法对失败的查询计数)")
 
     def get_model_summary(self) -> dict[str, Any]:
         self._require_available()
         return {
-            "node_count":            self._count(self._safe_get("get_node_data")),
-            "element_count":         self._count(self._safe_get("get_element_data")),
-            "material_count":        self._count(self._safe_get("get_material_data")),
+            "node_count":            self._count(self.get_node_data()),
+            "element_count":         self._count(self.get_element_data()),
+            "material_count":        self._count(self.get_material_data()),
             "section_count":         self._count(self.get_section_names()),
             "stage_count":           self._count(self.get_stage_names()),
             "load_case_count":       self._count(self.get_load_case_names()),
-            "structure_group_count": self._count(self._safe_get("get_structure_group_names")),
-            "boundary_group_count":  self._count(self._safe_get("get_boundary_group_names")),
+            "structure_group_count": self._count(self.get_structure_group_names()),
+            "boundary_group_count":  self._count(self._query_model("get_boundary_group_names")),
         }
 
     # qtmodel 2.8 新增的轻量概览接口（现位于 mdb_model_overview / mdb_model_structure），
@@ -1053,18 +1058,17 @@ class QtModelProvider(BridgeProvider):
     }
 
     def get_model_overview(self, kind: str) -> Any:
-        """Return one of qtmodel 2.8's lightweight overview payloads, or None.
-
-        2.6.3 没有这些方法：_safe_get 会退回按 header 直发，旧桥通不认识该命令
-        时抛错被吞掉，最终返回 None——由工具层报"无数据"，不阻断其它查询。
-        """
+        """Read a native overview; missing/failed queries are errors, not empty data."""
         self._require_available()
         method = self._OVERVIEW_METHODS.get(kind)
         if method is None:
             raise ValueError(
                 f"unknown overview kind: {kind}. Use: {', '.join(self._OVERVIEW_METHODS)}"
             )
-        return self._safe_get(method)
+        result = self._query_model(method)
+        if not isinstance(result, (dict, list)):
+            raise RuntimeError(f"{method} returned no valid overview; check SDK/bridge support (概览查询无有效返回)")
+        return result
 
     @staticmethod
     def _to_dicts(result: Any) -> list[dict]:
@@ -1083,6 +1087,8 @@ class QtModelProvider(BridgeProvider):
         if ids is not None:
             ids = self._validate_ids(ids, allow_empty=True)
         result = self._query_model("get_node_data", ids=ids)
+        if not isinstance(result, (dict, list)):
+            raise RuntimeError("get_node_data returned no valid node records (节点查询无有效返回)")
         return self._to_dicts(result)
 
     def get_element_data(self, ids: Any = None) -> list[dict]:
@@ -1090,44 +1096,52 @@ class QtModelProvider(BridgeProvider):
         if ids is not None:
             ids = self._validate_ids(ids, allow_empty=True)
         result = self._query_model("get_element_data", ids=ids)
+        if not isinstance(result, (dict, list)):
+            raise RuntimeError("get_element_data returned no valid element records (单元查询无有效返回)")
         return self._to_dicts(result)
 
     def get_material_data(self) -> list[dict]:
         self._require_available()
         result = self._query_model("get_material_data")
-        return result if isinstance(result, list) else []
+        return self._query_list(result, "get_material_data")
 
     def get_section_data(self, sec_id: int, position: int = 0) -> dict:
         self._require_available()
         result = self._query_model("get_section_data", sec_id, position=position)
-        return result if isinstance(result, dict) else {}
+        if not isinstance(result, dict):
+            raise RuntimeError("get_section_data returned no valid section (截面查询无有效返回)")
+        return result
 
     def get_section_names(self) -> dict[str, str] | list:
         """Return section info (dict of id->name, or list of IDs/dicts depending on API version)."""
         self._require_available()
         
-        # New API returns JSON dict {"3": "上横梁", "4": "下横梁", ...}
-        for method in ("get_section_names", "get_section_ids", "get_all_section_data"):
-            result = self._safe_get(method)
-            # dict output: {"3": "SectionName"}
-            if isinstance(result, dict):
-                return {str(k): str(v) for k, v in result.items()}
-            # list output: [{"id": 3, "name": "SectionName"}] or [3, 4]
-            if isinstance(result, list) and result:
-                if isinstance(result[0], dict):
-                    return {str(d.get("id", i + 1)): d.get("name", f"Section {i + 1}") for i, d in enumerate(result)}
-                return result
-        return {}
+        result = self._first_model_query("get_section_names", "get_section_ids", "get_all_section_data")
+        if isinstance(result, dict):
+            if any(not isinstance(value, str) for value in result.values()):
+                raise RuntimeError("Section names must be an ID-to-name mapping (截面名称映射无效)")
+            return {str(key): value for key, value in result.items()}
+        if isinstance(result, list):
+            # Preserve real IDs and native key names. Never invent IDs from a
+            # record's list position: workflows use these values for assignment.
+            for row in result:
+                if isinstance(row, dict):
+                    values = [row.get(key) for key in ("id", "index", "sec_id", "section_id")]
+                    if not any(type(value) is int and value > 0 for value in values) or not isinstance(row.get("name"), str):
+                        raise RuntimeError("Section record is missing its actual ID/name (截面记录缺少实际编号或名称)")
+                elif not ((type(row) is int and row > 0) or (isinstance(row, str) and row.isdecimal() and int(row) > 0)):
+                    raise RuntimeError("Section list is missing actual IDs (截面列表缺少实际编号)")
+            return result
+        raise RuntimeError("Cannot read section names (无法读取截面名称)")
 
     def get_boundary_data(self) -> dict[str, list[dict]]:
         self._require_available()
-        return {
-            "general_supports": self._safe_get("get_general_support_data") or [],
-            "elastic_links":    self._safe_get("get_elastic_link_data") or [],
-            "elastic_supports": self._safe_get("get_elastic_support_data") or [],
-            "master_slave_links": self._safe_get("get_master_slave_link_data") or [],
-            "beam_constraints": self._safe_get("get_beam_constraint_data") or [],
+        methods = {
+            "general_supports": "get_general_support_data", "elastic_links": "get_elastic_link_data",
+            "elastic_supports": "get_elastic_support_data", "master_slave_links": "get_master_slave_link_data",
+            "beam_constraints": "get_beam_constraint_data",
         }
+        return {kind: self._query_list(self._query_model(method), method) for kind, method in methods.items()}
 
     def get_load_group_names(self) -> list[str]:
         """Read load groups before a workflow decides whether creation is needed."""
@@ -1140,26 +1154,19 @@ class QtModelProvider(BridgeProvider):
     def get_load_case_names(self) -> list[str]:
         """Return load case names."""
         self._require_available()
-        # Older version uses get_load_case_names, newer uses get_case_names
-        for method in ("get_load_case_names", "get_case_names"):
-            result = self._safe_get(method)
-            if isinstance(result, list):
-                return result
-        return []
+        result = self._first_model_query("get_load_case_names", "get_case_names")
+        return self._query_list(result, "get_load_case_names")
 
     def get_stage_names(self) -> list[str]:
         """Return construction stage names."""
         self._require_available()
-        for method in ("get_stage_names", "get_stage_name"):
-            result = self._safe_get(method)
-            if isinstance(result, list):
-                return result
-        return []
+        result = self._first_model_query("get_stage_names", "get_stage_name")
+        return self._query_list(result, "get_stage_names")
 
     def get_structure_group_names(self) -> list[str]:
         self._require_available()
-        result = self._safe_get("get_structure_group_names")
-        return result if isinstance(result, list) else []
+        result = self._query_model("get_structure_group_names")
+        return self._query_list(result, "get_structure_group_names")
 
     # ── Modeling Operations ────────────────────────────────────────────
 
@@ -2028,7 +2035,7 @@ class QtModelProvider(BridgeProvider):
 
     def get_group_nodes(self, *args, **kwargs):
         self._require_available()
-        return self._query_model("get_group_nodes", *args, **kwargs)
+        return self._query_list(self._query_model("get_group_nodes", *args, **kwargs), "get_group_nodes")
 
     def get_elements_by_point(self, *args, **kwargs):
         self._require_available()
@@ -2579,7 +2586,7 @@ class QtModelProvider(BridgeProvider):
     def get_structure_group_elements(self, name: str) -> list:
         self._require_available()
         # qtmodel 的参数名为 group_name
-        return self._query_model("get_group_elements", group_name=name) or []
+        return self._query_list(self._query_model("get_group_elements", group_name=name), "get_group_elements")
 
     def add_boundary_group(self, name: str) -> None:
         self._require_available()
