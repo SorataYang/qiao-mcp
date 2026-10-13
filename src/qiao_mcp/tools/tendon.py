@@ -12,7 +12,13 @@ from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
-from qiao_mcp.tools.schemas import FourNumbers, NonnegativeNumber, TendonNames, ThreeNumbers
+from qiao_mcp.tools.schemas import (
+    FourNumbers,
+    NonnegativeNumber,
+    SelectedIds,
+    TendonNames,
+    ThreeNumbers,
+)
 
 
 def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -269,7 +275,7 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
             raise ToolError(f"Error adding 3D tendon (添加三维钢束失败): {e}") from e
 
     @mcp.tool()
-    def assign_tendon_elements(ids: int | list[int] | str) -> str:
+    def assign_tendon_elements(ids: SelectedIds) -> str:
         """
         Declare which elements contain tendons, i.e. are prestressed-concrete
         members (标记预应力单元：声明哪些单元内有钢束穿过).

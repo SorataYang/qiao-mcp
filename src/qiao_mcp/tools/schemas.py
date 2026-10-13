@@ -103,6 +103,7 @@ QueryId = Annotated[int, Field(strict=True, gt=0)]
 QueryIds = QueryId | Annotated[list[QueryId], Field(min_length=1, max_length=500)]
 QueryName = Annotated[str, Field(min_length=1, pattern=r"\S")]
 QueryNames = Annotated[list[QueryName], Field(min_length=1, max_length=500)]
+SelectedIds = QueryId | Annotated[list[QueryId], Field(min_length=1)] | QueryName
 
 
 class ModelQueryPage(BaseModel):

@@ -9,6 +9,7 @@ the BridgeProvider interface.
 
 import ast
 import json
+import math
 import time
 from collections.abc import Mapping
 from typing import Any
@@ -898,8 +899,8 @@ class QtModelProvider(BridgeProvider):
 
 
     @staticmethod
-    def _validate_ids(ids, required: bool = False):
-        """Validate and normalize ids input for robust error handling."""
+    def _validate_ids(ids, required: bool = False, *, allow_empty: bool = False):
+        """Preserve explicit scope; never truncate IDs or turn blank writes into all."""
         if ids is None:
             if required:
                 raise ValueError("ids parameter is required but was empty or None.")
@@ -908,23 +909,35 @@ class QtModelProvider(BridgeProvider):
         if isinstance(ids, str):
             cleaned = ids.strip()
             if not cleaned:
-                if required:
-                    raise ValueError("ids string cannot be empty.")
-                return None
+                if allow_empty and not required:
+                    return None
+                raise ValueError("ids string cannot be empty; use explicit None only where all IDs are supported.")
+            from qtmodel.core.data_helper import QtDataHelper
+
+            parsed = QtDataHelper.parse_ids_to_array(cleaned)
+            if not parsed or any(type(value) is not int or value <= 0 for value in parsed):
+                raise ValueError("ids must select positive integers (编号必须为正整数)")
             return cleaned
             
         if isinstance(ids, (int, float)):
-            if ids <= 0:
+            if isinstance(ids, bool) or not math.isfinite(ids) or ids <= 0 or int(ids) != ids:
                 raise ValueError(f"Invalid ID: {ids}. IDs must be positive integers.")
             return int(ids)
             
         if isinstance(ids, (list, tuple)):
-            if not ids and required:
+            if not ids and (required or not allow_empty):
                 raise ValueError("ids list cannot be empty.")
             valid_ids = []
             for i in ids:
                 try:
-                    val = int(i)
+                    if isinstance(i, str):
+                        if not i.strip().isdecimal():
+                            raise ValueError(f"Invalid ID in list: {i}")
+                        val = int(i)
+                    elif type(i) in (int, float) and math.isfinite(i) and int(i) == i:
+                        val = int(i)
+                    else:
+                        raise ValueError(f"Invalid ID in list: {i}")
                     if val <= 0:
                         raise ValueError(f"Invalid ID in list: {i}. IDs must be positive.")
                     valid_ids.append(val)
@@ -1068,14 +1081,14 @@ class QtModelProvider(BridgeProvider):
     def get_node_data(self, ids: Any = None) -> list[dict]:
         self._require_available()
         if ids is not None:
-            ids = self._validate_ids(ids)
+            ids = self._validate_ids(ids, allow_empty=True)
         result = self._query_model("get_node_data", ids=ids)
         return self._to_dicts(result)
 
     def get_element_data(self, ids: Any = None) -> list[dict]:
         self._require_available()
         if ids is not None:
-            ids = self._validate_ids(ids)
+            ids = self._validate_ids(ids, allow_empty=True)
         result = self._query_model("get_element_data", ids=ids)
         return self._to_dicts(result)
 
@@ -1400,8 +1413,7 @@ class QtModelProvider(BridgeProvider):
 
     def remove_section(self, ids: Any) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
+        ids = self._validate_ids(ids, required=True)
         self._mdb.remove_section(ids=ids)
         self.update_model()
 
@@ -1462,8 +1474,7 @@ class QtModelProvider(BridgeProvider):
 
     def move_nodes(self, ids: Any, offset_x: float = 0, offset_y: float = 0, offset_z: float = 0) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
+        ids = self._validate_ids(ids, required=True)
         self._mdb.move_nodes(ids=ids, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
 
     def update_element(self, old_id: int, **kwargs) -> None:
@@ -1505,26 +1516,22 @@ class QtModelProvider(BridgeProvider):
 
     def revert_local_orientation(self, ids: Any) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
+        ids = self._validate_ids(ids, required=True)
         self._mdb.revert_local_orientation(ids=ids)
 
     def update_element_material(self, ids: Any, mat_id: int) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
+        ids = self._validate_ids(ids, required=True)
         self._mdb.update_element_material(ids=ids, mat_id=mat_id)
 
     def update_frame_section(self, ids: Any, sec_id: int) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
+        ids = self._validate_ids(ids, required=True)
         self._mdb.update_frame_section(ids=ids, sec_id=sec_id)
 
     def update_element_beta(self, ids: Any, beta: float) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
+        ids = self._validate_ids(ids, required=True)
         self._mdb.update_element_beta(ids=ids, beta=beta)
 
     def update_element_node(self, element_id: int, node_ids: list) -> None:
@@ -1533,6 +1540,11 @@ class QtModelProvider(BridgeProvider):
 
     def remove_structure_from_group(self, name: str, **kwargs) -> None:
         self._require_available()
+        if all(kwargs.get(key) is None for key in ("node_ids", "element_ids")):
+            raise ValueError("Explicit node_ids or element_ids are required (必须明确指定要移出的成员)")
+        for key in ("node_ids", "element_ids"):
+            if kwargs.get(key) is not None:
+                kwargs[key] = self._validate_ids(kwargs[key], required=True)
         self._mdb.remove_structure_from_group(name=name, **kwargs)
         self.update_model()
 
@@ -1549,6 +1561,15 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         if ids is not None:
             ids = self._validate_ids(ids)
+        elif remove_free:
+            # The SDK's ids=None branch omits remove_free entirely. Resolve the
+            # actual selection so the requested free-node cleanup is transmitted.
+            records = self.get_element_data()
+            ids = [self._field(row, "index") if self._field(row, "index") is not None
+                   else self._field(row, "element_id") for row in records]
+            if not ids:
+                return
+            ids = self._validate_ids(ids, required=True)
         if ids is not None:
             self._mdb.remove_elements(ids=ids, remove_free=remove_free)
         else:
@@ -1730,8 +1751,7 @@ class QtModelProvider(BridgeProvider):
 
     def add_tendon_elements(self, ids: Any) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
+        ids = self._validate_ids(ids, required=True)
         self._mdb.add_tendon_elements(ids=ids)
         self.update_model()
 
@@ -1930,25 +1950,25 @@ class QtModelProvider(BridgeProvider):
     def get_deformation(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
         if ids is not None:
-            ids = self._validate_ids(ids)
+            ids = self._validate_ids(ids, allow_empty=True)
         return self._odb.get_deformation(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_element_force(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
         if ids is not None:
-            ids = self._validate_ids(ids)
+            ids = self._validate_ids(ids, allow_empty=True)
         return self._odb.get_element_force(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_element_stress(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
         if ids is not None:
-            ids = self._validate_ids(ids)
+            ids = self._validate_ids(ids, allow_empty=True)
         return self._odb.get_element_stress(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_reaction(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
         if ids is not None:
-            ids = self._validate_ids(ids)
+            ids = self._validate_ids(ids, allow_empty=True)
         return self._odb.get_reaction(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_vibration_modal_results(self, mode: int = 1) -> list[dict]:
@@ -2504,6 +2524,12 @@ class QtModelProvider(BridgeProvider):
     ) -> None:
         """Add nodes and/or elements to a structure group. 向结构组添加节点/单元"""
         self._require_available()
+        if node_ids is None and element_ids is None:
+            raise ValueError("Explicit node_ids or element_ids are required (必须明确指定要加入的成员)")
+        if node_ids is not None:
+            node_ids = self._validate_ids(node_ids, required=True)
+        if element_ids is not None:
+            element_ids = self._validate_ids(element_ids, required=True)
         self._mdb.add_structure_to_group(
             name=name, node_ids=node_ids, element_ids=element_ids
         )
@@ -2580,7 +2606,7 @@ class QtModelProvider(BridgeProvider):
     def get_live_load_results(self, case_name: str, result_type: str, ids: Any) -> Any:
         self._require_available()
         if ids is not None:
-            ids = self._validate_ids(ids)
+            ids = self._validate_ids(ids, allow_empty=True)
         # Live load results are embedded in standard result queries (deformation/force/stress)
         # Query using the live load case name directly
         if result_type == "force":
