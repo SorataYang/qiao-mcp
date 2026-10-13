@@ -1444,19 +1444,29 @@ class QtModelProvider(BridgeProvider):
             return entity.get(name)
         return getattr(entity, name, None)
 
+    def _one_entity(self, records: list, index: int, kind: str) -> Any:
+        keys = ("node_id", "id", "index") if kind == "Node" else ("index", "element_id", "ele_id", "id")
+        matches = [record for record in records if any(
+            self._field(record, key) == index and not isinstance(self._field(record, key), bool)
+            for key in keys
+        )]
+        if len(matches) != 1:
+            raise ValueError(f"{kind} {index} not found uniquely; cannot fill unchanged fields (无法唯一回读目标，未修改)")
+        return matches[0]
+
     def update_node(self, node_id: int, **kwargs) -> None:
         self._require_available()
         # qtmodel 的 update_node 会把未传入的坐标按默认值 1 整体下发，
         # 部分更新会静默改写其余坐标；此处先读回当前坐标补齐缺省分量。
         if not {"x", "y", "z"} <= kwargs.keys():
             nodes = self.get_node_data(ids=node_id)
-            if not nodes:
-                raise ValueError(
-                    f"Node {node_id} not found; cannot fill unchanged coordinates "
-                    f"(节点 {node_id} 不存在，无法回填未指定坐标)"
-                )
+            current = self._one_entity(nodes, node_id, "Node")
             for axis in ("x", "y", "z"):
-                kwargs.setdefault(axis, self._field(nodes[0], axis))
+                if axis not in kwargs:
+                    value = self._field(current, axis)
+                    if type(value) not in (int, float) or not math.isfinite(value):
+                        raise ValueError(f"Node {node_id} is missing coordinate {axis}; no update was sent")
+                    kwargs[axis] = value
         self._mdb.update_node(node_id=node_id, **kwargs)
 
     def update_node_id(self, node_id: int, new_id: int) -> None:
@@ -1489,26 +1499,38 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         # 同 update_node：qtmodel 的 update_element 整体下发全部字段，
         # 未指定字段会被默认值覆盖（如 ele_type→1、beta_angle→0、plate_type→0 薄板），
-        # 先读回当前单元数据补齐。plate_type 由较新的查询模型提供（wheel 侧
-        # core/model_db.py 的 Element.to_dict 含该字段）；旧版查询不返回时
-        # _field 得到 None，下面的判空会跳过它，行为与不回填时一致。
+        # 先读回唯一目标，并确认适用字段完整；不能把缺失字段当作默认值覆盖。
         fields = ("ele_type", "node_ids", "beta_angle", "mat_id", "sec_id",
                   "initial_type", "initial_value", "plate_type")
         missing = [f for f in fields if f not in kwargs]
         if missing:
             elements = self.get_element_data(ids=old_id)
-            if not elements:
-                raise ValueError(
-                    f"Element {old_id} not found; cannot fill unchanged fields "
-                    f"(单元 {old_id} 不存在，无法回填未指定字段)"
-                )
-            current = elements[0]
+            current = self._one_entity(elements, old_id, "Element")
             for f in missing:
                 value = self._field(current, f)
                 if f == "ele_type" and isinstance(value, str):
                     value = self._ELE_TYPE_TO_INT.get(value.upper(), value)
                 if value is not None:
                     kwargs.setdefault(f, value)
+        needed = {"ele_type", "node_ids", "beta_angle", "mat_id", "sec_id"}
+        element_type = kwargs.get("ele_type")
+        if element_type == 3:
+            needed.update({"initial_type", "initial_value"})
+        if element_type == 4:
+            needed.add("plate_type")
+        if needed - kwargs.keys() or any(kwargs.get(key) is None for key in needed):
+            raise ValueError(
+                "Element readback is incomplete; use a targeted update_element_* tool "
+                "(单元回读缺少适用字段；请使用单字段修改工具，未提交修改)"
+            )
+        nodes = kwargs["node_ids"]
+        # Frame connectivity has two ends. Preserve a plate's complete readback
+        # without assuming every backend represents it with exactly four IDs.
+        valid_nodes = isinstance(nodes, (list, tuple)) and (
+            len(nodes) >= 3 if element_type == 4 else len(nodes) == 2
+        )
+        if element_type not in {1, 2, 3, 4} or not valid_nodes:
+            raise ValueError("Element type/connectivity mismatch (单元类型与节点数量不一致，未提交修改)")
         self._mdb.update_element(old_id=old_id, **kwargs)
 
     def update_element_id(self, old_id: int, new_id: int) -> None:

@@ -91,6 +91,48 @@ def test_remove_all_with_free_nodes_uses_actual_ids(qtmodel_wire):
     assert requests[0][1]["remove_free"] is True
 
 
+def test_partial_node_update_selects_exact_target(fake_provider):
+    fake_provider.get_node_data = lambda **kwargs: [
+        {"node_id": 99, "x": 90, "y": 90, "z": 90},
+        {"node_id": 7, "x": 1, "y": 2, "z": 3},
+    ]
+    fake_provider.update_node(7, z=4)
+    assert fake_provider._mdb.last("update_node")[2] == {"node_id": 7, "x": 1, "y": 2, "z": 4}
+
+
+def test_partial_node_update_requires_retained_coordinates(fake_provider):
+    fake_provider.get_node_data = lambda **kwargs: [{"node_id": 7, "x": 1, "z": 3}]
+    with pytest.raises(ValueError, match="missing coordinate"):
+        fake_provider.update_node(7, z=4)
+    assert fake_provider._mdb.calls == []
+
+
+def test_partial_plate_update_never_guesses_missing_plate_type(fake_provider):
+    fake_provider.get_element_data = lambda **kwargs: [{
+        "index": 7, "ele_type": "PLATE", "node_ids": [1, 2, 3, 4],
+        "mat_id": 1, "sec_id": 2, "beta_angle": 0,
+    }]
+    with pytest.raises(ValueError, match="readback is incomplete"):
+        fake_provider.update_element(7, mat_id=3)
+    assert fake_provider._mdb.calls == []
+
+
+def test_partial_plate_update_preserves_backend_connectivity(fake_provider):
+    fake_provider.get_element_data = lambda **kwargs: [{
+        "index": 7, "ele_type": "PLATE", "node_ids": [1, 2, 3],
+        "mat_id": 1, "sec_id": 2, "beta_angle": 0, "plate_type": 1,
+    }]
+    fake_provider.update_element(7, mat_id=3)
+    assert fake_provider._mdb.last("update_element")[2]["node_ids"] == [1, 2, 3]
+
+
+def test_one_endpoint_is_rejected_instead_of_ignored(fake_provider):
+    functions = tool_fns(register_modification_tools, fake_provider)
+    with pytest.raises(ToolError, match="supplied together"):
+        functions["update_element"](old_id=7, node_i=8)
+    assert fake_provider._mdb.calls == []
+
+
 def test_element_type_query_passes_one_id(qtmodel_wire):
     provider, requests = qtmodel_wire
     tool_fns(register_query_tools, provider)["find_entities"](by="element_type", ids=[7])

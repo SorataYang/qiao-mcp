@@ -12,7 +12,7 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import StrictBool
 
 from qiao_mcp.providers import BridgeProvider
-from qiao_mcp.tools.envelope import ToolError
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 from qiao_mcp.tools.schemas import FiniteNumber, NonnegativeNumber, QueryId, SelectedIds
 
 
@@ -297,31 +297,31 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
     @mcp.tool()
     def update_element(
-        old_id: int,
-        new_id: int = -1,
+        old_id: QueryId,
+        new_id: QueryId | Literal[-1] = -1,
         ele_type: Literal[1, 2, 3, 4] | None = None,
-        node_i: int | None = None,
-        node_j: int | None = None,
-        mat_id: int | None = None,
-        sec_id: int | None = None,
-        beta_angle: float | None = None,
+        node_i: QueryId | None = None,
+        node_j: QueryId | None = None,
+        mat_id: QueryId | None = None,
+        sec_id: QueryId | None = None,
+        beta_angle: FiniteNumber | None = None,
     ) -> str:
         """
         Modify several properties of ONE element in a single call (修改单元属性).
 
         Writes to the model and refreshes it. The underlying qtmodel API
         overwrites the record, so this tool reads the current element once and
-        fills omitted fields present in that record. A missing element fails.
-        Fields absent from an older backend response still take SDK defaults
-        (for example plate_type); inspect the source record/build before relying
-        on preservation of those fields.
+        fills omitted fields present in that record. A missing/ambiguous element
+        or missing applicable field fails before writing. SDK query objects may
+        themselves fill absent backend fields with defaults; use targeted update
+        tools when the original record cannot be verified.
 
         One caveat: it handles ONE element — old_id is a single ID, not a range.
         Both node_i and node_j are needed to replace connectivity; supplying
-        only one leaves it unchanged. This two-node input cannot reconnect a
+        only one is rejected. This two-node input cannot reconnect a
         plate; use the gateway's mdb.update_element_node with all four nodes.
         Other plate properties can be updated while retaining its connectivity.
-        (改接须同时给 node_i/node_j，单给一个不改连接；板的四节点改接经网关完成。)
+        (改接须同时给 node_i/node_j，单给一个会报错；板的四节点改接经网关完成。)
 
         When to use vs. siblings: several properties of one element at once
         here; ONE property across MANY elements → update_element_material /
@@ -330,8 +330,8 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         renumbering only → update_element_id (no read-back, cheaper).
 
         (写模型并刷新。底层整体覆盖，本工具多一次查询补齐回读记录中已有的字段，
-        单元不存在时失败。旧版响应缺失的字段如 plate_type 仍可能取 SDK 默认值，
-        不能保证这类缺失字段无损保留。
+        单元不唯一或缺少适用字段时失败。SDK 也可能为后端缺失字段补默认值，
+        原始记录不可核实时应使用单字段修改工具。
         一点注意：一次只处理一个单元(old_id 是单个编号、不支持区间)。
         选型：一次改一个单元的多个属性用
         本工具；对大批单元改同一个属性用 update_element_material /
@@ -355,6 +355,8 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             update_element(5, mat_id=2, sec_id=3)  # Change element 5's material and section
         """
         try:
+            if (node_i is None) != (node_j is None):
+                raise ToolInputError("node_i and node_j must be supplied together (改接必须同时给出 I/J 节点)")
             kwargs: dict[str, Any] = {"old_id": old_id}
             if new_id != -1:
                 kwargs["new_id"] = new_id

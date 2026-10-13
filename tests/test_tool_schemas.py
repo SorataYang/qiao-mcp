@@ -131,6 +131,7 @@ def test_schema_exposes_ranges_enums_lengths_and_workflow_fields(catalog):
     ("add_custom_temperature", {"element_id": 1, "case_name": "T", "temperature_data": [[1, 0.2, 10, 5]]}),
     ("remove_boundary", {"remove_id": 1, "kind": "unknown"}),
     ("update_element", {"old_id": 1, "ele_type": 5}),
+    ("update_element", {"old_id": True, "mat_id": 2}),
     ("update_node", {"node_id": 1.5, "x": 3}),
     ("remove_nodes", {"ids": True}),
     ("remove_nodes", {"confirm_delete_all": "true"}),
