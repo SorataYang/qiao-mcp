@@ -50,6 +50,7 @@ def test_solve_runs_in_worker_thread_not_event_loop(show_view):
         solve_thread["name"] = threading.current_thread().name
         solve_thread["show_view"] = kwargs.get("show_view", False)
         time.sleep(0.05)
+        return {"state": "succeeded", "is_running": False}
 
     provider = _provider_with_solve(solve)
     fn = _run_analysis_fn(provider)
@@ -67,6 +68,7 @@ def test_read_timeout_forwarded_to_solve():
     def solve(**kwargs):
         # 2.5.0 起求解总时限经 max_wait 传递（旧版为 read_timeout）
         seen["timeout"] = kwargs.get("max_wait")
+        return {"state": "succeeded", "is_running": False}
 
     provider = _provider_with_solve(solve)
     fn = _run_analysis_fn(provider)
@@ -78,6 +80,7 @@ def test_progress_reported_for_long_solve():
     # 求解 >5s 才会触发首次心跳；用一个略超 5s 的假求解验证
     def solve(**kwargs):
         time.sleep(5.2)
+        return {"state": "succeeded", "is_running": False}
 
     provider = _provider_with_solve(solve)
     fn = _run_analysis_fn(provider)

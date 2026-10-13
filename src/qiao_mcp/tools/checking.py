@@ -146,12 +146,17 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             status = provider.solve_concrete_check(name=name, wait=True, max_wait=max_wait_seconds)
             state = str(status.get("state", "")).lower() if isinstance(status, dict) else ""
-            if state and state not in {"succeeded", "success", "completed", "complete"}:
-                message = status.get("message") or ""
+            if (
+                state not in {"succeeded", "success", "completed", "complete"}
+                or status.get("ok") is False
+                or str(status.get("is_running", "")).lower() == "true"
+            ):
+                message = (status.get("message") or "") if isinstance(status, dict) else ""
                 raise ToolError(
-                    f"Concrete check did not complete: state={state}"
+                    f"Concrete check did not complete: state={state or 'unknown'}"
                     + (f", message={message}" if message else "")
-                    + " (混凝土检算未成功完成，已有结果不能作为本次成功的证据)"
+                    + ". Inspect the check status before retrying "
+                    "(混凝土检算未确认成功；请先检查状态，勿盲目重复检算)"
                 )
             return (
                 f"Concrete check '{name}' completed. "

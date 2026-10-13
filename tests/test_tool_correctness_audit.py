@@ -1,5 +1,6 @@
 """Regression cases found by tracing tools to real qtmodel request constructors."""
 
+import asyncio
 from unittest.mock import Mock
 
 import pytest
@@ -98,6 +99,50 @@ def test_custom_temperature_rejects_missing_reference_before_any_write(fake_prov
             element_id=1, case_name="TEMP", temperature_data=[(0.25, 12.5)],
         )
     assert fake_provider._mdb.calls == []
+
+
+@pytest.mark.parametrize("enabled, solver", [(False, 1), (True, 0)])
+def test_analysis_configuration_applies_false_and_selected_solver(qtmodel_wire, enabled, solver):
+    provider, requests = qtmodel_wire
+    functions = tool_fns(register_modeling_tools, provider)
+    functions["configure_analysis"](do_vibration=enabled, vibration_modes=7, solver_type=solver)
+    payloads = dict(requests)
+    assert payloads["UPDATE-SELF-VIBRATION-SETTING"]["do_analysis"] is enabled
+    assert payloads["UPDATE-SELF-VIBRATION-SETTING"]["mode_num"] == 7
+    assert payloads["UPDATE-GLOBAL-SETTING"]["solver_type"] == solver
+
+
+@pytest.mark.parametrize("status", [
+    {"is_running": False},
+    {"state": "", "is_running": False},
+    {"state": "succeeded", "ok": False, "is_running": False},
+    {"state": "succeeded", "ok": True, "is_running": True},
+])
+def test_real_sdk_waiter_return_is_not_itself_proof_of_success(fake_provider, monkeypatch, status):
+    import qtmodel
+    from qtmodel.core.qt_server import QtServer
+
+    sent = []
+
+    def reply(header="", payload=None, **kwargs):
+        sent.append(header)
+        return status if header == "GET-PROJECT-SOLVE-STATUS" else None
+
+    monkeypatch.setattr(QtServer, "send_dict", reply)
+    fake_provider._mdb = qtmodel.mdb
+    functions = tool_fns(register_modeling_tools, fake_provider)
+    with pytest.raises(ToolError, match="not confirmed"):
+        asyncio.run(functions["run_analysis"](ctx=None))
+    assert sent.count("DO-SOLVE") == 1
+    assert "GET-PROJECT-SOLVE-STATUS" in sent
+
+
+@pytest.mark.parametrize("status", [None, {}, "", "success"])
+def test_missing_structured_solve_status_is_not_success(fake_provider, status):
+    fake_provider._mdb.do_solve = lambda **kwargs: status
+    functions = tool_fns(register_modeling_tools, fake_provider)
+    with pytest.raises(ToolError, match="state=unknown"):
+        asyncio.run(functions["run_analysis"](ctx=None))
 
 
 @pytest.mark.parametrize("kind, count, header", [

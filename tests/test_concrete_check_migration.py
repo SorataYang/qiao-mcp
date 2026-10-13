@@ -20,6 +20,11 @@ from qiao_mcp.tools.envelope import ToolError
 
 @pytest.fixture
 def tools(fake_provider):
+    def solved(**kwargs):
+        fake_provider._cdb.calls.append(("solve_concrete_check", (), kwargs))
+        return {"state": "succeeded", "is_running": False, "ok": True}
+
+    fake_provider._cdb.solve_concrete_check = solved
     return tool_fns(register_checking_tools, fake_provider)
 
 
