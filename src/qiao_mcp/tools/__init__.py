@@ -812,10 +812,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Create a cross-section (创建截面) — one tool for all parametric section types.
 
-        This writes a section with SDK numbering defaults; the SDK can overwrite
-        an existing section ID. Read sections before and after calling, then use
+        This writes a section with automatic numbering (index=-1).
+        Read sections before and after calling, then use
         the actual ID for elements. Initial property calculation belongs to the
-        bridge; the response only confirms the requested name (可覆盖已有截面号，
+        bridge; the response only confirms the requested name (请求自动分配截面号，
         创建前后回读；初始特性由桥通计算，返回名称确认).
 
         Args:
@@ -911,7 +911,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Supply points in perimeter order with no self-intersections; holes must lie
         inside the main outline. Missing closing points are appended automatically.
         Basic point count/area is checked; verify hole containment and intersection
-        topology before calling. Repeating may create or replace a definition under backend rules.
+        topology before calling. Requests automatic numbering (index=-1);
+        verify backend handling before reusing a section name.
         (按边界顺序输入截面平面坐标，孔洞应在外圈内部；自动补闭合点。)
 
         Args:
@@ -960,8 +961,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         initial property calculation to the bridge. Read the resulting section
         with get_model_data(kind="section_property", sec_id=...). Use
         calculate_section_property when all existing sections need recomputing.
-        The SDK supports overwrite of an existing section ID; this wrapper uses
-        SDK numbering defaults. Read back sections before and after creation.
+        The wrapper requests automatic numbering (index=-1).
+        Read back sections before and after creation.
         Returns the requested name in a confirmation, not computed properties.
 
         When to use vs. siblings: thin-walled centreline shapes here; a solid
@@ -971,7 +972,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
         (写模型。用"骨架"描述截面：每段是一条中心线加壁厚，适合薄壁钢箱、工字形等。
         按实际壁交点输入，本包装不连接或重排线段；初始特性计算交给桥通，创建后回读。
-        SDK 可覆盖已有截面，本工具沿用编号默认值；需全模型重算时调
+        本工具请求自动分配截面号；需全模型重算时调
         calculate_section_property。返回确认消息，不含特性值。选型：薄壁中心线
         形状用本工具；实体轮廓按多边形环给出用 create_polygon_section；已知特性值直接
         建用 create_section_from_properties；只想算某形状的特性而不建截面用
@@ -1013,8 +1014,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Use create_section/create_polygon_section/create_line_width_section when
         geometry should determine properties; calc_section_property only evaluates
         candidate geometry. Here supplied properties skip bridge calculation.
-        SDK numbering defaults can overwrite an existing section; read back the
-        actual ID. Returns a confirmation without assigning elements.
+        Requests automatic numbering with index=-1; read back the actual ID.
+        Returns a confirmation without assigning elements.
         (已有特性直接建截面，不自动由几何补算；回读编号后再赋给单元。)
 
         Args:

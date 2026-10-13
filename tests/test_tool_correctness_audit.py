@@ -5,6 +5,7 @@ from unittest.mock import Mock
 import pytest
 from conftest import tool_fns
 
+from qiao_mcp.tools import register_modeling_tools
 from qiao_mcp.tools.moving_load import register_moving_load_tools
 
 
@@ -67,5 +68,24 @@ def test_node_resolution_does_not_return_an_ambiguous_or_shortened_chain(fake_pr
     assert fake_provider.add_nodes_returning_ids(
         [[0, 0, 0], [1, 0, 0], [2, 0, 0]], is_merged=True,
     ) == []
+
+
+@pytest.mark.parametrize("tool, arguments", [
+    ("create_section", {"sec_type": "矩形", "sec_info": [2, 3]}),
+    ("create_polygon_section", {"loop_segments": {"main": [[0, 0], [2, 0], [0, 1]]}}),
+    ("create_line_width_section", {"sec_lines": [[0, 0, 0, 2, 0.1]]}),
+    ("create_section_from_properties", {"area": 6, "ix": 1, "iy": 2, "iz": 3}),
+])
+def test_all_section_creation_tools_request_automatic_numbering(qtmodel_wire, tool, arguments):
+    provider, requests = qtmodel_wire
+    functions = tool_fns(register_modeling_tools, provider)
+    functions[tool](name="New section", **arguments)
+    payload = next(payload for header, payload in requests if header == "ADD-SECTION")
+    assert payload["index"] == -1, "Creating a section must not target existing section 1"
+    if tool == "create_section_from_properties":
+        from qtmodel.core.section_db import SectionProperty
+
+        # The SDK's C# field layout is the independent source of truth.
+        assert payload["sec_property"] == SectionProperty(Ax=6, Ix=1, Iy=2, Iz=3).to_list()
 
 

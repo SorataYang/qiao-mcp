@@ -1407,6 +1407,9 @@ class QtModelProvider(BridgeProvider):
 
     def add_section(self, name: str, sec_type: str, **kwargs) -> None:
         self._require_available()
+        # add_section's SDK default is 1, which can overwrite section 1.
+        # -1 is the automatic ID also used by add_single_section for ADD-SECTION.
+        kwargs.setdefault("index", -1)
         self._mdb.add_section(name=name, sec_type=sec_type, **kwargs)
         self.update_model()
 

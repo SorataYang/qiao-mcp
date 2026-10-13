@@ -22,7 +22,7 @@ def test_rectangle_via_merged_tool(fake_provider):
     fns = tool_fns(register_modeling_tools, fake_provider)
     fns["create_section"](name="主梁", sec_type="矩形", sec_info=[1.0, 1.5])
     _, _, kw = fake_provider._mdb.last("add_section")
-    assert kw == {"name": "主梁", "sec_type": "矩形", "sec_info": [1.0, 1.5]}
+    assert kw == {"name": "主梁", "sec_type": "矩形", "sec_info": [1.0, 1.5], "index": -1}
 
 
 def test_composite_section_passes_mat_combine(fake_provider):
