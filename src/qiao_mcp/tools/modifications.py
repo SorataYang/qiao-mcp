@@ -220,17 +220,17 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             raise ToolError(f"Error updating node ID (修改节点编号失败): {e}") from e
 
     @mcp.tool()
-    def renumber_nodes(ids: Any = None, new_ids: Any = None) -> str:
+    def renumber_nodes(ids: SelectedIds | None = None, new_ids: SelectedIds | None = None) -> str:
         """
         Renumber selected nodes with an explicit mapping, or compact all node
         numbers from 1 (按映射批量改号，或从 1 开始重排全模型节点).
 
         For selected nodes, supply BOTH ids and new_ids with equal lengths;
-        each old ID maps to the new ID at the same position. If EITHER argument
-        is None, the current SDK renumbers ALL nodes, even when the other
-        argument is present. Omitting both intentionally selects that mode.
-        (局部改号须同时传入等长的旧、新编号列表；任一参数为 None 均会重排全模型，
-        不是只修改另一个参数选中的节点。两者均省略表示有意全模型重排。)
+        each old ID maps to the new ID at the same position. Omit BOTH arguments
+        to intentionally renumber all nodes. Supplying only one is rejected;
+        blank selections, mismatched counts and duplicate IDs are also rejected.
+        (局部改号须同时传入等长、无重复的旧新编号；仅一列或空选择会报错。
+        两者均省略表示有意全模型重排。)
 
         Use update_node_id for one ID, update_node for coordinates plus an ID,
         or move_nodes for relative offsets. This call writes and refreshes the
@@ -241,8 +241,8 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Args:
             ids: Old IDs, as an int/list/range string; pair with new_ids to
                  limit the operation to these nodes (原节点号，局部改号须与 new_ids 成对)
-            new_ids: New IDs matching ids in order and count; None selects
-                     full-model renumbering (对应的新编号列表；None 会触发全模型重排)
+            new_ids: New IDs matching ids in order and count; omit together
+                     with ids for full-model renumbering (对应的新编号；与 ids 同时省略才全模型重排)
         """
         try:
             provider.renumber_nodes(ids=ids, new_ids=new_ids)
@@ -409,14 +409,15 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             raise ToolError(f"Error updating element ID (修改单元编号失败): {e}") from e
 
     @mcp.tool()
-    def renumber_elements(element_ids: Any = None, new_ids: Any = None) -> str:
+    def renumber_elements(element_ids: SelectedIds | None = None, new_ids: SelectedIds | None = None) -> str:
         """
         Renumber elements (单元编号重排序).
-        Supply both lists with equal lengths for a local mapping; either None
-        makes the SDK renumber all elements from 1. For one ID use
+        Supply both lists with equal lengths and unique IDs for a local mapping;
+        omit both to renumber all elements from 1. Supplying only one is rejected.
+        For one ID use
         update_element_id, or update_element to change properties as well.
         Returns a confirmation, not a mapping; read elements and references back
-        before reusing old IDs (局部须两列成对，任一为 None 则全模型重排；完成后回读).
+        before reusing old IDs (局部须两列成对，仅同时省略才全模型重排；完成后回读).
 
         Args:
             element_ids: List of element IDs or string format (可选，原单元号)
