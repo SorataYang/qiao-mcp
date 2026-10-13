@@ -8,6 +8,7 @@ from conftest import tool_fns
 from qiao_mcp.tools.envelope import ToolError
 from qiao_mcp.tools.modifications import register_modification_tools
 from qiao_mcp.tools.queries import register_query_tools
+from qiao_mcp.tools.workflows import register_workflow_tools
 
 
 @pytest.mark.parametrize("name", ["remove_nodes", "remove_elements"])
@@ -89,6 +90,55 @@ def test_remove_all_with_free_nodes_uses_actual_ids(qtmodel_wire):
     assert requests[0][0] == "REMOVE-ELEMENTS"
     assert requests[0][1]["ids"] == [7, 90]
     assert requests[0][1]["remove_free"] is True
+
+
+@pytest.mark.parametrize("method", [
+    "get_node_data", "get_element_data", "get_material_data", "get_section_names",
+    "get_stage_names", "get_load_case_names", "get_structure_group_names",
+])
+@pytest.mark.parametrize("result", [None, "not a valid result"])
+def test_failed_collection_read_is_not_an_empty_model(fake_provider, method, result):
+    setattr(fake_provider._mdb, method, lambda **kwargs: result)
+    with pytest.raises(RuntimeError):
+        getattr(fake_provider, method)()
+
+
+def test_summary_propagates_query_failure(fake_provider):
+    fake_provider._mdb.get_node_data = Mock(side_effect=RuntimeError("bridge read rejected"))
+    with pytest.raises(RuntimeError, match="bridge read rejected"):
+        fake_provider.get_model_summary()
+
+
+@pytest.mark.parametrize("method, arguments", [
+    ("get_group_nodes", {"group_name": "G"}),
+    ("get_structure_group_elements", {"name": "G"}),
+])
+def test_failed_group_read_is_not_an_empty_group(fake_provider, method, arguments):
+    with pytest.raises(RuntimeError, match="no valid list"):
+        getattr(fake_provider, method)(**arguments)
+
+
+def test_workflow_without_group_query_fails_before_writing(qtmodel_wire):
+    from types import SimpleNamespace
+
+    provider, requests = qtmodel_wire
+    provider._mdb = SimpleNamespace()
+    provider._odb = SimpleNamespace()
+    provider.get_section_names = lambda: {"4": "S"}
+    provider.get_material_data = lambda: [{"index": 3, "name": "C50"}]
+    provider.get_element_data = lambda: []
+    functions = tool_fns(register_workflow_tools, provider)
+    with pytest.raises(ToolError, match="qtmodel has no model query 'get_load_group_names'"):
+        functions["create_simple_beam_bridge"](section_name="S")
+    assert requests == []
+
+
+def test_section_list_keeps_actual_ids_and_never_invents_them(fake_provider):
+    fake_provider._mdb.get_section_names = lambda: [{"index": 71, "name": "S"}]
+    assert fake_provider.get_section_names() == [{"index": 71, "name": "S"}]
+    fake_provider._mdb.get_section_names = lambda: [{"name": "S"}]
+    with pytest.raises(RuntimeError, match="actual ID"):
+        fake_provider.get_section_names()
 
 
 def test_partial_node_update_selects_exact_target(fake_provider):

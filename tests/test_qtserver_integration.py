@@ -223,7 +223,15 @@ def test_node_objects_are_normalized_to_dicts(wire, monkeypatch):
 ])
 def test_typed_model_queries_preserve_wire_fields_in_tool_json(wire, kind, header, row):
     wire._response = json.dumps([row])
-    functions = _tools(register_query_tools, _real_provider())
+    provider = _real_provider()
+    functions = _tools(register_query_tools, provider)
+    if kind == "structure_group_summaries" and not callable(
+        provider._model_query_method("get_structure_group_summaries")
+    ):
+        with pytest.raises(ToolError, match="qtmodel has no model query"):
+            functions["get_model_data"](kind=kind)
+        assert wire.requests == []
+        return
     result = functions["get_model_data"](kind=kind)
     assert json.loads(result["message"].split("\n", 2)[2]) == [row]
     assert wire.requests == [(header, None)]

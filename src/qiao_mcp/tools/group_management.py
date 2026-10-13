@@ -9,14 +9,20 @@ Groups are the foundation of construction stage analysis:
 """
 
 
-from typing import Any
+import json
+from typing import Any, Literal, get_args
 
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
-from qiao_mcp.tools.envelope import ToolError
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 from qiao_mcp.tools.schemas import (
+    BoundariesQuery,
+    LoadsQuery,
     NonnegativeNumber,
+    PageLimit,
+    PageOffset,
+    QueryName,
     SelectedIds,
 )
 
@@ -114,31 +120,54 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
 
     @mcp.tool()
     def list_group_members(
-        group_type: str,
-        name: str,
+        group_type: Literal["structure", "boundary", "load"],
+        name: QueryName,
+        limit: PageLimit = 20,
+        offset: PageOffset = 0,
     ) -> str:
         """
         List members of a structure/boundary/load group (查看分组的成员信息).
 
+        Structure groups return node and element IDs. Boundary/load groups use
+        native filtered queries and return a separate page for each supported
+        family: six boundary families or seven nodal/beam/plate load families.
+        These pages do not cover temperature, prestress or other special loads.
+        Page metadata comes from the bridge; use offset/limit for further pages.
+        Requires a bridge/SDK with native queries for boundary/load groups.
+        (结构组返回节点和单元；边界/荷载按支持的原生类别分页，不含温度、预应力等特殊荷载。)
+
         Args:
             group_type: Type of group (分组类型): 'structure', 'boundary', 'load'
             name: Group name (分组名称)
+            limit: Maximum members per family/page, 1–500 (每类每页最多成员数)
+            offset: Starting offset for each page (各类查询的分页偏移)
         """
         try:
             if group_type == "structure":
                 groups = provider.get_structure_group_names()
                 if name not in groups:
                     return f"Structure group '{name}' not found (未找到结构组 '{name}')"
-                members = provider.get_structure_group_elements(name=name)
-                return f"Structure group '{name}' elements (结构组成员): {members}"
-            elif group_type == "boundary":
-                groups = provider.get_boundary_data()
-                return f"All boundary groups (所有边界组): {list(groups.keys())}"
-            elif group_type == "load":
-                cases = provider.get_load_case_names()
-                return f"All load cases/groups (所有荷载工况): {cases}"
-            else:
-                return "group_type must be 'structure', 'boundary', or 'load'"
+                from qiao_mcp.tools.queries import _paginate
+
+                members = {
+                    "nodes": provider.get_group_nodes(group_name=name),
+                    "elements": provider.get_structure_group_elements(name=name),
+                }
+                pages = {kind: _paginate(ids, limit, offset) for kind, ids in members.items()}
+                return f"Structure group '{name}' members (结构组成员): {json.dumps(pages, ensure_ascii=False)}"
+            if group_type not in {"boundary", "load"}:
+                raise ToolInputError("group_type must be 'structure', 'boundary', or 'load'")
+            schema, field, kind = (
+                (BoundariesQuery, "boundary_type", "boundaries")
+                if group_type == "boundary" else (LoadsQuery, "load_family", "loads")
+            )
+            pages = {
+                family: provider.query_model_data(
+                    kind=kind, **{field: family}, group_names=[name], limit=limit, offset=offset,
+                )
+                for family in get_args(schema.model_fields[field].annotation)
+            }
+            return f"{group_type} group '{name}' member pages (支持类别的成员页): {json.dumps(pages, ensure_ascii=False)}"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:

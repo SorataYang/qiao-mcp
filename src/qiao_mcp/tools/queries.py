@@ -37,7 +37,7 @@ from qiao_mcp.tools.schemas import (
 # 输出保护：单次返回的最大条数上限
 MAX_LIMIT = 500
 
-# qtmodel 2.8 新增的轻量概览接口；2.6.3 没有对应方法，provider 会返回 None
+# qtmodel 2.8 新增的轻量概览接口；旧 SDK 缺少方法时明确报错。
 _OVERVIEW_KINDS = frozenset(
     {"summary", "analysis_context", "project_metadata", "check_context", "structure_group_summaries"}
 )

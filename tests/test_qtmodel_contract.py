@@ -37,6 +37,10 @@ _DUMMY = object()
 # 修复对应任务后必须删除相应条目。当前无已知错配。
 KNOWN_FAILURES: dict[str, str] = {}
 
+# Older SDKs lack this workflow preflight query. The provider must fail before
+# writing (covered in test_mutation_scope_audit), rather than invent empty groups.
+OPTIONAL_MODEL_QUERIES = {"get_load_group_names"}
+
 
 # ── AST 解析 ──────────────────────────────────────────────────────────
 
@@ -275,7 +279,10 @@ def _qt_method(call: QtCall):
         provider = QtModelProvider.__new__(QtModelProvider)
         provider._mdb = qtmodel.mdb
         provider._odb = qtmodel.odb
-        return provider._model_query_method(call.qt_name)
+        method = provider._model_query_method(call.qt_name)
+        if not callable(method) and call.qt_name in OPTIONAL_MODEL_QUERIES:
+            pytest.skip(f"SDK lacks optional {call.qt_name}; explicit failure is tested separately")
+        return method
     return getattr(DB_OBJECTS[call.db], call.qt_name, None)
 
 

@@ -3,7 +3,7 @@
 import pytest
 from conftest import tool_fns, tool_text
 
-from qiao_mcp.tools.envelope import ToolInputError
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
 from qiao_mcp.tools.queries import MAX_LIMIT, register_query_tools
 
 
@@ -119,12 +119,12 @@ def test_overview_kinds_pass_through_provider(fake_provider, monkeypatch):
     assert "node_count" in text and "preprocessing" in text
 
 
-def test_overview_kind_degrades_on_old_qtmodel(fake_provider, monkeypatch):
-    """2.6.3 没有概览方法时 provider 返回 None，工具给出版本提示而不是抛错。"""
-    monkeypatch.setattr(fake_provider, "get_model_overview", lambda kind: None)
+def test_missing_overview_is_reported_as_unavailable(fake_provider, monkeypatch):
+    """Missing SDK methods must not be presented as empty model data."""
+    monkeypatch.setattr(fake_provider, "_model_query_method", lambda name: None)
     fns = _fns(fake_provider)
-    text = tool_text(fns["get_model_data"](kind="analysis_context"))
-    assert "2.8" in text
+    with pytest.raises(ToolError, match="has no model query"):
+        fns["get_model_data"](kind="analysis_context")
 
 
 def test_provider_overview_maps_kind_to_qtmodel_method(fake_provider):
@@ -136,6 +136,10 @@ def test_provider_overview_maps_kind_to_qtmodel_method(fake_provider):
         ("check_context", "get_code_check_context"),
         ("structure_group_summaries", "get_structure_group_summaries"),
     ):
+        def overview(*args, _method=method, **kwargs):
+            fake_provider._mdb.calls.append((_method, args, kwargs))
+            return {"model_opened": True}
+        setattr(fake_provider._mdb, method, overview)
         fake_provider.get_model_overview(kind)
         assert fake_provider._mdb.last(method) is not None
     with pytest.raises(ValueError):

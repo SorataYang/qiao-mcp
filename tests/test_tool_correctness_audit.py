@@ -6,7 +6,8 @@ import pytest
 from conftest import tool_fns
 
 from qiao_mcp.tools import register_modeling_tools
-from qiao_mcp.tools.envelope import ToolInputError
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.group_management import register_group_tools
 from qiao_mcp.tools.moving_load import register_moving_load_tools
 
 
@@ -97,5 +98,46 @@ def test_custom_temperature_rejects_missing_reference_before_any_write(fake_prov
             element_id=1, case_name="TEMP", temperature_data=[(0.25, 12.5)],
         )
     assert fake_provider._mdb.calls == []
+
+
+@pytest.mark.parametrize("kind, count, header", [
+    ("boundary", 6, "QUERY-BOUNDARIES"), ("load", 7, "QUERY-LOADS"),
+])
+def test_group_member_queries_filter_the_requested_group(fake_provider, monkeypatch, kind, count, header):
+    import qtmodel
+    from qtmodel.core.qt_server import QtServer
+
+    requests = []
+
+    def send(command, payload):
+        requests.append((command, payload))
+        return {"items": [{"group_name": "Chosen", "id": 7}], "has_more": False}
+
+    monkeypatch.setattr(QtServer, "send_dict", send)
+    fake_provider._mdb = qtmodel.mdb
+    fake_provider._odb = qtmodel.odb
+    functions = tool_fns(register_group_tools, fake_provider)
+    method = "query_boundary_data" if kind == "boundary" else "query_load_data"
+    if not callable(fake_provider._model_query_method(method)):
+        with pytest.raises(ToolError, match=f"qtmodel has no model query '{method}'"):
+            functions["list_group_members"](group_type=kind, name="Chosen", limit=3, offset=2)
+        assert requests == []
+        return
+    result = functions["list_group_members"](group_type=kind, name="Chosen", limit=3, offset=2)
+    assert "Chosen" in result["message"]
+    assert len(requests) == count
+    for command, payload in requests:
+        assert command == header
+        assert payload["group_names"] == ["Chosen"]
+        assert (payload["limit"], payload["offset"]) == (3, 2)
+
+
+def test_structure_members_include_independent_nodes(fake_provider):
+    fake_provider._mdb.get_structure_group_names = lambda: ["Chosen"]
+    fake_provider._mdb.get_group_elements = lambda **kwargs: [9]
+    fake_provider._mdb.get_group_nodes = lambda **kwargs: [7, 8]
+    functions = tool_fns(register_group_tools, fake_provider)
+    result = functions["list_group_members"](group_type="structure", name="Chosen")
+    assert all(value in result["message"] for value in ("nodes", "elements", "7", "8", "9"))
 
 
