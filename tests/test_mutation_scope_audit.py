@@ -35,6 +35,37 @@ def test_text_is_not_an_explicit_delete_all_confirmation(fake_provider, name):
     assert fake_provider._mdb.calls == []
 
 
+@pytest.mark.parametrize("name, key", [("renumber_nodes", "ids"), ("renumber_elements", "element_ids")])
+@pytest.mark.parametrize("ids, new_ids", [
+    ([1], None), (None, [2]), ([], []), ("", ""), ([1, 2], [3]),
+    ([1, 1], [2, 3]), ([1, 2], [3, 3]), ([1.5], [3]), ([1], [True]),
+])
+def test_incomplete_renumber_mapping_never_reaches_sdk(fake_provider, name, key, ids, new_ids):
+    functions = tool_fns(register_modification_tools, fake_provider)
+    with pytest.raises(ToolError):
+        functions[name](**{key: ids, "new_ids": new_ids})
+    assert fake_provider._mdb.calls == []
+
+
+@pytest.mark.parametrize("name, key, wire_key", [
+    ("renumber_nodes", "ids", "node_ids"), ("renumber_elements", "element_ids", "element_ids"),
+])
+def test_renumber_ranges_are_expanded_to_ordered_lists(qtmodel_wire, name, key, wire_key):
+    provider, requests = qtmodel_wire
+    tool_fns(register_modification_tools, provider)[name](**{key: "1to5by2", "new_ids": "7to9"})
+    assert requests[0][1][wire_key] == [1, 3, 5]
+    assert requests[0][1]["new_ids"] == [7, 8, 9]
+    assert requests[1][0] == "UPDATE"
+
+
+@pytest.mark.parametrize("name", ["renumber_nodes", "renumber_elements"])
+def test_omitting_both_renumber_lists_keeps_explicit_global_mode(qtmodel_wire, name):
+    provider, requests = qtmodel_wire
+    tool_fns(register_modification_tools, provider)[name]()
+    assert requests[0][1] is None
+    assert requests[1][0] == "UPDATE"
+
+
 def test_group_removal_is_committed_once(qtmodel_wire):
     provider, requests = qtmodel_wire
     tool_fns(register_modification_tools, provider)["remove_from_structure_group"](group_name="G", element_ids=[7])

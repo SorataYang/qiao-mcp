@@ -1465,12 +1465,20 @@ class QtModelProvider(BridgeProvider):
 
     def renumber_nodes(self, ids: Any = None, new_ids: Any = None) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
-        if ids is None:
+        if ids is None and new_ids is None:
             self._mdb.renumber_nodes()
         else:
+            ids, new_ids = self._renumber_mapping(ids, new_ids)
             self._mdb.renumber_nodes(ids, new_ids)
+
+    def _renumber_mapping(self, ids: Any, new_ids: Any) -> tuple[list[int], list[int]]:
+        from qtmodel.core.data_helper import QtDataHelper
+
+        old = QtDataHelper.parse_ids_to_array(self._validate_ids(ids, required=True))
+        new = QtDataHelper.parse_ids_to_array(self._validate_ids(new_ids, required=True))
+        if len(old) != len(new) or len(set(old)) != len(old) or len(set(new)) != len(new):
+            raise ValueError("Renumbering requires equal-length, unique old/new ID lists (改号须等长且两列各自无重复)")
+        return old, new
 
     def move_nodes(self, ids: Any, offset_x: float = 0, offset_y: float = 0, offset_z: float = 0) -> None:
         self._require_available()
@@ -1509,9 +1517,10 @@ class QtModelProvider(BridgeProvider):
 
     def renumber_elements(self, element_ids: Any = None, new_ids: Any = None) -> None:
         self._require_available()
-        if element_ids is None:
+        if element_ids is None and new_ids is None:
             self._mdb.renumber_elements()
         else:
+            element_ids, new_ids = self._renumber_mapping(element_ids, new_ids)
             self._mdb.renumber_elements(element_ids, new_ids)
 
     def revert_local_orientation(self, ids: Any) -> None:

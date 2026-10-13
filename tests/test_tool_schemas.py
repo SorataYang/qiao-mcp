@@ -140,6 +140,7 @@ def test_schema_exposes_ranges_enums_lengths_and_workflow_fields(catalog):
     ("add_elements_to_group", {"group_name": "G", "element_ids": [True]}),
     ("create_structure_group", {"name": "G", "element_ids": [True]}),
     ("move_nodes", {"ids": " ", "offset_x": 3}),
+    ("renumber_nodes", {"ids": [1], "new_ids": [1.5]}),
     ("find_entities", {"by": "element_type", "ids": True}),
     ("set_view_angle", {"angle_preset": "unknown"}),
     ("manage_check_stirrup", {"action": "unknown"}),
