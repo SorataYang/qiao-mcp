@@ -15,7 +15,10 @@ from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError
-from qiao_mcp.tools.schemas import NonnegativeNumber
+from qiao_mcp.tools.schemas import (
+    NonnegativeNumber,
+    SelectedIds,
+)
 
 
 def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -24,7 +27,7 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def create_structure_group(
         name: str,
-        element_ids: list[int] | str | None = None,
+        element_ids: SelectedIds | None = None,
     ) -> str:
         """
         Create a structure group and optionally assign elements to it (创建结构组).
@@ -144,7 +147,7 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def add_elements_to_group(
         group_name: str,
-        element_ids: list[int] | str,
+        element_ids: SelectedIds,
     ) -> str:
         """
         Add elements to an existing structure group — elements only

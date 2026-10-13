@@ -9,9 +9,11 @@ sections, boundaries, and structure groups.
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import StrictBool
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError
+from qiao_mcp.tools.schemas import FiniteNumber, NonnegativeNumber, QueryId, SelectedIds
 
 
 def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
@@ -20,7 +22,7 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     # ── 1. General model operations ───────────────────────────────────
 
     @mcp.tool()
-    def initialize_model(confirm: bool = False) -> str:
+    def initialize_model(confirm: StrictBool = False) -> str:
         """
         Initialize a new empty model (初始化全新模型).
         
@@ -37,7 +39,7 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Args:
             confirm: Must be set to true to execute (必须设为true以确认操作)
         """
-        if not confirm:
+        if confirm is not True:
             return "Initialization aborted. You must set confirm=True to clear the model. (初始化已取消，必须设置 confirm=True)"
             
         try:
@@ -118,11 +120,11 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
     @mcp.tool()
     def update_node(
-        node_id: int,
-        x: float | None = None,
-        y: float | None = None,
-        z: float | None = None,
-        new_id: int = -1,
+        node_id: QueryId,
+        x: FiniteNumber | None = None,
+        y: FiniteNumber | None = None,
+        z: FiniteNumber | None = None,
+        new_id: QueryId | Literal[-1] = -1,
     ) -> str:
         """
         Modify an existing node's coordinates and/or ID (修改节点坐标或编号).
@@ -182,7 +184,7 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             raise ToolError(f"Error updating node (修改节点失败): {e}") from e
 
     @mcp.tool()
-    def update_node_id(node_id: int, new_id: int) -> str:
+    def update_node_id(node_id: QueryId, new_id: QueryId) -> str:
         """
         Renumber one node, leaving its coordinates untouched (仅修改节点编号).
 
@@ -253,10 +255,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
     @mcp.tool()
     def move_nodes(
-        ids: Any,
-        offset_x: float = 0.0,
-        offset_y: float = 0.0,
-        offset_z: float = 0.0,
+        ids: SelectedIds,
+        offset_x: FiniteNumber = 0.0,
+        offset_y: FiniteNumber = 0.0,
+        offset_z: FiniteNumber = 0.0,
     ) -> str:
         """
         Move nodes by an offset (平移节点).
@@ -375,7 +377,7 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             raise ToolError(f"Error updating element (修改单元失败): {e}") from e
 
     @mcp.tool()
-    def update_element_id(old_id: int, new_id: int) -> str:
+    def update_element_id(old_id: QueryId, new_id: QueryId) -> str:
         """
         Renumber one element, leaving all its properties untouched
         (仅修改单元编号).
@@ -430,7 +432,7 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             raise ToolError(f"Error renumbering elements (重新编号失败): {e}") from e
 
     @mcp.tool()
-    def revert_local_orientation(ids: Any) -> str:
+    def revert_local_orientation(ids: SelectedIds) -> str:
         """
         Reverse the local x-axis of frame elements, swapping their I and J ends
         (反转杆系单元局部方向，即对调 I/J 端).
@@ -468,8 +470,8 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
     @mcp.tool()
     def update_element_material(
-        ids: Any,
-        mat_id: int,
+        ids: SelectedIds,
+        mat_id: QueryId,
     ) -> str:
         """
         Change the material of one or more elements (修改单元材料).
@@ -499,8 +501,8 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
     @mcp.tool()
     def update_element_section(
-        ids: Any,
-        sec_id: int,
+        ids: SelectedIds,
+        sec_id: QueryId,
     ) -> str:
         """
         Change the section of one or more frame elements (修改杆系单元截面).
@@ -530,8 +532,8 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
     @mcp.tool()
     def update_element_beta(
-        ids: Any,
-        beta: float,
+        ids: SelectedIds,
+        beta: FiniteNumber,
     ) -> str:
         """
         Change the beta angle of one or more elements (修改单元贝塔角).
@@ -562,9 +564,9 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
     @mcp.tool()
     def update_element_nodes(
-        element_id: int,
-        node_i: int,
-        node_j: int,
+        element_id: QueryId,
+        node_i: QueryId,
+        node_j: QueryId,
     ) -> str:
         """
         Reconnect a frame element to different end nodes (改接杆系单元的端节点).
@@ -615,8 +617,8 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     @mcp.tool()
     def add_to_structure_group(
         group_name: str,
-        node_ids: Any = None,
-        element_ids: Any = None,
+        node_ids: SelectedIds | None = None,
+        element_ids: SelectedIds | None = None,
     ) -> str:
         """
         Add nodes and/or elements to an existing structure group — the general
@@ -670,8 +672,8 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     @mcp.tool()
     def remove_from_structure_group(
         group_name: str,
-        node_ids: Any = None,
-        element_ids: Any = None,
+        node_ids: SelectedIds | None = None,
+        element_ids: SelectedIds | None = None,
     ) -> str:
         """
         Remove nodes and/or elements from an existing structure group
@@ -711,14 +713,14 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     # ── 4. Delete operations ──────────────────────────────────────────
 
     @mcp.tool()
-    def remove_nodes(ids: Any = None, confirm_delete_all: bool = False) -> str:
+    def remove_nodes(ids: SelectedIds | None = None, confirm_delete_all: StrictBool = False) -> str:
         """
         Delete nodes from the model (删除节点).
 
         Args:
             ids: Node ID(s) to delete. Supports int, list, or range string '1to10'.
-                 Leave empty to delete ALL nodes.
-                 (节点编号，留空则删除全部节点)
+                 Omit/use None plus confirm_delete_all=True to delete ALL nodes;
+                 empty strings/lists are invalid (省略或 None 配合确认删除全部；空串/空表无效)
             confirm_delete_all: MUST be set to true if ids is empty (deleting all nodes).
                                 (如果要删除所有节点，必须设为 true)
 
@@ -730,7 +732,7 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             remove_nodes(ids=[5, 6, 7])  # Delete specific nodes
         """
         try:
-            if ids is None and not confirm_delete_all:
+            if ids is None and confirm_delete_all is not True:
                 return "Aborted: To delete ALL nodes, you must set confirm_delete_all=True. (中止：要删除所有节点必须确认)"
                 
             if ids is not None:
@@ -746,14 +748,14 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             raise ToolError(f"Error removing nodes (删除节点失败): {e}") from e
 
     @mcp.tool()
-    def remove_elements(ids: Any = None, remove_free_nodes: bool = False, confirm_delete_all: bool = False) -> str:
+    def remove_elements(ids: SelectedIds | None = None, remove_free_nodes: StrictBool = False, confirm_delete_all: StrictBool = False) -> str:
         """
         Delete elements from the model (删除单元).
 
         Args:
             ids: Element ID(s) to delete. Supports int, list, or range string '1to10'.
-                 Leave empty to delete ALL elements.
-                 (单元编号，留空则删除全部单元)
+                 Omit/use None plus confirm_delete_all=True to delete ALL elements;
+                 empty strings/lists are invalid (省略或 None 配合确认删除全部；空串/空表无效)
             remove_free_nodes: Also delete nodes that become free after element deletion
                                (是否同时删除孤立节点，默认不删除)
             confirm_delete_all: MUST be set to true if ids is empty (deleting all elements).
@@ -767,7 +769,7 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             remove_elements(ids="11to20")
         """
         try:
-            if ids is None and not confirm_delete_all:
+            if ids is None and confirm_delete_all is not True:
                 return "Aborted: To delete ALL elements, you must set confirm_delete_all=True. (中止：要删除所有单元必须确认)"
 
             if ids is not None:
@@ -783,7 +785,7 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             raise ToolError(f"Error removing elements (删除单元失败): {e}") from e
 
     @mcp.tool()
-    def merge_nodes(ids: Any = None, tolerance: float = 1e-4) -> str:
+    def merge_nodes(ids: SelectedIds | None = None, tolerance: NonnegativeNumber = 1e-4) -> str:
         """
         Merge nodes that are at (nearly) the same coordinates (合并重合节点).
 
@@ -793,10 +795,10 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
 
         Args:
             ids: Node ID(s) to check. Supports int, list, or range string.
-                 Leave empty to check ALL nodes.
-                 (节点编号，留空则检查全部节点)
-            tolerance: Merge distance tolerance in model units, default 0.0001m
-                       (合并容许误差，默认 0.0001m)
+                 Omit/use None to check ALL nodes; empty strings/lists are invalid
+                 (省略或 None 检查全部节点；空串/空表无效)
+            tolerance: Merge distance tolerance in model length units, default 0.0001
+                       (合并容许误差，按模型长度单位，默认 0.0001)
 
         Example:
             merge_nodes()  # Merge all overlapping nodes in the model

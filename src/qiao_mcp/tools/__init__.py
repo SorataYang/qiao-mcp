@@ -28,6 +28,7 @@ from qiao_mcp.tools.schemas import (
     PositiveNumber,
     SectionLoop,
     SectionProperties,
+    SelectedIds,
     SupportExtraParameters,
     ThreeNumbers,
     TwoNumbers,
@@ -1287,7 +1288,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             raise ToolError(f"Error updating section bias (更新截面偏心失败): {e}") from e
 
     @mcp.tool()
-    def remove_section(ids: int | list[int] | str) -> str:
+    def remove_section(ids: SelectedIds) -> str:
         """
         Delete one or more sections from the model (删除截面).
 
