@@ -37,6 +37,13 @@ def provider():
     p._available = True
     p._unavailable_reason = ""
     p._mdb = FakeDb()
+    record_solve = p._mdb.do_solve
+
+    def solve(**kwargs):
+        record_solve(**kwargs)
+        return {"state": "succeeded", "ok": True, "is_running": False}
+
+    p._mdb.do_solve = solve
     p._odb = FakeDb()
     p._cdb = FakeDb()
     p.get_model_state = ready_model_state
@@ -154,6 +161,7 @@ def test_legacy_solve_rejects_window_request_before_starting(provider, run_analy
 
     def legacy_solve(wait, sync, poll_interval, max_wait, status_read_timeout):
         calls.append({"wait": wait, "sync": sync, "max_wait": max_wait})
+        return {"state": "succeeded", "is_running": False}
 
     provider._mdb.do_solve = legacy_solve
     if show_view:

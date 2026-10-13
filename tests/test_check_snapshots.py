@@ -261,6 +261,7 @@ def test_model_snapshots_commit_before_named_concrete_import_and_solve(fake_prov
         assert events[-1] == "import"
         assert kwargs["wait"] is True and kwargs["max_wait"] == 12
         events.append("solve")
+        return {"state": "succeeded", "is_running": False, "ok": True}
 
     p._mdb.update_model = commit
     p._cdb.import_concrete_check_case = import_case

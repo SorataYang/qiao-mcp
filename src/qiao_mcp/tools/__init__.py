@@ -2654,6 +2654,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Configure analysis settings (配置分析设置).
 
+        Updates construction-stage, vibration and global solver settings. Both
+        True and False are applied. These SDK calls replace their setting groups;
+        unexposed fields use SDK defaults (全局计算方式/线程数等仍使用 SDK 默认值).
+
         Args:
             do_construction_stage: Enable construction stage analysis (是否进行施工阶段分析)
             do_creep: Enable creep analysis (是否进行徐变分析)
@@ -2667,13 +2671,13 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 do_analysis=do_construction_stage,
                 do_creep_analysis=do_creep,
             )
-            if do_vibration:
-                provider.update_self_vibration_setting(
-                    do_analysis=True, mode_num=vibration_modes
-                )
+            provider.update_self_vibration_setting(
+                do_analysis=do_vibration, mode_num=vibration_modes
+            )
+            provider.update_global_setting(solver_type=solver_type)
             return (
                 f"Analysis configured: construction_stage={do_construction_stage}, "
-                f"creep={do_creep}, vibration={do_vibration} "
+                f"creep={do_creep}, vibration={do_vibration}, solver_type={solver_type} "
                 f"(分析配置完成)"
             )
         except ToolError:
@@ -2730,13 +2734,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                     pass  # 进度上报失败不应影响求解
             # 用户终止等结局不抛错而是返回状态，必须核对后才能宣告完成
             state = str(status.get("state", "")).lower() if isinstance(status, dict) else ""
-            if state and state not in _SOLVE_SUCCESS_STATES:
-                message = status.get("message") or ""
+            if (
+                state not in _SOLVE_SUCCESS_STATES
+                or status.get("ok") is False
+                or str(status.get("is_running", "")).lower() == "true"
+            ):
+                message = (status.get("message") or "") if isinstance(status, dict) else ""
                 raise ToolError(
-                    f"Analysis did not complete: state={state}"
+                    f"Analysis success was not confirmed: state={state or 'unknown'}"
                     + (f", message={message}" if message else "")
-                    + ". No new results are available; check the model and rerun. "
-                    f"(结构分析未完成：状态 {state}，没有新的计算结果，请检查后重新求解)"
+                    + ". Inspect the model and solve status before starting another run. "
+                    f"(无法确认结构分析成功：状态 {state or 'unknown'}；再次求解前请先检查模型和求解状态)"
                 )
             return "Analysis successfully completed (结构分析计算完成)"
         except ToolError:

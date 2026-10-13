@@ -1863,6 +1863,11 @@ class QtModelProvider(BridgeProvider):
         self._mdb.update_construction_stage_setting(**kwargs)
         self.update_model()
 
+    def update_global_setting(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.update_global_setting(**kwargs)
+        self.update_model()
+
     def update_self_vibration_setting(self, **kwargs) -> None:
         self._require_available()
         self._mdb.update_self_vibration_setting(**kwargs)
