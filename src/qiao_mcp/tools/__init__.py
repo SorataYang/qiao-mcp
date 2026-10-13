@@ -1712,7 +1712,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         element_id: int | list[int] | str,
         case_name: str,
         orientation: Literal[1, 2] = 1,
-        temperature_data: list[tuple[Literal[1, 2], float, float] | TwoNumbers] | None = None,
+        temperature_data: list[tuple[Literal[1, 2], FiniteNumber, FiniteNumber]] | None = None,
         group_name: str = "",
     ) -> str:
         """
@@ -1730,13 +1730,12 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         code-based section temperature → add_beam_section_temperature.
         (选型：任意/实测分布用本工具；均匀用 add_system_temperature；线性梯度用 add_gradient_temperature；规范梁截面温度用 add_beam_section_temperature。)
 
-        Legacy two-number rows remain accepted and pass through unchanged for
-        compatibility, but the current SDK documents only three-number rows;
-        no top/bottom reference is inferred. Use triples for new calls. None
+        Every row must contain all three values; two-number rows lack a
+        top/bottom reference and are rejected before writing. None
         omits the profile argument; [] sends an empty profile. The SDK does not
         define their bridge behavior, fixed units, interpolation or repeated
         load handling. Verify those in the target bridge. Returns a confirmation
-        without solving. (兼容旧两列透传，但不推断顶底基准，新调用用三列；None 省略参数、
+        without solving. (每行必须三列，缺少顶底基准的两列会被拒绝；None 省略参数、
         [] 传空表，具体空值行为、单位、插值及重复定义策略须核验，返回确认不求解。)
 
         Args:
@@ -1746,8 +1745,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                          (单元局部坐标方向：1=Z向，2=Y向)
             temperature_data: Rows [[reference, height, temperature], ...],
                 reference 1=top or 2=bottom; use bridge-verified native units.
-                Legacy pairs pass through unchanged; None omits, [] sends empty.
-                (三列：顶底基准、高度、温度；旧两列兼容透传，空值不推断)
+                None omits, [] sends empty; no reference is inferred.
+                (三列：顶底基准、高度、温度；不推断顶底基准或空值)
             group_name: Load group name (荷载组名)
         """
         try:
@@ -1755,6 +1754,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             if group_name:
                 kwargs["group_name"] = group_name
             if temperature_data is not None:
+                if any(len(item) != 3 or item[0] not in (1, 2) for item in temperature_data):
+                    raise ToolInputError(
+                        "temperature_data rows must be [reference (1=top, 2=bottom), height, "
+                        "temperature]; two-value rows have no reference (自定义温度须提供三列)"
+                    )
                 kwargs["temperature_data"] = [tuple(item) for item in temperature_data]
             provider.add_custom_temperature(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied custom temperature to element(s) {element_id} (成功施加自定义温度)"

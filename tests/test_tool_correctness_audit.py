@@ -6,6 +6,7 @@ import pytest
 from conftest import tool_fns
 
 from qiao_mcp.tools import register_modeling_tools
+from qiao_mcp.tools.envelope import ToolInputError
 from qiao_mcp.tools.moving_load import register_moving_load_tools
 
 
@@ -87,5 +88,14 @@ def test_all_section_creation_tools_request_automatic_numbering(qtmodel_wire, to
 
         # The SDK's C# field layout is the independent source of truth.
         assert payload["sec_property"] == SectionProperty(Ax=6, Ix=1, Iy=2, Iz=3).to_list()
+
+
+def test_custom_temperature_rejects_missing_reference_before_any_write(fake_provider):
+    functions = tool_fns(register_modeling_tools, fake_provider)
+    with pytest.raises(ToolInputError, match="three|三列"):
+        functions["add_custom_temperature"](
+            element_id=1, case_name="TEMP", temperature_data=[(0.25, 12.5)],
+        )
+    assert fake_provider._mdb.calls == []
 
 
