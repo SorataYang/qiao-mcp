@@ -7,12 +7,22 @@ import json
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
-from qiao_mcp.tools.schemas import CheckDataKind, CheckSettingKind, PageLimit, PageOffset
+from qiao_mcp.tools.schemas import (
+    CheckDataKind,
+    CheckSettingKind,
+    FiniteNumber,
+    PageLimit,
+    PageOffset,
+    QueryName,
+)
 
 MAX_LIMIT = 500
+CheckCombinationRows = list[tuple[QueryName, FiniteNumber, FiniteNumber]]
+_COMBINATION_ADAPTER = TypeAdapter(CheckCombinationRows)
 
 
 def _fmt(obj: Any) -> str:
@@ -87,7 +97,7 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         name: str,
         standard: int = 1,
         kind: int = 3,
-        load_case_factors: list[list] | None = None,
+        load_case_factors: CheckCombinationRows | None = None,
         combine_method: Literal[1, 2] = 1,
     ) -> str:
         """
@@ -106,14 +116,19 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
             combine_method: Combination method (组合方式): 1=相加并判别, 2=包络
         """
         try:
-            factors = load_case_factors or []
-            factors_tuple = [(row[0], row[1], row[2]) for row in factors]
+            try:
+                factors = _COMBINATION_ADAPTER.validate_python(load_case_factors or [])
+            except ValueError as exc:
+                raise ToolInputError(
+                    "load_case_factors requires [case_name, unfavorable_factor, favorable_factor] "
+                    "(检算组合必须为三列，不接受缺项或多余项)"
+                ) from exc
             provider.add_check_load_combine(
                 name=name,
                 standard=standard,
                 combine_type=kind,
                 combine_method=combine_method,
-                combine_info=factors_tuple,
+                combine_info=factors,
             )
             return (
                 f"Load combination '{name}' added with {len(factors)} cases "
@@ -367,18 +382,20 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def configure_check_analysis(kind: CheckSettingKind, settings: dict[str, Any]) -> str:
         """
-        Configure a concrete-check analysis setting group (配置混凝土检算分析设置).
+        Replace a concrete-check analysis setting group (完整配置混凝土检算分析设置).
 
         ⚠️ UNITS (单位): parameters in this tool use qtmodel's NATIVE units —
-        **mm for lengths and MPa for stresses**, NOT the SI (m/Pa) used elsewhere
-        in this server. qtmodel does not document these units; they are inferred
-        from its defaults (e.g. protective_thickness=30.0 means 30 mm,
-        fatigue_limit_steel_bar=145.0 means 145 MPa). Pass values accordingly.
-        本工具参数沿用 qtmodel 原生单位（长度 mm、应力 MPa），与本服务器其余
-        工具的 SI 约定不同；qtmodel 未标注单位，此结论由其默认值推断。
+        no conversion is applied. SDK defaults such as protective_thickness=30.0
+        and fatigue_limit_steel_bar=145.0 suggest mm/MPa, but their units are not
+        explicitly documented; confirm them against the target QiaoTong UI/export.
+        原生值直接透传、不换算；默认值提示 mm/MPa，但单位须由目标桥通界面或导出确认。
 
-        Use get_check_data("<kind>_setting") to read current values first.
-        建议先用 get_check_data 读取当前值，再按需覆盖。
+        The SDK sends every field and saves the current check file. Omitted keys
+        use SDK defaults; {} resets this group to those defaults. To retain fields,
+        read get_check_data("<kind>_setting") and supply all values to preserve.
+        This tool does not merge the current settings or run the check.
+        SDK 完整发送本组并保存检算文件；省略项使用默认值，空字典重置本组。
+        保留已有值须先回读并完整传入；本工具不自动合并或检算。
 
         Args:
             kind: Setting group (设置类别):
@@ -416,15 +433,18 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
                 "bearing_curve" (承载力曲线):
                     bearing_curve_count (计算点数),
                     angle_between_m_and_y_axis (弯矩方向与y轴夹角), force_p (轴力P)
-            settings: Parameter dict for the chosen kind; only pass what you change
-                      (该类别的参数字典，只需传要修改的项)
+            settings: Full desired group; omitted keys use SDK defaults
+                      (该类别的完整目标参数，省略项使用 SDK 默认值)
         """
         try:
             if not isinstance(settings, dict):
                 raise ToolInputError("settings must be a dict (settings 必须为字典)")
             provider.configure_check_analysis(kind, settings)
-            changed = ", ".join(f"{k}={v}" for k, v in settings.items()) or "(no change)"
-            return f"Analysis setting '{kind}' updated: {changed} (检算分析设置已更新)"
+            changed = ", ".join(f"{k}={v}" for k, v in settings.items()) or "(SDK defaults)"
+            return (
+                f"Analysis setting '{kind}' replaced: {changed}; omitted fields use SDK defaults "
+                "(检算分析设置已完整替换；省略项使用 SDK 默认值)"
+            )
         except ValueError as e:
             raise ToolInputError(
                 f"{e}. See tool description for valid kinds (未知设置类别，请查阅工具说明)"

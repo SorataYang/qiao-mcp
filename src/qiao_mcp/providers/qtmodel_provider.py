@@ -2397,7 +2397,7 @@ class QtModelProvider(BridgeProvider):
 
     def get_reinforcement_data(self) -> dict[str, Any]:
         self._require_available()
-        return self._cdb.get_reinforcement_data()
+        return self._parse(self._cdb.get_reinforcement_data())
 
     # ── Concrete Check: 2.5.0 新增能力 ─────────────────────────────────
     #
@@ -2432,28 +2432,31 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         if kind in self._CHECK_QUERY_METHODS:
             method = getattr(self._cdb, self._CHECK_QUERY_METHODS[kind])
-            return method(**{k: v for k, v in kwargs.items() if v is not None})
+            # Only the case getter accepts a name. The other mapped getters
+            # have no model selector parameters; tool defaults are not SDK args.
+            params = {"name": kwargs.get("name", "")} if kind == "case" else {}
+            return self._parse(method(**params))
         # 需要参数的查询单独分派
         if kind == "stress":
-            return self._cdb.get_concrete_check_stress_info(
+            return self._parse(self._cdb.get_concrete_check_stress_info(
                 stress_type=kwargs.get("stress_type", 1),
                 specific_load_type_name=kwargs.get("name", ""),
-            )
+            ))
         if kind == "load_table":
-            return self._cdb.get_check_case_load_table_info(
+            return self._parse(self._cdb.get_check_case_load_table_info(
                 combine_type=kwargs.get("combine_type", 1),
                 specific_load_type_name=kwargs.get("name", ""),
-            )
+            ))
         if kind == "shear_stirrup":
             ele_id = kwargs.get("element_id")
-            return self._cdb.get_element_shear_stirrup_data(
+            return self._parse(self._cdb.get_element_shear_stirrup_data(
                 ele_id=-1 if ele_id is None else ele_id
-            )
+            ))
         if kind == "torsion_stirrup":
             ele_id = kwargs.get("element_id")
-            return self._cdb.get_element_torsion_stirrup_data(
+            return self._parse(self._cdb.get_element_torsion_stirrup_data(
                 ele_id=-1 if ele_id is None else ele_id
-            )
+            ))
         raise ValueError(f"unknown check data kind: {kind}")
 
     # 分析设置：kind → qtmodel update 方法；参数原样透传（原生 mm/MPa）
