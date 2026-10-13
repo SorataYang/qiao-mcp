@@ -128,7 +128,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 numbering_type=numbering_type,
                 start_id=start_id,
             )
-            return f"Successfully created {len(node_data)} nodes (成功创建 {len(node_data)} 个节点)"
+            return (
+                f"Submitted {len(node_data)} node coordinates; merging may reuse existing nodes. "
+                "Read get_model_data(kind='nodes') for actual IDs and counts. "
+                f"(已提交 {len(node_data)} 组坐标；合并可能复用旧节点，请回读实际编号和数量)"
+            )
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
@@ -207,10 +211,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             # 实际编号由后端裁定，必须回报真实值——LLM 会用它建单元
             if not created_ids:
                 return (
-                    f"Created {count} nodes {span}, but the assigned IDs could not "
-                    f"be read back — query them with get_model_data(kind='nodes') "
+                    f"Submitted {count} node coordinates {span}, but the assigned IDs could not "
+                    f"be resolved unambiguously — query them with get_model_data(kind='nodes') "
                     f"before creating elements "
-                    f"(成功创建 {count} 个节点，但未能读回编号，建单元前请先查询)"
+                    f"(已提交 {count} 组坐标，但未能确定编号，建单元前请先查询)"
                 )
             # created_ids 按请求坐标顺序给出该点真实可用的编号（可能是新建的，
             # 也可能是 is_merged 命中的既有节点），故按序展示而非排序后压缩
@@ -226,8 +230,9 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             first, last = created_ids[0], created_ids[-1]
             order = "" if first <= last else " (note: IDs run opposite to coordinates)"
             return (
-                f"Created/resolved {len(created_ids)} nodes at IDs {id_desc}, {span}"
-                f"{order} (成功创建 {len(created_ids)} 个等间距节点){note}"
+                f"Resolved {count} coordinates to {len(set(created_ids))} distinct nodes "
+                f"at IDs {id_desc}, {span}{order} "
+                f"(已解析 {len(set(created_ids))} 个节点，包含合并复用的节点){note}"
             )
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息

@@ -1211,60 +1211,64 @@ class QtModelProvider(BridgeProvider):
         - is_merged 生效时，新节点会被**合并到已存在的旧节点**上，该旧 ID 不属于
           "新增"，仅靠前后集合差会漏掉它。
 
-        因此这里按坐标匹配：对每个请求坐标，回查落在容差内的节点 ID。这样无论
-        后端是新建还是复用了旧节点，调用方得到的都是"该坐标处真实可用的编号"
-        —— 这正是 LLM 建单元时需要的东西。
-
-        返回的 ID 按请求坐标的顺序排列（不是按 ID 大小），未能匹配到的坐标跳过。
-        代价是一次额外的 get_node_data 往返（实测约 20ms）。查询失败时返回空
-        列表，由调用方降级为不声明 ID，而不是让整个写入操作失败。
+        合并开启时，在实际合并容差内找最近节点；关闭时先读已有编号，随后只从
+        新增节点中匹配。不得放大合并容差，也不得用查询返回顺序决定节点身份。
+        返回列表与请求坐标一一对应（合并时可重复）。有任一位置无法确定或出现
+        等距离候选时返回空列表，避免调用者把缺项后的列表当成连续节点链。
         """
         self._require_available()
         if not node_data:
             raise ValueError("node_data cannot be empty")
 
+        def read_coords() -> dict[int, tuple[float, float, float]] | None:
+            rows = self._safe_get("get_node_data")
+            if not isinstance(rows, list):
+                return None
+            coords = {}
+            for row in rows:
+                if not isinstance(row, dict):
+                    return None
+                node_id = row.get("node_id", row.get("id"))
+                if isinstance(node_id, bool) or not isinstance(node_id, int):
+                    return None
+                try:
+                    xyz = (float(row["x"]), float(row["y"]), float(row["z"]))
+                except (KeyError, TypeError, ValueError):
+                    return None
+                if not all(math.isfinite(value) for value in xyz):
+                    return None
+                coords[node_id] = xyz
+            return coords
+
+        merging = kwargs.get("is_merged", False)
+        before = read_coords() if not merging else {}
         self._mdb.add_nodes(node_data=node_data, **kwargs)
         self.update_model()
-
-        rows = self._safe_get("get_node_data")
-        if rows is None:
+        after = read_coords()
+        if before is None or after is None:
             return []
-
-        # 容差取 merge_error 的量级，略放宽以吸收浮点往返误差
-        tol = max(float(kwargs.get("merge_error", 1e-3)), 1e-6) * 10
-        existing = []
-        for row in self._to_dicts(rows):
-            node_id = row.get("node_id", row.get("id"))
-            if not isinstance(node_id, int):
-                continue
-            try:
-                existing.append(
-                    (node_id, float(row["x"]), float(row["y"]), float(row["z"]))
-                )
-            except (KeyError, TypeError, ValueError):
-                continue
-
+        candidates = {nid: xyz for nid, xyz in after.items() if nid not in before}
+        # An explicit merge radius, including zero, must never be enlarged.
+        # Without merging, a tiny tolerance only covers coordinate round trips;
+        # candidates are already restricted to IDs created by this call.
+        tolerance = float(kwargs.get("merge_error", 1e-3)) if merging else 1e-9
         found: list[int] = []
-        seen: set[int] = set()
         for coord in node_data:
-            # node_data 可能是 [x,y,z] 或 [id,x,y,z]
-            xyz = coord[1:4] if len(coord) >= 4 else coord[0:3]
-            if len(xyz) < 3:
-                continue
-            try:
-                tx, ty, tz = (float(v) for v in xyz)
-            except (TypeError, ValueError):
-                continue
-            for node_id, x, y, z in existing:
-                if (
-                    abs(x - tx) <= tol
-                    and abs(y - ty) <= tol
-                    and abs(z - tz) <= tol
-                    and node_id not in seen
-                ):
-                    found.append(node_id)
-                    seen.add(node_id)
-                    break
+            xyz = coord[1:4] if len(coord) == 4 else coord
+            if len(xyz) != 3:
+                return []
+            matches = sorted(
+                (math.dist(xyz, point), nid) for nid, point in candidates.items()
+                if math.dist(xyz, point) <= tolerance
+            )
+            if not matches or (
+                len(matches) > 1
+                and math.isclose(matches[0][0], matches[1][0], rel_tol=1e-12, abs_tol=1e-12)
+            ):
+                return []
+            found.append(matches[0][1])
+            if not merging:
+                candidates.pop(matches[0][1])
         return found
 
     def add_elements(self, ele_data: list[list], **kwargs) -> None:
