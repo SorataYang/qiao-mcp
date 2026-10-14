@@ -257,11 +257,24 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         name: str = "运营阶段",
     ) -> str:
         """
-        Merge all construction stages into a final operation stage (合并为运营阶段).
+        Merge the current construction-stage definitions into a named operation
+        stage (将当前施工阶段定义合并为指定名称的运营阶段).
 
-        This finalizes the construction stage analysis by creating an operation
-        stage that accumulates all previous stage results.
-        通过合并所有施工阶段创建运营阶段，作为施工阶段分析的最终状态。
+        Use when intentionally consolidating the stage sequence. To add one stage
+        while retaining the sequence, use add_construction_stage; to change
+        activation/deactivation in one stage use update_construction_stage.
+        configure_operation_stage instead selects operating load cases and factors.
+
+        This rewrites stage definitions and refreshes the model; save a checkpoint
+        if the original sequence is needed. It does not solve or combine already
+        computed result arrays. Read get_model_data(kind="stages") afterwards,
+        configure analysis and call run_analysis when new results are required.
+
+        The wrapper uses the SDK merge defaults: deformation-based installation,
+        self-weight in the merged stage and loading age 5 days. Use the verified
+        mdb.merge_all_stages signature through call_qtmodel_api for other options.
+        Returns a confirmation with the requested name, not analysis results.
+        (修改阶段定义而非求解；采用 SDK 合并默认设置，需要其他合并选项时先查真实签名。)
 
         Args:
             name: Name for the merged operation stage (运营阶段名称)
@@ -327,11 +340,25 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         sub_steps: list[NonnegativeNumber] | None = None,
     ) -> str:
         """
-        Update an existing construction stage (修改施工阶段).
+        Edit one construction stage, including activation and deactivation of
+        structure groups, boundary groups and load groups (修改阶段及各类组的激活/钝化).
 
-        Used to activate/deactivate structure groups, boundaries, and loads
-        in a specific construction stage.
-        (用于在特定施工阶段激活/钝化结构组、边界条件和荷载)
+        Use this dedicated stage-editing tool for both activation and deactivation:
+        delete_structures, delete_boundaries and delete_loads deactivate groups
+        within this stage while retaining their model definitions. To delete the
+        stage itself use remove_construction_stage; to select a modeling view use
+        switch_display_stage. Create a missing stage with add_construction_stage.
+
+        name must identify an existing stage and all group references must exist.
+        new_name and duration are always sent, including their defaults. Optional
+        group lists are omitted only when None; supplied empty lists are sent
+        explicitly, so they are not a request to preserve current entries. Load
+        activation/deactivation rows pair a group name with time 0=start or 1=end.
+
+        Writes and refreshes the model and returns a confirmation without solving.
+        Read stages before and after editing when retaining an existing schedule;
+        sub_steps requires SDK support, and [] explicitly clears sub-steps.
+        (钝化不等于删除组；None 省略列表，空列表会下发。名称和工期默认值仍会提交。)
 
         Args:
             name: Existing stage name (现有阶段名称)
