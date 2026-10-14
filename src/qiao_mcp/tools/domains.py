@@ -160,25 +160,33 @@ TOOL_DOMAINS = (
     _domain(
         "edit_boundaries", "Supports, links and constraints / 支承连接与约束",
         """
-        Assign or remove structural supports, node links, beam-end releases and
-        weighted DOF constraints (编辑支承、节点连接、梁端释放与约束方程).
+        Edit mechanical boundary conditions on existing nodes and frame elements
+        (编辑已有节点和杆系单元的力学边界条件).
 
-        set_support restrains a node to ground; add_elastic_support supplies
-        ground spring stiffness. add_elastic_link connects two nodes with springs,
-        and add_master_slave_link enforces rigid DOF coupling. add_beam_constraint
-        releases or springs selected frame ends. add_constraint_equation defines
-        a weighted relation between nodal DOFs. remove_boundary deletes an
-        explicitly selected boundary family. Use edit_construction for boundary
-        groups and their stage activation, edit_geometry for element connectivity.
+        Use this domain for restraint or connection behavior. Choose
+        request.operation by the physical relationship:
 
-        request.operation determines whether selectors denote nodes, elements or
-        boundary IDs and whether values are fixity flags, stiffnesses or weighted
-        terms. Respect that branch's DOF order and stiffness units; a ground
-        spring is not a two-node link. Existing model entities are prerequisites.
-        Writes may replace an existing support/release; optional nulls can preserve
-        settings while explicit false/empty values can clear them, as documented
-        for the chosen operation. The bridge is refreshed without solving. Read
-        boundaries through query_model and verify local axes before analysis.
+        - Node to ground: set_support for fixed/free DOFs; add_elastic_support
+          for finite stiffness or one-way contact.
+        - Node to node: add_elastic_link for a two-node connection;
+          add_master_slave_link for one master and multiple coupled slaves.
+        - Frame end: add_beam_constraint for I/J-end releases or end springs.
+        - Weighted DOF relation: add_constraint_equation; remove_boundary removes
+          a selected family using its node, element, name or boundary selector.
+
+        For group creation or stage activation use edit_construction; for actual
+        node connectivity use edit_geometry. Resolve existing IDs with query_model.
+        The same boolean has different mechanical meanings: True fixes a DOF in
+        set_support, couples it in add_master_slave_link, and RELEASES it in
+        add_beam_constraint. Use the selected branch's DOF order and stiffness units.
+        For support extras, supplied extra_parameters enables them by default;
+        extra_enabled=False clears them, while omitting both preserves the setting.
+
+        Writes can overwrite supports/releases or remove constraints and change
+        stability. There is no backup, undo or automatic solve. The response is
+        a confirmation, not a verified saved definition. Read boundaries back and
+        check local axes before analyze_model; inspect an uncertain write before
+        retrying to avoid duplicating a link or removing the wrong constraint.
         """,
         """
         set_support add_elastic_link add_master_slave_link add_elastic_support
