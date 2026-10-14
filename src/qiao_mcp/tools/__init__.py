@@ -1648,7 +1648,26 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply distributed load on beam elements (施加梁单元分布荷载).
+        Apply a distributed force along selected beam elements in an existing
+        static load case (在已有工况中向梁单元施加分布力).
+
+        Create the elements and case first. Use apply_nodal_force for forces at
+        nodes, add_plate_element_load for plate loading, or add_distribute_plane_load
+        to place a separately defined plane-load pattern. This tool's positions
+        are measured along each selected beam from its I end.
+
+        Pair load_positions with load_values: [0, 1] spans the full element;
+        equal endpoint values give a uniform load and differing values describe
+        a linear variation. Positions are relative fractions, not physical
+        distances. The same profile applies to every selected element. Signs and
+        load units follow the chosen global/local axis and the bridge convention;
+        the wrapper performs no unit conversion.
+
+        Nonempty lists are passed through without sorting; omitted/empty lists
+        use SDK defaults, not a generated load profile. Writes and refreshes the
+        model and returns a confirmation without solving. Repeated-load handling
+        belongs to the bridge; inspect existing loads before repeating a request.
+        (位置和值一一对应，从各单元 I 端量取；单位原样传入，空列表不自动生成荷载。)
 
         Args:
             element_id: Element ID(s) (单元编号)
@@ -2318,7 +2337,20 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         factor: float = 1.0,
     ) -> str:
         """
-        Convert a load case to mass for dynamic analysis (将荷载转换为质量).
+        Add a mass-conversion rule for an existing load case used in dynamic
+        analysis (为已有荷载工况设置动力分析的荷载转质量规则).
+
+        Use when an existing load should contribute to the mass model. For
+        explicit nodal masses use add_nodal_mass; for the subsequent vibration
+        analysis enable it with configure_analysis and then call run_analysis.
+        name is the existing load-case name, not a new mass or combination name.
+
+        factor is passed as the conversion coefficient. The bridge performs the
+        actual conversion; this wrapper neither computes masses nor deletes the
+        source loads. It writes the rule, refreshes the model and returns a
+        confirmation, not a mass total. Verify repeated rules in the bridge to
+        avoid unintended mass contributions; replacement behavior is backend-owned.
+        (传入已有工况名和转换系数；本工具仅配置规则，不返回质量数值，也不启动求解。)
 
         Args:
             name: Load case name to convert (要转换为质量的荷载工况名称)
