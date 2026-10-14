@@ -426,25 +426,34 @@ TOOL_DOMAINS = (
     _domain(
         "view_model", "Desktop view and images / 桌面显示与图像",
         """
-        Set desktop display options, choose a visible stage, save screenshots or
-        plot existing analysis results (调整桌面显示、保存截图或绘制已有结果).
+        Control the desktop view and capture PNG images of the model or existing
+        analysis results (控制桌面视图并截取模型或已有结果图像).
 
-        View angle, rendering, ID labels, visible-entity selection and display
-        units affect presentation. switch_display_stage selects a modeling stage
-        by name; change_construct_stage selects the results stage by index.
-        save_model_screenshot captures the current model view and
-        plot_analysis_result draws a selected solved result. Use edit_geometry
-        for real ID/coordinate changes, edit_construction for activation schedules,
-        and query_results for numeric results instead of pixels.
+        Choose request.operation for the presentation task:
 
-        request.operation selects the appropriate view or plotting fields. An
-        omitted display flag uses that operation's default, not necessarily its
-        current value; set_unit changes display units, not tool input units.
-        Image files are written on the MCP host from desktop image data, and an
-        existing destination is overwritten. return_image=true returns MCP image
-        content; false returns a path confirmation. Other operations return
-        confirmations. No analysis is run. Stage/display availability follows
-        the active QiaoTong context; verify the selected stage before capturing.
+        - set_view_angle, set_render, display_ids, activate_structure and
+          reset_display control camera, shading, labels and visible entities.
+        - switch_display_stage selects a modeling stage by name;
+          change_construct_stage selects a results stage by integer index.
+        - save_model_screenshot captures the view; plot_analysis_result draws a
+          selected solved component. Use query_results for numerical values.
+        - set_unit changes display units; tool input units remain as documented.
+
+        Defaults are assignments, not toggles: set_render(flag=true) requests
+        solid shading; display_ids applies BOTH flags and an omitted flag hides
+        that label family. set_unit sends both force and length units each time.
+        A screenshot defaults to the iso camera; view_angle="current" preserves
+        the camera. If applying a preset fails, the current view is captured and
+        the reply is a saved-path warning even when return_image=true.
+
+        A connected desktop view is required. Display operations return a
+        confirmation and change presentation only; edit_geometry and
+        edit_construction change entities and schedules. The two image operations
+        write PNG bytes to file_path on the MCP host and overwrite that path.
+        Use a distinct path to retain an earlier capture. return_image=true
+        normally returns MCP Image content; false returns a saved-path message.
+        No solve runs and no previous view is restored automatically. Confirm
+        the selected stage/component before treating a plot as evidence.
         """,
         """
         save_model_screenshot plot_analysis_result set_view_angle display_ids
