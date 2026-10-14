@@ -11,34 +11,43 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-### 🔧 Tools (153 tools, grouped)
+### 🔧 Tools (15 domain entry points, 153 operations)
 
-Tools are organized by workflow area. Highlights per group:
+The local development version exposes 15 domain tools. Each takes a `request`
+with an `operation` selector and the matching fields; its schema includes every
+operation's full parameter descriptions, defaults and constraints. All 153 legacy
+names remain directly callable with their original arguments.
 
-| Group | Representative tools |
-|-------|----------------------|
-| **Core modeling** | `create_nodes_linear`, `create_beam_elements_linear`, `create_material`, `create_section` (all parametric section types), `create_polygon_section`, `add_thickness` (optional out-of-plane thickness) |
-| **Loads** | `create_load_group`, `create_load_case`, `set_self_weight_stage`, `set_gravity`, `apply_nodal_force`, `apply_beam_distributed_load`, temperature/settlement loads |
-| **Boundary** | `set_support`, `add_elastic_link`, `add_master_slave_link`, `add_elastic_support`, `add_beam_constraint` |
-| **Groups** | `create_structure_group`, `add_to_structure_group`, `merge_operation_stage` |
-| **Stages & analysis** | `add_construction_stage`, `merge_operation_stage`, `configure_analysis`, `run_analysis` (async, progress-reporting, optional `show_view`), `get_analysis_results` |
-| **Tendons** | `create_tendon_property`, `create_tendon_2d`, `apply_prestress`, `get_tendon_info` |
-| **Traffic (moving load)** | `add_node_tandem`, `add_influence_plane`, `add_traffic_lane`, `add_standard_vehicle`, `create_live_load_case` |
-| **Live-load configuration & transversal analysis** | `configure_live_load_system`, `configure_operation_stage`, `set_transversal_vehicle`, `set_transversal_lane`, `set_transversal_case`, `get_transversal_data`, `remove_transversal_data` |
-| **International live load** | `set_international_vehicle`, `create_en1991_vehicle`, `set_planned_lane`, `set_international_live_load_case`, `get_international_live_load_data` |
-| **Checking** | `setup_concrete_check`, `add_check_load_combination`, `add_parametric_reinforcement`, `run_concrete_check`, `get_check_data` |
-| **Model reinforcement & check definitions** | `set_section_reinforcement`, `remove_section_reinforcement`, `set_check_stirrup_snapshot`, `set_element_stirrups`, `manage_check_material`, `manage_check_case_definition` |
-| **Queries** | `get_model_info`, `get_model_data` (by kind, incl. qtmodel 2.8 overview kinds `summary` / `analysis_context` / `project_metadata` / `check_context`), `find_entities`, `calc_section_property`, `get_special_results` (paginated where applicable) |
-| **Modification** | `initialize_model`, `save_model_file`, `open_model_file`, `update_node`, `move_nodes`, `update_element`, `remove_nodes`, `remove_elements` |
-| **Visualization** | `save_model_screenshot`, `plot_analysis_result` (optionally return viewable images), `set_view_angle`, `display_ids` |
-| **Workflows** | `create_simple_beam_bridge`, `create_continuous_beam_bridge` |
-| **Gateway & diagnostics** | `check_qiaotong_connection`, `get_model_status`, `list_qtmodel_api`, `call_qtmodel_api` — diagnose the bridge connection and model state, or discover and call long-tail qtmodel methods with signature validation |
+| Domain tool | Scope |
+| --- | --- |
+| `inspect_bridge` | Connection, model state and edit readiness |
+| `manage_model_files` | Open, save and initialize a project |
+| `query_model` | Definitions, entity searches and geometry checks |
+| `edit_geometry` | Nodes, elements and bridge layouts |
+| `edit_properties` | Materials, sections, thickness and time effects |
+| `edit_boundaries` | Ground supports, node links and beam-end releases |
+| `edit_construction` | Groups, stages, activation and deactivation |
+| `edit_loads` | Static cases, combinations and physical loads |
+| `analyze_model` | Solver settings, dynamics and structural analysis |
+| `edit_prestress` | Tendon properties, geometry and prestress |
+| `edit_traffic` | Moving, transversal and international live loads |
+| `manage_checks` | Model checking snapshots and current code-check context |
+| `query_results` | Structural, modal, live-load and tendon results |
+| `view_model` | Display settings, stage views, screenshots and plots |
+| `access_backend` | Native method discovery and long-tail API calls |
 
-The 151 non-image tools publish output schemas and return MCP structured content
+For example, send `{"request":{"operation":"get_model_status"}}` to
+`inspect_bridge`. See [request examples and compatibility](docs/tool-catalog.md).
+Set `QIAO_MCP_CATALOG_LAYOUT=flat` to list the original 153 names instead.
+Published 0.5.1 continues to use that flat catalog.
+
+The 151 non-image operations retain their output schemas and MCP structured content
 (`{status, message, ...}`). Connection diagnostics also expose `connection_status`
 and `connected`; bridge templates return the resolved node, element and property IDs.
 `get_model_status` preserves QiaoTong's state in `status`. The two image-capable tools
-return viewable MCP image content or a text summary. Tool failures use typed MCP errors, and
+return viewable MCP image content or a text summary. At domain level, 14 entry points
+publish combined output schemas; `view_model` supports mixed image/text content.
+Tool failures use typed MCP errors, and
 read-only, destructive, and open-world operations carry MCP tool annotations. The
 server instructions include the full tool-group overview; use `list_qtmodel_api`
 before calling an uncovered backend method through the gateway.
@@ -55,14 +64,14 @@ them; this behavior also applies to older SDKs that support these options.
 
 ### 0.5.6: tool optimizations (local version)
 
-The current development version retains 153 tool names. These changes are not in
-published 0.5.1. Section creation/deletion, stage deletion and vertical prestress
-checking now explain their prerequisites, selection boundaries and write behavior.
-`add_custom_temperature` accepts native `[reference, height, temperature]` rows
-(reference 1=top, 2=bottom; orientation 1=local Z, 2=local Y). Two-value rows are
-rejected because they omit the reference. Mutation selections reject blank, Boolean and
-fractional IDs; renumbering requires BOTH complete lists, or BOTH omitted to
-intentionally renumber the whole model.
+The current development version retains all 153 operations and legacy calls behind 15
+domain entry points. These changes are not in published 0.5.1. Section
+creation/deletion, stage deletion and vertical prestress checking now explain their
+prerequisites, selection boundaries and write behavior. `add_custom_temperature` accepts
+native `[reference, height, temperature]` rows (reference 1=top, 2=bottom; orientation
+1=local Z, 2=local Y). Two-value rows are rejected because they omit the reference.
+Mutation selections reject blank, Boolean and fractional IDs; renumbering requires BOTH
+complete lists, or BOTH omitted to intentionally renumber the whole model.
 
 Screenshots and plots now retrieve PNG bytes for storage on the MCP host. Partial
 updates require unique, complete readback; checking queries preserve typed fields.
@@ -248,7 +257,7 @@ qiao-mcp/
 └── reference-docs/            # Review notes and project documentation
 ```
 
-The **Provider pattern** keeps the 153 tools decoupled from any single backend. Select one with
+The **Provider pattern** keeps the 153 operations decoupled from any single backend. Select one with
 `BRIDGE_PROVIDER`; each provider declares its own software-specific rules, so the LLM adapts
 without prompt changes. Currently supports:
 - **QTModel** (`qtmodel`, default) — [QiaoTong (桥通)](https://www.brdi.com.cn/Software.html) bridge analysis software ([user manual](https://soratayang.github.io/))
@@ -422,7 +431,7 @@ where it belongs: in the dependency constraint.
 
 | Qiao-MCP           | qtmodel       | QiaoTong software                          |
 |--------------------|---------------|--------------------------------------------|
-| 0.5.6 (local)      | 2.6.3 – 2.9.x, not 2.9.0 | Same backend requirements; includes tool correctness and guidance improvements |
+| 0.5.6 (local)      | 2.6.3 – 2.9.x, not 2.9.0 | Same backend requirements; 15 domain tools with all 153 legacy operations |
 | 0.5.1              | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
 | 0.5.0              | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
 | 0.3.2 – 0.3.3     | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
