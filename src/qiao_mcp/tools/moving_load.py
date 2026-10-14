@@ -89,12 +89,25 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         order_by_x: bool = True,
     ) -> str:
         """
-        Define a node tandem — the node path a moving load travels along
-        (添加节点纵列，移动荷载行进经过的节点序列).
+        Define a named longitudinal node path for a moving-load influence plane
+        (以已有节点定义活载节点纵列).
 
-        This is STEP 1 of the moving load workflow:
-        add_node_tandem → add_influence_plane → add_traffic_lane
-        → add_standard_vehicle → create_live_load_case
+        Use after creating the girder nodes and before add_influence_plane,
+        which refers to this tandem by name. add_traffic_lane defines a lane
+        within that plane; create_nodes and create_nodes_linear create geometry
+        and do not define a moving-load path.
+
+        The selected node IDs must already exist. order_by_x=True asks the
+        bridge to sort by global X, so input list order is not the travel order.
+        For a path that doubles back in X, supply the intended ordered node
+        list with order_by_x=False and verify its direction in QiaoTong. The
+        wrapper forwards the selection without checking the path geometry.
+
+        Writes the named tandem and refreshes the model, returning a
+        confirmation, not generated nodes, an influence plane or results.
+        Existing-name handling belongs to the bridge; inspect the definition
+        before retrying an uncertain write. Continue with the influence plane,
+        lane, vehicle and create_live_load_case, then run_analysis separately.
 
         Args:
             name: Tandem name (节点纵列名, e.g. "节点纵列1")
