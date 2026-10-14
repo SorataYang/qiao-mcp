@@ -9,30 +9,36 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 
 ## 功能特性
 
-### 🔧 工具（共 153 个，按功能分组）
+### 🔧 工具（15 个领域入口，完整覆盖 153 项操作）
 
-工具按桥梁建模与分析工作流分组。以下是各组代表工具：
+当前本地开发版本按领域提供 15 个工具。每个工具接收 `request`，通过 `operation`
+选择具体操作并填写对应字段；Schema 完整保留各操作的参数说明、默认值与约束。
+原有 153 个名称仍可使用原参数直接调用。
 
-| 分组 | 代表工具 |
-|------|----------|
-| **核心建模** | `create_nodes_linear`、`create_beam_elements_linear`、`create_material`、`create_section`（支持参数化截面）、`create_polygon_section`、`add_thickness`（支持独立面外厚度） |
-| **荷载** | `create_load_group`、`create_load_case`、`set_self_weight_stage`、`set_gravity`、`apply_nodal_force`、`apply_beam_distributed_load`、温度/沉降荷载 |
-| **边界条件** | `set_support`、`add_elastic_link`、`add_master_slave_link`、`add_elastic_support`、`add_beam_constraint` |
-| **分组与阶段** | `create_structure_group`、`add_elements_to_group`、`merge_operation_stage`、`add_construction_stage` |
-| **分析** | `configure_analysis`、`run_analysis`（异步并报告进度，可选 `show_view`）、`get_analysis_results` |
-| **预应力钢束** | `create_tendon_property`、`create_tendon_2d`、`apply_prestress`、`get_tendon_info` |
-| **移动荷载** | `add_node_tandem`、`add_influence_plane`、`add_traffic_lane`、`add_standard_vehicle`、`create_live_load_case` |
-| **活载配置与横向分析** | `configure_live_load_system`、`configure_operation_stage`、`set_transversal_vehicle`、`set_transversal_lane`、`set_transversal_case`、`get_transversal_data`、`remove_transversal_data` |
-| **国际活载** | `set_international_vehicle`、`create_en1991_vehicle`、`set_planned_lane`、`set_international_live_load_case`、`get_international_live_load_data` |
-| **结构验算** | `setup_concrete_check`、`add_check_load_combination`、`add_parametric_reinforcement`、`run_concrete_check`、`get_check_data` |
-| **模型配筋与检算定义** | `set_section_reinforcement`、`remove_section_reinforcement`、`set_check_stirrup_snapshot`、`set_element_stirrups`、`manage_check_material`、`manage_check_case_definition` |
-| **查询** | `get_model_info`、`get_model_data`（按 kind 查询，含 qtmodel 2.8 概览类型 `summary` / `analysis_context` / `project_metadata` / `check_context`）、`find_entities`、`calc_section_property`、`get_special_results`（适用时支持分页） |
-| **模型修改** | `initialize_model`、`save_model_file`、`open_model_file`、`update_node`、`move_nodes`、`update_element`、`remove_nodes`、`remove_elements` |
-| **可视化** | `save_model_screenshot`、`plot_analysis_result`（可直接返回图像）、`set_view_angle`、`display_ids` |
-| **工作流** | `create_simple_beam_bridge`、`create_continuous_beam_bridge` |
-| **网关与诊断** | `check_qiaotong_connection`、`get_model_status`、`list_qtmodel_api`、`call_qtmodel_api`（连接与模型状态诊断、长尾 API 检索与签名校验调用） |
+| 领域工具 | 范围 |
+| --- | --- |
+| `inspect_bridge` | 连接、模型状态与编辑就绪 |
+| `manage_model_files` | 打开、保存和初始化模型 |
+| `query_model` | 模型定义、实体查找与几何检查 |
+| `edit_geometry` | 节点、单元与标准桥梁布置 |
+| `edit_properties` | 材料、截面、板厚与时变属性 |
+| `edit_boundaries` | 对地支承、节点连接与梁端释放 |
+| `edit_construction` | 分组、阶段、激活与钝化 |
+| `edit_loads` | 静力工况、组合与荷载施加 |
+| `analyze_model` | 求解设置、动力输入与结构计算 |
+| `edit_prestress` | 钢束属性、线形与预应力 |
+| `edit_traffic` | 移动、横向与国际活载 |
+| `manage_checks` | 模型检算快照与当前检算窗口 |
+| `query_results` | 结构、模态、活载与钢束结果 |
+| `view_model` | 显示、阶段视图、截图与云图 |
+| `access_backend` | 原生接口检索与长尾调用 |
 
-151 个非图片工具提供输出 Schema，并返回 MCP 结构化内容（`{status, message, ...}`）。连接诊断另有 `connection_status`、`connected` 等字段；一键建桥返回实际节点、单元、材料和截面编号；`get_model_status` 的 `status` 保留桥通状态。两个支持图片的工具返回可预览的 MCP 图像或文本说明。执行失败使用类型化 MCP 错误；工具注解说明只读、破坏性和开放世界行为。调用长尾 API 前，请先使用 `list_qtmodel_api` 查询真实签名。
+例如，向 `inspect_bridge` 传入 `{"request":{"operation":"get_model_status"}}`。
+详见[调用示例与兼容方式](docs/tool-catalog.md)。设置
+`QIAO_MCP_CATALOG_LAYOUT=flat` 可继续列出原有 153 个工具。
+公开发布的 0.5.1 仍使用原有目录。
+
+151 个非图片操作保留输出 Schema，并返回 MCP 结构化内容（`{status, message, ...}`）。连接诊断另有 `connection_status`、`connected` 等字段；一键建桥返回实际节点、单元、材料和截面编号；`get_model_status` 的 `status` 保留桥通状态。两个支持图片的操作返回可预览的 MCP 图像或文本说明。领域目录中，14 个入口提供合并后的输出 Schema，`view_model` 支持图片与文本混合内容。执行失败使用类型化 MCP 错误；工具注解说明只读、破坏性和开放世界行为。调用长尾 API 前，请先使用 `list_qtmodel_api` 查询真实签名。
 
 输入 Schema 包含参数说明、固定枚举、分页范围和坐标/自由度数组长度约束，不符合 Schema 的输入会在调用后端前被拒绝。梁端 `release_i` / `release_j` 中 **True 表示释放**，省略某端表示该端六自由度均不释放。荷载组合分项顺序为 `[工况类型, 工况名, 系数]`，`combine_type=3` 才是包络。
 
@@ -41,7 +47,7 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 
 ### 0.5.6：工具优化（本地版本）
 
-当前开发版本保留 153 个工具，包含[逐工具审计修正](docs/qtmodel-code-audit.md)。
+当前开发版本通过 15 个领域入口保留全部 153 项操作及旧名称调用，包含[逐工具审计修正](docs/qtmodel-code-audit.md)。
 补充了渐变截面的创建和赋值、截面与施工阶段删除、竖向预应力检算设置的前置条件、
 选用范围和写入行为。每轮改进和验证结果见[优化记录](docs/optimization-log.md)。
 这些修改尚未包含在公开发布的 0.5.1 中。
@@ -202,7 +208,7 @@ qiao-mcp/
 └── reference-docs/            # 评审记录与项目文档
 ```
 
-**Provider 模式**让 153 个工具与具体后端解耦。用 `BRIDGE_PROVIDER` 选择后端；每个后端自己声明软件专有规则，因此换后端无需改提示词。当前支持：
+**Provider 模式**让 153 项操作与具体后端解耦。用 `BRIDGE_PROVIDER` 选择后端；每个后端自己声明软件专有规则，因此换后端无需改提示词。当前支持：
 - **QTModel**（`qtmodel`，默认）— [桥通 (QiaoTong)](https://www.brdi.com.cn/Software.html) 桥梁分析软件（[用户手册](https://soratayang.github.io/)）
 
 接入新后端只需实现 `BridgeProvider` 并登记一行，不改工具层代码。详见 [后端选择](./INTEGRATION_GUIDE.md#后端选择-backend-selection)。
@@ -357,7 +363,7 @@ Qiao-MCP 的版本号独立于 `qtmodel`：本项目可以自行迭代（修 bug
 
 | Qiao-MCP        | qtmodel       | 桥通软件                               |
 |-----------------|---------------|----------------------------------------|
-| 0.5.6（本地） | 2.6.3 – 2.9.x，不含 2.9.0 | 后端要求相同；包含工具正确性与使用说明改进 |
+| 0.5.6（本地） | 2.6.3 – 2.9.x，不含 2.9.0 | 后端要求相同；15 个领域入口，保留全部 153 项旧操作 |
 | 0.5.1          | 2.6.3 – 2.9.x，不含 2.9.0 | 配 2.9.x 时桥通须上报模型状态；新命令须服务端支持 |
 | 0.5.0          | 2.6.3 – 2.9.x，不含 2.9.0 | 配 2.9.x 时桥通须上报模型状态；新命令须服务端支持 |
 | 0.3.2 – 0.3.3  | 2.6.3 – 2.8.x | 2.6.3+；2.8.x 不再要求两侧版本精确一致 |

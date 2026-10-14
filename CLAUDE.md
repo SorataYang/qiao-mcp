@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目简介
 
-Qiao-MCP 是一个 MCP 服务器,把桥梁结构分析软件(当前仅支持桥通/QiaoTong,经 `qtmodel` Python API)的能力暴露给 AI 助手:建模、施工阶段、荷载、预应力、活载、规范验算、结果查询。共 153 个工具、7 个资源、5 个提示模板。
+Qiao-MCP 是一个 MCP 服务器,把桥梁结构分析软件(当前仅支持桥通/QiaoTong,经 `qtmodel` Python API)的能力暴露给 AI 助手:建模、施工阶段、荷载、预应力、活载、规范验算、结果查询。默认 15 个领域工具，完整覆盖 153 项操作、7 个资源、5 个提示模板；旧名称仍可直接调用。
 
 ## 常用命令
 
@@ -37,6 +37,7 @@ PYTHONPATH=reference_codes/qtmodel-release/packages/qtmodel/src:src \
 ```
 src/qiao_mcp/
 ├── server.py                  # 入口:构造 provider → 动态生成 server instructions → 注册工具
+├── domain_server.py           # 领域目录与原操作分发，支持 domains/flat 两种目录
 ├── tools/                     # 工具层,按工作域分模块(按 Phase 1–5 演进而来)
 │   ├── __init__.py            # 建模核心(create_nodes、create_section 等)
 │   ├── envelope.py            # 统一返回协议 + 工具分类(权限映射)— 关键模块,见下
@@ -57,8 +58,9 @@ src/qiao_mcp/
 
 所有工具经 `register_tools_with_envelope` 包装(`tools/catalog.py` 的 `TOOL_REGISTRARS` 统一注册，服务器与离线检查共用入口):
 
+- `tools/domains.py` 将全部操作各归入一个领域；`DomainFastMCP` 从原参数模型生成带 `request.operation` 判别字段的 Schema，再调用原处理函数。保留省略/null/空列表差异、原 Context、状态守卫与错误通道；不要另建评分专用目录或过滤操作。默认 `QIAO_MCP_CATALOG_LAYOUT=domains`，`flat` 列出全部 153 个旧名称，两种模式均接受旧名称调用。新增操作必须明确归属领域，未覆盖时目录生成报错。
 - 成功:返回 dict、响应 BaseModel 或 str(自动包裹为 `{status, message}`)。`tools/schemas.py` 定义输入约束与响应模型；包装器保留显式响应模型，字符串/普通字典分别使用 MessageResult/ObjectResult。不要把返回注解改回裸 dict，FastMCP 1.29 无法据此生成输出 Schema。
-- 图片:两个图片工具显式 `structured_output=False`，保留 MCP Image 内容。其他 151 个工具必须有输出 Schema。
+- 图片:两个图片操作显式 `structured_output=False`，保留 MCP Image 内容。其他 151 项操作必须有输出 Schema；领域层 14 个入口合并原输出模型，`view_model` 不声明整体输出 Schema 以容纳图片。
 - 启动与目录注册不探测桥通连接；连接检查由诊断工具和操作守卫按需执行。
 - 失败:`raise ToolError(...)`;输入不合法用 `ToolInputError`(`tools/envelope.py`)
 - `envelope.py` 同时把每个工具名映射到桥通能力类别(`model_read`/`model_write`/`stage_write`/`result_read`/`check_*`/`analysis_run`/`view`/`lifecycle`/`connection`),用于模型状态守卫
