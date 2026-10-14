@@ -3075,12 +3075,34 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         case_name_mode: Literal["static", "full"] = "static",
     ) -> str:
         """
-        Get analysis results from the bridge model (获取分析结果).
+        Read solved displacements, element forces/stresses or support reactions
+        for one analysis stage and case (读取指定阶段工况的结构计算结果).
+
+        Use after a successful run_analysis and while that solved state is
+        current. get_model_data/query_model_data read definitions, get_check_data
+        reads concrete-checking data, and get_live_load_results selects moving-load
+        envelope extremes. This read does not start or refresh an analysis.
+
+        result_type determines the ID namespace: deformation/reaction select
+        nodes; force/stress select elements. Choose stage_id before case_name:
+        -1 selects operation results, 0 the stage envelope, and a positive value
+        one construction stage. For ordinary operation cases, static mode adds
+        "ST:"; full mode passes a verified complete identifier unchanged. Obtain
+        that identifier from QiaoTong results/UI instead of guessing TV:/MV:
+        prefixes from combination codes.
+
+        List results are sliced locally after retrieval, with total/offset and
+        a next-page hint; limit is clamped to 1..500. It does not limit the
+        backend query, and non-list replies are displayed without slicing.
+        No matches or missing results are not evidence of a zero response;
+        verify the solved case and the node/element selection before interpreting.
 
         Args:
             result_type: Type of result to retrieve (结果类型):
                 'deformation' (变形), 'force' (内力), 'stress' (应力), 'reaction' (反力)
-            ids: Node/Element IDs to query (查询的节点/单元编号)
+            ids: Node IDs for deformation/reaction; element IDs for force/stress.
+                 Integer, ID list or range string; default selects ID 1 only
+                 (位移/反力用节点号，内力/应力用单元号；默认仅编号1)
             stage_id: Construction stage (施工阶段): -1=operation(运营), 0=envelope(包络),
                       n=stage n (第n阶段)
             case_name: Load case name for operation stage (运营阶段荷载工况名).
