@@ -308,6 +308,22 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         """
         Locate nodes/elements by coordinates or attributes (按坐标或属性定位节点/单元).
 
+        Use to resolve IDs or inspect one selected attribute before editing the
+        model. get_model_data lists full entity records; query_model_data offers
+        typed combined filters. Choose one by mode and supply its required
+        selector from the schema; unrelated selectors are ignored for that mode.
+
+        Point modes use all three coordinates and the search tolerance. Material
+        searches use a name, section searches use an ID, and span modes use an
+        existing span-info name. element_type accepts one positive ID; element_weight
+        accepts a selection and returns force-weight in N, including material
+        construction factors, independently of displayed units.
+
+        Reads without modifying or refreshing the model. Returns a named text
+        result with local pagination for lists, or "Nothing found" when empty.
+        A missing required mode selector is an input error, not an empty match.
+        (按模式选择参数；列表本地分页，缺少必需筛选条件会报错，查询不改模型。)
+
         Args:
             by: Search mode (查找方式):
                 "node_at_point" (按坐标找节点, 需 x/y/z, 可选 tolerance),

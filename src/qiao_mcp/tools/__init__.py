@@ -2919,6 +2919,18 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         - Missing nodes/elements/materials (缺失的节点/单元/材料)
         - Overlapping nodes (重合节点)
         - Overlapping elements (重合单元)
+
+        Use after model edits and before run_analysis for a basic consistency
+        review. get_model_status reports whether operations are currently allowed;
+        get_model_data supplies detailed records. This check only reads the model
+        and never merges duplicates, creates missing entities or starts a solver.
+
+        Returns a text report with a pass/fail label, model counts, errors and
+        warnings. Missing all nodes, all elements or all materials causes failure;
+        overlapping entities are warnings, so PASSED can still include warnings.
+        This is not a stability analysis or a design-code check and does not
+        establish that every assignment or load is correct.
+        (只读基础检查；重合项属于警告，PASSED 仍可能有警告，不代表结构稳定或规范验算合格。)
         """
         try:
             result = provider.validate_model()
