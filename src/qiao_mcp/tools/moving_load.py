@@ -122,6 +122,18 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         STEP 2 of the moving load workflow. The influence plane is built
         from one or more node tandems and is required by lanes and load cases.
 
+        Create the referenced tandems with add_node_tandem first. This defines
+        the supporting influence-plane geometry; add_traffic_lane places a lane
+        on it, and create_live_load_case selects vehicles and lanes for analysis.
+        It does not calculate influence ordinates or create vehicles.
+
+        tandem_names contains existing tandem names in the intended plane order.
+        The optional beam-shape division setting is omitted when None; explicitly
+        setting it requires SDK support. Writes and refreshes the model and
+        returns the requested plane name. Reference validation and repeated-name
+        handling belong to the bridge; verify the plane before building lanes.
+        (先建节点纵列，再建影响面与车道；这里只写定义，不计算影响值。)
+
         Args:
             name: Influence plane name (影响面名称, e.g. "影响面1")
             tandem_names: Node tandem names (节点纵列名称列表)
@@ -156,6 +168,21 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
 
         STEP 3 of the moving load workflow. Requires an influence plane
         and a node tandem created beforehand.
+
+        Use for an ordinary moving-load lane tied to an influence plane. A
+        transversal lane uses set_transversal_lane; an international planned lane
+        uses set_planned_lane and a separate namespace. This tool does not create
+        a vehicle, a live-load case or a structural beam element.
+
+        influence_name and tandem_name must reference existing definitions.
+        offset locates the lane laterally from its tandem, while lane_width is
+        its width; both use meters. optimize enables lateral vehicle wandering,
+        and direction reverses travel along the same lane definition.
+
+        Writes and refreshes the model and returns the lane/plane summary.
+        Use the lane in create_live_load_case afterwards, then configure and run
+        analysis separately. Duplicate-name and reference handling are backend-owned.
+        (普通移动荷载车道与横向/国际拟定车道分开；偏移和宽度用米，定义后另建活载工况。)
 
         Args:
             name: Lane name (车道线名称, e.g. "车道1")
@@ -197,6 +224,22 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         Add a standard vehicle load from a design code database (添加标准车辆荷载).
 
         STEP 4 of the moving load workflow.
+
+        Use for a vehicle or lane-load template provided by the bridge's listed
+        Chinese design-code database. set_international_vehicle and
+        create_en1991_vehicle define international families; set_transversal_vehicle
+        defines transversal vehicles. These use different schemas and namespaces.
+
+        standard_code selects the database and load_type must match an actual
+        entry in that code's desktop UI. load_length and factor are specialized
+        railway options, not universal vehicle geometry or axle-scale controls.
+        The wrapper forwards the selection; it does not synthesize missing templates.
+
+        Writes and refreshes the model, returning a definition summary. The vehicle
+        is not placed on a lane or solved here: reference it in create_live_load_case
+        with the previously created plane/lanes. Inspect definitions before reusing
+        a name because duplicate and unsupported-template handling belongs to the bridge.
+        (规范与荷载类型须匹配界面数据库；车辆定义、车道组合和求解分别执行。)
 
         Args:
             name: Vehicle name (车辆荷载名称)
