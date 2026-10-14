@@ -480,9 +480,18 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Create a load group (创建荷载组).
 
-        Every load in QiaoTong must belong to a load group.
-        Create this before creating a load case or applying loads.
-        每个荷载必须属于某个荷载组，迅建荷载工况之前先建荷载组。
+        Use before applying loads that reference this group_name. A load group
+        collects load definitions for construction-stage activation; create_load_case
+        creates an analysis case, and add_load_combine combines case results.
+        create_structure_group groups model entities and create_boundary_group
+        groups supports/links, each in its own namespace.
+
+        Writes an empty group and refreshes the model, returning a confirmation
+        with its name. No load case, force or stage activation is created. The
+        default name is sent as-is; inspect existing groups before reusing a name
+        because duplicate handling belongs to the bridge. Add loads and configure
+        their stage activation separately after the group exists.
+        (只建立荷载组；荷载工况、实际荷载与施工阶段激活分别配置，名称按原样发送。)
 
         Args:
             name: Load group name (荷载组名称, e.g. "默认荷载组")
