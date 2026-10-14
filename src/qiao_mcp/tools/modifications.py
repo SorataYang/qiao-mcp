@@ -106,7 +106,20 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
     @mcp.tool()
     def remove_unused_sections() -> str:
         """
-        Clean up and remove all unused sections from the model (删除未使用的截面).
+        Delete all section definitions that the bridge classifies as unused
+        (由桥通识别并删除全模型中未使用的截面).
+
+        Use after model edits when cleaning the section catalog. For a specific
+        list of section IDs, use remove_section; to inspect definitions without
+        deleting anything, use get_model_data(kind="sections"). An open, editable
+        model is required. This operation has no selection or preview parameter.
+
+        Sends one cleanup command and refreshes the model. The backend decides
+        which sections are unused; the wrapper does not emulate its dependency
+        rules. Save a checkpoint if unassigned definitions must be kept for
+        later modeling. Returns a confirmation, not the deleted IDs or a count;
+        compare the section catalog before and after if those details are needed.
+        (无局部选择或预览；未赋值但以后要用的截面应先保存。返回确认，删除清单须回读比对。)
         """
         try:
             provider.remove_unused_sections()
