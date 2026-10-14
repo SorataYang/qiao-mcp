@@ -8,6 +8,7 @@ structural analysis tools.
 """
 
 import logging
+import os
 import sys
 
 # Ensure stdout/stderr use UTF-8 to prevent Mojibake in Node.js (MCP Inspector) under Windows
@@ -17,9 +18,8 @@ if sys.platform == "win32":
     if hasattr(sys.stderr, "reconfigure"):
         sys.stderr.reconfigure(encoding="utf-8")
 
-from mcp.server.fastmcp import FastMCP
-
 from qiao_mcp import __version__
+from qiao_mcp.domain_server import CATALOG_LAYOUT_ENV, DEFAULT_CATALOG_LAYOUT, DomainFastMCP
 from qiao_mcp.prompts import register_prompts
 from qiao_mcp.providers import PROVIDER_ENV, create_provider
 from qiao_mcp.resources import register_resources
@@ -46,12 +46,38 @@ if reason := provider.unavailable_reason():
 
 # ── Build MCP instructions dynamically from the active provider ───────
 
+_CATALOG_LAYOUT = os.environ.get(CATALOG_LAYOUT_ENV, DEFAULT_CATALOG_LAYOUT)
+_CATALOG_GUIDE = (
+    "The catalog exposes 15 domain tools covering all 153 operations. Select the "
+    "domain and pass request={operation: <operation name>, ...operation fields}. "
+    "The operation names below are shorthand for these request branches. Each "
+    "branch contains the complete original parameter schema and description.\n"
+    "Start with inspect_bridge(request={operation: check_qiaotong_connection}), "
+    "then inspect_bridge(request={operation: get_model_status}). For filtered "
+    "queries use query_model(request={operation: query_model_data, request: "
+    "{kind: nodes, node_ids: [1, 2]}}): an operation's own request stays nested.\n"
+    "Domain map: inspect_bridge=diagnostics; manage_model_files=open/save/clear; "
+    "query_model=definitions and geometry checks; edit_geometry=nodes/elements/layouts; "
+    "edit_properties=materials/sections; edit_boundaries=supports/links/releases; "
+    "edit_construction=groups/stages/activation; edit_loads=static loads; "
+    "analyze_model=solver settings/dynamics/run; edit_prestress=tendons; "
+    "edit_traffic=vehicles/lanes/live-load cases; manage_checks=code verification; "
+    "query_results=numeric responses; view_model=display/images; "
+    "access_backend=native method discovery/calls.\n"
+    "Legacy operation names remain callable directly with their original arguments "
+    "for existing clients. New calls should use the listed domain tools.\n\n"
+) if _CATALOG_LAYOUT == "domains" else (
+    "The flat catalog lists all 153 original operation names. Call them directly "
+    "with their original arguments; domain requests are also accepted.\n\n"
+)
+
 _SERVER_INSTRUCTIONS = (
     f"You are an AI assistant for bridge structural design "
     f"using {provider.get_software_name()} via Qiao-MCP.\n"
     "Start with check_qiaotong_connection; use get_model_status to confirm the "
     "model and allowed operations before making changes.\n\n"
-    "## Software-Specific Rules — Read Before Using Any Tool\n"
+    + _CATALOG_GUIDE
+    + "## Software-Specific Rules — Read Before Using Any Tool\n"
     + provider.get_llm_instructions()
     + "\n## Available Tool Groups\n"
     "Core:     create_nodes_linear, create_nodes, create_elements, create_material, create_section (全部参数化截面类型), create_polygon_section, create_line_width_section, create_section_from_properties\n"
@@ -93,7 +119,7 @@ _SERVER_INSTRUCTIONS = (
 
 # ── Initialize MCP Server ─────────────────────────────────────────────
 
-mcp = FastMCP("qiao-mcp", instructions=_SERVER_INSTRUCTIONS)
+mcp = DomainFastMCP("qiao-mcp", catalog_layout=_CATALOG_LAYOUT, instructions=_SERVER_INSTRUCTIONS)
 # FastMCP 1.x otherwise reports the MCP SDK version in initialize.serverInfo.
 # Catalogs need the installed server version to identify a fresh inspection.
 mcp._mcp_server.version = __version__
