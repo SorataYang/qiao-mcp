@@ -13,6 +13,8 @@ LaneCount = Annotated[int, Field(strict=True, ge=0, le=2147483647)]
 LoadNumber = Annotated[float, Field(strict=True, allow_inf_nan=False)]
 PositiveLoadNumber = Annotated[LoadNumber, Field(gt=0)]
 NonnegativeLoadNumber = Annotated[LoadNumber, Field(ge=0)]
+# Keep the native three-column row, including a real list of lane names.
+LiveLoadSubCases = list[tuple[QueryName, LoadNumber, list[QueryName]]]
 
 
 class TransversalWrite(BaseModel):
