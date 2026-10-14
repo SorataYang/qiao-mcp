@@ -128,26 +128,37 @@ TOOL_DOMAINS = (
     _domain(
         "edit_properties", "Materials, sections and time effects / 材料截面与时变属性",
         """
-        Define or revise materials, frame sections, plate thickness and concrete
-        creep/shrinkage properties (编辑材料、截面、板厚及徐变收缩属性).
+        Create or modify the shared material, section and thickness definitions
+        used by structural elements (编辑单元共用的材料、截面和板厚定义).
 
-        Choose create_section for a parameterized shape, create_polygon_section
-        for loops/holes, create_line_width_section for thin-wall lines, or
-        create_section_from_properties for supplied engineering properties.
-        create_tapered_section links existing end sections; add_tapper_section_group
-        controls variation along elements. Time parameters and creep/shrinkage
-        functions define material behavior. Use edit_geometry to assign a stored
-        material/section to elements, edit_prestress for tendon properties, and
-        query_model to read definitions or trial-calculate geometry.
+        Choose request.operation by how the property is specified:
 
-        request.operation selects its exact parameter layout and units. Names/IDs
-        can identify definitions shared by many elements; overwriting one changes
-        all references. calculate_section_property recalculates every stored
-        section, while update_section_property writes one supplied property vector.
-        remove_section requires an explicit selection; remove_unused_sections
-        delegates automatic cleanup to the bridge. Read references before removal
-        and read back the actual IDs/properties after changes. Writes refresh the
-        model but do not run structural analysis or certify engineering adequacy.
+        - create_material and time/creep/shrinkage operations define material data.
+        - create_section uses a parameterized shape; create_polygon_section uses
+          closed loops/holes; create_line_width_section uses thin-wall segments;
+          create_section_from_properties uses supplied engineering properties.
+        - create_tapered_section references two existing end-section IDs;
+          add_tapper_section_group sets variation along selected frame elements.
+        - add_thickness supplies a plate thickness definition, not a frame section.
+
+        Use edit_geometry to assign an existing definition to elements;
+        edit_prestress defines tendon properties. query_model reads saved values
+        or trial-calculates candidate geometry without storing it. The selected
+        branch determines shape fields and units: a thickness ID and a section
+        ID occupy different namespaces even if their integers match.
+
+        update_section_property writes one full property vector at the selected
+        end; calculate_section_property recalculates and stores properties for
+        ALL existing sections. Do not use the latter as a readback of a manual
+        override. remove_section deletes an explicit selection, while
+        remove_unused_sections lets the bridge identify unreferenced definitions.
+        Check element references before overwriting or removing shared data.
+
+        Writes refresh the model and return status/message confirmations. Requested
+        IDs are not a guaranteed allocation result: read saved IDs and values
+        through query_model before assigning them. There is no automatic backup,
+        rollback or solve, and a definition change can affect many existing
+        elements. Inspect an uncertain write before repeating it.
         """,
         """
         create_material add_time_parameter add_creep_function add_shrink_function
