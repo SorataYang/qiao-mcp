@@ -42,6 +42,23 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Create a tendon property definition (创建钢束特性).
 
+        Use after creating the prestressing steel material and before defining
+        tendon geometry with create_tendon_2d or add_tendon_3d. This stores reusable
+        section, duct and friction properties; apply_prestress adds an actual load
+        and update_vertical_steel_tendon configures vertical checking reinforcement.
+
+        For strands, area/duct_diameter/friction/deviation form the four-value
+        steel detail unless an explicit steel_detail overrides them. Threaded bars
+        require their six-value native layout; a strand default cannot represent
+        the bar diameter or tension method and is rejected for steel_type=2.
+        anchorage_slip is supplied equally at both ends. Use the units documented
+        in the schema and verify any raw steel_detail layout before overriding it.
+
+        Writes and refreshes the model and returns the property name, without
+        creating tendon paths or solving. Material references and duplicate-name
+        behavior are owned by the bridge; inspect definitions before reusing a name.
+        (先有预应力材料，再建特性和钢束路径；显式 steel_detail 覆盖便捷参数，螺纹钢筋须六项。)
+
         Args:
             name: Tendon property name (钢束特性名)
             material_name: Prestress steel material name, must exist
@@ -422,6 +439,18 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
     def get_tendon_length_result() -> str:
         """
         Get all tendon length results (获取所有钢束长度结果).
+
+        Use when the bridge has generated tendon length results and a total-length
+        result listing is needed. get_tendon_info reads saved definitions;
+        get_tendon_position_result reads discretized coordinates, and
+        get_tendon_loss_results reads computed loss components.
+
+        This parameterless query reads all available length results without
+        recalculating geometry, running analysis or refreshing the model. Returns
+        the backend records as text; there is no tendon selector or pagination.
+        An empty result is not proof that the model has no tendons: confirm the
+        definitions and the bridge's result availability before interpreting it.
+        (查询已有长度结果，不计算控制点折线长度；全部返回，空结果需结合定义与结果状态判断。)
         """
         try:
             data = provider.get_tendon_length_result()
