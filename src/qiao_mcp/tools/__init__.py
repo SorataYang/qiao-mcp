@@ -1055,14 +1055,35 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         sec_normalize: bool = False
     ) -> str:
         """
-        Create a tapered section from two existing sections (根据两个已存截面创建渐变截面).
+        Create a tapered section definition joining two existing end sections
+        (由两个已有端截面定义渐变截面).
+
+        First create the constant end sections with create_section (or a custom
+        section tool), then use their saved section IDs as begin_id and end_id.
+        These are section IDs, not node or element IDs. Use create_section for
+        a constant section; use this tool when the start and end shapes differ.
+
+        The call writes one section definition and refreshes the model. Assign
+        the resulting section to elements with create_beam_element or
+        update_element_section. For a taper extending across several elements,
+        add_tapper_section_group defines the interpolation law after assignment.
+        Creating the definition alone does not create those elements or groups.
+
+        Returns a confirmation with the name. To obtain the automatically
+        allocated ID, read get_model_data(kind="sections") before assignment.
+        The bridge validates end-section compatibility and duplicate names;
+        this wrapper does not preflight either condition.
+        (先建立两端截面并取得真实编号；创建后回读新编号再赋给单元。
+        多单元连续变化规律由 add_tapper_section_group 设置。)
 
         Args:
             name: Tapered section name (渐变截面名称)
             begin_id: Start section ID (起始截面编号)
             end_id: End section ID (终止截面编号)
             shear_consider: Consider shear deformation (是否考虑剪切变形), default True
-            sec_normalize: Normalize section (截面归一化), default False
+            sec_normalize: Adaptively order the end sections' loops/line-width
+                contours when their drawing order differs; default False
+                (自动匹配两端线圈/线宽绘制顺序，避免渲染和计算失效；默认关闭)
         """
         try:
             provider.add_tapper_section_by_id(
