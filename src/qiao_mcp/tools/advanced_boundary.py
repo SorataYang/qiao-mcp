@@ -363,7 +363,7 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         Match kind to the existing definition: remove_id is its node, element or
         slave-node ID as documented below. group_name narrows the boundary group;
         extra_name identifies the I/J end for links or the named constraint
-        equation. Confirm the combination in query_model_data(kind="boundaries")
+        equation. Confirm the combination with query_model_data
         before deletion rather than treating IDs from different kinds as interchangeable.
 
         Writes and refreshes the model, then returns a confirmation. There is no
