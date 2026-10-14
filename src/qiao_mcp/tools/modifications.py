@@ -809,6 +809,21 @@ def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Useful after building a model to remove accidental duplicate nodes.
         相当于界面上的"合并节点"功能，用于消除重叠节点。
 
+        Use after validate_model identifies unwanted overlaps. To avoid merging
+        during new node creation, configure create_nodes/create_nodes_linear
+        instead; remove_nodes deletes a selection without coordinate merging.
+        Provide ids for a selected scope, or omit it intentionally for all nodes.
+
+        The distance tolerance uses model length units. The bridge selects the
+        surviving nodes and updates references; increasing tolerance may join
+        nodes that were intended to remain separate. Save a checkpoint before
+        merging if those distinctions must be recoverable.
+
+        Writes and refreshes the model and returns a completion message, not an
+        old-to-new ID mapping. Read nodes and element connectivity again before
+        reusing cached IDs; no analysis is run and no new coordinates are generated.
+        (合并后编号由桥通决定，不返回编号映射；后续使用前须回读节点和单元连接关系。)
+
         Args:
             ids: Node ID(s) to check. Supports int, list, or range string.
                  Omit/use None to check ALL nodes; empty strings/lists are invalid
