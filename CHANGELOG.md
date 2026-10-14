@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.9] - 2026-10-15
+
+### Changed
+
+- Clarify shared property namespaces and overwrite scope, static case/group references, and complete load-combination replacement.
+- Explain tendon positioning, native prestress units, screenshot camera fallback, display defaults and image-file overwrite behavior.
+- Validate the complete default domain catalog and its 153 legacy operations; document the achieved evaluation target and known report limitations.
+
 ## [0.5.8] - 2026-10-15
 
 ### Changed
@@ -566,6 +574,7 @@ also remain unconfirmed upstream.
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
+[0.5.9]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.8...v0.5.9
 [0.5.8]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.7...v0.5.8
 [0.5.7]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.6...v0.5.7
 [0.5.6]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.5...v0.5.6
