@@ -240,26 +240,38 @@ TOOL_DOMAINS = (
     _domain(
         "edit_loads", "Static load definitions / 静力荷载与组合",
         """
-        Define static load cases/combinations and assign nodal, beam, plate,
-        temperature, cable or settlement loads (定义静力工况组合并施加载荷).
+        Define static load cases/combinations and apply physical loads to existing
+        nodes or elements (定义静力工况组合，向已有节点或单元施加载荷).
 
-        Create a case before assigning loads. Nodal forces target nodes, beam
-        distributions target frames, and plate loads target plates. A distributed
-        plane load places an existing pattern, whose native definition can be
-        created through access_backend. Choose system temperature for the SDK's
-        final-temperature input, gradient for a linear difference, code section
-        temperature for standard parameters, or custom temperature for layer rows.
-        Cable initial-force and unstressed-length loads have separate inputs.
-        Use edit_prestress for named tendons, edit_traffic for vehicle/lane cases,
-        and edit_construction for groups, self-weight timing and activation.
+        Select request.operation for the target and load law:
 
-        request.operation selects the matching units, coordinate system and ID
-        namespace. A static case categorized as "活载" does not create a moving
-        vehicle case. Native row layouts, local directions and load magnitudes
-        belong to the selected operation; no cross-family unit conversion is
-        implied. Writes add or replace definitions and refresh the model without
-        solving. Verify cases, groups and referenced entities with query_model;
-        repeated load calls can accumulate effects, so read back uncertain writes.
+        - create_load_case creates the case referenced by later assignments;
+          add_load_combine defines combinations of existing case results.
+        - apply_nodal_force targets nodes; apply_beam_distributed_load targets
+          frames; add_plate_element_load targets plates. add_distribute_plane_load
+          places a previously defined pattern, created natively via access_backend.
+        - Temperature choices are final uniform temperature, linear difference,
+          code-based section gradient or explicit custom layer rows.
+        - Cable initial-tension, unstressed-length and support-settlement loads
+          are separate physical inputs with their own native conventions.
+
+        Use edit_prestress for named tendon loads and edit_traffic for vehicle/lane
+        cases. Group definitions, self-weight timing and stage activation belong
+        to edit_construction. case_name selects the load case; group_name selects
+        its activation group, so matching strings do not make them the same object.
+        A static "活载" category does not create a moving-load case.
+
+        Combination rows are [case_type, case_name, factor]: ["ST","Dead",1.2]
+        references a static case; combine_type=1 adds effects and 3 forms an
+        envelope. Replacing a combination writes its complete component list;
+        None/[] supplies an empty definition. For forces and temperatures, use
+        the selected operation's directions, row layout and units without
+        inferring a conversion from a sibling.
+
+        Writes refresh the model and return confirmations, without solving or
+        activating a stage. They can overwrite definitions or accumulate loads;
+        there is no rollback of earlier calls. Query affected loads/cases before
+        retrying an uncertain write, then explicitly configure stages and solve.
         """,
         """
         create_load_case add_load_combine apply_nodal_force apply_beam_distributed_load
