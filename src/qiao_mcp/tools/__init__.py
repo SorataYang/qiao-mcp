@@ -1317,7 +1317,22 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def remove_section(ids: SelectedIds) -> str:
         """
-        Delete one or more sections from the model (删除截面).
+        Delete explicitly selected section definitions from the active model
+        (按编号删除指定截面定义).
+
+        Use this for known section IDs. Use remove_unused_sections for automatic
+        cleanup of unused definitions, or remove_elements to delete elements.
+        Inspect get_model_data(kind="sections") and element assignments first;
+        update_element_section changes an assignment without deleting a section.
+
+        Requires a nonempty ID selection. The tool validates that selection,
+        submits one delete command, refreshes the model and returns a confirmation.
+        It does not create a backup or reassign elements. Referenced-section
+        rejection, cascading effects and ID handling belong to the bridge, so
+        inspect affected elements before continuing with cached section IDs.
+        Save a model checkpoint if the definitions may need to be restored.
+        (空选择会被拒绝；删除后刷新并返回确认，不自动备份或改配单元截面。
+        引用关系由桥通处理，应先核对使用情况并保存需要保留的模型。)
 
         Args:
             ids: Section ID(s) to delete. Supports int, list, or range string '3to5'.
