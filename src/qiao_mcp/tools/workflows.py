@@ -156,7 +156,9 @@ def _build_bridge(
         # One span uses a pin/roller. For multiple spans the piers restrain X.
         fixed_x = position == 0 if len(spans) == 1 else 0 < position < len(node_ids) - 1
         provider.add_general_support(
-            node_id=node_id, boundary_info=[fixed_x, True, True, False, False, False],
+            # Collinear supports cannot restrain rigid rotation about the girder
+            # axis through translations alone. One Rx restraint removes that mode.
+            node_id=node_id, boundary_info=[fixed_x, True, True, position == 0, False, False],
         )
     return BridgeWorkflowResult.model_validate({
         "status": "success",
@@ -198,7 +200,10 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
         Nodes at matching coordinates are reused; elements receive unused IDs.
         Repeating the workflow can add duplicate elements and supports. It does not
         clear the model or roll back partial writes on error; save_model_file first.
-        (复用同名属性及重合节点，追加梁和支座；失败不会自动回滚。)
+        The first support also restrains global Rx to stabilize this 3D line beam;
+        bending rotations Ry/Rz remain free. Review bearings for the actual bridge.
+        (复用同名属性及重合节点，追加梁和支座；首支座约束 Rx 消除绕梁轴刚体转动，
+        Ry/Rz 自由；实际支承须按工程核对。失败不会自动回滚。)
 
         Args:
             span: Positive span in meters (正跨径，m)
@@ -247,13 +252,16 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
     ) -> BridgeWorkflowResult:
         """Build a straight continuous girder along global X (创建连续梁桥).
 
-        Uses rollers at abutments and X/Y/Z restraints at interior piers, with free
-        rotations. A single span uses a pin/roller. For different bearings, use the
+        Uses rollers at abutments and X/Y/Z restraints at interior piers. The first
+        abutment also restrains global Rx for torsional stability of the 3D line
+        beam; Ry/Rz remain free. A single span uses a pin/roller with that same Rx
+        restraint. For different bearings, use the
         individual modeling tools. Requires an editable base-stage model and the named
         section already created. Reuses the named material, or creates concrete of that
         database grade. Coincident nodes are reused; new element IDs follow the existing
         maximum. Repeating adds elements/supports; failures can leave partial writes.
-        Save the model before running (复用重合节点，追加单元；不清空模型、不自动回滚).
+        Save the model before running (复用重合节点、追加单元；首支座约束 Rx，
+        实际支承须按工程核对；不清空模型、不自动回滚).
 
         Args:
             spans: Nonempty list of positive spans in meters; None uses [30, 50, 30]
