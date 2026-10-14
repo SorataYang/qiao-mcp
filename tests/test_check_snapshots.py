@@ -61,6 +61,46 @@ def test_exported_snapshot_wire(check_wire, call, gateway):
     assert wire[0][1] == call["kwargs"]
 
 
+@pytest.mark.parametrize("call", SNAPSHOT_CALLS)
+def test_sdk_unavailable_snapshot_is_an_error_without_commit(fake_provider, monkeypatch, call):
+    import qtmodel
+    from qtmodel.core.qt_server import QtServer
+
+    contract = pytest.importorskip("qtmodel.core.api_contract")
+    header = call["method"].replace("_", "-").upper()
+    if header not in contract.UNAVAILABLE_HTTP_COMMANDS:
+        pytest.skip("SDK does not mark this snapshot route unavailable")
+    # Keep the real send_command guard: transport-mock tests above check payloads,
+    # but alone cannot prove that the desktop route is available.
+    connect = Mock(side_effect=AssertionError("Unexpected connection for an unavailable route"))
+    monkeypatch.setattr(QtServer, "_ensure_connection", connect)
+    fake_provider._cdb = qtmodel.cdb
+    functions = tool_fns(register_api_gateway_tools, fake_provider)
+    with pytest.raises(ToolError, match="API_NOT_OPEN"):
+        functions["call_qtmodel_api"](
+            api_object="cdb", method=call["method"], kwargs=copy.deepcopy(call["kwargs"]),
+        )
+    connect.assert_not_called()
+    assert fake_provider._mdb.calls == []
+
+
+def test_sdk_unavailable_snapshot_tool_does_not_report_success(fake_provider, monkeypatch):
+    import qtmodel
+    from qtmodel.core.qt_server import QtServer
+
+    contract = pytest.importorskip("qtmodel.core.api_contract")
+    if "SET-SECTION-REINFORCEMENT" not in contract.UNAVAILABLE_HTTP_COMMANDS:
+        pytest.skip("SDK does not mark this snapshot route unavailable")
+    connect = Mock(side_effect=AssertionError("Unexpected connection for an unavailable route"))
+    monkeypatch.setattr(QtServer, "_ensure_connection", connect)
+    fake_provider._cdb = qtmodel.cdb
+    functions = tool_fns(register_check_snapshot_tools, fake_provider)
+    with pytest.raises(ToolError, match="API_NOT_OPEN"):
+        functions["set_section_reinforcement"](definition=SECTION)
+    connect.assert_not_called()
+    assert fake_provider._mdb.calls == []
+
+
 def test_inactive_parameters_and_bar_points_are_preserved(fake_provider):
     result = tool_fns(register_check_snapshot_tools, fake_provider)["set_section_reinforcement"](definition=SECTION)
     native = fake_provider._cdb.last("set_section_reinforcement")[2]["definition"]

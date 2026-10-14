@@ -103,6 +103,9 @@ def register_international_load_tools(mcp: FastMCP, provider: BridgeProvider) ->
     def set_planned_lane(request: PlannedLaneWrite) -> ModelCommandResult:
         """Add or completely replace a planned lane (完整定义规划车道).
 
+        Requires the dedicated desktop routes. qtmodel 2.9.3 rejects their
+        historical add/update commands with API_NOT_OPEN before sending them.
+
         Uses the dedicated planned-lane endpoint, distinct from add_traffic_lane's
         optimize flag. Every physical field is explicit; lengths use model units.
         add can overwrite a same-named planned lane. update can rename while
