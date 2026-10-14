@@ -13,6 +13,7 @@
 | 基线 | 0.5.1 后的审计版 | 3.7 | 3.8 | 3.3 | 3 | 3.0 | [基线](https://tdqs.dev/reports/x2109gtuk4) |
 | 1 | 0.5.2 | 3.6 | 3.9 | 3.0 | 3 | 3.3 | [第 1 轮](https://tdqs.dev/reports/t0kcd799y0) |
 | 2 | 0.5.3 | 3.7 | 4 | 3 | 3 | 3.4 | [第 2 轮](https://tdqs.dev/reports/s3dfew1edh) |
+| 3 | 0.5.4 | 4 | 4.2 | 3.5 | 4 | 3.8 | [第 3 轮](https://tdqs.dev/reports/pm14kyk2jr) |
 
 ## 第 1 轮：最低分工具的使用边界
 
@@ -72,3 +73,38 @@
 验证：完整离线测试 1926 项通过、26 项跳过；构建 wheel 的协议检查保持 153 个工具。
 
 下一轮方向：处理本轮剩余 3.4–4.1 分工具，优先直线节点创建、截图、显示编号和模型检查；同步核对服务器整体评估实际使用的输入，定位区分度持续停滞的原因。
+
+## 第 3 轮：几何创建、只读查询与图像行为
+
+本地版本：0.5.4。评分源码提交：`d174045b400b5e89ab871475a345409656f9b0cf`。
+输入 SHA-256：`122c0fa0e7aae05a59865ffd2d651b5198cf176e40f340387ec6b9f066e835a0`。
+原始产物：`dist/optimization-20261014/round-03/`。本轮修改 20 个工具。
+
+本轮 20 个改动工具全部提高。综合分从 3.7 升至 4.0，描述质量从 4.0 升至 4.2，单工具最低分从 3.4 升至 3.8；区分度从 3 升至 4，已满足该项收尾标准。命名一致性为 4，数量适宜性仍为 2，完整性为 4。官方参考实现的整体评估包含全部工具名称和说明，没有发现截断工具目录的代码；数量维度有明确的工具数锚点。当前仍保持全部 153 个公开工具，下一轮优先提高新的最低分项。
+
+| 工具 | 上轮 | 本轮 |
+| --- | --- | --- |
+| `create_nodes_linear` | 3.4 | 4.8 |
+| `create_beam_element` | 4 | 4.7 |
+| `create_elements` | 3.9 | 4.3 |
+| `create_load_group` | 3.8 | 4.3 |
+| `add_thickness` | 3.7 | 4.5 |
+| `update_section_property` | 4.1 | 4.8 |
+| `validate_model` | 3.5 | 4.6 |
+| `remove_structure_group` | 3.8 | 4.8 |
+| `list_group_members` | 4.1 | 4.6 |
+| `create_tendon_property` | 3.6 | 4.5 |
+| `get_tendon_length_result` | 3.6 | 4.7 |
+| `add_elastic_link` | 4.1 | 4.6 |
+| `add_master_slave_link` | 3.9 | 4.5 |
+| `save_model_screenshot` | 3.4 | 4.5 |
+| `plot_analysis_result` | 4.4 | 4.5 |
+| `display_ids` | 3.5 | 4.3 |
+| `add_influence_plane` | 4 | 4.5 |
+| `add_traffic_lane` | 4 | 4.6 |
+| `add_standard_vehicle` | 3.7 | 4.6 |
+| `find_entities` | 4 | 4.6 |
+
+验证：完整离线测试 1926 项通过、26 项跳过；构建 wheel 的协议检查保持 153 个工具。
+
+下一轮方向：优先完善模型概要、二维钢束、约束方程和混凝土检算执行说明，继续向综合分 4.5 推进。
