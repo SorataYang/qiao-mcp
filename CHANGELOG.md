@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-10-15
+
+### Changed
+
+- Clarify regular node meshes, native element imports, property definitions and actual-ID readback.
+- Explain model validation limits, targeted queries, group namespaces and moving-load steps.
+- Distinguish tendon definitions from computed length results and elastic links from rigid coupling.
+- Document image-file overwrites and label controls; expose overwrite annotations for PNG exports.
+
 ## [0.5.3] - 2026-10-14
 
 ### Changed
@@ -524,6 +533,7 @@ remain unconfirmed upstream.
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
+[0.5.4]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.0...v0.5.1
