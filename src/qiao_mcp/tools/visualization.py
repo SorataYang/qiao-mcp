@@ -161,6 +161,17 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Set the 3D view angle of the bridge model (设置三维视角).
 
+        Use a named preset for a standard orthographic or isometric view. Use
+        angle_preset="custom" when an exact horizontal/vertical rotation in degrees
+        is needed; at least one angle must be supplied, and an omitted companion
+        angle becomes zero. Presets ignore both numeric angle arguments.
+
+        Changes the QiaoTong camera without changing node coordinates, section
+        orientation or analysis settings. For drawing styles use set_render; for
+        labels use display_ids; save_model_screenshot captures the resulting view.
+        Requires a connected desktop view and returns a confirmation, not an image.
+        (只改变相机；custom 至少给一个角度，另一个省略时为零，预设模式忽略数值角度。)
+
         Args:
             angle_preset: View preset (视角预设): 'iso'(空间视图), 'front'(前视图),
                 'side'(左视图), 'top'(俯视图), 'right'(右视图), 'back'(后视图),
