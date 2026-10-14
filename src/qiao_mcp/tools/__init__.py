@@ -3009,11 +3009,19 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def get_model_info() -> str:
         """
-        Get a summary of the current bridge model (获取当前桥梁模型概要信息).
+        Read eight entity counts from the active bridge model (读取当前模型八类实体数量).
 
-        Returns counts of all model entities: nodes, elements, materials,
-        sections, construction stages, load cases, etc.
-        返回所有模型实体的数量统计。
+        Use for a model inventory before or after edits. For actual IDs and
+        records use get_model_data or query_model_data; get_model_status reports
+        operation readiness, and validate_model adds missing/overlap checks.
+        Entity counts alone do not establish model validity or solve readiness.
+
+        Requires a connected model. Reads nodes, elements, materials, sections,
+        construction stages, load cases, structure groups and boundary groups,
+        returning a formatted count summary. These are separate backend reads,
+        not one atomic snapshot; avoid concurrent model edits when comparing
+        counts. No model update, selection change or analysis is performed.
+        (只返回八类数量，不返回编号、有效性结论或分析状态；分别读取，查询期间应避免并发改模。)
         """
         try:
             summary = provider.get_model_summary()
