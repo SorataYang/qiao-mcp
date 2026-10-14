@@ -132,6 +132,23 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         [x, z, r] where r is the fillet radius (0 for sharp points).
         钢束线形位于XZ平面，控制点为 [x, z, r]，r为圆弧半径（0为折点）。
 
+        Use for a planar tendon profile; add_tendon_3d accepts spatial points.
+        Create the referenced property with create_tendon_property first. This
+        defines the tendon path, while apply_prestress adds its structural load.
+        update_vertical_steel_tendon changes checking parameters rather than paths.
+
+        Point order controls the profile. position_type determines whether
+        point_insert is a coordinate triple or [end, direction, element_id] for
+        track positioning. symmetry selects the mirroring end or an asymmetric
+        profile; num is the tendon count, not the number of control points.
+        Lengths and coordinates are forwarded in the bridge convention.
+
+        Writes the full geometry and refreshes the model; a repeated name can
+        replace an existing tendon. Read get_tendon_info before updating a path.
+        Returns the requested tendon name, not generated coordinates or prestress
+        results, and does not start analysis.
+        (先建特性；插入点含义由定位方式决定，重名可能覆盖完整线形，定义与张拉荷载分开。)
+
         Args:
             name: Tendon name (钢束名称)
             property_name: Tendon property name, must exist (钢束特性名，须已创建)
