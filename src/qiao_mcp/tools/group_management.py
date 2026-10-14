@@ -41,6 +41,19 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         Structure groups are used to control which elements are active during
         each construction stage (施工阶段分析中控制单元激活状态).
 
+        Use for a new group. To append nodes/elements to an existing group, use
+        add_to_structure_group; create_boundary_group groups supports/links and
+        create_load_group groups loads. Creating a structure group does not
+        activate its members in a stage; configure that with add_construction_stage
+        or update_construction_stage after the group exists.
+
+        Omit element_ids to create an empty group. A supplied selection must be
+        nonempty and identify existing elements. Creation and membership assignment
+        are separate writes with refreshes: if assignment fails, the newly created
+        group may remain. Inspect list_group_members before retrying. Returns a
+        confirmation rather than a group snapshot; duplicate-name policy is owned
+        by the bridge. (新建与加成员分步写入，第二步失败后应先检查，不能假定整个操作回滚。)
+
         Args:
             name: Structure group name (结构组名称)
             element_ids: Element IDs to add, int list or range string like '1to20'
@@ -66,6 +79,17 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
     def update_structure_group_name(name: str, new_name: str) -> str:
         """
         Rename an existing structure group (重命名结构组).
+
+        Use when retaining a group's membership but changing its label. For a
+        new group use create_structure_group; to change members use
+        add_to_structure_group or remove_from_structure_group. Read existing
+        group names first and provide the exact old name and intended new name.
+
+        Writes the rename, refreshes the model and returns a confirmation.
+        The bridge handles name collisions and dependent stage references;
+        this wrapper does not preflight them. After renaming, use the new name
+        in later operations and inspect list_group_members and affected stages
+        before reusing cached references. (仅更名；重名与阶段引用由桥通处理，后续使用新名称。)
 
         Args:
             name: Current structure group name (当前结构组名称)
@@ -106,6 +130,17 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
 
         Boundary groups collect supports/links to be activated or deactivated
         together during construction stages (施工阶段中统一控制边界条件激活状态).
+
+        This creates the named group, not the boundary conditions. Create it
+        before passing its name to set_support, add_elastic_support or link tools;
+        then use update_construction_stage to activate/deactivate the group.
+        Use create_structure_group for model entities and create_load_group for
+        loads; these three group namespaces serve different stage controls.
+
+        Writes and refreshes the model, returning a confirmation with the name.
+        No supports or stage assignments are added automatically. Existing-name
+        handling is delegated to the bridge, so inspect the model before reusing
+        a group name. (只建边界组；边界定义和施工阶段激活需后续分别配置。)
 
         Args:
             name: Boundary group name (边界组名称)
