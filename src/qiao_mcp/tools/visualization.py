@@ -4,13 +4,13 @@ MCP Tools for visualization — screenshots and result plots.
 """
 
 import os
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP, Image
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
-from qiao_mcp.tools.schemas import PlotResultKind, ViewAngle, ViewSelection
+from qiao_mcp.tools.schemas import PlotResultKind, PositiveInteger, ViewAngle, ViewSelection
 
 # Default output directory for images (图片默认保存目录)
 DEFAULT_IMAGE_DIR = os.path.join(os.path.expanduser("~"), "qiao_mcp_images")
@@ -50,8 +50,9 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         默认直接返回图像内容，可在客户端预览。
 
         Args:
-            file_path: Output file path (.png). If empty, saves to default directory.
-                       输出路径（.png格式），为空则保存到默认目录
+            file_path: PNG path on the MCP host (not the controlled Windows host).
+                       Empty uses the local default directory. Image bytes are
+                       retrieved from QiaoTong (MCP所在电脑的路径，空值使用本机默认目录)
             view_angle: View preset (视角预设): 'iso'(空间视图), 'front'(前视),
                 'side'(左视), 'top'(俯视), 'right'(右视), 'back'(后视), 'bottom'(仰视),
                 or 'current' to keep the current view (保持当前视角)
@@ -62,6 +63,7 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
             if not file_path:
                 _ensure_dir(DEFAULT_IMAGE_DIR)
                 file_path = os.path.join(DEFAULT_IMAGE_DIR, "model_view.png")
+            file_path = os.path.expanduser(file_path)
 
             warning = ""
             if view_angle != "current":
@@ -89,9 +91,11 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         result_type: PlotResultKind,
         stage_id: int = -1,
         case_name: str = "",
-        component: str = "",
+        component: str | int = "",
         file_path: str = "",
         return_image: bool = True,
+        mode: PositiveInteger = 1,
+        mode_kind: Literal[1, 2] = 1,
     ) -> str | Image:
         """
         Generate an analysis result contour plot (生成分析结果云图).
@@ -106,16 +110,22 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
                 'truss_force'(杆内力), 'truss_stress'(杆应力),
                 'plate_force'(板内力), 'plate_stress'(板应力),
                 'modal'(振型)
-            stage_id: Construction stage ID (施工阶段ID):
-                -1=operation(运营), 0=envelope(包络), n=stage n (第n阶段)
-            case_name: Load case name for operation stage (运营阶段荷载工况名)
-            component: Result component to display (显示分量), e.g.
-                'uy'(Y向位移), 'mz'(弯矩), 'fx'(轴力), 'sz'(正应力)
-                Leave empty to use default component.
-            file_path: Output file path (.png). Empty = default directory.
-                       输出路径，为空则保存到默认目录
+            stage_id: For non-modal plots: -1=operation, 0=envelope, n=stage n.
+                Keep -1 for modal plots, which use mode/mode_kind (振型图不使用阶段号)
+            case_name: Verified native case identifier for a non-modal plot;
+                empty keeps the SDK default (原生工况标识，振型图留空)
+            component: Native integer component ID or name. Displacement: dx/dy/dz
+                (also ux/uy/uz), rx/ry/rz. Reaction and beam force: fx/fy/fz/mx/my/mz;
+                reaction also fxyz/mxyz. Truss force: n/fx/fy/fz. Plate: fxx/fyy/fxy/
+                mxx/myy/mxy. Beam stress: axial/mz/my/envelope/upper_left/upper_right/
+                lower_right/lower_left. Empty uses default; truss_stress and modal
+                must leave it empty (分量按结果类型映射，杆应力和振型不接收此参数)
+            file_path: PNG output path on the MCP host. Empty uses its default
+                directory (MCP所在电脑的图片路径，空值使用本机默认目录)
             return_image: Return the PNG as viewable image content; if False, return
                           only the saved path (是否直接返回图像内容，否则仅返回路径)
+            mode: Modal order, positive integer; only for result_type='modal' (模态阶次)
+            mode_kind: Modal family: 1=vibration, 2=buckling; only for modal plots (1自振、2屈曲)
         """
         try:
             if not file_path:
@@ -123,11 +133,12 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
                 file_path = os.path.join(
                     DEFAULT_IMAGE_DIR, f"result_{result_type}_stage{stage_id}.png"
                 )
+            file_path = os.path.expanduser(file_path)
 
-            kwargs: dict[str, Any] = {"stage_id": stage_id}
+            kwargs: dict[str, Any] = {"stage_id": stage_id, "mode": mode, "mode_kind": mode_kind}
             if case_name:
                 kwargs["case_name"] = case_name
-            if component:
+            if component != "":
                 kwargs["component"] = component
 
             provider.plot_result(

@@ -1,20 +1,32 @@
 """可视化视角工具行为测试：预设映射与失败可见性。"""
 
 import pytest
-from conftest import tool_fns, tool_text
+from conftest import PNG_BASE64, PNG_BYTES, tool_fns, tool_text
 
 from qiao_mcp.tools.envelope import ToolInputError
 from qiao_mcp.tools.visualization import register_visualization_tools
 
 
+@pytest.fixture(autouse=True)
+def image_reply(fake_provider):
+    record = fake_provider._odb.save_png
+
+    def capture(file_path):
+        record(file_path=file_path)
+        return PNG_BASE64
+
+    fake_provider._odb.save_png = capture
+
+
 def test_screenshot_uses_builtin_view_preset(fake_provider, tmp_path):
     fns = tool_fns(register_visualization_tools, fake_provider)
     out = str(tmp_path / "m.png")
-    result = fns["save_model_screenshot"](file_path=out, view_angle="top")
+    result = fns["save_model_screenshot"](file_path=out, view_angle="top", return_image=False)
     _, _, kw = fake_provider._odb.last("set_view_direction")
     assert kw == {"direction": 5}, "top 应映射为软件内置顶视图编号 5"
     _, _, kw = fake_provider._odb.last("save_png")
-    assert kw["file_path"] == out
+    assert kw["file_path"] == "", "Windows must return image bytes without using a local MCP path"
+    assert (tmp_path / "m.png").read_bytes() == PNG_BYTES
     assert result["status"] == "success"
 
 
@@ -33,6 +45,7 @@ def test_screenshot_view_failure_is_reported_not_swallowed(fake_provider, tmp_pa
 
         def save_png(self, file_path):
             saved.append(file_path)
+            return PNG_BASE64
 
     fake_provider._odb = Odb()
     fns = tool_fns(register_visualization_tools, fake_provider)
