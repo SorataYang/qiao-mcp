@@ -523,13 +523,23 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         case_type: str = "施工阶段荷载",
     ) -> str:
         """
-        Create a load case (创建荷载工况).
+        Create a named static load case for subsequent load assignments
+        (创建静力荷载工况，供后续施加载荷引用).
 
-        A load case must exist before loads can be applied to it.
-        This creates a named case, without applying any load. For automatic
-        structural self-weight, configure set_self_weight_stage and include the
-        stage with merge_operation_stage; a case named "自重" does not enable it.
-        (本工具只建工况，不施加荷载；自动自重由自重阶段及运营阶段合并配置。)
+        Use before apply_nodal_force, temperature or other static load tools.
+        create_load_group instead defines the group activated in a stage;
+        add_load_combine combines existing case results. A case_type of "活载"
+        is a static category: vehicle/lane analysis uses create_live_load_case.
+
+        The case name is an exact reference used by later load calls; its
+        category is the bridge's native Chinese case_type label, not a result
+        identifier such as "ST:...". Read get_model_data(kind="load_cases")
+        before choosing a name; duplicate handling is delegated to the bridge.
+
+        Writes the case and refreshes the model, returning its requested name
+        and type. No force, stage activation or solve is included. Naming a case
+        "自重" does not generate self-weight: configure set_self_weight_stage
+        and merge_operation_stage for that workflow.
 
         Args:
             name: Load case name (工况名称, e.g. "二期恒载", "风荷载")
