@@ -245,7 +245,24 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def remove_construction_stage(name: str = "") -> str:
         """
-        Remove a construction stage (删除施工阶段).
+        Delete a named construction-stage definition, or all stage definitions
+        when name is omitted or empty (删除指定施工阶段；省略名称或空串删除全部阶段).
+
+        Read get_model_data(kind="stages") and supply the exact stage name for
+        a single deletion. Omitting name is an explicit all-stages operation,
+        not a way to select the current stage. Save a model checkpoint first
+        if the stage sequence may need to be restored.
+
+        To keep a stage and deactivate its structures, boundaries or loads, use
+        update_construction_stage with delete_structures, delete_boundaries or
+        delete_loads. To change only the displayed stage, use switch_display_stage
+        for the model view or change_construct_stage for the results view.
+
+        Writes stage definitions, refreshes the model and returns a confirmation.
+        It does not rerun analysis or verify the validity of existing results.
+        Reference cleanup is handled by the bridge; reread stages after deletion.
+        (只需钝化组或荷载时保留阶段并调用 update_construction_stage；只切换显示
+        时使用视图工具。删除操作不重新求解，后续使用阶段和结果前须核对模型。)
 
         Args:
             name: Name of the stage to remove. If empty, removes all stages.
