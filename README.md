@@ -53,17 +53,28 @@ Support overrides preserve omitted coordinate/additional settings. Supplying
 `extra_parameters` enables them unless `extra_enabled=False` explicitly clears
 them; this behavior also applies to older SDKs that support these options.
 
+### Unreleased: qtmodel tool correctness
+
+The working tree retains 153 tool names. These changes are not in published 0.5.1.
+`add_custom_temperature` accepts native `[reference, height, temperature]` rows
+(reference 1=top, 2=bottom; orientation 1=local Z, 2=local Y). Two-value rows are
+rejected because they omit the reference. Mutation selections reject blank, Boolean and
+fractional IDs; renumbering requires BOTH complete lists, or BOTH omitted to
+intentionally renumber the whole model.
+
+Screenshots and plots now retrieve PNG bytes for storage on the MCP host. Partial
+updates require unique, complete readback; checking queries preserve typed fields.
+Live-load results expose `envelope_type=1` (maximum) or `2` (minimum). Inspect the
+audit for solver, section-numbering, group-query and idealized support corrections.
+
 ### 0.5.1: tool guidance and compatibility
 
-Version 0.5.1 keeps all 153 tools and existing calls. Complete Args text is
-published in parameter schemas without repeating it in tool descriptions.
-`add_custom_temperature` accepts native `[reference, height, temperature]` rows
-(reference 1=top, 2=bottom; orientation 1=local Z, 2=local Y). Legacy two-value rows
-remain unchanged; no reference or unit conversion is inferred.
+Published 0.5.1 keeps all 153 tools. Complete Args text is published in parameter
+schemas without repeating it in tool descriptions. It introduced clearer
+selection guidance; the unreleased audit above corrects remaining behavior.
 
 Choose absolute node edits with `update_node`, offsets with `move_nodes`, and
-numbering with `update_node_id`/`renumber_nodes`. Both lists are required for a
-local renumber mapping; either None selects the whole model. For sections,
+numbering with `update_node_id`/`renumber_nodes`. For sections,
 `calc_section_property` evaluates supplied geometry, `get_model_data` reads stored
 properties, and `calculate_section_property` rewrites all existing sections.
 Tendon definitions, computed losses and coordinates have separate query tools.
@@ -419,9 +430,12 @@ Known lower-bound limitation: qtmodel 2.6.3 lacks `get_load_group_names`, so the
 one-shot bridge workflow tools cannot run on that version. This is an existing
 limitation; use 2.6.4 or later for those workflows (2.9.0 remains excluded). The
 dependency range does not guarantee every new tool on every build: missing methods or
-incompatible parameters fail explicitly before writes. PyPI 2.9.2 and reference
-`0687ffe` each pass the complete offline suite. These tests verify software contracts;
-complete engineering acceptance remains pending.
+incompatible parameters fail explicitly before writes. Capability differences were
+checked on PyPI 2.6.3, 2.6.4, 2.8.2, 2.9.1, 2.9.2 and 2.9.3, plus reference `0687ffe`.
+These tests verify software contracts; complete engineering acceptance remains pending.
+qtmodel 2.9.3 explicitly rejects historical check-snapshot and planned-lane add/update
+routes with `API_NOT_OPEN`; a method appearing in the SDK catalog does not prove that
+its desktop route exists.
 
 How the two sides are matched changed in qtmodel 2.8.2:
 
