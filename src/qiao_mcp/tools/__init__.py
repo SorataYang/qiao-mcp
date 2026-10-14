@@ -2756,11 +2756,25 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         solver_type: Literal[0, 1] = 0,
     ) -> str:
         """
-        Configure analysis settings (配置分析设置).
+        Configure structural solver, construction-stage and vibration options
+        before running analysis (配置结构求解、施工阶段和自振分析选项).
 
-        Updates construction-stage, vibration and global solver settings. Both
-        True and False are applied. These SDK calls replace their setting groups;
-        unexposed fields use SDK defaults (全局计算方式/线程数等仍使用 SDK 默认值).
+        Use after defining the model, supports, loads and stages; run_analysis
+        performs the subsequent solve. configure_check_analysis controls concrete
+        checking instead, and configure_live_load_system selects traffic systems.
+        do_creep affects the construction-stage analysis; vibration_modes is
+        meaningful when do_vibration enables the modal calculation.
+
+        Three setting groups are written in sequence. True and False are both
+        applied, so do_vibration=False explicitly disables vibration. Every call
+        replaces these groups, and unexposed fields such as thread settings use
+        SDK defaults. Supply the complete intended options instead of treating
+        omitted arguments as unchanged values. A later failure can leave an
+        earlier group updated; inspect settings before retrying.
+
+        Returns the configured option summary. It does not run a solver or produce
+        results; use run_analysis once configuration is complete.
+        (三组设置依次整体写入，未暴露项用 SDK 默认值；中途失败可能已写入前面的设置。)
 
         Args:
             do_construction_stage: Enable construction stage analysis (是否进行施工阶段分析)
