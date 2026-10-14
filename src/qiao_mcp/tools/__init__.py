@@ -1289,14 +1289,32 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         side_i: bool = True
     ) -> str:
         """
-        Update section bias/eccentricity (更新截面偏心/对齐方式).
+        Change the alignment and eccentricity of an existing section definition
+        (修改已有截面定义的对齐和偏心设置).
+
+        Select a saved section ID, not an element ID. Use this to position the
+        section relative to its reference axis; update_element_section changes
+        which section an element uses, and update_element_beta rotates an element.
+        Read get_model_data(kind="sections") to identify the intended definition.
+
+        bias_type selects a named alignment. Supply bias_point only for the
+        custom alignment; its two components use the section-plane coordinates
+        and length convention shown in the bridge. For a tapered section,
+        side_i selects I or J, so changing both ends requires two calls.
+
+        Each call sends center_type and shear_consider, including their defaults;
+        they are not partial-update sentinels. The command changes a shared
+        section definition and can affect every element using it. Returns a
+        confirmation without recalculating analysis or returning section data.
+        (按截面编号修改，可能影响全部引用单元；两端分别设置，中心类型与剪切选项均会提交。)
 
         Args:
             index: Section ID (截面编号)
             bias_type: Bias type (偏心类型): e.g. "中心", "中上", "中下", "左上", "右上", "左下", "右下"
             center_type: Center type (中心类型): "质心" (Centroid) or "剪心" (Shear center), default "质心"
             shear_consider: Consider shear deformation (是否考虑剪切变形), default True
-            bias_point: Custom bias offset [y, z] (自定义偏心距离)
+            bias_point: Two custom offsets in the bridge's section-plane coordinates;
+                        used only with custom alignment (自定义偏心的两个截面平面分量)
             side_i: Apply to I-end (应用于I端) - for tapered sections True means I-end, False means J-end, default True
         """
         try:
