@@ -184,6 +184,24 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         when an older SDK returns it without raising an exception.
         先将指定检算工况同步为当前检算数据，再运行规范验算并等待后台任务完成。
 
+        Use after preparing the named case, checking combinations/reinforcement
+        and required structural results. setup_concrete_check creates the case;
+        configure_check_analysis changes settings; run_analysis performs the
+        structural solve. This tool runs concrete code checks, not a general
+        finite-element analysis or seismic/strengthening solver.
+
+        name selects the case imported into the current checking context; it is
+        not merely a label on whatever data is already open. max_wait_seconds
+        limits waiting, not backend execution. A timeout does not cancel the
+        background check: inspect its state before starting another run. None
+        waits without a time limit; there is no start-only mode in this tool.
+
+        Success returns a completion message, not a pass/fail design verdict.
+        Retrieve the check results with get_check_data and review the relevant
+        limits separately. Failure, cancellation or an unconfirmed terminal state
+        uses the MCP error channel.
+        (等待超时不自动终止后台；成功只表示计算完成，规范是否满足须另查检算结果。)
+
         Args:
             name: Check case name to run (要运行的检算工况名)
             max_wait_seconds: Max seconds to wait for completion; None = no limit
