@@ -1,9 +1,17 @@
 """共享测试设施：假 qtmodel 数据库对象与脱离真实连接的 provider。"""
 
+import base64
+
 import pytest
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers.qtmodel_provider import QtModelProvider
+
+PNG_BASE64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jG9s"
+    "AAAAASUVORK5CYII="
+)
+PNG_BYTES = base64.b64decode(PNG_BASE64, validate=True)
 
 
 def ready_model_state():

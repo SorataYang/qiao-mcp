@@ -8,10 +8,12 @@ the BridgeProvider interface.
 """
 
 import ast
+import base64
 import json
 import math
 import time
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 from qiao_mcp.providers import BridgeProvider
@@ -2233,28 +2235,86 @@ class QtModelProvider(BridgeProvider):
 
     def save_model_image(self, file_path: str) -> str:
         self._require_available()
-        return self._odb.save_png(file_path=file_path)
+        # Nonempty SDK paths refer to the controlled Windows host. Retrieve the
+        # bytes and save on the MCP host where Image can read the file instead.
+        return self._save_png_result(self._odb.save_png(file_path=""), file_path)
+
+    @staticmethod
+    def _save_png_result(result: Any, file_path: str) -> str:
+        if not isinstance(result, str):
+            raise ValueError("QiaoTong did not return PNG Base64 (桥通未返回图片内容)")
+        encoded = result.strip().removeprefix("data:image/png;base64,")
+        try:
+            data = base64.b64decode(encoded, validate=True)
+        except ValueError as exc:
+            raise ValueError("QiaoTong returned invalid PNG Base64 (图片内容不是有效Base64)") from exc
+        if not data.startswith(b"\x89PNG\r\n\x1a\n"):
+            raise ValueError("QiaoTong did not return a PNG image (返回内容不是PNG图片)")
+        path = Path(file_path).expanduser()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        return str(path)
 
     def plot_result(self, result_type: str, file_path: str, **kwargs) -> str:
         self._require_available()
         plot_methods = {
-            "displacement": self._odb.plot_displacement_result,
-            "reaction": self._odb.plot_reaction_result,
-            "beam_force": self._odb.plot_beam_element_force,
-            "beam_stress": self._odb.plot_beam_element_stress,
-            "truss_force": self._odb.plot_truss_element_force,
-            "truss_stress": self._odb.plot_truss_element_stress,
-            "plate_force": self._odb.plot_plate_element_force,
-            "plate_stress": self._odb.plot_plate_element_stress,
-            "modal": self._odb.plot_modal_result,
+            "displacement": "plot_displacement_result",
+            "reaction": "plot_reaction_result",
+            "beam_force": "plot_beam_element_force",
+            "beam_stress": "plot_beam_element_stress",
+            "truss_force": "plot_truss_element_force",
+            "truss_stress": "plot_truss_element_stress",
+            "plate_force": "plot_plate_element_force",
+            "plate_stress": "plot_plate_element_stress",
+            "modal": "plot_modal_result",
         }
-        method = plot_methods.get(result_type)
-        if method is None:
+        method_name = plot_methods.get(result_type)
+        if method_name is None:
             raise ValueError(
                 f"Unknown result_type '{result_type}'. "
                 f"Available types: {list(plot_methods.keys())}"
             )
-        return method(file_path=file_path, **kwargs)
+        stage_id = kwargs.pop("stage_id", -1)
+        case_name = kwargs.pop("case_name", "")
+        component = kwargs.pop("component", "")
+        mode = kwargs.pop("mode", 1)
+        mode_kind = kwargs.pop("mode_kind", 1)
+        if result_type == "modal":
+            if stage_id != -1 or case_name or component not in (None, ""):
+                raise ValueError("Modal plots use mode/mode_kind, not stage_id/case_name/component")
+            kwargs.update(mode=mode, mode_kind=mode_kind)
+        else:
+            if mode != 1 or mode_kind != 1:
+                raise ValueError("mode/mode_kind apply only to modal plots")
+            kwargs["stage_id"] = stage_id
+            if case_name:
+                kwargs["case_name"] = case_name
+            if component not in (None, ""):
+                components = {
+                    "displacement": {"dx": 1, "dy": 2, "dz": 3, "ux": 1, "uy": 2, "uz": 3,
+                                     "rx": 4, "ry": 5, "rz": 6},
+                    "reaction": {"fx": 1, "fy": 2, "fz": 3, "fxyz": 4, "mx": 5, "my": 6,
+                                 "mz": 7, "mxyz": 8},
+                    "beam_force": {"fx": 1, "fy": 2, "fz": 3, "mx": 4, "my": 5, "mz": 6},
+                    "beam_stress": {"axial": 1, "mz": 2, "my": 3, "envelope": 4,
+                                    "upper_left": 5, "upper_right": 6,
+                                    "lower_right": 7, "lower_left": 8},
+                    "truss_force": {"n": 0, "fx": 1, "fy": 2, "fz": 3},
+                    "plate_force": {"fxx": 1, "fyy": 2, "fxy": 3, "mxx": 4, "myy": 5, "mxy": 6},
+                    "plate_stress": {"fxx": 1, "fyy": 2, "fxy": 3, "mxx": 4, "myy": 5, "mxy": 6},
+                }.get(result_type, {})
+                if isinstance(component, str):
+                    token = component.strip().lower()
+                    component = int(token) if token.isdecimal() else components.get(token)
+                if isinstance(component, bool) or component not in components.values():
+                    raise ValueError(
+                        f"Invalid component for {result_type}; allowed names/IDs: {components}. "
+                        "truss_stress has no component parameter."
+                    )
+                kwargs["component"] = component
+        arguments = {"file_path": "", **kwargs}
+        method = self._validated_method("odb", method_name, arguments)
+        return self._save_png_result(method(**arguments), file_path)
 
     # ── Validation ─────────────────────────────────────────────────────
 
