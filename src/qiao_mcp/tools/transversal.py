@@ -118,6 +118,18 @@ def register_transversal_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         returned list. Native fields and node order are retained, including
         load_factors in meters. Use the returned index for case references.
 
+        Use before editing with set_transversal_vehicle/lane/case and after a
+        write to verify actual IDs and stored fields. For international definitions
+        use get_international_live_load_data; get_analysis_results reads solved
+        responses. This query requires no new solve and does not mutate the model.
+
+        When both name and index are provided they identify the same object, not
+        an either/or search. With neither, all available definitions in kind are
+        selected before local pagination. Returns data, total, limit, offset and
+        has_more; use these fields to request the next page. Empty data can mean
+        no exact match or an offset beyond the selected list.
+        (同时给名称与编号时必须同时匹配；省略两者查询该类全部定义，按返回的分页字段续查。)
+
         Args:
             kind: Definition family: vehicles (车辆), lanes (车道) or cases (工况).
             name: Optional exact name; when an ID is also supplied both must match.
