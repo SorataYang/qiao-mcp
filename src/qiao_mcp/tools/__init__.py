@@ -152,11 +152,25 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         merge_error: NonnegativeNumber = 1e-3,
     ) -> str:
         """
-        Create evenly-spaced nodes along a straight line — the preferred way to model
-        a bridge girder (等间距直线批量创建节点).
+        Generate a regular straight-line node mesh from a start point, count and
+        constant coordinate increments (按起点、数量和固定步长生成直线节点网格).
 
-        Instead of listing 101 coordinates for a 100m span at 1m intervals, just specify
-        the count, starting point, and spacing in each direction.
+        Use for regularly spaced girder nodes. create_nodes accepts an explicit
+        list for irregular or curved coordinates; create_beam_elements_linear
+        connects an existing ordered node chain after node creation.
+        Coordinate i is start + i * spacing, so count nodes span count-1 steps.
+        A nonzero increment is needed to obtain distinct points when count > 1.
+
+        Writes and refreshes the model. With is_merged=True, nearby existing
+        nodes can be reused and the number of distinct nodes can be smaller than
+        count. With merging disabled, coincident nodes may remain. start_id is
+        only a request: conflicts can make the bridge allocate different IDs.
+
+        The confirmation reports IDs resolved by coordinate readback, in input
+        order, including reused nodes. If a coordinate cannot be resolved
+        unambiguously, it requests an explicit node query instead of inventing an
+        ID. Use the reported IDs when constructing elements, not an assumed range.
+        (先读实际编号再建单元；合并可能复用节点，编号冲突时不得假定从 start_id 连续分配。)
 
         Args:
             count: Number of nodes to create (节点数量)
@@ -180,8 +194,6 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             # 100m simply-supported beam, 101 nodes at 1m pitch along X axis:
             create_nodes_linear(count=101, start_x=0, spacing_x=1.0)
 
-            # Two-span 50m+50m continuous beam, start x from 0:
-            create_nodes_linear(count=101, start_x=0, spacing_x=1.0)
         """
         if count <= 0:
             raise ToolInputError("count must be a positive integer > 0 (节点数量必须大于0)")
@@ -257,8 +269,21 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Create a single frame element (beam/truss/cable) with named parameters
         (创建单个梁/杆/索单元，参数具名).
 
-        This is the preferred way to create individual elements — all parameters
-        have explicit names and inline documentation.
+        Use when creating one frame element from existing node, material and
+        section IDs. For an ordered chain use create_beam_elements_linear; for
+        plate elements or already prepared mixed native rows use create_elements.
+        This tool does not create missing nodes or properties.
+
+        node_i and node_j determine local direction. ele_type selects beam,
+        truss or cable; only cables consume initial_type and initial_value.
+        Cable force inputs use N and unstressed length uses m, according to the
+        selected initialization mode. Set that mode explicitly for cables.
+
+        Writes the element and refreshes the model. element_id=-1 requests
+        automatic numbering; collisions and reference validation belong to the
+        bridge. Returns the endpoint/property summary, not an assigned element
+        ID; query get_model_data(kind="elements") before later ID-based edits.
+        (单个杆系单元使用具名参数；自动编号需回读，节点和材料/截面必须已存在。)
 
         Args:
             node_i: Start node ID (I端节点编号)
@@ -416,10 +441,24 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         element_data: list[list],
     ) -> str:
         """
-        Create elements from a raw data array (通过原始数组创建单元).
+        Import plate elements or mixed element batches from complete native data
+        rows (通过完整原生数据行导入板单元或混合类型单元).
 
-        For beam elements, prefer `create_beam_element` or `create_beam_elements_linear`
-        which have named parameters and are easier to use correctly.
+        Use when the native row layout is already known, particularly for plates
+        or mixed-type batches. For one beam/truss/cable use create_beam_element;
+        for a regular frame chain use create_beam_elements_linear. Nodes,
+        materials, sections and any plate thickness definitions must exist first.
+
+        The row's type selects its remaining layout: a plate references a thickness
+        ID where a frame references a section ID, and its connectivity has a
+        different length. Preserve the exact field order documented in the schema;
+        rows are forwarded without expanding names or filling missing properties.
+
+        Writes and refreshes the model, returning the submitted row count.
+        It does not return newly allocated IDs or prove each row's creation by
+        readback. Query get_model_data(kind="elements") to verify the resulting
+        connectivity and IDs before subsequent operations.
+        (不同单元类型的数据行不同；返回提交行数，实际编号和连接关系需回读确认。)
 
         Args:
             element_data: Element data list. Each item format:
