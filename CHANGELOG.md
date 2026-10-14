@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.7] - 2026-10-15
+
+### Changed
+
+- Expose 15 domain tools with discriminated operation requests while retaining every one of the 153 existing operations and direct legacy calls.
+- Generate domain schemas from the original argument and response models; preserve omission semantics, operation guards, MCP images and asynchronous solve progress.
+- Provide QIAO_MCP_CATALOG_LAYOUT=flat for clients requiring the original tool list, and check both layouts over packaged stdio in CI.
+
 ## [0.5.6] - 2026-10-15
 
 ### Changed
@@ -548,6 +556,7 @@ remain unconfirmed upstream.
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
+[0.5.7]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.6...v0.5.7
 [0.5.6]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.5...v0.5.6
 [0.5.5]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.3...v0.5.4

@@ -62,7 +62,7 @@ Support overrides preserve omitted coordinate/additional settings. Supplying
 `extra_parameters` enables them unless `extra_enabled=False` explicitly clears
 them; this behavior also applies to older SDKs that support these options.
 
-### 0.5.6: tool optimizations (local version)
+### 0.5.7: tool optimizations (local version)
 
 The current development version retains all 153 operations and legacy calls behind 15
 domain entry points. These changes are not in published 0.5.1. Section
@@ -431,7 +431,7 @@ where it belongs: in the dependency constraint.
 
 | Qiao-MCP           | qtmodel       | QiaoTong software                          |
 |--------------------|---------------|--------------------------------------------|
-| 0.5.6 (local)      | 2.6.3 – 2.9.x, not 2.9.0 | Same backend requirements; 15 domain tools with all 153 legacy operations |
+| 0.5.7 (local)      | 2.6.3 – 2.9.x, not 2.9.0 | Same backend requirements; 15 domain tools with all 153 legacy operations |
 | 0.5.1              | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
 | 0.5.0              | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
 | 0.3.2 – 0.3.3     | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
