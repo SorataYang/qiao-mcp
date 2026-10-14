@@ -349,6 +349,22 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         data. This tool neither prefixes a case name nor runs analysis.
         查询运营阶段已求解结果；默认最大值，最小值须单独指定2；工况全名原样传入。
 
+        Use after a moving-load case has been included in operating-stage
+        configuration and successfully solved. get_analysis_results serves the
+        general result interface; get_transversal_data and
+        get_international_live_load_data read definitions rather than results.
+
+        result_type determines the selection namespace: element_ids selects
+        elements for force/stress but nodes for deformation. The empty string
+        requests all IDs. There is no pagination, and each call returns only the
+        selected maximum or minimum extreme, not both envelope sides together.
+
+        Read-only: returns the native result as text without changing the view,
+        refreshing the model, converting units or filling missing values. An
+        unavailable/empty result needs a check of the solved case and identifiers,
+        not an automatic rerun or guessed case prefix.
+        (变形查询使用节点号；单次只有一侧极值，空选择查全部，返回原生数据且不补造缺失值。)
+
         Args:
             case_name: Complete live-load result case name (活载结果工况全名)
             result_type: Result type (结果类型): 'force'(内力), 'stress'(应力), 'deformation'(变形)
