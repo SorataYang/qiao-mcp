@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-10-15
+
+### Changed
+
+- Clarify the model inventory scope, separate entity counts from edit readiness, and document the non-atomic summary reads.
+- Describe planar tendon positioning, weighted constraint terms, node merge identity changes, and concrete checking timeout semantics.
+- Distinguish saved traffic definitions from solved envelope results and document display-setting defaults.
+
 ## [0.5.4] - 2026-10-15
 
 ### Changed
@@ -533,6 +541,7 @@ remain unconfirmed upstream.
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
+[0.5.5]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.1...v0.5.2
