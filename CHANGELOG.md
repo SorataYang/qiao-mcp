@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.8] - 2026-10-15
+
+### Changed
+
+- Explain ground versus node links, frame-end releases, contrasting DOF flag meanings, and support replacement effects in the boundary domain.
+- Document numerical result families, ID namespaces, stage selectors, formatted responses and operation-specific pagination in the result domain.
+
 ## [0.5.7] - 2026-10-15
 
 ### Changed
@@ -559,6 +566,7 @@ also remain unconfirmed upstream.
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
+[0.5.8]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.7...v0.5.8
 [0.5.7]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.6...v0.5.7
 [0.5.6]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.5...v0.5.6
 [0.5.5]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.4...v0.5.5
