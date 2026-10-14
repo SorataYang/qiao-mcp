@@ -53,10 +53,13 @@ Support overrides preserve omitted coordinate/additional settings. Supplying
 `extra_parameters` enables them unless `extra_enabled=False` explicitly clears
 them; this behavior also applies to older SDKs that support these options.
 
-### Unreleased: qtmodel tool correctness
+### 0.5.2: tool optimizations (local version)
 
-The working tree retains 153 tool names and adds corrections documented in the
+The current development version retains 153 tool names and adds corrections documented in the
 [tool audit](docs/qtmodel-code-audit.md). These changes are not in published 0.5.1.
+Section creation/deletion, stage deletion and vertical prestress checking now
+explain their prerequisites, selection boundaries and write behavior. Iteration
+results are recorded in the [optimization log](docs/optimization-log.md).
 `add_custom_temperature` accepts native `[reference, height, temperature]` rows
 (reference 1=top, 2=bottom; orientation 1=local Z, 2=local Y). Two-value rows are
 rejected because they omit the reference. Mutation selections reject blank,
@@ -428,6 +431,7 @@ where it belongs: in the dependency constraint.
 
 | Qiao-MCP           | qtmodel       | QiaoTong software                          |
 |--------------------|---------------|--------------------------------------------|
+| 0.5.2 (local)      | 2.6.3 – 2.9.x, not 2.9.0 | Same backend requirements; includes tool correctness and guidance improvements |
 | 0.5.1              | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
 | 0.5.0              | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
 | 0.3.2 – 0.3.3     | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
