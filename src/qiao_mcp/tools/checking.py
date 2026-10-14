@@ -63,6 +63,21 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Create a concrete structural check case (创建混凝土检算工况).
 
+        Use after defining the model's sections, materials and target structure
+        group. The existing group selects the members to check; standard selects
+        the design code and structure_type the concrete/prestress category.
+        This is case setup, not load creation or the checking solve.
+
+        Add checking combinations with add_check_load_combination and prepare
+        reinforcement/settings, then use run_concrete_check with the case name.
+        manage_check_case_definition handles complete stored case snapshots;
+        configure_check_analysis changes the current checking settings.
+
+        The SDK refreshes preprocessing data before creating the definition.
+        Returns a summary of the chosen name, code, category and group; it does
+        not certify compliance or return results. Duplicate names and missing
+        references are validated by the bridge. (先有模型与结构组，再建检算工况；定义完成后另行检算。)
+
         Args:
             name: Check case name (检算工况名称)
             standard: Design code (检算规范):
@@ -102,6 +117,22 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
     ) -> str:
         """
         Add a load combination for structural checking (添加检算荷载组合).
+
+        Use for code-based concrete checking. add_load_combine creates a general
+        model/result combination instead; create_load_case defines a basic load
+        case. Referenced case names must match the names available to checking,
+        including any suffix displayed by the bridge.
+
+        Each row contains [case_name, unfavorable_factor, favorable_factor]. Both
+        factors are required; a two-value row is rejected. standard determines
+        the meaning of kind, while combine_method independently chooses summation
+        with selection or envelope. These selectors are not interchangeable.
+
+        Writes a checking combination and returns its name and component count.
+        None or [] sends an empty component list, not an automatically generated
+        combination. No solve is run and repeated-name behavior is backend-owned;
+        inspect the checking data before replacing or repeating a definition.
+        (检算组合与普通模型组合分开；每行必须三列，规范组合类型与组合方式分别选择。)
 
         Args:
             name: Combination name (组合名称)
@@ -598,6 +629,21 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
     ) -> str:
         """
         Open or save a concrete check case file (打开或保存混凝土检算工况文件).
+
+        Use for the current checking data, including checkpoints before changing
+        its settings. open_model_file/save_model_file handle the entire structural
+        model instead; setup_concrete_check creates a new checking case definition.
+
+        For open, file_path takes priority over name; with only name the backend
+        resolves its default check-data directory. Opening replaces current
+        checking data, so save existing work first if needed. For save, a nonempty
+        file_path means save-as; otherwise the current case is saved in place.
+        name is ignored on save. Existing destination files may be overwritten.
+
+        Paths belong to the machine running QiaoTong. No file is uploaded or
+        downloaded by the MCP process, and no automatic backup is created.
+        Returns an operation confirmation without solving the case.
+        (路径属于桥通主机；打开会替换当前检算数据，保存可能覆盖文件，不传输文件到 MCP 主机。)
 
         Args:
             action: "open" (打开) or "save" (保存)
