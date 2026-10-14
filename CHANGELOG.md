@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.6] - 2026-10-15
+
+### Changed
+
+- Explain node merge identity, static case categories, longitudinal traffic ordering, and concrete-check stirrup replacement behavior.
+- Clarify signed ground springs, result ID namespaces and pagination, moving-case activation, and continuous-girder span layouts.
+
 ## [0.5.5] - 2026-10-15
 
 ### Changed
@@ -544,6 +551,7 @@ also remain unconfirmed upstream.
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
+[0.5.6]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.5...v0.5.6
 [0.5.5]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.2...v0.5.3
