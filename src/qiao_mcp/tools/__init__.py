@@ -101,10 +101,23 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         start_id: int = 1,
     ) -> str:
         """
-        Create nodes in the bridge model from an explicit coordinate list (创建节点).
+        Create model nodes at explicitly supplied global coordinates (按坐标创建节点).
 
-        Prefer `create_nodes_linear` when nodes are evenly spaced along a line
-        — it is far more concise for typical bridge models.
+        Use for surveyed points, curved layouts or irregular spacing. For an
+        evenly spaced straight line use create_nodes_linear; move_nodes and
+        update_node change existing nodes instead of submitting new positions.
+
+        With merging enabled, coordinates within merge_error can reuse existing
+        nodes, so the input row count is not the number of newly created nodes.
+        intersected=True also requests element splitting at intersections.
+        Numbering and merging interact: explicit IDs or start_id are requests,
+        and a merged position can keep its old ID. Do not build connectivity by
+        assuming consecutive IDs from the requested start.
+
+        Writes the batch and refreshes the model. The confirmation reports
+        submitted coordinates, without resolving a coordinate-to-ID map. Read
+        get_model_data(kind="nodes") afterwards before creating elements; a lost
+        write reply requires that readback before retrying the batch.
 
         Args:
             node_data: List of node coordinates. Format: [[x,y,z], ...] or [[id,x,y,z], ...]
