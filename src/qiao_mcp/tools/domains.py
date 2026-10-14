@@ -387,26 +387,36 @@ TOOL_DOMAINS = (
     _domain(
         "query_results", "Structural responses and tendon results / 结构响应与钢束结果",
         """
-        Read structural responses, specialized/modal results, moving-load envelope
-        extremes or tendon result data (只读查询结构响应、模态、活载包络及钢束结果).
+        Retrieve numerical structural responses from the bridge's result data
+        (从桥通结果数据读取结构数值响应).
 
-        get_analysis_results selects displacement/force/stress/reaction by stage
-        and case; get_special_results covers specialized and modal output.
-        get_live_load_results selects a moving-load extreme. Tendon loss results
-        require solved, activated stage data, while tendon position/length
-        availability before solving depends on the bridge. Use query_model for
-        saved definitions, manage_checks for code-check results, view_model for
-        plots, and analyze_model to initiate a structural solve.
+        Use after analyze_model has completed the relevant solve. Choose
+        request.operation for the result family:
 
-        request.operation determines node versus element IDs, stage numbering,
-        case identifiers and units. Select a valid solved state first; for full
-        result identifiers use names verified in QiaoTong, not guessed TV:/MV:
-        prefixes. A maximum and minimum envelope require their respective calls
-        and are not simultaneous physical load states. Pagination varies by
-        operation: generic lists are sliced locally; live-load results are not
-        paged by this wrapper. Nothing is solved or refreshed here. Empty data
-        can mean missing/unsupported results and must not be interpreted as zero
-        response or a passing engineering assessment.
+        - get_analysis_results: displacement/reaction uses node IDs; force/stress
+          uses element IDs. stage_id=-1 is operation, 0 is the stage envelope,
+          and a positive value selects one construction stage.
+        - get_special_results: use kind plus mode for modal output, or the
+          documented node/link/element selector for concurrent and special results.
+        - get_live_load_results: request one maximum or minimum envelope extreme;
+          get_tendon_loss_results reads losses for a named, activated stage tendon.
+        - get_tendon_position_result/get_tendon_length_result: discretized tendon
+          geometry; pre-solve availability depends on the bridge.
+
+        Example: request={"operation":"get_analysis_results","result_type":"force",
+        "ids":[10,11],"stage_id":-1,"case_name":"Dead"} selects static operation
+        results for elements 10 and 11. Full case identifiers must come from
+        QiaoTong results/UI; never derive TV:/MV: prefixes from combination codes.
+        Use query_model for saved definitions, manage_checks for code-check results
+        and view_model for plots. Envelopes do not represent simultaneous loads.
+
+        Returns status/message with formatted numerical data. For paged list
+        operations, follow the next-offset hint with unchanged selectors; slicing
+        occurs locally after backend retrieval. Tendon and live-load operations
+        have no pagination fields. These calls do not solve, refresh or certify
+        result freshness. An empty response can indicate an absent case, inactive
+        tendon or unavailable results; verify context before interpreting it as
+        zero. Multiple calls need a stable solved model for comparison.
         """,
         """
         get_analysis_results get_special_results get_live_load_results
