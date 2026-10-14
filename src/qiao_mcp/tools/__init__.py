@@ -1226,6 +1226,21 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Add a plate thickness property (添加板厚度).
 
+        Use before creating plate elements whose native rows reference a thickness
+        ID. create_section defines frame cross-sections instead. This creates a
+        property definition; it does not create plates or assign existing elements.
+
+        t controls in-plane/base thickness in meters. On supporting SDKs t_out
+        controls out-of-plane thickness; omitting it uses t, while explicitly
+        passing it to an unsupported SDK fails before creation. thick_type selects
+        an ordinary or stiffened plate, with advanced rib options left to the SDK.
+
+        Writes and refreshes the model and returns a confirmation with the name.
+        index=-1 requests automatic numbering; the message does not include the
+        allocated ID, so verify it in the bridge before using it in a plate row.
+        Existing-index replacement rules are backend-owned.
+        (板厚定义与杆系截面分开；自动编号须核对，面外厚度仅支持相应 SDK 的版本。)
+
         Args:
             name: Thickness name (厚度名称)
             t: In-plane/base thickness in meters (面内/基板厚度 m)
@@ -1415,6 +1430,21 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Use this to manually override Area, Ix, Iy, Iz etc. after creation.
         Typically used for fine-tuning or correcting auto-calculated values.
         (用于手动覆盖截面面积、惯性矩等自动计算值)
+
+        Use a verified complete property table for an existing section. To inspect
+        stored values use get_model_data(kind="section_property", sec_id=...);
+        calc_section_property evaluates supplied geometry, while
+        calculate_section_property recalculates the whole model's sections.
+
+        The array replaces the entire 26- or 29-value table in native UI order;
+        it is not a list of only changed values. Keep every retained value and its
+        corresponding unit, including higher-order section properties. side_i
+        selects one end of a tapered section; update both ends with separate calls.
+
+        Writes to a shared section definition, potentially affecting every element
+        using it, and returns a confirmation. It does not run structural analysis;
+        later automatic property recalculation may replace these manual values.
+        (完整特性表整体覆盖；会影响引用单元，后续自动重算可能覆盖手工值。)
 
         Args:
             index: Section ID (截面编号)
