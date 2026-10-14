@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-10-14
+
+### Changed
+
+- Clarify cleanup, support, loading, grouping, tendon and visualization workflows.
+- Separate construction-stage editing and merging from analysis execution.
+- Correct parametric reinforcement diameter units and spacing-only rows; mark existing-data replacement.
+- Explain checking definitions, assignments, combinations and file replacement.
+
 ## [0.5.2] - 2026-10-14
 
 ### Changed
@@ -518,6 +527,7 @@ also remain unconfirmed upstream.
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
+[0.5.3]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.3...v0.5.0

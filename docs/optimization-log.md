@@ -12,6 +12,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 基线 | 0.5.1 后的审计版 | 3.7 | 3.8 | 3.3 | 3 | 3.0 | [基线](https://tdqs.dev/reports/x2109gtuk4) |
 | 1 | 0.5.2 | 3.6 | 3.9 | 3.0 | 3 | 3.3 | [第 1 轮](https://tdqs.dev/reports/t0kcd799y0) |
+| 2 | 0.5.3 | 3.7 | 4 | 3 | 3 | 3.4 | [第 2 轮](https://tdqs.dev/reports/s3dfew1edh) |
 
 ## 第 1 轮：最低分工具的使用边界
 
@@ -36,3 +37,38 @@
 
 下一轮依据新报告处理剩余 3.3–3.5 分工具，完善清理、荷载、分组、检算和视图工具的
 使用范围与执行影响，并继续核对工具集评价中的误判。
+
+## 第 2 轮：常用工具的操作范围与工程语义
+
+本地版本：0.5.3。评分源码提交：`990428495a4c6a1277dca6b881fa5cdeb97038f7`。
+输入 SHA-256：`b6bfcabb6fb4669db771170ed0bef76e17a18edd11abadaa2b0c214c8e5457da`。
+原始产物：`dist/optimization-20261014/round-02/`。本轮修改 20 个工具。
+
+本轮 20 个改动工具全部提高。综合分从 3.6 升至 3.7，描述质量从 3.9 升至 4.0，平均分从 4.3 升至 4.4。工具集指标保持区分度 3、命名一致性 3、数量适宜性 2、完整性 4；仍未达到收尾目标。施工阶段钝化现有明确专用工具，报告继续称其只能通过通用入口实现，该评价与本次工具定义不符。按报告原值保留，不将误判当作新增工具的需求。SDK 文档与现安装版本均确认参数化配筋直径使用米、第四列在本工具为间距，既有配筋会覆盖；相应说明与标记已经修正。
+
+| 工具 | 上轮 | 本轮 |
+| --- | --- | --- |
+| `update_section_bias` | 3.4 | 4.5 |
+| `set_support` | 3.4 | 4.6 |
+| `apply_beam_distributed_load` | 3.4 | 4.5 |
+| `add_load_to_mass` | 3.5 | 4.7 |
+| `configure_analysis` | 3.5 | 4.9 |
+| `create_structure_group` | 3.5 | 4.9 |
+| `update_structure_group_name` | 3.5 | 4.3 |
+| `create_boundary_group` | 3.4 | 4.3 |
+| `merge_operation_stage` | 3.4 | 4.7 |
+| `update_construction_stage` | 4.1 | 4.9 |
+| `add_tendon_3d` | 3.4 | 4.5 |
+| `remove_boundary` | 3.4 | 4.5 |
+| `set_view_angle` | 3.4 | 4.7 |
+| `setup_concrete_check` | 3.4 | 4.7 |
+| `add_check_load_combination` | 3.4 | 4.5 |
+| `add_parametric_reinforcement` | 3.4 | 4.5 |
+| `add_check_stirrup` | 3.4 | 4.6 |
+| `assign_element_stirrup` | 3.4 | 4.5 |
+| `manage_check_case_file` | 3.4 | 4.8 |
+| `remove_unused_sections` | 3.3 | 4.6 |
+
+验证：完整离线测试 1926 项通过、26 项跳过；构建 wheel 的协议检查保持 153 个工具。
+
+下一轮方向：处理本轮剩余 3.4–4.1 分工具，优先直线节点创建、截图、显示编号和模型检查；同步核对服务器整体评估实际使用的输入，定位区分度持续停滞的原因。
