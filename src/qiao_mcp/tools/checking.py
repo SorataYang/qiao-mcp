@@ -572,14 +572,31 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         core_diameter: float = 0.0,
     ) -> str:
         """
-        Update or remove a stirrup definition (修改或删除检算箍筋定义).
+        Update or remove a stirrup definition in the current concrete-checking
+        context (修改或删除当前检算窗口内的箍筋定义).
 
-        Use add_check_stirrup to create one. Lengths are in METERS (SI), converted
-        internally. 新增请用 add_check_stirrup；长度入参为米，内部换算。
+        Use add_check_stirrup to create a definition, assign_element_stirrup to
+        change element assignments, and set_check_stirrup_snapshot to write a
+        model-side snapshot. This tool targets the loaded checking context;
+        it does not import a model check case or run verification.
+
+        update requires name and sends every property, including defaults:
+        read get_check_data(kind="stirrups") and carry forward values to retain.
+        This is a full definition update, not a patch of supplied fields.
+        The bridge tries stirrup_id first and falls back to name if not found;
+        keep both identifiers consistent to avoid targeting another definition.
+
+        remove sends only the ID/name selector; the shape fields are ignored.
+        Inspect element references before removing a shared definition, because
+        this wrapper does not reassign dependents or provide an undo operation.
+        Length arguments use meters; only diameter is converted to millimeters
+        for the backend. Returns a confirmation; read the definition and
+        assignments back before the next concrete check.
 
         Args:
             action: "update" (修改) or "remove" (删除)
-            stirrup_id: Stirrup definition ID (箍筋定义编号); <=0 means match by name
+            stirrup_id: Definition ID; the bridge falls back to name if the ID is
+                        nonpositive or not found (编号优先，未找到时按名称匹配)
             name: Stirrup definition name (箍筋定义名称)
             stirrup_type: 1=普通箍筋 (normal), 2=螺旋式箍筋 (spiral)
             material_id: Rebar material ID (钢筋材料号)
