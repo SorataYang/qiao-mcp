@@ -42,6 +42,8 @@ _DESTRUCTIVE_NAMES = {
     "remove_unused_sections",
     "call_qtmodel_api",  # 长尾调用可能删除或覆盖数据
     "save_model_file",   # 保存到已有路径会覆盖文件
+    "save_model_screenshot",  # PNG 目标路径已存在时会覆盖
+    "plot_analysis_result",
     "add_load_combine",  # qtmodel 明确支持覆盖既有组合
     "set_gravity",  # 总体设置 API 同时下发元数据/基准温度默认值，不能保证保留原值
     "create_material",  # SDK 明确支持同名覆盖

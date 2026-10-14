@@ -49,6 +49,18 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         By default returns the image itself so it can be viewed directly.
         默认直接返回图像内容，可在客户端预览。
 
+        Use to inspect the current model visually. For a requested result contour
+        use plot_analysis_result; save_model_file saves the editable model instead.
+        A connected QiaoTong desktop view is required, but no analysis is started.
+
+        A preset changes the desktop camera; view_angle="current" keeps it.
+        If setting a valid preset fails, the current view is still captured and
+        the response is text with a warning instead of image content. PNG bytes
+        are retrieved from QiaoTong and written on the MCP host. An existing path
+        is overwritten; the default is ~/qiao_mcp_images/model_view.png.
+        return_image=False returns a saved-path message without inline image data.
+        (相机预设失败时仍截当前视图并文字提示；文件保存于 MCP 主机，已有同名 PNG 会覆盖。)
+
         Args:
             file_path: PNG path on the MCP host (not the controlled Windows host).
                        Empty uses the local default directory. Image bytes are
@@ -102,6 +114,12 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
 
         By default returns the plot image itself for direct viewing.
         默认直接返回云图图像内容，可在客户端预览。
+
+        Rendering changes the desktop result view and writes a PNG on the MCP
+        host, replacing an existing file at the selected path. It does not run
+        analysis or replace the editable model file. Use save_model_screenshot
+        to capture the current model view without requesting a result contour.
+        (修改结果视图并保存 PNG，同名文件会覆盖；不求解，也不替代原生模型文件。)
 
         Args:
             result_type: Result type (结果类型):
@@ -207,6 +225,17 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     ) -> str:
         """
         Toggle the display of node and element IDs (开关节点和单元编号显示).
+
+        Use while inspecting connectivity or before save_model_screenshot.
+        This changes visible labels, not identifiers: update_node_id and
+        update_element_id renumber entities, while set_view_angle changes the camera.
+
+        Both booleans are applied on every call. Omitting either uses False and
+        hides that label family; an omitted flag does not retain its previous
+        state. The two display settings are sent sequentially to the desktop.
+        Requires a connected view and returns a confirmation, without producing
+        an image or changing geometry or analysis results.
+        (省略的开关按 False 隐藏；只控制标签显示，不修改真实编号。)
 
         Args:
             node_id: True to show node IDs, False to hide (显示节点号)
