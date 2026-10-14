@@ -1,0 +1,532 @@
+{
+  "objective": "比照 qtmodel 的代码，一项一项依次检查当前已有工具的代码是否有错误",
+  "date": "2026-10-14",
+  "status": "passed_with_documented_sdk_limits",
+  "base_commit": "8ce2715433f3168b36fadc605f5135f231c95565",
+  "branch": "audit/qtmodel-tool-correctness",
+  "current_source_sha256": {
+    "src/qiao_mcp/__init__.py": "0b968be1736680862f091fadc970ddfa8489a83abdfd363a3f8b3844504d6c03",
+    "src/qiao_mcp/prompts/__init__.py": "09932473e5d0d6ffc7ecbea41cb9d020a97528f49737108fd7e40c9fc7c0d129",
+    "src/qiao_mcp/providers/__init__.py": "286f7877118a4a02ab7d60a18668a1774caacaf58c8761d4290373d31fcb5425",
+    "src/qiao_mcp/providers/qtmodel_provider.py": "65285852af9509f7a649b0a76ab726869f28e36aaf368c121110f66259ab2994",
+    "src/qiao_mcp/resources/__init__.py": "e62cd9136ca094467541a11f000428bed0d8c6d8daf520afbaf1c4ba6ea149d0",
+    "src/qiao_mcp/server.py": "c7d4deaedc3ea4c4bc157e38b1810f411fb4e22e6ba1c4aa2ec4c236d9e48976",
+    "src/qiao_mcp/tools/__init__.py": "013e70daeab89bbd48871992bd6ca80fdde9dc1e1e371db2e996633d80473082",
+    "src/qiao_mcp/tools/advanced_boundary.py": "2c999702fd3dcad2e3a4ec2cb8032be594a703b524c466b444960e345bc938d0",
+    "src/qiao_mcp/tools/api_gateway.py": "4f703fd6f77d5ef198101758477b8011169011cd80445d6003ca0df6c3d78d72",
+    "src/qiao_mcp/tools/catalog.py": "54d10ec993ccb25f37284a38158ed65724391806fbee80efa5ac618b3263e8af",
+    "src/qiao_mcp/tools/check_schemas.py": "5218369bcbbb349f443ee00ffdb65be88f09b8a8392491eeccce1757284ea734",
+    "src/qiao_mcp/tools/check_snapshots.py": "08619baeea3dd9fdf700a19429e947050572a8865f6d402afbc32d59ea187e61",
+    "src/qiao_mcp/tools/checking.py": "88a73cfbee4ce008ed70afa1111437c361165c71b6bba62c3524e64a8dbe6056",
+    "src/qiao_mcp/tools/envelope.py": "0ae75247e514914c64c9b95d023a841af4659f4eac8d22d493be6ab920e14507",
+    "src/qiao_mcp/tools/group_management.py": "179e9891e8c1a2280f61553c8cf4a882788cf0f17233a668f7d20f135291636e",
+    "src/qiao_mcp/tools/international_load.py": "059a57e20d12f4d5e26a1d266f7a87876cb426248da1cd4ba922aa429c543164",
+    "src/qiao_mcp/tools/international_schemas.py": "071bef266ec708b7f1253e6d3bd4d049a5e07c0f35539bf0aeecd77aa9059398",
+    "src/qiao_mcp/tools/live_load_schemas.py": "ed3985b6e34e83020a56d4cf75a878cf8e98ba890c896a2b232f7f928daea048",
+    "src/qiao_mcp/tools/modifications.py": "f53a351ff790f0a81837e00b85badd01793b6b3909c370fd746fdcca01623a6d",
+    "src/qiao_mcp/tools/moving_load.py": "a3a1b639ba0ec959dcbfd2b1fa8662e65854b3da417f9e30300b299082a1b809",
+    "src/qiao_mcp/tools/queries.py": "49866a7365f59ac8fe6cbb1d5a230a989feb1c6af8cb8cbbad20d36c4cf9f2ef",
+    "src/qiao_mcp/tools/schemas.py": "b9845cfe637fd8a8d33426494e4db53a91c7dbf947682f8f67931c7b6862478a",
+    "src/qiao_mcp/tools/tendon.py": "66dea7efe7862eee49b9a46b134c92a50eceabc9d4af4a3afb617b368c40ab70",
+    "src/qiao_mcp/tools/transversal.py": "8412326f7aa92a2fc716c169200df28bef9b24dd4782cb2bf6d5528746ff2c00",
+    "src/qiao_mcp/tools/visualization.py": "d10bdaf82308fcb616182cc7e235eab2f289836f3475a5bf0cdc3e6a528fa05b",
+    "src/qiao_mcp/tools/workflows.py": "18b9cbd13916c22bce5fdad17cc23851cf66a2596a2490e98aa23b72d55af499"
+  },
+  "test_sha256": {
+    "tests/conftest.py": "a8e96deb307279f187f493fca4211963aeb660e7855d07abebb79f3b6bdb7683",
+    "tests/test_advanced_boundary_tools.py": "d7cd1ffdb41f8c150c45b71c6ffe1f69aead88b014c84d2739a9964b4a7b6638",
+    "tests/test_annotations_and_image.py": "4f493caf4dc7a9b1fa44cfeab32a26e2a039c8e27798be11db4a861c5445f16d",
+    "tests/test_api_gateway.py": "f466195e41783c4e7102245240d9e181170027bf6f33d1cbce19029567a34841",
+    "tests/test_availability_probe.py": "9982b52ce02e9caba21f20bb227c101c6edea42e8a84881a4208f6d345df21e5",
+    "tests/test_beam_release_semantics.py": "d99159ce1de54d46ef3a4852cff274049d71389624d75889c380ceddfb45b4de",
+    "tests/test_check_capabilities.py": "9f740d63648420b45d92d97c18eea67750ebd0b30653c6bd832516c9ec62ea1d",
+    "tests/test_check_snapshot_dispatch.py": "f4abbdfbfad8c0bae593cd8b3966217d017bda9afa3e924ac01df2352ce25844",
+    "tests/test_check_snapshots.py": "0876ca2b5ffa59fc81fb9c4deea808389a51976be6491e23ec093732092e275a",
+    "tests/test_checking_contract_audit.py": "f2ea97c26f851152253f0042af658111daca1fb8aabb20455463ee980cf55fbc",
+    "tests/test_concrete_check_migration.py": "10895a53730375b7999f94ad08cd1ecc6f5b98c29ae8d2383f5b552f753d6ae4",
+    "tests/test_connection_diagnostics.py": "4715f6e70f8ec7d32c47cdabe7791421efbfbbb396d91c34edb84b47d0ee0c45",
+    "tests/test_dependency_bounds.py": "b63c52f6dfa1f0a30c1bfb157b861a71e9a0a7764cb78159bce1dc21956a8cdf",
+    "tests/test_en1991_factories.py": "83d5f8be82aa20ba1291b9d0d811aec9f25b59b0d6584ffff0c4f3327c2b94ce",
+    "tests/test_envelope.py": "39d9e0b9beac43ecfbc6906b7b25d1347fbe16a21698de9dabeb0944626dbced",
+    "tests/test_gateway_management_options.py": "c6cd2f885fbc60aeba1290933e7b117090a70a98fca8788585cd335b0f7b9dd0",
+    "tests/test_international_cases.py": "ef561006de3d970c681b43e1978963c44f9629d95781d3934af85c9757173db8",
+    "tests/test_international_vehicles.py": "092935f7743dd2bc3be187d557b81732f3762c6ca90dc87dfff9de07ede991ed",
+    "tests/test_international_workflow.py": "ca13d2afd20ff997c421fae4303c6cf039f792524504dead64f5166a45c68359",
+    "tests/test_live_load_configuration.py": "03c35a61f64a1bf659d621b262c1fe6c0a26f0f55b959b1922dbcf77f57ef351",
+    "tests/test_live_load_options.py": "d5bcdb6f3904fe5de0453450c530a7612e650cc8f607fb11eb8060093f232db2",
+    "tests/test_material_options.py": "80e60f4a0cfbc672aa59131cf8c9339dd96947cfa2cbdf11a9d3c98fa764b596",
+    "tests/test_model_catalog_queries.py": "12e4557efbcf7cae64bd90c0ab611b9a79c040dd9a002ec4800871989a1db54f",
+    "tests/test_model_edit_readiness.py": "a5b5c774322752d6f713423a3b8968f706bd990bdefca4951ee1798ad9ae5ba2",
+    "tests/test_model_queries.py": "c199c7f7c1c7fa75b4cbb295ec04ca3909734cf7bc846bbdf70234ceef1be456",
+    "tests/test_model_query_migration.py": "84d44b673a933fd8f32cb3707fa8dc88cdedd63d876d46a8a372d8fb58109015",
+    "tests/test_model_state.py": "3f5d267836d22fc433c57cf2157864230d42ac5b331cdc5ce515d8aaa079445b",
+    "tests/test_moving_load_tools.py": "8b1e83abbbac4192b93a31a5bcc4ae9a2e64551b06e02cd96b3642e79e956cf3",
+    "tests/test_mutation_scope_audit.py": "520200fc66401dee90c0a70850d139284e9a2ebcd4a750db6c15a35906bd76c6",
+    "tests/test_native_field_layouts.py": "75402e7f96606eeff81f734e6212b15d62e2b1970cd920ee062ca4eb1bb26cd2",
+    "tests/test_node_chain_geometry.py": "298d7884f9bae9390faafb2e795f19cd7d313fac35eceda193cf8a7c56e6ed43",
+    "tests/test_partial_update_fill.py": "6d51d40721d1416005f380f40108e786f4bf212f998fe81cc21a15a693034500",
+    "tests/test_provider_dispatch.py": "99bb7932b4c9e9bdf46a4eb5ea525493cb6852d156c991891b7ad3de23ca1b72",
+    "tests/test_qtmodel_contract.py": "b281da1710b056ab932ebd645e4a1b6b83e8f9ff0bd85523ed9602c195d29abc",
+    "tests/test_qtserver_integration.py": "d8a3ee21be884ffdb1f20f5519820f82a9697d832bd16e378d646b1cd789220f",
+    "tests/test_query_tools.py": "309031e550de028b21a53c40d0b72072893ddc45c2b86c556624c89ccf5426a8",
+    "tests/test_release_check.py": "19072a50e08f1a7dbc969aa6531410b8883421f7edde3c7cf23b7c32d565acd1",
+    "tests/test_remove_boundary_kinds.py": "45b741d6fd7bf898fbab88d239936048d899577ec26a454751ed71900fc9e329",
+    "tests/test_result_normalization.py": "e20d209756ac392d9659d7ca0d3ddb13edb604313672a255e38ae853e9bfae71",
+    "tests/test_run_analysis_async.py": "b63935723f3fee8e4eb7b0271aa259a92f3165468f03e1de086470ff892c281d",
+    "tests/test_section_tools.py": "f7ee7c82f4e5261cbb3133a5834112c8ee3fa4c844882dcfbc0c9d69211f854e",
+    "tests/test_self_weight.py": "7f60c657bfa063a7ca4c862bf8b05d849bca8c3cea052c48735cba90c241a198",
+    "tests/test_solve_semantics.py": "8283ab3ee1dd1f6d5720a55ed66eff372c3c8b9b423cf37687754d7a65d82496",
+    "tests/test_stage_options.py": "88e80cf3b73ba88b35551b35dafec9d04febdf3b3a431e459725715056558a86",
+    "tests/test_support_options.py": "f6d6d748ad8213bccb5483f3fa0bbcca069ace224b5ffaa46ae211f76b28bd3d",
+    "tests/test_tendon_tools.py": "12e7a992f805b62fe2124807d34bbf4b7da7652ab16c7376bc996a16afd38767",
+    "tests/test_thickness_tools.py": "f20672c3d660919aa530a7709b8af4bec6d44d691e61a655b013a70d348e18fb",
+    "tests/test_tool_correctness_audit.py": "ec1a1f678bd4e8871f37808c61a90947df5b72a8a209a45df7c170858ee98758",
+    "tests/test_tool_schemas.py": "d2f2826ff395d7fcf94314ea82727c9b3453bf335ef375e1cf0768d5e64cb3ec",
+    "tests/test_transversal_tools.py": "44d655dff5731797dafd8a06be66ddfe83f4e3340fc35bac998cb245b205c6ff",
+    "tests/test_transversal_workflow.py": "a266e077c1c6aaac69e335c1c91957307d3a1b0dedea4d4b27edf7f5089defb0",
+    "tests/test_upstream_alignment.py": "66de201862023490a3e871e08e17b0608317b30b322e79f50ff7ecb75c03955c",
+    "tests/test_visualization_contract.py": "343aa656e1f26f78f69db487b8646b93d5ee0e2871b00de420040a8a3bb0412f",
+    "tests/test_visualization_tools.py": "7c9fb45bb02cf0ba22d5bf3288cbcdfe2b87fbbfa6368351ec95bbcedd6bfa80",
+    "tests/test_workflows.py": "4b209db6551193e6c7409b87a6dc52c2acfc2259101b84304e7812b590b2fee9"
+  },
+  "runtime": {
+    "python": "3.11.15",
+    "uv": "0.11.6",
+    "mcp": "1.29.0",
+    "locked_qtmodel": "2.9.2",
+    "upstream_commit": "0687ffe3fa481747c53f9521ee1503a2a043fc08"
+  },
+  "audit_coverage": {
+    "tools": 153,
+    "pending": 0,
+    "findings": 27,
+    "limitations": 8,
+    "status_counts": {
+      "fixed": 42,
+      "reviewed": 91,
+      "fixed_with_limitations": 10,
+      "reviewed_with_limitations": 10
+    }
+  },
+  "static_checks": [
+    {
+      "command": "uv run --locked ruff check src/ tests/ scripts/",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run --locked mypy src/qiao_mcp/",
+      "exit_code": 0,
+      "source_modules": 26,
+      "scope": "Existing gradual typing; untyped function bodies are not all checked."
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "matrix": [
+    {
+      "sdk": "2.6.3",
+      "full_offline_suite": {
+        "path": "dist/qtmodel-audit-20261014/sdk-matrix/2.6.3/final.xml",
+        "sha256": "e317a78e82676ef784900e2140871a5338b18c9c97525457b0ecb20a7ec8b2e3",
+        "tests": 1948,
+        "passed": 1801,
+        "skipped": 147,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 45.692,
+        "skip_reasons": {
+          "Installed qtmodel lacks model snapshots": 46,
+          "could not import 'qtmodel.core.api_contract': No module named 'qtmodel.core.api_contract'": 24,
+          "Installed qtmodel lacks model snapshot operations": 2,
+          "Installed qtmodel lacks EN1991 factories": 15,
+          "Installed qtmodel lacks international live-load cases": 12,
+          "Installed qtmodel lacks planned-lane operations": 3,
+          "Installed qtmodel lacks explicit lane namespaces": 1,
+          "Installed qtmodel lacks international vehicle definitions": 12,
+          "Installed qtmodel lacks explicit live-load settings": 2,
+          "Installed qtmodel lacks get_material_summaries": 1,
+          "Installed qtmodel lacks get_material_detail": 1,
+          "Installed qtmodel lacks get_load_case_summaries": 1,
+          "Installed qtmodel lacks get_load_case_detail": 1,
+          "Installed qtmodel lacks get_load_combination_summaries": 1,
+          "Installed qtmodel lacks get_load_combination_detail": 1,
+          "Installed qtmodel lacks get_construction_stage_summaries": 1,
+          "Installed qtmodel lacks get_element_section": 1,
+          "Installed qtmodel lacks get_span_data": 1,
+          "Installed qtmodel has no edit readiness API": 1,
+          "Installed qtmodel lacks query_node_data": 1,
+          "Installed qtmodel lacks query_element_data": 1,
+          "Installed qtmodel lacks query_boundary_data": 1,
+          "Installed qtmodel lacks query_load_data": 1,
+          "Installed qtmodel lacks query_node_local_axis_data": 1,
+          "Installed qtmodel lacks query_section_summaries": 1,
+          "installed qtmodel predates QtServer.get_model_state": 1,
+          "SDK lacks optional get_load_group_names; explicit failure is tested separately": 2,
+          "Installed qtmodel lacks transversal definitions": 4,
+          "Installed qtmodel lacks transversal cases": 2,
+          "Installed qtmodel lacks transversal deletion": 5
+        }
+      },
+      "final_focused_check": {
+        "path": "dist/qtmodel-audit-20261014/final-focused-2.6.3.xml",
+        "sha256": "99c378390f3b93a99332a454a3fb85169784ba4661010791da9a7352883f6e32",
+        "tests": 266,
+        "skipped": 18,
+        "failures": 0,
+        "errors": 0,
+        "passed": 248,
+        "seconds": 34.996,
+        "skip_reasons": {
+          "Installed qtmodel lacks international live-load cases": 12,
+          "Installed qtmodel lacks planned-lane operations": 3,
+          "could not import 'qtmodel.core.api_contract': No module named 'qtmodel.core.api_contract'": 2,
+          "Installed qtmodel lacks explicit lane namespaces": 1
+        }
+      }
+    },
+    {
+      "sdk": "2.6.4",
+      "full_offline_suite": {
+        "path": "dist/qtmodel-audit-20261014/sdk-matrix/2.6.4/final.xml",
+        "sha256": "679847c2f806a61dfcd5405604bd6ac32aa3d49cd6b68b0de9c178e3383c8208",
+        "tests": 1948,
+        "passed": 1803,
+        "skipped": 145,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 45.659,
+        "skip_reasons": {
+          "Installed qtmodel lacks model snapshots": 46,
+          "could not import 'qtmodel.core.api_contract': No module named 'qtmodel.core.api_contract'": 24,
+          "Installed qtmodel lacks model snapshot operations": 2,
+          "Installed qtmodel lacks EN1991 factories": 15,
+          "Installed qtmodel lacks international live-load cases": 12,
+          "Installed qtmodel lacks planned-lane operations": 3,
+          "Installed qtmodel lacks explicit lane namespaces": 1,
+          "Installed qtmodel lacks international vehicle definitions": 12,
+          "Installed qtmodel lacks explicit live-load settings": 2,
+          "Installed qtmodel lacks get_material_summaries": 1,
+          "Installed qtmodel lacks get_material_detail": 1,
+          "Installed qtmodel lacks get_load_case_summaries": 1,
+          "Installed qtmodel lacks get_load_case_detail": 1,
+          "Installed qtmodel lacks get_load_combination_summaries": 1,
+          "Installed qtmodel lacks get_load_combination_detail": 1,
+          "Installed qtmodel lacks get_construction_stage_summaries": 1,
+          "Installed qtmodel lacks get_element_section": 1,
+          "Installed qtmodel lacks get_span_data": 1,
+          "Installed qtmodel has no edit readiness API": 1,
+          "Installed qtmodel lacks query_node_data": 1,
+          "Installed qtmodel lacks query_element_data": 1,
+          "Installed qtmodel lacks query_boundary_data": 1,
+          "Installed qtmodel lacks query_load_data": 1,
+          "Installed qtmodel lacks query_node_local_axis_data": 1,
+          "Installed qtmodel lacks query_section_summaries": 1,
+          "installed qtmodel predates QtServer.get_model_state": 1,
+          "Installed qtmodel lacks transversal definitions": 4,
+          "Installed qtmodel lacks transversal cases": 2,
+          "Installed qtmodel lacks transversal deletion": 5
+        }
+      },
+      "final_focused_check": {
+        "path": "dist/qtmodel-audit-20261014/final-focused-2.6.4.xml",
+        "sha256": "08ee65eeb36900df7deea840fe6761662151e2874b4ba4e86496bdbf18cd7867",
+        "tests": 266,
+        "skipped": 18,
+        "failures": 0,
+        "errors": 0,
+        "passed": 248,
+        "seconds": 35.222,
+        "skip_reasons": {
+          "Installed qtmodel lacks international live-load cases": 12,
+          "Installed qtmodel lacks planned-lane operations": 3,
+          "could not import 'qtmodel.core.api_contract': No module named 'qtmodel.core.api_contract'": 2,
+          "Installed qtmodel lacks explicit lane namespaces": 1
+        }
+      }
+    },
+    {
+      "sdk": "2.8.2",
+      "full_offline_suite": {
+        "path": "dist/qtmodel-audit-20261014/sdk-matrix/2.8.2/final.xml",
+        "sha256": "a757cdc1582cd030436e17098f7924ad2e47a9316dfda467982c43888a6e11f4",
+        "tests": 1948,
+        "passed": 1803,
+        "skipped": 145,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 45.683,
+        "skip_reasons": {
+          "Installed qtmodel lacks model snapshots": 46,
+          "could not import 'qtmodel.core.api_contract': No module named 'qtmodel.core.api_contract'": 24,
+          "Installed qtmodel lacks model snapshot operations": 2,
+          "Installed qtmodel lacks EN1991 factories": 15,
+          "Installed qtmodel lacks international live-load cases": 12,
+          "Installed qtmodel lacks planned-lane operations": 3,
+          "Installed qtmodel lacks explicit lane namespaces": 1,
+          "Installed qtmodel lacks international vehicle definitions": 12,
+          "Installed qtmodel lacks explicit live-load settings": 2,
+          "Installed qtmodel lacks get_material_summaries": 1,
+          "Installed qtmodel lacks get_material_detail": 1,
+          "Installed qtmodel lacks get_load_case_summaries": 1,
+          "Installed qtmodel lacks get_load_case_detail": 1,
+          "Installed qtmodel lacks get_load_combination_summaries": 1,
+          "Installed qtmodel lacks get_load_combination_detail": 1,
+          "Installed qtmodel lacks get_construction_stage_summaries": 1,
+          "Installed qtmodel lacks get_element_section": 1,
+          "Installed qtmodel lacks get_span_data": 1,
+          "Installed qtmodel has no edit readiness API": 1,
+          "Installed qtmodel lacks query_node_data": 1,
+          "Installed qtmodel lacks query_element_data": 1,
+          "Installed qtmodel lacks query_boundary_data": 1,
+          "Installed qtmodel lacks query_load_data": 1,
+          "Installed qtmodel lacks query_node_local_axis_data": 1,
+          "Installed qtmodel lacks query_section_summaries": 1,
+          "installed qtmodel predates QtServer.get_model_state": 1,
+          "Installed qtmodel lacks transversal definitions": 4,
+          "Installed qtmodel lacks transversal cases": 2,
+          "Installed qtmodel lacks transversal deletion": 5
+        }
+      },
+      "final_focused_check": {
+        "path": "dist/qtmodel-audit-20261014/final-focused-2.8.2.xml",
+        "sha256": "a90248e87eab8196b2fe9d1a458432873fa5f0d26354283b1fa2e70f387655ca",
+        "tests": 266,
+        "skipped": 18,
+        "failures": 0,
+        "errors": 0,
+        "passed": 248,
+        "seconds": 34.881,
+        "skip_reasons": {
+          "Installed qtmodel lacks international live-load cases": 12,
+          "Installed qtmodel lacks planned-lane operations": 3,
+          "could not import 'qtmodel.core.api_contract': No module named 'qtmodel.core.api_contract'": 2,
+          "Installed qtmodel lacks explicit lane namespaces": 1
+        }
+      }
+    },
+    {
+      "sdk": "2.9.1",
+      "full_offline_suite": {
+        "path": "dist/qtmodel-audit-20261014/sdk-matrix/2.9.1/final.xml",
+        "sha256": "886870a2783d55d06d085a5a96c7536d459d2483150000306060f304e2fec531",
+        "tests": 1948,
+        "passed": 1859,
+        "skipped": 89,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 47.64,
+        "skip_reasons": {
+          "Installed qtmodel lacks model snapshots": 46,
+          "could not import 'qtmodel.core.api_contract': No module named 'qtmodel.core.api_contract'": 24,
+          "Installed qtmodel lacks model snapshot operations": 2,
+          "Installed qtmodel lacks planned-lane operations": 3,
+          "Installed qtmodel lacks explicit lane namespaces": 1,
+          "Installed qtmodel lacks explicit live-load settings": 2,
+          "Installed qtmodel lacks transversal definitions": 4,
+          "Installed qtmodel lacks transversal cases": 2,
+          "Installed qtmodel lacks transversal deletion": 5
+        }
+      },
+      "final_focused_check": {
+        "path": "dist/qtmodel-audit-20261014/final-focused-2.9.1.xml",
+        "sha256": "4761b19cd4c7c8a914299c9c7f9c2700d0628d59e46436272cdb3726b4567097",
+        "tests": 266,
+        "skipped": 6,
+        "failures": 0,
+        "errors": 0,
+        "passed": 260,
+        "seconds": 35.123,
+        "skip_reasons": {
+          "Installed qtmodel lacks planned-lane operations": 3,
+          "could not import 'qtmodel.core.api_contract': No module named 'qtmodel.core.api_contract'": 2,
+          "Installed qtmodel lacks explicit lane namespaces": 1
+        }
+      }
+    },
+    {
+      "sdk": "2.9.2",
+      "full_offline_suite": {
+        "path": "dist/qtmodel-audit-20261014/offline-final.xml",
+        "sha256": "81c473682f358fb9984bf2e3795d99fbc81743a44f343211e1b0ede446bf0787",
+        "tests": 1948,
+        "passed": 1924,
+        "skipped": 24,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 48.375,
+        "skip_reasons": {
+          "could not import 'qtmodel.core.api_contract': No module named 'qtmodel.core.api_contract'": 24
+        }
+      },
+      "final_focused_check": {
+        "path": "dist/qtmodel-audit-20261014/final-focused-2.9.2.xml",
+        "sha256": "c47a756d2ea49b800a3f80f1700e40767ff20896a1c41caf8aece62c003286e7",
+        "tests": 266,
+        "skipped": 2,
+        "failures": 0,
+        "errors": 0,
+        "passed": 264,
+        "seconds": 34.688,
+        "skip_reasons": {
+          "could not import 'qtmodel.core.api_contract': No module named 'qtmodel.core.api_contract'": 2
+        }
+      }
+    },
+    {
+      "sdk": "2.9.3",
+      "full_offline_suite": {
+        "path": "dist/qtmodel-audit-20261014/sdk-matrix/2.9.3/final.xml",
+        "sha256": "83e96982613843b2928bcc4328eb31ed7d01b5cb7d623d9bdb5ba9c4c3ec7f31",
+        "tests": 1948,
+        "passed": 1948,
+        "skipped": 0,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 48.126,
+        "skip_reasons": {}
+      },
+      "final_focused_check": {
+        "path": "dist/qtmodel-audit-20261014/final-focused-2.9.3.xml",
+        "sha256": "5437fe7a346f8f9581dcecd4dfacf68f09a41fd59bafcf75a284dd0756fbfdfc",
+        "tests": 266,
+        "skipped": 0,
+        "failures": 0,
+        "errors": 0,
+        "passed": 266,
+        "seconds": 35.183,
+        "skip_reasons": {}
+      }
+    },
+    {
+      "sdk": "upstream",
+      "full_offline_suite": {
+        "path": "dist/qtmodel-audit-20261014/upstream-final.xml",
+        "sha256": "2e5cb35eda92086f193c9de3ca23069219223b5352aa70c6309b6a4d2aa94084",
+        "tests": 1948,
+        "passed": 1924,
+        "skipped": 24,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 48.374,
+        "skip_reasons": {
+          "could not import 'qtmodel.core.api_contract': No module named 'qtmodel.core.api_contract'": 24
+        }
+      },
+      "final_focused_check": {
+        "path": "dist/qtmodel-audit-20261014/final-focused-upstream.xml",
+        "sha256": "44e70f1ac47f85aa9485ab0e17eb08d7bd9116ca0f0df6a4b9ee4e18acb44044",
+        "tests": 266,
+        "skipped": 2,
+        "failures": 0,
+        "errors": 0,
+        "passed": 264,
+        "seconds": 35.394,
+        "skip_reasons": {
+          "could not import 'qtmodel.core.api_contract': No module named 'qtmodel.core.api_contract'": 2
+        }
+      }
+    }
+  ],
+  "matrix_notes": [
+    "All full suites excluded tests/test_end_to_end.py and used intercepted SDK transport or FakeDb; no real QiaoTong was connected.",
+    "Final focused tests cover the last instructions/docstrings, the added real SDK rejection tests for planned lanes, and exact zero/tiny merge radius preservation. They overlap full-suite tests; counts must not be added.",
+    "The final focused runs used separate pytest temporary directories and completed without warnings.",
+    "Missing SDK APIs are documented/skipped or tested for explicit errors. Passing a transport-mock test does not certify the desktop route exists."
+  ],
+  "sdk_integrity": {
+    "installed_source_files_checked": 71,
+    "upstream_source_files_checked": 73,
+    "modified": false,
+    "upstream_worktree_clean": true,
+    "wheels": [
+      {
+        "version": "2.6.3",
+        "filename": "qtmodel-2.6.3-py3-none-any.whl",
+        "sha256": "5955bcb15f1c0c8f7e9839bfc6c006693611487ec449c361166031110925cc55",
+        "uploaded": "2026-08-05T07:22:07.303259Z",
+        "directory": "dist/qtmodel-audit-20261014/sdk-matrix/2.6.3"
+      },
+      {
+        "version": "2.6.4",
+        "filename": "qtmodel-2.6.4-py3-none-any.whl",
+        "sha256": "123b87cceee90f2629d2ef6cc39f542b7d3e09eb09f8cb678d95d99742cc015f",
+        "uploaded": "2026-08-17T06:45:46.527016Z",
+        "directory": "dist/qtmodel-audit-20261014/sdk-matrix/2.6.4"
+      },
+      {
+        "version": "2.8.2",
+        "filename": "qtmodel-2.8.2-py3-none-any.whl",
+        "sha256": "47fe29385856e297cc7939f642cca50dffec92aa9c368e06d0b5daf97dae08ba",
+        "uploaded": "2026-08-20T09:16:26.615670Z",
+        "directory": "dist/qtmodel-audit-20261014/sdk-matrix/2.8.2"
+      },
+      {
+        "version": "2.9.1",
+        "filename": "qtmodel-2.9.1-py3-none-any.whl",
+        "sha256": "b6973180ac5c5bb38a62d9cedd11e5f735dff5f451629aefabe090dac8e96770",
+        "uploaded": "2026-09-16T01:42:38.227481Z",
+        "directory": "dist/qtmodel-audit-20261014/sdk-matrix/2.9.1"
+      },
+      {
+        "version": "2.9.3",
+        "filename": "qtmodel-2.9.3-py3-none-any.whl",
+        "sha256": "41c4bcf2704f465a6f7e016a6c0272144aa44e6432aa711cd87816df59ea07e6",
+        "uploaded": "2026-10-13T08:40:54.530461Z",
+        "directory": "dist/qtmodel-audit-20261014/sdk-matrix/2.9.3"
+      }
+    ]
+  },
+  "packaging": {
+    "name": "qiao-mcp",
+    "version": "0.5.1",
+    "tag": null,
+    "source_modules": 26,
+    "artifacts": [
+      {
+        "filename": "qiao_mcp-0.5.1-py3-none-any.whl",
+        "sha256": "5a375d80628b8da9535d8bafa3a3d6cbeb664b5526e73529dfc7efeb15e312a8"
+      },
+      {
+        "filename": "qiao_mcp-0.5.1.tar.gz",
+        "sha256": "6466206e233642355c40fccabaf2a880a0447f640d4fef6b267ff08058e119bc"
+      }
+    ]
+  },
+  "packaging_check": {
+    "command": "uv run --locked python scripts/check_release.py dist/qtmodel-audit-20261014/packages --output dist/qtmodel-audit-20261014/release-check.json",
+    "exit_code": 0
+  },
+  "stdio": {
+    "command": "BRIDGE_PROVIDER=qtmodel QIAOTONG_HTTP_URL=http://localhost:1/pythonForQt/ uv run --locked python scripts/check_mcp_package.py dist/qtmodel-audit-20261014/packages/qiao_mcp-0.5.1-py3-none-any.whl --output dist/qtmodel-audit-20261014/protocol-catalog.json",
+    "exit_code": 0,
+    "version": "0.5.1",
+    "tools": 153,
+    "described_parameters": 601,
+    "output_schemas": 151,
+    "image_tools": 2,
+    "resources": 7,
+    "prompts": 5,
+    "structured_response": true,
+    "invalid_input_is_error": true,
+    "no_bridge_url": "http://localhost:1/pythonForQt/",
+    "catalog": "dist/qtmodel-audit-20261014/protocol-catalog.json",
+    "catalog_sha256": "f97dbb5829dbda21f0d0db05ad2cb62dd8028e784a4f2472beb25d26d8bfc243"
+  },
+  "release_status": {
+    "published_release_observed": {
+      "tag": "v0.5.1",
+      "published_at": "2026-10-13T07:39:50Z",
+      "url": "https://github.com/SorataYang/qiao-mcp/releases/tag/v0.5.1"
+    },
+    "this_audit_pushed": false,
+    "this_audit_published": false,
+    "artifact_scope": "Local validation packages only; version metadata intentionally remains 0.5.1. Different bytes from the published release; use hashes to identify. A future publication requires a new version."
+  },
+  "engineering_and_glama": {
+    "live_engineering_test_performed": false,
+    "glama_score_improvement_verified": false,
+    "known_old_bridge_restrictions_resolved": false
+  }
+}

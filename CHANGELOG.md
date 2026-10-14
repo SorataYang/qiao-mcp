@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Resolve node IDs from actual readback without enlarging the merge radius or
+  selecting old nodes when merging is disabled; use automatic section numbering.
+- Reject empty mutation selections, Boolean/fractional IDs and incomplete renumber
+  mappings. Preserve applicable fields only after reading the unique target.
+- Send the selected solver and explicit vibration-off setting; require confirmed
+  solve success. Stabilize the idealized straight-beam workflows with one Rx restraint.
+- Query actual group members, normalize typed check results and use only supported
+  checking arguments. Commit node tandems, influence planes and membership removal.
+- Retrieve PNG bytes from QiaoTong for storage on the MCP host, and map result-plot
+  components and modal parameters to their native SDK arguments.
+- Require three-column temperature/live-load/check-combination layouts and the
+  six-value threaded-bar definition. Expose maximum/minimum live-load selection.
+- Preserve `remove_free_nodes` for explicit delete-all requests and report possible
+  partial writes when a commit fails. Correct overwrite annotations and setting-replacement guidance.
+
+### Validation and limitations
+
+- Audit all 153 tools against qtmodel source; see the
+  [audit and compatibility matrix](docs/qtmodel-code-audit.md).
+- qtmodel 2.9.3 marks historical check-snapshot and planned-lane routes `API_NOT_OPEN`. Older SDKs
+  lack some new capabilities. Typed SDK records can supply defaults or convert
+  unavailable responses to empty lists before Qiao-MCP sees them. These limits
+  remain explicit; offline checks do not establish engineering acceptance.
+
 ## [0.5.1] - 2026-10-13
 
 ### Fixed
