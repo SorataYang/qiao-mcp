@@ -180,10 +180,27 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         axis_direction: Literal[0, 1, 2, 3, 4, 5] | None = None,
     ) -> str:
         """
-        Add elastic spring supports on nodes (添加弹性支承/弹簧支座).
+        Assign nodal springs to ground for foundations or flexible bearings
+        (给节点施加对地弹性支承).
 
-        Models foundation flexibility, pile caps, or rubber bearing stiffness.
-        用于模拟地基柔度、桩基础、橡胶支座刚度等。
+        Use for support stiffness or one-way contact. set_support gives fixed/free
+        restraints; add_elastic_link connects two nodes. The selected nodes and
+        any named boundary group must exist before assignment.
+
+        support_type selects the spring vector: six translational/rotational
+        stiffnesses for a linear support, or one axis and one stiffness for
+        tension-only/compression-only support. axis_direction refines that same
+        one-way axis with a sign; it cannot choose a different axis or accompany
+        a six-value linear spring. For example, [3, 1e6], support_type=3 and
+        axis_direction=5 describes the negative-Z compression-only choice.
+
+        Writes the support and refreshes the model, with no solve. Optional
+        coordinate/friction controls require a supporting SDK. Supplying
+        extra_parameters implicitly enables them unless extra_enabled=False,
+        which explicitly clears them; omitting both preserves their setting.
+        Read query_model_data(request={"kind":"boundaries", ...}) after editing
+        an existing support; the returned message confirms the request, not a
+        readback of the complete saved definition.
 
         Args:
             node_id: Node ID(s), list or range string (节点编号)
