@@ -254,7 +254,24 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "默认钢束组",
     ) -> str:
         """
-        Add a 3D tendon (添加三维钢束/空间钢束).
+        Define a spatial tendon using ordered three-dimensional control points
+        (用有序三维控制点定义空间钢束).
+
+        Create the material and create_tendon_property first; property_name must
+        name an existing tendon property. Use create_tendon_2d for a planar tendon
+        profile. This tool defines geometry; apply_prestress adds the later load,
+        and update_vertical_steel_tendon changes checking parameters instead.
+
+        Every control point is [x, y, z, fillet_radius] and order is preserved.
+        position_type changes the meaning of point_insert: straight positioning
+        takes three coordinates, while track positioning takes end, direction
+        and a real element ID. Use the bridge's coordinate and length convention;
+        the wrapper performs no geometric or unit conversion.
+
+        Writes the full definition and refreshes the model. A repeated name can
+        replace an existing tendon, so read get_tendon_info before editing it.
+        Returns a confirmation with the name, not discretized tendon positions or
+        prestress results. (空间几何定义与施加预应力分开；重名可能覆盖，点序和单位原样提交。)
 
         Args:
             name: Tendon name (钢束名称)
