@@ -1435,7 +1435,25 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         extra_parameters: SupportExtraParameters | None = None,
     ) -> str:
         """
-        Set support boundary conditions on nodes (设置节点支承).
+        Set fixed/free translational and rotational restraints on existing nodes
+        (为已有节点设置六自由度固定或自由支承).
+
+        Use for idealized restraints. add_elastic_support defines finite spring
+        stiffness, add_support_settlement applies prescribed displacement as a
+        load, and remove_boundary(kind="support") deletes a support definition.
+        Nodes must exist; group_name identifies a boundary group, not a load case.
+
+        True fixes a degree of freedom and False leaves it free. The complete
+        six-flag vector is sent on every call, replacing existing restraint
+        settings for the selected nodes. Defaults fix all translations and leave
+        rotations free; supply all desired flags when changing an existing support.
+        Every node in a multi-node selection receives the same vector.
+
+        Omitted coordinate/additional settings preserve existing values. Supplying
+        extra_parameters enables them unless extra_enabled=False explicitly clears
+        them. Writes and refreshes the model, then returns a confirmation; analysis
+        must be run separately after the boundary configuration is complete.
+        (六项每次整体提交；省略坐标系和附加设置则保留原值。相同约束用于所选全部节点。)
 
         Args:
             node_id: Node ID(s). Supports int, list, or range string like '1to10'

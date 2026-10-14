@@ -352,7 +352,24 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         extra_name: str = "I",
     ) -> str:
         """
-        Remove a specific boundary condition (删除指定边界条件).
+        Remove one selected support, link or constraint definition from the model
+        (按类型和目标编号删除支承、连接或约束定义).
+
+        Use when a boundary condition is no longer wanted. To change ordinary
+        restraint flags, use set_support; to deactivate a boundary group in one
+        stage while retaining its definitions, use update_construction_stage.
+        Removing a boundary does not request removal of its nodes or elements.
+
+        Match kind to the existing definition: remove_id is its node, element or
+        slave-node ID as documented below. group_name narrows the boundary group;
+        extra_name identifies the I/J end for links or the named constraint
+        equation. Confirm the combination in query_model_data(kind="boundaries")
+        before deletion rather than treating IDs from different kinds as interchangeable.
+
+        Writes and refreshes the model, then returns a confirmation. There is no
+        backup or automatic solve; removing a restraint can change stability, so
+        inspect the remaining supports before the next analysis.
+        (编号含义随边界类型变化；删除会改变约束条件，后续分析前须检查支承体系。)
 
         Args:
             remove_id: Node or element ID to remove boundary from
