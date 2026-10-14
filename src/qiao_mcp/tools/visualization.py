@@ -294,11 +294,19 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def set_render(flag: bool = True) -> str:
         """
-        Toggle solid (rendered) vs wireframe display (开关实体渲染/线框显示).
+        Set solid rendering or wireframe display for the current model view
+        (设置当前模型的实体渲染或线框显示).
 
         Display-only: affects how the model is drawn, not model data or
         results. Pair with save_model_screenshot for solid-shaded captures.
         (纯显示操作，不改模型或结果；配合 save_model_screenshot 出实体图。)
+
+        flag selects the requested state; it does not invert the current mode.
+        Omitting it explicitly chooses solid rendering. For camera direction use
+        set_view_angle; display_ids controls labels, and plot_analysis_result
+        chooses result contours. Requires a connected desktop view and returns
+        a confirmation without capturing an image or saving a model file.
+        (开关值指定目标状态，不是反转当前状态；省略即开启实体渲染。)
 
         Args:
             flag: True for rendered view, False for wireframe (是否渲染)
@@ -343,6 +351,14 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         does NOT rescale model geometry, section properties, or stored data.
         Set it before taking screenshots or reading displayed quantities.
         (仅显示设置：只改数值显示单位，不缩放模型几何/截面特性/已存数据；读数或截图前先设好。)
+
+        Both arguments are sent each time. Omitting one uses its KN or MM default,
+        not the previously selected unit. Use tokens accepted by the target
+        desktop; unsupported units are reported by the bridge. This setting does
+        not change another tool's documented fixed input units or convert already
+        retrieved numeric results. Returns a confirmation of the requested pair;
+        rendering and screenshots remain separate operations.
+        (两项每次都提交，省略项采用 KN/MM；不改变其他工具的固定输入单位，也不换算已返回数据。)
 
         Args:
             unit_force: Force unit (力单位, 例如: KN, N, TONF)
