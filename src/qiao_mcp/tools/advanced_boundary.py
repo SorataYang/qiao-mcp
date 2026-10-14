@@ -44,6 +44,21 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         Elastic links model connections like bearings between members.
         弹性连接用于模拟支座等节点间的连接关系。
 
+        Both endpoint nodes must already exist. Use this for a connection between
+        two nodes; add_elastic_support connects a node to ground, and
+        add_master_slave_link couples one master to a set of slave nodes.
+
+        link_type selects the applicable stiffness input: general links use the
+        six-component stiffness_values; tension/compression-only links use kx
+        and gap, while rigid links do not need a finite spring stiffness.
+        Values use the bridge's local-link and unit conventions; no conversion is
+        performed. beta_angle sets orientation and group_name is a boundary group.
+
+        Writes and refreshes the model and returns an endpoint/type confirmation.
+        It does not create missing nodes, check structural stability or solve.
+        Repeated endpoint/type handling belongs to the bridge; inspect existing
+        links before adding another definition. (节点间连接与对地支承分开，刚度字段按连接类型选用。)
+
         Args:
             start_node_id: Start node ID (起始节点编号)
             end_node_id: End node ID (终止节点编号)
@@ -109,6 +124,20 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         Used to model rigid connections where slave nodes follow the motion
         of the master node (typically for diaphragm rigid zones).
         用于模拟刚域，从节点跟随主节点运动（典型应用：隔板刚域）。
+
+        Master and slave nodes must exist. Use for one-to-many rigid kinematic
+        coupling; add_elastic_link provides a two-node link with selectable
+        stiffness, and set_support restrains nodes against ground.
+
+        dof_constraints applies the same six coupling flags to every selected
+        slave. True couples that component to the master; it does not fix the
+        component in space. Omitting the vector constrains all six components.
+        Boundary-group membership enables later construction-stage control.
+
+        Writes and refreshes the model, returning a confirmation of the master
+        and requested slave selection. The bridge validates references and
+        constraint consistency; no stability check or analysis runs here.
+        (True 表示与主节点联动，不是对地固定；省略六项标志时全约束，所有从节点使用同一组标志。)
 
         Args:
             master_node_id: Master node ID (主节点编号)
