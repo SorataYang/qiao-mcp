@@ -109,6 +109,20 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         Remove a structure group (删除结构组).
         If no name is provided, removes all structure groups.
 
+        Use for deleting group definitions. remove_from_structure_group removes
+        selected memberships while retaining the group; remove_elements and
+        remove_nodes delete model entities. To deactivate a group in one stage
+        while keeping the definition, use update_construction_stage instead.
+
+        Provide the exact existing name for one group. Empty or omitted name
+        requests deletion of ALL structure groups, not the currently selected
+        group. Save a checkpoint if grouping or stage references must be restored.
+        The bridge handles dependent references; inspect affected stages afterwards.
+
+        Writes and refreshes the model and returns a confirmation, not a deleted
+        member list. It does not run analysis or explicitly delete grouped nodes
+        and elements. (空名称删除全部结构组；只移除成员或阶段钝化应使用对应专用工具。)
+
         Args:
             name: Name of the structure group to remove, leave empty to remove all (待删除的结构组名称，不填则删除全部)
         """
@@ -170,6 +184,18 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         Page metadata comes from the bridge; use offset/limit for further pages.
         Requires a bridge/SDK with native queries for boundary/load groups.
         (结构组返回节点和单元；边界/荷载按支持的原生类别分页，不含温度、预应力等特殊荷载。)
+
+        Use to verify membership before/after add_to_structure_group or
+        remove_from_structure_group. For independent entity filters use
+        query_model_data; get_model_data supplies broader model catalogs.
+        name must be an actual group name, and group_type chooses its namespace.
+
+        Read-only: no group is created and no model refresh occurs. Returns text
+        containing named member pages; offset/limit apply to each family, not a
+        single flattened list. A missing structure group returns a not-found
+        message; empty native boundary/load pages cannot establish that every
+        possible load or constraint family is absent.
+        (按各类分别分页，空页不等于所有特殊荷载均不存在；只查询，不修改分组。)
 
         Args:
             group_type: Type of group (分组类型): 'structure', 'boundary', 'load'
