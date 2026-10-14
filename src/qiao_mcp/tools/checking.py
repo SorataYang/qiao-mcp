@@ -281,7 +281,26 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         fpd: float = 900000000.0,
     ) -> str:
         """
-        Update vertical prestress tendon parameters for checking (修改竖向预应力钢束参数).
+        Set the current concrete-check case's vertical prestress reinforcement
+        parameters in SI units (用 SI 单位设置当前混凝土检算的竖向预应力钢束参数).
+
+        Use in the checking workflow established by setup_concrete_check.
+        This sets checking parameters; create_tendon_property and create_tendon_2d
+        define model tendons, while apply_prestress adds their structural load.
+
+        Every call sends all five values. Omitted parameters use the listed
+        defaults instead of preserving previous settings, so supply the complete
+        desired configuration when changing an existing case. area is for ONE
+        limb, not the total across limbs_number; spacing is along the bridge.
+        The adapter converts m² to mm² and Pa to MPa for the backend, while
+        spacing stays in meters. For example, area=0.000804 means 804 mm².
+
+        Returns a confirmation after updating the checking settings. It does not
+        solve the case; use run_concrete_check after all settings are prepared.
+        get_check_data(kind="vertical_prestress") reads the current native
+        settings; account for its backend units when preparing SI inputs here.
+        (每次整体提交五项，省略项恢复所列默认值；单肢面积用 m²，应力用 Pa。
+        完成配置后再运行检算，查询接口的原生单位与本工具的 SI 输入须区分。)
 
         Args:
             limbs_number: Number of vertical limbs/strands (竖向预应力肢数)
