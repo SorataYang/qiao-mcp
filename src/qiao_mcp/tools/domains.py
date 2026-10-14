@@ -314,24 +314,36 @@ TOOL_DOMAINS = (
     _domain(
         "edit_prestress", "Tendon geometry and prestress / 钢束几何与预应力",
         """
-        Create tendon properties and geometry, assign tendon elements, or apply
-        prestress to named tendons (定义钢束属性、线形、单元匹配及预应力).
+        Define named tendon paths and apply their prestressing loads to the model
+        (定义具名钢束线形并施加对应预应力荷载).
 
-        create_tendon_property supplies mechanical/loss parameters. Then choose
-        create_tendon_2d for a planar profile or add_tendon_3d for a spatial path
-        using that property name. assign_tendon_elements matches tendons to model
-        elements; apply_prestress assigns tension in a load case. Use edit_loads
-        for cable-element force/length loads, query_model for saved tendon
-        definitions, and query_results for discretized geometry or solved losses.
+        Choose one request.operation at each step:
 
-        Supply request.operation and its own coordinate/force fields. Profile
-        control points are positioned by insertion/rotation options; a property
-        definition alone creates no tendon path or applied force. Existing property,
-        element and case references must be valid. Reusing a tendon name can
-        replace its geometry, and prestress calls can change load definitions.
-        Writes refresh the model without solving. Verify the resulting geometry
-        and assignments before activating the load in edit_construction and
-        running analyze_model; confirmations are not effective-prestress results.
+        - create_tendon_property defines mechanical and loss parameters.
+        - create_tendon_2d places a planar profile; add_tendon_3d places a spatial
+          path. Both reference an existing property by its exact name.
+        - assign_tendon_elements matches tendons to model elements.
+        - apply_prestress targets existing tendon names in an existing load case.
+
+        Use edit_loads for cable-element initial-force/length loads, manage_checks
+        for vertical-tendon checking parameters, query_model for saved definitions
+        and query_results for discretized geometry or solved losses. A tendon
+        property, its geometry and its applied load are three separate definitions.
+
+        For create_tendon_2d, position_type changes point_insert from coordinates
+        to [end, direction, element_id] track positioning; its num counts tendons,
+        not control points. Preserve the intended point order and positioning
+        fields when replacing a path. apply_prestress accepts one name or a list;
+        tension_type selects start, end or both ends. Its force is forwarded
+        without conversion: match units to a verified QiaoTong prestress export.
+
+        Reusing a tendon name can replace its complete geometry; load assignment
+        is not a promise that repeating the call is harmless. Writes refresh the
+        model and return requested names/load summaries, not verified coordinates
+        or effective prestress. No backup, rollback or analysis is performed.
+        Read back geometry and assignments before retrying an uncertain write,
+        then activate the load through edit_construction and run analyze_model
+        before requesting loss/effective-stress results.
         """,
         """
         create_tendon_property create_tendon_2d add_tendon_3d
