@@ -23,6 +23,35 @@ def test_moving_load_geometry_is_committed_once(qtmodel_wire, tool, arguments, h
     assert [command for command, _ in requests] == [header, "UPDATE"]
 
 
+@pytest.mark.parametrize("sub_cases", [
+    [["V", 1.0, "Lane"]], [["V", 1.0, [12]]], [["V", 1.0]],
+    [["V", True, ["Lane"]]], [["V", float("inf"), ["Lane"]]],
+])
+def test_live_subcases_reject_bad_rows_before_writing(fake_provider, sub_cases):
+    functions = tool_fns(register_moving_load_tools, fake_provider)
+    with pytest.raises(ToolInputError, match="sub_cases"):
+        functions["create_live_load_case"](name="MV", influence_plane="P", span=10, sub_cases=sub_cases)
+    assert fake_provider._mdb.calls == []
+
+
+@pytest.mark.parametrize("result_type", ["force", "stress", "deformation"])
+@pytest.mark.parametrize("extreme", [1, 2])
+def test_live_results_request_the_selected_extreme(qtmodel_wire, result_type, extreme):
+    import qtmodel
+
+    provider, requests = qtmodel_wire
+    provider._odb = qtmodel.odb
+    functions = tool_fns(register_moving_load_tools, provider)
+    functions["get_live_load_results"](
+        case_name="Verified result name", result_type=result_type, element_ids=[7], envelope_type=extreme,
+    )
+    assert len(requests) == 1
+    payload = requests[0][1]
+    assert payload["case_name"] == "Verified result name"
+    assert payload["stage_id"] == -1
+    assert payload["envelop_type"] == extreme
+
+
 def node(nid, x):
     return {"node_id": nid, "x": x, "y": 0.0, "z": 0.0}
 

@@ -2716,18 +2716,26 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_live_load_case(name=name, **options, **kwargs)
         self.update_model()
 
-    def get_live_load_results(self, case_name: str, result_type: str, ids: Any) -> Any:
+    def get_live_load_results(
+        self, case_name: str, result_type: str, ids: Any, envelope_type: int = 1,
+    ) -> Any:
         self._require_available()
         if ids is not None:
             ids = self._validate_ids(ids, allow_empty=True)
         # Live load results are embedded in standard result queries (deformation/force/stress)
         # Query using the live load case name directly
         if result_type == "force":
-            return self._odb.get_element_force(ids=ids, stage_id=-1, case_name=case_name)
+            return self._parse(self._odb.get_element_force(
+                ids=ids, stage_id=-1, case_name=case_name, envelop_type=envelope_type,
+            ))
         elif result_type == "stress":
-            return self._odb.get_element_stress(ids=ids, stage_id=-1, case_name=case_name)
+            return self._parse(self._odb.get_element_stress(
+                ids=ids, stage_id=-1, case_name=case_name, envelop_type=envelope_type,
+            ))
         elif result_type == "deformation":
-            return self._odb.get_deformation(ids=ids, stage_id=-1, case_name=case_name)
+            return self._parse(self._odb.get_deformation(
+                ids=ids, stage_id=-1, case_name=case_name, envelop_type=envelope_type,
+            ))
         else:
             raise ValueError(
                 f"Unknown result_type '{result_type}'. "

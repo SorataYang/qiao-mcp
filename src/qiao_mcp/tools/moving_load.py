@@ -10,12 +10,14 @@ node tandems (节点纵列) → influence planes (影响面) → lane lines (车
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
-from pydantic import StrictBool
+from pydantic import StrictBool, TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
-from qiao_mcp.tools.live_load_schemas import LiveLoadCaseNames, LiveLoadSystem
+from qiao_mcp.tools.live_load_schemas import LiveLoadCaseNames, LiveLoadSubCases, LiveLoadSystem
 from qiao_mcp.tools.schemas import MessageResult
+
+_SUB_CASE_ADAPTER = TypeAdapter(LiveLoadSubCases)
 
 
 def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -231,7 +233,7 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         name: str,
         influence_plane: str,
         span: float,
-        sub_cases: list[list],
+        sub_cases: LiveLoadSubCases,
         sub_case_optimized: list[StrictBool] | None = None,
     ) -> str:
         """
@@ -265,7 +267,13 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
                         "(子工况优化标志数量必须与子工况一致)"
                     )
                 kwargs["sub_case_optimized"] = sub_case_optimized
-            formatted = [(str(v), float(f), list(lanes)) for v, f, lanes in sub_cases]
+            try:
+                formatted = _SUB_CASE_ADAPTER.validate_python(sub_cases)
+            except ValueError as exc:
+                raise ToolInputError(
+                    "sub_cases requires [vehicle_name, factor, [lane names...]] rows "
+                    "(子工况必须为三列，车道必须为名称列表)"
+                ) from exc
             provider.add_live_load_case(
                 name=name,
                 influence_plane=influence_plane,
@@ -285,25 +293,33 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def get_live_load_results(
         case_name: str,
-        result_type: str = "force",
+        result_type: Literal["force", "stress", "deformation"] = "force",
         element_ids: list[int] | str = "",
+        envelope_type: Literal[1, 2] = 1,
     ) -> str:
         """
         Get moving load analysis results (获取移动荷载分析结果).
 
-        Returns envelope (maximum and minimum) results for specified elements.
-        返回指定单元的移动荷载包络结果（最大值和最小值）。
+        Queries operating-stage results for one extreme at a time. The default
+        is maximum; request envelope_type=2 separately for minimum. The case name
+        is passed verbatim: obtain its complete result name from verified model
+        data. This tool neither prefixes a case name nor runs analysis.
+        查询运营阶段已求解结果；默认最大值，最小值须单独指定2；工况全名原样传入。
 
         Args:
-            case_name: Live load case name (活载工况名)
+            case_name: Complete live-load result case name (活载结果工况全名)
             result_type: Result type (结果类型): 'force'(内力), 'stress'(应力), 'deformation'(变形)
-            element_ids: Element or node IDs to query (查询的单元或节点编号)
+            element_ids: Element IDs for force/stress, node IDs for deformation;
+                empty string queries all IDs (内力/应力用单元号，变形用节点号；空串查询全部)
+            envelope_type: Extreme to request: 1=maximum, 2=minimum
+                (单次查询的极值：1最大、2最小)
         """
         try:
             result = provider.get_live_load_results(
                 case_name=case_name,
                 result_type=result_type,
                 ids=element_ids,
+                envelope_type=envelope_type,
             )
             return str(result)
         except ToolError:
