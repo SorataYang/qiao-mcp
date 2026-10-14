@@ -98,7 +98,7 @@ src/qiao_mcp/
 发布 workflow 复用 CI，只有完整离线检查通过才上传同一份产物。`scripts/check_release.py`
 检查版本/tag、wheel/sdist 元数据和源码一致性；`--tag` 只校验，不创建标签。
 当前已发布版本为 0.5.1（2026-10-13）；原 0.4.0 改动一并包含在 0.5.0，
-参见 `docs/0.5.0-publication.md`。当前本地优化版本为 0.5.4，尚未公开发布。
+参见 `docs/0.5.0-publication.md`。当前本地优化版本为 0.5.5，尚未公开发布。
 逐工具审计修正见 CHANGELOG 的相应版本及 `docs/qtmodel-code-audit.md`；
 后续工具优化与验证记录在 `docs/optimization-log.md`。
 CI 和上传任务固定使用已验证的 uv 0.11.6；uv 0.13.0 会重排 sdist 的 pyproject.toml，
