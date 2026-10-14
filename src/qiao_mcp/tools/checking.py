@@ -226,14 +226,33 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Add parametric reinforcement to a concrete section (添加参数化配筋).
 
+        Use for spacing-based reinforcement layers of an existing section in
+        the current concrete-check data. Material IDs must identify existing
+        reinforcing steel. set_section_reinforcement instead writes a complete
+        model reinforcement snapshot; add_check_stirrup defines shear/torsion
+        stirrups rather than these longitudinal layers.
+
+        Each row is [diameter, material_id, cover, spacing, bars_per_bundle].
+        Diameter, cover and spacing are in meters: 0.016 means a 16 mm bar.
+        The wrapper uses the SDK's spacing mode for both families; it does not
+        expose the count-mode selector, so the fourth value is spacing here.
+        position chooses I/J for tapered sections and normally 0 for a constant
+        section. has_outer/has_inner apply independently to their row families.
+
+        Existing reinforcement is overwritten. Both family flags are always
+        sent; None/[] omits the rows from the wrapper call and the SDK sends an
+        empty row list. Supply the complete desired definition, not a partial
+        patch. Returns a confirmation without running a check.
+        (既有配筋会覆盖；本工具使用间距模式，所有长度均用米，空行表不能当作保留原值。)
+
         Args:
             section_id: Section ID (截面ID)
             position: Section end (截面位置): 0=I端 (start), 1=J端 (end)
             has_outer: Has outer reinforcement (是否有外部钢筋)
             has_inner: Has inner reinforcement (是否有内部钢筋)
             outer_rebar_info: Outer rebar list (外部钢筋信息):
-                              [[diameter, material_id, cover, spacing_or_count, bars_per_bundle], ...]
-                              [[直径mm, 材料号, 层边距m, 间距m/数量, 每束根数], ...]
+                              [[diameter_m, material_id, cover_m, spacing_m, bars_per_bundle], ...]
+                              [[直径m, 材料号, 层边距m, 间距m, 每束根数], ...]
             inner_rebar_info: Inner rebar list (内部钢筋信息), same format as outer
         """
         try:
@@ -272,6 +291,23 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
     ) -> str:
         """
         Add a stirrup definition for checking (添加检算箍筋定义).
+
+        Define a reusable stirrup before assigning it to elements with
+        assign_element_stirrup. Use manage_check_stirrup to update/remove an
+        existing definition, or add_parametric_reinforcement for longitudinal
+        section layers. set_check_stirrup_snapshot writes a complete model-side
+        snapshot and uses a different, native-unit schema.
+
+        stirrup_id is a definition ID, not an element ID; material_id refers to
+        existing reinforcing steel. Normal stirrups use limbs_number; spiral
+        stirrups use loops_number and core_diameter. This tool accepts all lengths
+        in meters. The adapter converts diameter to mm for the SDK, while spacing
+        and core_diameter stay in meters; diameter=0.020 means a 20 mm bar.
+
+        Writes the definition and returns a confirmation with its name. It does
+        not assign elements or run checks. Inspect existing definitions before
+        reusing an ID because duplicate handling belongs to the bridge.
+        (先定义再分配；编号不是单元号，全部长度输入米，仅直径在适配器中换算为毫米。)
 
         Args:
             stirrup_id: Stirrup definition ID (箍筋定义编号)
@@ -577,10 +613,25 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         stirrup_j: int = 1,
     ) -> str:
         """
-        Assign or remove element stirrups (指定或删除单元箍筋).
+        Assign or remove shear/torsion stirrup references on checking elements
+        (指定或删除检算单元的抗剪/抗扭箍筋引用).
 
-        Stirrup numbers refer to definitions created by add_check_stirrup.
-        箍筋号引用 add_check_stirrup 创建的箍筋定义。
+        Create the stirrup definitions with add_check_stirrup first. This changes
+        element assignments, not the definitions themselves; manage_check_stirrup
+        updates/removes definitions. set_element_stirrups handles bulk model
+        snapshots with a different row schema.
+
+        shear requires a positive element_id and uses the four I/J, vertical/
+        transverse stirrup IDs. torsion also requires a positive element_id but
+        uses only stirrup_i and stirrup_j. Each assignment sends the complete set
+        for that action, including default ID 1 for omitted fields; other-action
+        fields are ignored. Supply all intended IDs when replacing assignments.
+
+        remove deletes assignments on one positive element_id; zero, negative
+        or the default -1 removes assignments for ALL elements. Read the current
+        checking data before a broad removal. Returns a confirmation without
+        running checks or deleting the referenced stirrup definitions.
+        (不同 action 使用不同字段；分配时省略编号采用 1，remove 的默认目标是全部单元。)
 
         Args:
             action: "shear" (抗剪箍筋), "torsion" (抗扭箍筋), or "remove" (删除)

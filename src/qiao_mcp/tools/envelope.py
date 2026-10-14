@@ -59,6 +59,7 @@ _DESTRUCTIVE_NAMES = {
     "merge_operation_stage",  # 重组已有施工阶段
     "configure_analysis",  # 覆盖分析开关
     "configure_check_analysis",  # 修改检算设置
+    "add_parametric_reinforcement",  # SDK 明确说明覆盖既有截面配筋
     "manage_check_stirrup",  # 可删除箍筋定义
     "assign_element_stirrup",  # 可删除所有单元箍筋
     "manage_check_case_file",  # 可替换当前检算工况或覆盖文件
