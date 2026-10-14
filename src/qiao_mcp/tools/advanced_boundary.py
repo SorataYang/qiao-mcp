@@ -329,6 +329,21 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         master DOFs: slave_dof = Σ(coefficient × master_dof).
         建立从属自由度与主自由度之间的线性约束关系。
 
+        Use for a weighted relation between specific node components. For the
+        usual rigid master/slave coupling use add_master_slave_link; set_support
+        fixes components against ground. All referenced nodes must already exist.
+
+        Every master_info row pairs a node ID, a DOF index and its coefficient;
+        terms are summed in the declared equation. slave_dof selects one component,
+        not a six-flag vector. Provide the intended master terms explicitly:
+        omitting them does not generate a rigid-link relationship automatically.
+
+        Writes and refreshes the model, returning the equation name and slave
+        component. The bridge checks references and constraint consistency; no
+        solve is run. Remove a saved equation with remove_boundary using kind
+        constraint_equation, the slave node and the equation name as extra_name.
+        (显式列出主节点自由度及系数；普通刚域用主从约束，本工具不自动推导刚体关系。)
+
         Args:
             name: Constraint equation name (约束方程名称)
             slave_node: Slave node ID (从节点编号)
