@@ -293,11 +293,26 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         sub_case_optimized: list[StrictBool] | None = None,
     ) -> str:
         """
-        Create a moving live load case (创建活载工况).
+        Define a moving vehicle/lane case on an existing influence plane
+        (在已有影响面上定义车辆车道活载工况).
 
-        FINAL STEP of the moving load workflow. The analysis engine finds the
-        worst-case vehicle positions for envelope results
-        (分析引擎自动计算最不利车辆位置得到包络效应).
+        Use after add_influence_plane, add_traffic_lane and add_standard_vehicle.
+        All plane, vehicle and lane names must already identify compatible
+        definitions. create_load_case defines a static case; transversal and
+        international live-load cases use set_transversal_case and
+        set_international_live_load_case respectively.
+
+        Each sub_cases row assigns one vehicle and factor to its lane-name
+        list. Multiple rows are separate sub-cases; sub_case_optimized, when
+        supplied, pairs with those rows by position, not with individual lanes.
+        For two rows it must contain exactly two booleans. None omits that
+        option, and explicit flags require SDK support.
+
+        Writes and refreshes the case, returning a confirmation. It does not
+        find vehicle positions or compute envelopes during this call. Include
+        the case in configure_operation_stage, then run_analysis; read the
+        resulting extremes with get_live_load_results. The bridge validates
+        references and duplicate names; a definition alone is not a solved case.
 
         Args:
             name: Load case name (活载工况名)
