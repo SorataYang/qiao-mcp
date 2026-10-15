@@ -1607,18 +1607,45 @@ class QtModelProvider(BridgeProvider):
 
     def update_node(self, node_id: int, **kwargs) -> None:
         self._require_available()
-        # qtmodel 的 update_node 会把未传入的坐标按默认值 1 整体下发，
-        # 部分更新会静默改写其余坐标；此处先读回当前坐标补齐缺省分量。
-        if not {"x", "y", "z"} <= kwargs.keys():
-            nodes = self.get_node_data(ids=node_id)
-            current = self._one_entity(nodes, node_id, "Node")
-            for axis in ("x", "y", "z"):
-                if axis not in kwargs:
-                    value = self._field(current, axis)
-                    if type(value) not in (int, float) or not math.isfinite(value):
-                        raise ValueError(f"Node {node_id} is missing coordinate {axis}; no update was sent")
-                    kwargs[axis] = value
-        self._mdb.update_node(node_id=node_id, **kwargs)
+        # UPDATE-NODE replaces the node without reconnecting existing elements
+        # on the desktop. Translate the existing node to preserve its references.
+        current = self._one_entity(self.get_node_data(ids=node_id), node_id, "Node")
+        offsets = []
+        for axis in ("x", "y", "z"):
+            value = self._field(current, axis)
+            if type(value) not in (int, float) or not math.isfinite(value):
+                raise ValueError(f"Node {node_id} is missing coordinate {axis}; no update was sent")
+            target = kwargs.get(axis, value)
+            if type(target) not in (int, float) or not math.isfinite(target):
+                raise ValueError(f"Node coordinate {axis} must be finite; no update was sent")
+            offsets.append(target - value)
+
+        new_id = kwargs.get("new_id", -1)
+        rename = None
+        rename_args = {"node_id": node_id, "new_id": new_id}
+        if new_id != -1 and new_id != node_id:
+            self._validate_ids(new_id, required=True)
+            # GET-NODE-DATA raises for an unused ID; the paged query reports it
+            # in missing_node_ids and lets us preflight a rename without writes.
+            page = self.query_model_data("nodes", node_ids=[new_id], limit=1)
+            candidates = page.get("items")
+            if not isinstance(candidates, list):
+                raise ValueError("Node query returned no items list; no update was sent")
+            if any(self._field(node, "node_id") == new_id for node in candidates):
+                raise ValueError(f"Node {new_id} already exists; no update was sent")
+            rename = self._validated_method("mdb", "update_node_id", rename_args)
+
+        if any(offsets):
+            self.move_nodes(node_id, *offsets)
+        if rename is not None:
+            try:
+                rename(**rename_args)
+            except Exception as exc:
+                raise RuntimeError(
+                    "Node renumbering failed; coordinates may already have changed. "
+                    "Read nodes and elements before retrying "
+                    f"(改号失败，坐标可能已更新；请先回读，勿自动重试): {exc}"
+                ) from exc
 
     def update_node_id(self, node_id: int, new_id: int) -> None:
         self._require_available()
@@ -1644,7 +1671,12 @@ class QtModelProvider(BridgeProvider):
     def move_nodes(self, ids: Any, offset_x: float = 0, offset_y: float = 0, offset_z: float = 0) -> None:
         self._require_available()
         ids = self._validate_ids(ids, required=True)
-        self._mdb.move_nodes(ids=ids, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
+        if any(type(v) not in (int, float) or not math.isfinite(v) for v in (offset_x, offset_y, offset_z)):
+            raise ValueError("Node offsets must be finite; no update was sent")
+        # Legacy MOVE-NODES can report success without moving anything. This
+        # compound command also keeps elements attached and disables splitting.
+        options = {"node_ids": ids, "dx": offset_x, "dy": offset_y, "dz": offset_z}
+        self._validated_method("mdb", "translate_nodes", options)(**options)
 
     def update_element(self, old_id: int, **kwargs) -> None:
         self._require_available()

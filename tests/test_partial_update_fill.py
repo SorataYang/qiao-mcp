@@ -1,9 +1,7 @@
 """部分更新回填测试。
 
-qtmodel 的 update_node/update_element 会把未传入的字段按默认值整体下发
-（update_node 坐标默认 1，update_element 的 ele_type 默认 1、beta_angle 默认 0），
-partial update 若不回填会静默破坏数据。
-本测试用假 mdb 断言：未指定字段以当前模型值补齐后再下发。
+节点绝对修改先读取当前坐标，再平移既有节点以保持单元引用。
+单元更新回填未指定字段，避免原生默认值覆盖现有属性。
 """
 
 from types import SimpleNamespace
@@ -28,10 +26,9 @@ def test_update_node_fills_unspecified_coordinates(provider, monkeypatch):
     )
     provider.update_node(5, x=10.0, new_id=-1)
 
-    _, _, kwargs = provider._mdb.last("update_node")
-    assert kwargs["x"] == 10.0
-    assert kwargs["y"] == 3.0, "未指定的 y 必须回填当前值而非 qtmodel 默认值 1"
-    assert kwargs["z"] == 7.0, "未指定的 z 必须回填当前值而非 qtmodel 默认值 1"
+    _, _, kwargs = provider._mdb.last("translate_nodes")
+    assert kwargs == {"node_ids": 5, "dx": 8.0, "dy": 0.0, "dz": 0.0}
+    assert provider._mdb.count("update_node") == 0
     assert query_calls == [5]
 
 
@@ -40,18 +37,17 @@ def test_update_node_supports_query_model_objects(provider, monkeypatch):
     monkeypatch.setattr(provider, "get_node_data", lambda ids: [node])
     provider.update_node(5, z=-1.5)
 
-    _, _, kwargs = provider._mdb.last("update_node")
-    assert (kwargs["x"], kwargs["y"], kwargs["z"]) == (2.0, 3.0, -1.5)
+    _, _, kwargs = provider._mdb.last("translate_nodes")
+    assert (kwargs["dx"], kwargs["dy"], kwargs["dz"]) == (0.0, 0.0, -8.5)
 
 
-def test_update_node_skips_query_when_all_coords_given(provider, monkeypatch):
-    def boom(ids):
-        raise AssertionError("全坐标显式给出时不应回查")
-
-    monkeypatch.setattr(provider, "get_node_data", boom)
+def test_update_node_reads_current_position_even_with_all_coordinates(provider, monkeypatch):
+    monkeypatch.setattr(provider, "get_node_data", lambda ids: [
+        {"node_id": 5, "x": 2.0, "y": 3.0, "z": 7.0},
+    ])
     provider.update_node(5, x=1.0, y=2.0, z=3.0)
-    _, _, kwargs = provider._mdb.last("update_node")
-    assert (kwargs["x"], kwargs["y"], kwargs["z"]) == (1.0, 2.0, 3.0)
+    _, _, kwargs = provider._mdb.last("translate_nodes")
+    assert (kwargs["dx"], kwargs["dy"], kwargs["dz"]) == (-1.0, -1.0, -4.0)
 
 
 def test_update_node_missing_node_raises(provider, monkeypatch):

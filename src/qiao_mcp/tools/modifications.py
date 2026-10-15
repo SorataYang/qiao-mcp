@@ -142,19 +142,20 @@ def register_modification_tools(mcp: MCPServer, provider: BridgeProvider) -> Non
         """
         Modify an existing node's coordinates and/or ID (修改节点坐标或编号).
 
-        Writes to the model and refreshes it. The underlying qtmodel API
-        overwrites all three coordinates, so when any of x/y/z is omitted this
-        tool reads the current position once and fills the omitted components.
-        That read fails if the node is missing. Supplying all three coordinates
-        skips the extra read; the bridge then validates the target node.
+        Reads the current position, translates the existing node to the requested
+        absolute coordinates, then optionally renumbers it and refreshes the model.
+        Omitted components keep their current values. Translation preserves node
+        references in connected elements; it requires the native translate_nodes
+        API. Missing nodes, invalid coordinates and an occupied new ID fail before
+        writing. If renumbering fails after translation, read back before retrying.
 
         When to use vs. siblings: coordinates (with or without a new ID) here;
         renumbering only → update_node_id (no read-back, cheaper); shifting
         nodes by a relative offset rather than to absolute coordinates →
         move_nodes; renumbering many nodes → renumber_nodes.
 
-        (写模型并刷新。底层每次整体覆盖三坐标，省略任一坐标时先回读补齐，节点不存在
-        时回读失败；三坐标齐全时不额外查询，由桥通校验目标。选型：改坐标（可同时改编号）用本工具；只改编号用
+        (先回读坐标，再用原生平移命令更新已有节点以保留关联单元引用，最后按需改号并刷新。
+        省略的坐标保持当前值；需要支持 translate_nodes 的 SDK 和桌面。选型：改坐标（可同时改编号）用本工具；只改编号用
         update_node_id（无需读回、更省）；按相对偏移平移用 move_nodes；批量改号用
         renumber_nodes。)
 
@@ -206,13 +207,13 @@ def register_modification_tools(mcp: MCPServer, provider: BridgeProvider) -> Non
 
         When to use vs. siblings: renumbering ONE node here; moving a node or
         changing coordinates and ID together → update_node (it reads current
-        coordinates only when some coordinate components are omitted);
+        coordinates to translate the existing node without breaking references);
         renumbering MANY nodes, or compacting all node numbers from 1 →
         renumber_nodes.
 
         (写模型并刷新。只改编号、不动坐标，是单一用途的窄工具。选型：改一个节点的编号
-        用本工具；要改坐标、或同时改坐标和编号用 update_node（省略部分坐标时多一次
-        模型查询补齐）；批量改号或把全部节点号从 1 起重排用 renumber_nodes。)
+        用本工具；要改坐标、或同时改坐标和编号用 update_node（先回读坐标再平移已有
+        节点）；批量改号或把全部节点号从 1 起重排用 renumber_nodes。)
 
         Returns a confirmation, not an updated node record. The bridge owns
         collision checks and reference updates; read nodes/elements back
@@ -280,6 +281,8 @@ def register_modification_tools(mcp: MCPServer, provider: BridgeProvider) -> Non
         or renumber_nodes for numbering without moving geometry. Each call adds
         the offset again, so it is not idempotent. Returns a confirmation after
         refreshing the model; re-read affected geometry before a new analysis.
+        Uses the native translate_nodes compound command to preserve connected
+        elements without automatic splitting; both the SDK and desktop must support it.
         (本工具按相对位移移动，重复会再次累加；绝对坐标用 update_node，改号用改号工具。)
 
         Args:

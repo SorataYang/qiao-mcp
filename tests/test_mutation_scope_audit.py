@@ -149,7 +149,7 @@ def test_partial_node_update_selects_exact_target(fake_provider):
         {"node_id": 7, "x": 1, "y": 2, "z": 3},
     ]
     fake_provider.update_node(7, z=4)
-    assert fake_provider._mdb.last("update_node")[2] == {"node_id": 7, "x": 1, "y": 2, "z": 4}
+    assert fake_provider._mdb.last("translate_nodes")[2] == {"node_ids": 7, "dx": 0, "dy": 0, "dz": 1}
 
 
 def test_partial_node_update_requires_retained_coordinates(fake_provider):
