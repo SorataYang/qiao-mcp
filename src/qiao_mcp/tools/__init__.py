@@ -8,6 +8,7 @@ nodes, elements, materials, sections, structure groups, etc.
 
 import asyncio
 import math
+from contextvars import copy_context
 from typing import Any, Literal, get_args
 
 from mcp.server.fastmcp import Context, FastMCP
@@ -2934,7 +2935,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["show_view"] = True
             loop = asyncio.get_running_loop()
             solve = loop.run_in_executor(
-                None, lambda: provider.run_analysis(**kwargs)
+                None, copy_context().run, lambda: provider.run_analysis(**kwargs)
             )
             elapsed = 0
             # 每 5 秒发一次进度心跳，直到求解线程返回

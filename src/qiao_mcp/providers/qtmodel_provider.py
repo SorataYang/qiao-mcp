@@ -13,6 +13,8 @@ import json
 import math
 import time
 from collections.abc import Mapping
+from contextlib import ExitStack, contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +41,12 @@ class QtModelProvider(BridgeProvider):
     # 没有这两个默认值，那些实例一调 is_available() 就 AttributeError。
     _probe_cache: dict[str, Any] | None = None
     _probe_at: float = 0.0
+    _bound_model_instance: ContextVar[str | None] = ContextVar(
+        "qiao_mcp_bound_model_instance", default=None,
+    )
+    _checking_snapshot: ContextVar[tuple[int, dict[str, Any]] | None] = ContextVar(
+        "qiao_mcp_checking_snapshot", default=None,
+    )
 
     def __init__(self):
         """Initialize the qtmodel provider and bind the qtmodel API objects.
@@ -274,7 +282,8 @@ class QtModelProvider(BridgeProvider):
         if operation == "connection":
             return
 
-        result = self.get_model_state()
+        checking = self._checking_snapshot.get()
+        result = checking[1] if checking is not None and checking[0] == id(self) else self.get_model_state()
         if result.get("status") == "guard_unavailable":
             return
 
@@ -322,6 +331,70 @@ class QtModelProvider(BridgeProvider):
             f"has_result_data={state.get('has_result_data')}。"
             "请先调用 get_model_status，并由用户在桥通中切换到满足条件的状态。"
         )
+
+    @contextmanager
+    def operation_context(
+        self, operation: str, *, guard_revision: bool = False, bind_model: bool = True,
+    ):
+        """Keep supported mutations bound to the model checked at tool entry.
+
+        SDK and desktop capabilities are detected independently. Older pairs keep
+        the existing state guard. A desktop that advertises a new protocol must
+        supply valid identifiers; a nested call cannot replace the outer model.
+        Revision binding is used only for explicit gateway Undo, never for a
+        multi-command write whose own mutations advance the revision.
+        """
+        snapshot = self.get_model_state() if operation != "connection" else None
+        # The permission check and binding consume the same fresh snapshot.
+        # Expose it only while the public guard runs, so nested checks stay fresh
+        # and its existing provider contract/overrides continue to work.
+        snapshot_token = self._checking_snapshot.set((id(self), snapshot) if snapshot is not None else None)
+        try:
+            self.ensure_operation_allowed(operation)
+        finally:
+            self._checking_snapshot.reset(snapshot_token)
+        state = snapshot.get("model_state") if snapshot is not None else None
+        with ExitStack() as stack:
+            if bind_model and snapshot is not None and isinstance(state, dict) and operation in {
+                "model_write", "stage_write", "check_write", "check_run", "analysis_run", "view",
+            }:
+                from qtmodel.core.qt_server import QtServer
+
+                server = snapshot.get("server")
+                server = server if isinstance(server, dict) else {}
+                instance_guard = server.get("model_instance_guard", snapshot.get("model_instance_guard"))
+                bind_instance = getattr(QtServer, "require_model_instance", None)
+                if instance_guard not in (None, 0) and callable(bind_instance):
+                    if type(instance_guard) is not int or instance_guard != 1:
+                        raise RuntimeError("MODEL_IDENTITY_UNAVAILABLE: 桥通的模型实例保护协议无效，请更新并重启桥通。")
+                    instance = state.get("model_instance_id")
+                    if not isinstance(instance, str) or not instance.strip() or len(instance) > 128:
+                        raise RuntimeError("MODEL_IDENTITY_UNAVAILABLE: 桥通未返回有效的 model_instance_id，请重新检查模型状态。")
+                    bound = self._bound_model_instance.get()
+                    if bound is not None and bound != instance:
+                        raise RuntimeError("MODEL_INSTANCE_MISMATCH: 工程在本次操作期间已切换，请检查当前工程，勿重复写入。")
+                    if bound is None:
+                        instance_token = self._bound_model_instance.set(instance)
+                        stack.callback(self._bound_model_instance.reset, instance_token)
+                        stack.enter_context(bind_instance(instance))
+
+                revision_schema = server.get("model_revision_schema", snapshot.get("model_revision_schema"))
+                bind_revision = getattr(QtServer, "require_model_revision", None)
+                if guard_revision and revision_schema not in (None, 0) and callable(bind_revision):
+                    if (
+                        type(revision_schema) is not int or revision_schema != 1
+                        or any(not isinstance(state.get(key), str) or not state[key].strip()
+                               for key in ("model_revision", "history_revision"))
+                        or type(state.get("pending_command_count")) is not int
+                        or state["pending_command_count"] < 0
+                        or ("model_revision_uncertain" in state
+                            and type(state["model_revision_uncertain"]) is not bool)
+                    ):
+                        raise RuntimeError("MODEL_REVISION_UNAVAILABLE: 桥通未返回有效的模型与命令历史修订号，无法执行撤销。")
+                    if state.get("model_revision_uncertain") is True or state["pending_command_count"]:
+                        raise RuntimeError("MODEL_REVISION_UNCERTAIN: 存在待提交或状态不确定的修改，请先在桥通中核对，勿自动撤销。")
+                    stack.enter_context(bind_revision(state["model_revision"], state["history_revision"]))
+            yield
 
     @property
     def name(self) -> str:
@@ -768,9 +841,9 @@ class QtModelProvider(BridgeProvider):
         """Dispatch an explicit base-model snapshot command with model permissions."""
         if method not in self._API_CDB_MODEL_WRITES:
             raise ValueError(f"Not a model snapshot method: {method}")
-        self.ensure_operation_allowed("model_write")
-        fn = self._validated_method("cdb", method, kwargs)
-        return self._execute_model_command(fn, method, kwargs)
+        with self.operation_context("model_write"):
+            fn = self._validated_method("cdb", method, kwargs)
+            return self._execute_model_command(fn, method, kwargs)
 
     def _resolve_api_object(self, api_object: str):
         obj = {"mdb": self._mdb, "odb": self._odb, "cdb": self._cdb}.get(api_object)
@@ -842,23 +915,27 @@ class QtModelProvider(BridgeProvider):
             operation = "result_read"
         else:
             operation = "model_read"
-        self.ensure_operation_allowed(operation)
-
-        kwargs = kwargs or {}
-        sig = inspect.signature(fn)
-        try:
-            sig.bind(**kwargs)
-        except TypeError as e:
-            raise ValueError(
-                f"Arguments do not match (参数不匹配): {e}. Real signature (真实签名): {method}{sig}"
-            ) from e
-        if (
-            api_object == "mdb"
-            and operation == "model_write"
-            and method not in self._API_NO_COMMIT
-        ) or (api_object == "cdb" and method in self._API_CDB_MODEL_WRITES):
-            return self._execute_model_command(fn, method, kwargs)
-        return self._parse(fn(**kwargs))
+        with self.operation_context(
+            operation, guard_revision=api_object == "mdb" and method == "undo_model",
+            # These SDK routes send a bare path; their desktop payload contract
+            # cannot carry model identifiers. Preserve their existing state gate.
+            bind_model=not (api_object == "mdb" and method in {"open_file", "save_file", "import_file"}),
+        ):
+            kwargs = kwargs or {}
+            sig = inspect.signature(fn)
+            try:
+                sig.bind(**kwargs)
+            except TypeError as e:
+                raise ValueError(
+                    f"Arguments do not match (参数不匹配): {e}. Real signature (真实签名): {method}{sig}"
+                ) from e
+            if (
+                api_object == "mdb"
+                and operation == "model_write"
+                and method not in self._API_NO_COMMIT
+            ) or (api_object == "cdb" and method in self._API_CDB_MODEL_WRITES):
+                return self._execute_model_command(fn, method, kwargs)
+            return self._parse(fn(**kwargs))
 
     # ── Model Information ──────────────────────────────────────────────
 

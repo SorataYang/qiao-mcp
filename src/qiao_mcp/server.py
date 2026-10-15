@@ -76,6 +76,13 @@ _SERVER_INSTRUCTIONS = (
     f"using {provider.get_software_name()} via Qiao-MCP.\n"
     "Start with check_qiaotong_connection; use get_model_status to confirm the "
     "model and allowed operations before making changes.\n\n"
+    "With qtmodel 2.9.3 and a desktop advertising model_instance_guard=1, model writes "
+    "and their commits carry the instance checked at tool entry, including background solves. "
+    "Gateway undo_model also checks model/history revisions when model_revision_schema=1; "
+    "pending or uncertain changes block that Undo. On a mismatch, inspect the active model "
+    "and command history before deciding what to do; never replay automatically. Older "
+    "SDKs/desktops keep state checks. Initialize/open and legacy raw-path file routes do "
+    "not support this instance binding.\n\n"
     + _CATALOG_GUIDE
     + "## Software-Specific Rules — Read Before Using Any Tool\n"
     + provider.get_llm_instructions()
