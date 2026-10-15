@@ -6,7 +6,7 @@ MCP Tools for structural concrete checking and reinforcement design.
 import json
 from typing import Any, Literal
 
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
 from pydantic import TypeAdapter
 
 from qiao_mcp.execution import wait_for_operation
@@ -53,7 +53,7 @@ def _paginate(data: Any, limit: int, offset: int) -> str:
     return f"{header}\n{_fmt(window)}"
 
 
-def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
+def register_checking_tools(mcp: MCPServer, provider: BridgeProvider):
     """Register structural checking MCP tools."""
 
     @mcp.tool()

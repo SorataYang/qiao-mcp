@@ -3,7 +3,7 @@
 import asyncio
 from typing import Annotated, Any, Literal
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from pydantic import BaseModel, Field
 
 from qiao_mcp.jobs import JobStore, refresh_job, start_job
@@ -40,7 +40,7 @@ class JobsResult(BaseModel):
     next_offset: int | None
 
 
-def register_job_tools(mcp: FastMCP, provider: BridgeProvider):
+def register_job_tools(mcp: MCPServer, provider: BridgeProvider):
     store = JobStore()  # Lazy filesystem access; catalog inspection creates no DB.
 
     @mcp.tool()

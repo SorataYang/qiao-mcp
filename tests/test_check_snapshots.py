@@ -9,8 +9,8 @@ from unittest.mock import Mock
 
 import pytest
 from conftest import ready_model_state, run_async_tool, tool_fns
-from mcp.server.fastmcp import FastMCP
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools.api_gateway import register_api_gateway_tools
 from qiao_mcp.tools.check_snapshots import register_check_snapshot_tools
 from qiao_mcp.tools.checking import register_checking_tools
@@ -119,7 +119,7 @@ def test_inactive_parameters_and_bar_points_are_preserved(fake_provider):
     {"section_id_name": " "},
 ])
 def test_bad_snapshot_is_rejected_before_guard(fake_provider, patch):
-    mcp = FastMCP("snapshots")
+    mcp = MCPServer("snapshots")
     register_tools_with_envelope(mcp, register_check_snapshot_tools, fake_provider)
     fake_provider.ensure_operation_allowed = Mock()
     with pytest.raises(ToolError):
@@ -189,7 +189,7 @@ def test_assignment_none_empty_and_zero_are_distinct(fake_provider, shear, torsi
     {"torsion": [[1, 1.5, 0]]},
 ])
 def test_invalid_assignments_fail_before_guard(fake_provider, assignment):
-    mcp = FastMCP("assignments")
+    mcp = MCPServer("assignments")
     register_tools_with_envelope(mcp, register_check_snapshot_tools, fake_provider)
     fake_provider.ensure_operation_allowed = Mock()
     with pytest.raises(ToolError):
@@ -232,7 +232,7 @@ def test_material_snapshot_preserves_zero_false_and_extended_properties(fake_pro
     ("manage_check_case_definition", {"action": "set", "definition": {"family": "concrete", "index": 1}}),
 ])
 def test_invalid_management_requests_fail_before_guard(fake_provider, tool, value):
-    mcp = FastMCP("snapshots")
+    mcp = MCPServer("snapshots")
     register_tools_with_envelope(mcp, register_check_snapshot_tools, fake_provider)
     fake_provider.ensure_operation_allowed = Mock()
     with pytest.raises(ToolError):
@@ -243,7 +243,7 @@ def test_invalid_management_requests_fail_before_guard(fake_provider, tool, valu
 def test_material_nonfinite_nested_property_fails_before_guard(fake_provider):
     definition = copy.deepcopy(next(c["kwargs"]["definition"] for c in CALLS if c["method"] == "set_check_material"))
     definition["parameters"]["future_curve"] = [[1, float("nan")]]
-    mcp = FastMCP("snapshots")
+    mcp = MCPServer("snapshots")
     register_tools_with_envelope(mcp, register_check_snapshot_tools, fake_provider)
     fake_provider.ensure_operation_allowed = Mock()
     with pytest.raises(ToolError):

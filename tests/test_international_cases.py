@@ -10,8 +10,8 @@ from unittest.mock import Mock
 
 import pytest
 from conftest import ready_model_state, tool_fns
-from mcp.server.fastmcp import FastMCP
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools.api_gateway import register_api_gateway_tools
 from qiao_mcp.tools.envelope import ToolError, register_tools_with_envelope
 from qiao_mcp.tools.international_load import register_international_load_tools
@@ -119,7 +119,7 @@ def test_en1991_duplicate_lanes_fail_before_guard(fake_provider, duplicated):
         second = copy.deepcopy(first)
         second["optimized"] = duplicated == "across_lane_kinds"
         request["sub_cases"].append(second)
-    mcp = FastMCP("case")
+    mcp = MCPServer("case")
     register_tools_with_envelope(mcp, register_international_load_tools, fake_provider)
     fake_provider.ensure_operation_allowed = Mock()
     with pytest.raises(ToolError, match="assigned twice"):
@@ -137,7 +137,7 @@ def test_en1991_duplicate_lanes_fail_before_guard(fake_provider, duplicated):
     {"standard": "china"}, {"highway_factor": {}},
 ])
 def test_invalid_case_shapes_do_not_reach_guard(fake_provider, patch):
-    mcp = FastMCP("case")
+    mcp = MCPServer("case")
     register_tools_with_envelope(mcp, register_international_load_tools, fake_provider)
     fake_provider.ensure_operation_allowed = Mock()
     with pytest.raises(ToolError):
@@ -160,7 +160,7 @@ def test_nested_factors_reject_unknown_null_and_nonfinite_fields_before_guard(fa
     for part in path[:-1]:
         target = target[part]
     target[path[-1]] = value
-    mcp = FastMCP("factor")
+    mcp = MCPServer("factor")
     register_tools_with_envelope(mcp, register_international_load_tools, fake_provider)
     fake_provider.ensure_operation_allowed = Mock()
     with pytest.raises(ToolError):
@@ -218,7 +218,7 @@ def test_planned_lane_update_keeps_name_and_zero_values(qtmodel_wire):
     {"new_name": "invalid_on_add"}, {"index": 1},
 ])
 def test_invalid_planned_lane_is_rejected_before_guard(fake_provider, patch):
-    mcp = FastMCP("planned")
+    mcp = MCPServer("planned")
     register_tools_with_envelope(mcp, register_international_load_tools, fake_provider)
     fake_provider.ensure_operation_allowed = Mock()
     with pytest.raises(ToolError):
@@ -314,18 +314,18 @@ def test_planned_deletion_uses_explicit_lane_namespace(qtmodel_wire):
 
 
 def test_case_and_lane_schemas_keep_native_objects_and_destructive_annotations(fake_provider):
-    mcp = FastMCP("international")
+    mcp = MCPServer("international")
     register_tools_with_envelope(mcp, register_international_load_tools, fake_provider)
     tools = {t.name: t for t in asyncio.run(mcp.list_tools())}
     assert len(tools) == 5
     for name in ("set_planned_lane", "set_international_live_load_case", "create_en1991_vehicle"):
-        assert tools[name].annotations.destructiveHint and not tools[name].annotations.readOnlyHint
-        assert tools[name].outputSchema
-    definitions = tools["set_international_live_load_case"].inputSchema["$defs"]
+        assert tools[name].annotations.destructive_hint and not tools[name].annotations.read_only_hint
+        assert tools[name].output_schema
+    definitions = tools["set_international_live_load_case"].input_schema["$defs"]
     factor = definitions["InternationalRelativeFactors"]
     assert factor["additionalProperties"] is False
     assert set(factor["required"]) == set(case_request()["highway_factor"])
     assert definitions["InternationalSubCase"]["properties"]["lane_names"]["minItems"] == 1
-    planned = tools["set_planned_lane"].inputSchema["$defs"]["PlannedLaneWrite"]
+    planned = tools["set_planned_lane"].input_schema["$defs"]["PlannedLaneWrite"]
     assert {"vehicle_number", "offset", "direction", "lane_width"} <= set(planned["required"])
     assert planned["properties"]["direction"]["enum"] == [0, 1]

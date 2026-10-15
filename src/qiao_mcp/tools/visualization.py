@@ -6,7 +6,7 @@ MCP Tools for visualization — screenshots and result plots.
 import os
 from typing import Any, Literal
 
-from mcp.server.fastmcp import FastMCP, Image
+from mcp.server.mcpserver import Image, MCPServer
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
@@ -34,7 +34,7 @@ _VIEW_PRESETS = {
 }
 
 
-def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
+def register_visualization_tools(mcp: MCPServer, provider: BridgeProvider):
     """Register visualization MCP tools."""
 
     @mcp.tool(structured_output=False)

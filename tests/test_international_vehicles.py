@@ -9,8 +9,8 @@ from unittest.mock import Mock
 
 import pytest
 from conftest import ready_model_state, tool_fns
-from mcp.server.fastmcp import FastMCP
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools.api_gateway import register_api_gateway_tools
 from qiao_mcp.tools.envelope import ToolError, register_tools_with_envelope
 from qiao_mcp.tools.international_load import register_international_load_tools
@@ -125,7 +125,7 @@ def test_auto_id_is_read_back_from_the_exact_name(fake_provider):
     ("AASHTO", {"new_name": "new"}), ("AASHTO", {"index": 0}),
 ])
 def test_invalid_vehicle_inputs_fail_in_mcp_before_guard(fake_provider, standard, patch):
-    mcp = FastMCP("international")
+    mcp = MCPServer("international")
     register_tools_with_envelope(mcp, register_international_load_tools, fake_provider)
     fake_provider.ensure_operation_allowed = Mock()
     with pytest.raises(ToolError):
@@ -257,13 +257,13 @@ def test_read_in_postprocessing_uses_the_authoritative_read_capability(fake_prov
 
 
 def test_vehicle_schema_discriminates_standards_and_marks_overwrites(fake_provider):
-    mcp = FastMCP("international")
+    mcp = MCPServer("international")
     register_tools_with_envelope(mcp, register_international_load_tools, fake_provider)
     tools = {t.name: t for t in asyncio.run(mcp.list_tools())}
     write = tools["set_international_vehicle"]
-    assert write.annotations.destructiveHint and not write.annotations.readOnlyHint
-    assert tools["get_international_live_load_data"].annotations.readOnlyHint
-    schema = write.inputSchema
+    assert write.annotations.destructive_hint and not write.annotations.read_only_hint
+    assert tools["get_international_live_load_data"].annotations.read_only_hint
+    schema = write.input_schema
     assert schema["properties"]["request"]["discriminator"]["propertyName"] == "standard"
     assert set(schema["$defs"]["AashtoParameters"]["properties"]) == FIELDS["AASHTO"]
     assert set(schema["$defs"]["BsParameters"]["properties"]) == FIELDS["BS"]
@@ -272,4 +272,4 @@ def test_vehicle_schema_discriminates_standards_and_marks_overwrites(fake_provid
         assert {"parameters", "load_items", "vehicle_type", "definition_mode"} <= set(schema["$defs"][model]["required"])
         row = schema["$defs"][model]["properties"]["load_items"]["items"]
         assert row["minItems"] == row["maxItems"] == 2
-    assert all(tool.outputSchema for tool in tools.values())
+    assert all(tool.output_schema for tool in tools.values())

@@ -1,19 +1,19 @@
-"""Public FastMCP catalog, validation and response contracts."""
+"""Public MCPServer catalog, validation and response contracts."""
 
 import asyncio
 import base64
 from unittest.mock import Mock
 
 import pytest
-from mcp.server.fastmcp import FastMCP
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools.catalog import register_tool_catalog
 from qiao_mcp.tools.envelope import ToolError
 
 
 @pytest.fixture
 def catalog(fake_provider):
-    mcp = FastMCP("catalog-test")
+    mcp = MCPServer("catalog-test")
     register_tool_catalog(mcp, fake_provider)
     return mcp
 
@@ -25,15 +25,15 @@ def test_complete_catalog_has_documented_inputs_and_output_contracts(catalog):
     for tool in tools:
         assert tool.description
         assert tool.annotations is not None
-        properties = tool.inputSchema.get("properties", {})
+        properties = tool.input_schema.get("properties", {})
         assert "ctx" not in properties
         for name, schema in properties.items():
             assert schema.get("description"), f"{tool.name}.{name} lacks a description"
         if tool.name in image_tools:
-            assert tool.outputSchema is None
+            assert tool.output_schema is None
         else:
-            assert tool.outputSchema is not None, tool.name
-            assert "status" in tool.outputSchema["properties"], tool.name
+            assert tool.output_schema is not None, tool.name
+            assert "status" in tool.output_schema["properties"], tool.name
 
 
 def test_qtmodel_options_have_nullable_defaults_and_constrained_schemas(catalog):
@@ -49,35 +49,35 @@ def test_qtmodel_options_have_nullable_defaults_and_constrained_schemas(catalog)
     }
     for tool, parameters in options.items():
         for name in parameters:
-            schema = tools[tool].inputSchema["properties"][name]
+            schema = tools[tool].input_schema["properties"][name]
             assert schema["default"] is None
             assert {"type": "null"} in schema["anyOf"]
-            assert name not in tools[tool].inputSchema.get("required", [])
+            assert name not in tools[tool].input_schema.get("required", [])
     for name in ("add_construction_stage", "update_construction_stage"):
-        duration = tools[name].inputSchema["properties"]["duration"]
+        duration = tools[name].input_schema["properties"]["duration"]
         assert duration["type"] == "number"
     for name in ("set_support", "add_elastic_support"):
-        variants = tools[name].inputSchema["properties"]["extra_parameters"]["anyOf"]
+        variants = tools[name].input_schema["properties"]["extra_parameters"]["anyOf"]
         vector = next(item for item in variants if item.get("type") == "array")
         assert vector["minItems"] == vector["maxItems"] == 8
 
 
 def test_schema_exposes_ranges_enums_lengths_and_workflow_fields(catalog):
     tools = {tool.name: tool for tool in asyncio.run(catalog.list_tools())}
-    query = tools["get_model_data"].inputSchema["properties"]
+    query = tools["get_model_data"].input_schema["properties"]
     assert "materials" in query["kind"]["enum"]
     assert (query["limit"]["minimum"], query["limit"]["maximum"]) == (1, 500)
     assert query["offset"]["minimum"] == 0
-    release = tools["add_beam_constraint"].inputSchema["properties"]["release_i"]["anyOf"]
+    release = tools["add_beam_constraint"].input_schema["properties"]["release_i"]["anyOf"]
     assert any(item.get("minItems") == item.get("maxItems") == 6 for item in release)
-    workflow = tools["create_simple_beam_bridge"].outputSchema["properties"]
+    workflow = tools["create_simple_beam_bridge"].output_schema["properties"]
     assert {"node_ids", "element_ids", "support_node_ids", "material_id", "section_id"} <= workflow.keys()
-    assert tools["manage_check_stirrup"].inputSchema["properties"]["action"]["enum"] == ["update", "remove"]
-    assert "custom" in tools["set_view_angle"].inputSchema["properties"]["angle_preset"]["enum"]
-    boundary_kinds = tools["remove_boundary"].inputSchema["properties"]["kind"]["enum"]
+    assert tools["manage_check_stirrup"].input_schema["properties"]["action"]["enum"] == ["update", "remove"]
+    assert "custom" in tools["set_view_angle"].input_schema["properties"]["angle_preset"]["enum"]
+    boundary_kinds = tools["remove_boundary"].input_schema["properties"]["kind"]["enum"]
     assert {"support", "一般支承", "beam_constraint", "梁端约束"} <= set(boundary_kinds)
     for name in ("manage_check_stirrup", "assign_element_stirrup", "manage_check_case_file"):
-        assert tools[name].annotations.destructiveHint is True
+        assert tools[name].annotations.destructive_hint is True
 
 
 @pytest.mark.parametrize("name, arguments", [
@@ -184,10 +184,10 @@ def test_custom_temperature_reaches_real_sdk_without_shape_or_value_conversion(
     monkeypatch.setattr(QtServer, "send_dict", sent)
     monkeypatch.setattr(fake_provider, "_mdb", mdb)
     monkeypatch.setattr(fake_provider, "ensure_operation_allowed", Mock())
-    _, result = asyncio.run(catalog.call_tool("add_custom_temperature", {
+    result = asyncio.run(catalog.call_tool("add_custom_temperature", {
         "element_id": [7, 9], "case_name": "TEMP", "orientation": 2,
         "temperature_data": rows,
-    }))
+    })).structured_content
     assert result["status"] == "success"
     args, _ = sent.call_args_list[0]
     assert args[0] == "ADD-CUSTOM-TEMPERATURE"
@@ -199,10 +199,10 @@ def test_custom_temperature_reaches_real_sdk_without_shape_or_value_conversion(
 
 
 def test_combination_keeps_native_type_name_factor_order(catalog, fake_provider):
-    _, result = asyncio.run(catalog.call_tool("add_load_combine", {
+    result = asyncio.run(catalog.call_tool("add_load_combine", {
         "name": "Envelope", "combine_type": 3,
         "combine_info": [["ST", "Dead", 1.2], ["CS", "合计值", 1.0], ["TV", "横向工况", 1.0]],
-    }))
+    })).structured_content
     assert result["status"] == "success"
     kwargs = fake_provider._mdb.last("add_load_combine")[2]
     assert kwargs["combine_type"] == 3
@@ -216,7 +216,7 @@ def test_combination_keeps_native_type_name_factor_order(catalog, fake_provider)
     [[10, 0, 0, 0], [20, 1, 0, 0]],
 ])
 def test_both_native_node_coordinate_formats_remain_accepted(catalog, fake_provider, node_data):
-    _, result = asyncio.run(catalog.call_tool("create_nodes", {"node_data": node_data}))
+    result = asyncio.run(catalog.call_tool("create_nodes", {"node_data": node_data})).structured_content
     assert result["status"] == "success"
     assert fake_provider._mdb.last("add_nodes")[2]["node_data"] == node_data
 
@@ -228,10 +228,10 @@ def test_both_native_node_coordinate_formats_remain_accepted(catalog, fake_provi
 def test_tendon_schemas_keep_track_positioning_and_native_point_order(
     catalog, fake_provider, name, points,
 ):
-    _, result = asyncio.run(catalog.call_tool(name, {
+    result = asyncio.run(catalog.call_tool(name, {
         "name": "T", "property_name": "P", "control_points": points,
         "position_type": 2, "point_insert": [2, 1, 37],
-    }))
+    })).structured_content
     assert result["status"] == "success"
     method = "add_tendon_2d" if name == "create_tendon_2d" else "add_tendon_3d"
     kwargs = fake_provider._mdb.last(method)[2]
@@ -240,24 +240,24 @@ def test_tendon_schemas_keep_track_positioning_and_native_point_order(
 
 
 def test_spectrum_function_reference_keeps_name_factor_order(catalog, fake_provider):
-    _, result = asyncio.run(catalog.call_tool("add_spectrum_case", {
+    result = asyncio.run(catalog.call_tool("add_spectrum_case", {
         "name": "RS", "info_x": ["Spectrum", 1.25],
-    }))
+    })).structured_content
     assert result["status"] == "success"
     assert fake_provider._mdb.last("add_spectrum_case")[2]["info_x"] == ("Spectrum", 1.25)
 
 
 @pytest.mark.parametrize("kind", ["beam_constraint", "梁端约束"])
 def test_boundary_enum_keeps_english_and_native_chinese_names(catalog, fake_provider, kind):
-    _, result = asyncio.run(catalog.call_tool("remove_boundary", {"remove_id": 7, "kind": kind}))
+    result = asyncio.run(catalog.call_tool("remove_boundary", {"remove_id": 7, "kind": kind})).structured_content
     assert result["status"] == "success"
     assert fake_provider._mdb.last("remove_boundary")[2]["kind"] == "梁端约束"
 
 
 def test_api_object_normalization_precedes_enum_validation(catalog, fake_provider):
-    _, result = asyncio.run(catalog.call_tool("call_qtmodel_api", {
+    result = asyncio.run(catalog.call_tool("call_qtmodel_api", {
         "api_object": " MDB ", "method": "get_node_data", "kwargs": {},
-    }))
+    })).structured_content
     assert result["status"] == "success"
     assert fake_provider._mdb.count("get_node_data") == 1
 
@@ -267,7 +267,8 @@ def test_connection_result_has_structured_fields_and_preserves_text(catalog, fak
         "status": "software_not_running", "connected": False, "compatible": None,
         "message": "Start QiaoTong", "action": "Start the application", "client": {}, "server": {},
     })
-    content, structured = asyncio.run(catalog.call_tool("check_qiaotong_connection", {}))
+    response = asyncio.run(catalog.call_tool("check_qiaotong_connection", {}))
+    content, structured = response.content, response.structured_content
     assert content[0].type == "text"
     assert structured["status"] == "success"
     assert structured["connection_status"] == "software_not_running"
@@ -276,7 +277,7 @@ def test_connection_result_has_structured_fields_and_preserves_text(catalog, fak
 
 
 def test_readonly_state_keeps_backend_status_in_structured_content(catalog):
-    _, structured = asyncio.run(catalog.call_tool("get_model_status", {}))
+    structured = asyncio.run(catalog.call_tool("get_model_status", {})).structured_content
     assert structured["status"] == "model_state"
     assert structured["model_state"]["capabilities"]["modify_model"] is True
 
@@ -286,7 +287,7 @@ def test_state_schema_preserves_new_backend_fields(catalog, fake_provider, monke
         "status": "state_unknown", "connected": True,
         "model_state_schema": 2, "reason": {"code": "desktop_too_old"},
     })
-    _, result = asyncio.run(catalog.call_tool("get_model_status", {}))
+    result = asyncio.run(catalog.call_tool("get_model_status", {})).structured_content
     assert result["status"] == "state_unknown"
     assert result["model_state_schema"] == 2
     assert result["reason"] == {"code": "desktop_too_old"}
@@ -307,6 +308,6 @@ def test_image_survives_sdk_serialization(
     content = asyncio.run(catalog.call_tool(name, {
         "file_path": str(path), "return_image": True, **arguments,
     }))
-    assert content[0].type == "image"
-    assert content[0].mimeType == "image/png"
-    assert base64.b64decode(content[0].data) == png
+    assert content.content[0].type == "image"
+    assert content.content[0].mime_type == "image/png"
+    assert base64.b64decode(content.content[0].data) == png

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Migrate from the bundled FastMCP in MCP SDK 1.29 to `MCPServer` in SDK 2.3.0,
+  with a `>=2.3.0,<2.4` dependency range. Forward the original request Context
+  through discovery, domain and legacy calls; use `CallToolResult` and the new
+  Python field names while retaining the existing wire schemas and typed errors.
+- Capture operation metadata through public registration instead of accessing
+  `_tool_manager`; set the handshake version through the server constructor.
+  Keep synchronous tools on the event loop to preserve the shared provider's
+  execution order, and retain the existing explicit analysis workers and job store.
+  SDK Discovery and Tasks extensions are not enabled by this migration.
+
 ## [0.6.0] - 2026-10-15
 
 This release includes all changes since GitHub release 0.5.1.

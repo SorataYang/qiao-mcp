@@ -12,7 +12,7 @@ Groups are the foundation of construction stage analysis:
 import json
 from typing import Any, Literal, get_args
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
@@ -27,7 +27,7 @@ from qiao_mcp.tools.schemas import (
 )
 
 
-def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
+def register_group_tools(mcp: MCPServer, provider: BridgeProvider):
     """Register group management MCP tools."""
 
     @mcp.tool()

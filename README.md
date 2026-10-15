@@ -287,6 +287,8 @@ changes. See [Backend Selection](./INTEGRATION_GUIDE.md#后端选择-backend-sel
 ### Prerequisites
 - Python >= 3.11
 - [uv](https://docs.astral.sh/uv/) package manager
+- MCP Python SDK `>=2.3.0,<2.4` (installed by `uv sync`; locked to 2.3.0).
+  The server uses `MCPServer`; existing discovery/domain/flat catalogs remain compatible.
 - `qtmodel` 2.6.3 – 2.9.x, except 2.9.0 (installed by `uv sync`; 2.9.3 is the current lock)
 - QiaoTong software running when calling backend model, analysis, or visualization operations
   (see [Compatibility](#compatibility) for which versions pair with which)

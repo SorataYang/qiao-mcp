@@ -18,8 +18,8 @@ import asyncio
 
 import pytest
 from conftest import FakeDb, ready_model_state, tool_text
-from mcp.server.fastmcp import FastMCP
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools import register_modeling_tools
 from qiao_mcp.tools.envelope import ToolError, register_tools_with_envelope
 
@@ -52,9 +52,9 @@ def provider():
 
 @pytest.fixture
 def run_analysis(provider):
-    mcp = FastMCP("t")
+    mcp = MCPServer("t")
     register_tools_with_envelope(mcp, register_modeling_tools, provider)
-    fn = {t.name: t.fn for t in mcp._tool_manager.list_tools()}["run_analysis"]
+    fn = {t.name: t.fn for t in mcp.registered_tools.values()}["run_analysis"]
     return fn
 
 

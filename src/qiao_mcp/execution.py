@@ -5,7 +5,7 @@ from collections.abc import Callable
 from contextvars import copy_context
 from typing import TypeVar
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 T = TypeVar("T")
 HEARTBEAT_SECONDS = 5.0

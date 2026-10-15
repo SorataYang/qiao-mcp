@@ -3,9 +3,9 @@
 import base64
 
 import pytest
-from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers.qtmodel_provider import QtModelProvider
+from qiao_mcp.registration import OperationServer as MCPServer
 
 PNG_BASE64 = (
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jG9s"
@@ -99,7 +99,7 @@ def qtmodel_wire(fake_provider, monkeypatch):
 
 
 def tool_fns(register, provider, wrap=True):
-    """注册工具到临时 FastMCP 实例并返回 {工具名: 可调用函数}。
+    """注册工具到临时 MCPServer 实例并返回 {工具名: 可调用函数}。
 
     wrap=True（默认）返回经 envelope 包装的函数，与生产一致：
     成功返回 dict，失败/校验抛 ToolError/ToolInputError。
@@ -112,12 +112,12 @@ def tool_fns(register, provider, wrap=True):
     if isinstance(provider, QtModelProvider) and "get_model_state" not in vars(provider):
         provider.get_model_state = ready_model_state
 
-    mcp = FastMCP("test")
+    mcp = MCPServer("test")
     if wrap:
         register_tools_with_envelope(mcp, register, provider)
     else:
         register(mcp, provider)
-    return {t.name: t.fn for t in mcp._tool_manager.list_tools()}
+    return {t.name: t.fn for t in mcp.registered_tools.values()}
 
 
 def tool_text(result):
@@ -132,9 +132,9 @@ def tool_text(result):
 
 
 def run_async_tool(fn, **kwargs):
-    """Invoke an async handler with the Context normally supplied by FastMCP."""
+    """Invoke an async handler with the Context normally supplied by MCPServer."""
     import asyncio
 
-    from mcp.server.fastmcp import Context
+    from mcp.server.mcpserver import Context
 
     return asyncio.run(fn(ctx=Context(), **kwargs))

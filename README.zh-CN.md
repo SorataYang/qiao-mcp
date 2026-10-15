@@ -228,6 +228,8 @@ qiao-mcp/
 ### 前置要求
 - Python >= 3.11
 - [uv](https://docs.astral.sh/uv/) 包管理器
+- MCP Python SDK `>=2.3.0,<2.4`（`uv sync` 自动安装，锁定 2.3.0）。
+  服务端使用 `MCPServer`，保留现有 discovery、domains、flat 目录及调用方式。
 - `qtmodel` 2.6.3 – 2.9.x，不含 2.9.0（`uv sync` 会自动安装，当前锁定 2.9.3）
 - 调用建模、分析或可视化工具时，需要运行桥通软件（版本搭配见下文[兼容性对照](#兼容性对照)）
 

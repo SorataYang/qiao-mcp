@@ -6,8 +6,8 @@ from unittest.mock import Mock
 
 import pytest
 from conftest import tool_fns
-from mcp.server.fastmcp import FastMCP
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools.api_gateway import register_api_gateway_tools
 from qiao_mcp.tools.envelope import _annotations_for, _operation_for, register_tools_with_envelope
 
@@ -95,14 +95,14 @@ def test_real_client_uses_readonly_header_and_preserves_unknown_fields(diagnosti
 
 
 def test_readiness_schema_and_annotations(diagnostic_provider):
-    mcp = FastMCP("readiness")
+    mcp = MCPServer("readiness")
     register_tools_with_envelope(mcp, register_api_gateway_tools, diagnostic_provider)
     diagnostic_provider._mdb.get_model_edit_readiness = Mock(return_value={"opaque": 1})
-    _, structured = asyncio.run(mcp.call_tool("get_model_edit_readiness", {}))
+    structured = asyncio.run(mcp.call_tool("get_model_edit_readiness", {})).structured_content
     assert structured["status"] == "success"
     assert structured["readiness"] == {"opaque": 1}
     tool = next(t for t in asyncio.run(mcp.list_tools()) if t.name == "get_model_edit_readiness")
-    assert "readiness" in tool.outputSchema["properties"]
+    assert "readiness" in tool.output_schema["properties"]
     assert _operation_for(tool.name) == "connection"
-    assert _annotations_for(tool.name).readOnlyHint is True
-    assert _annotations_for(tool.name).destructiveHint is False
+    assert _annotations_for(tool.name).read_only_hint is True
+    assert _annotations_for(tool.name).destructive_hint is False

@@ -5,8 +5,9 @@ import json
 from unittest.mock import patch
 
 import pytest
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools.catalog import register_tool_catalog
 from qiao_mcp.tools.envelope import (
     ToolError,
@@ -19,9 +20,9 @@ from qiao_mcp.tools.envelope import (
 def _call_json(mcp, name, args):
     """Require actual structured output, not merely JSON encoded inside text."""
     result = asyncio.run(mcp.call_tool(name, args))
-    assert isinstance(result, tuple), "FastMCP must produce structuredContent"
-    assert json.loads(result[0][0].text) == result[1]
-    return result[1]
+    assert result.structured_content is not None, "MCPServer must produce structuredContent"
+    assert json.loads(result.content[0].text) == result.structured_content
+    return result.structured_content
 
 
 def _register_sample(mcp, provider):
@@ -58,16 +59,16 @@ class CommandOutcomeUnknownError(RuntimeError):
 
 @pytest.fixture
 def mcp():
-    m = FastMCP("test")
+    m = MCPServer("test")
     register_tools_with_envelope(m, _register_sample, provider=None)
     return m
 
 
 def test_signature_preserved_after_wrapping(mcp):
     tools = {t.name: t for t in asyncio.run(mcp.list_tools())}
-    props = tools["make_thing"].inputSchema["properties"]
+    props = tools["make_thing"].input_schema["properties"]
     assert set(props) == {"name", "count"}, "包装后参数签名必须保持不变"
-    assert tools["make_thing"].inputSchema["required"] == ["name"]
+    assert tools["make_thing"].input_schema["required"] == ["name"]
 
 
 def test_string_return_wrapped_as_structured_success(mcp):
@@ -88,7 +89,8 @@ def test_dict_return_gets_status_success(mcp):
 def test_backend_failure_becomes_tool_error(mcp):
     with pytest.raises(ToolError) as exc:
         asyncio.run(mcp.call_tool("backend_fails", {}))
-    assert "后端炸了" in str(exc.value)
+    assert "后端炸了" not in str(exc.value)
+    assert "后端炸了" in str(exc.value.__cause__)
     assert "OUTCOME UNKNOWN" not in str(exc.value)
 
 
@@ -112,7 +114,7 @@ def test_tool_input_error_is_tool_error_subclass():
 
 
 # ── docstring Args → schema 参数描述注入 ──────────────────────────────────
-# FastMCP 不解析 docstring；envelope 在包装处把 Args 说明注入参数 schema。
+# MCPServer 不解析 docstring；envelope 在包装处把 Args 说明注入参数 schema。
 # 这些测试锁住该行为（客户端 LLM 依赖参数 description 选择与填写参数）。
 
 _DOC_BILINGUAL = (
@@ -178,15 +180,15 @@ def _register_documented(mcp, provider):
 
 
 def test_docstring_descriptions_injected_into_schema():
-    m = FastMCP("test")
+    m = MCPServer("test")
     register_tools_with_envelope(m, _register_documented, provider=None)
     tool = {t.name: t for t in asyncio.run(m.list_tools())}["documented"]
-    props = tool.inputSchema["properties"]
+    props = tool.input_schema["properties"]
     assert set(props) == {"node_data", "merge_error"}
     assert "节点坐标列表" in props["node_data"]["description"]
     assert "合并容差" in props["merge_error"]["description"]
     # 注入描述不得破坏必填/默认语义
-    assert tool.inputSchema["required"] == ["node_data"]
+    assert tool.input_schema["required"] == ["node_data"]
 
 
 def _register_with_context(mcp, provider):
@@ -201,10 +203,10 @@ def _register_with_context(mcp, provider):
 
 
 def test_context_param_excluded_but_others_described():
-    m = FastMCP("test")
+    m = MCPServer("test")
     register_tools_with_envelope(m, _register_with_context, provider=None)
     tool = {t.name: t for t in asyncio.run(m.list_tools())}["with_ctx"]
-    props = tool.inputSchema["properties"]
+    props = tool.input_schema["properties"]
     assert "ctx" not in props  # Context 注入参数不进 schema，注解须保持原样
     assert "求解总时限秒数" in props["read_timeout"]["description"]
 
@@ -236,15 +238,15 @@ def test_compact_description_keeps_nested_fields_examples_and_original_docstring
 
         original.append(configure.__doc__)
 
-    m = FastMCP("compact")
+    m = MCPServer("compact")
     register_tools_with_envelope(m, register, None)
     tool = asyncio.run(m.list_tools())[0]
     assert "Args:" in original[0]  # The source remains available for parameter injection.
     assert "Args:" not in tool.description
-    assert tool.inputSchema["properties"]["kind"]["description"] == (
+    assert tool.input_schema["properties"]["kind"]["description"] == (
         "Setting group (设置类别):\nlimit_state:\n    fatigue (MPa), steel_bar"
     )
-    assert "[] clears" in tool.inputSchema["properties"]["settings"]["description"]
+    assert "[] clears" in tool.input_schema["properties"]["settings"]["description"]
     assert "Returns:" in tool.description and "仅返回确认" in tool.description
     assert 'configure(kind="limit_state"' in tool.description
     assert "get_model_data" in tool.description and "get_check_data" in tool.description
@@ -266,7 +268,7 @@ def test_ambiguous_or_incomplete_args_layout_keeps_full_description(doc):
         example.__doc__ = doc
         mcp.tool()(example)
 
-    m = FastMCP("fallback")
+    m = MCPServer("fallback")
     register_tools_with_envelope(m, register, None)
     assert asyncio.run(m.list_tools())[0].description == doc
 
@@ -282,21 +284,21 @@ def test_explicit_description_is_respected_while_parameters_are_still_injected()
             """
             return name
 
-    m = FastMCP("explicit")
+    m = MCPServer("explicit")
     register_tools_with_envelope(m, register, None)
     tool = asyncio.run(m.list_tools())[0]
     assert tool.description == "Explicit public description."
-    assert "domain semantics" in tool.inputSchema["properties"]["name"]["description"]
+    assert "domain semantics" in tool.input_schema["properties"]["name"]["description"]
 
 
 def test_catalog_compaction_preserves_all_input_output_metadata_and_references(fake_provider):
-    full = FastMCP("full")
+    full = MCPServer("full")
     with patch("qiao_mcp.tools.envelope._compact_description", return_value=None):
         register_tool_catalog(full, fake_provider)
-    compact = FastMCP("compact")
+    compact = MCPServer("compact")
     register_tool_catalog(compact, fake_provider)
-    before = {t.name: t.model_dump() for t in asyncio.run(full.list_tools())}
-    after = {t.name: t.model_dump() for t in asyncio.run(compact.list_tools())}
+    before = {t.name: t.model_dump(by_alias=True) for t in asyncio.run(full.list_tools())}
+    after = {t.name: t.model_dump(by_alias=True) for t in asyncio.run(compact.list_tools())}
     assert before.keys() == after.keys()
     for name in before:
         old_description = before[name].pop("description")

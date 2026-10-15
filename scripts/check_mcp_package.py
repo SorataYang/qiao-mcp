@@ -52,21 +52,21 @@ async def inspect_package(
                 offset = 0
                 while True:
                     page = await session.call_tool("search_operations", {"offset": offset, "limit": 50})
-                    assert not page.isError
-                    discovered.extend(item["operation"] for item in page.structuredContent["items"])
-                    offset = page.structuredContent["next_offset"]
+                    assert not page.is_error
+                    discovered.extend(item["operation"] for item in page.structured_content["items"])
+                    offset = page.structured_content["next_offset"]
                     if offset is None:
                         break
                 schema = await session.call_tool("get_operation_schema", {"operation": "get_model_status"})
-                assert not schema.isError and "inputSchema" in schema.structuredContent
+                assert not schema.is_error and "inputSchema" in schema.structured_content
                 executed = await session.call_tool("execute_operation", {
                     "operation": "check_qiaotong_connection", "arguments": {},
                 })
                 rejected = await session.call_tool("execute_operation", {
                     "operation": "create_nodes", "arguments": {"unexpected": True},
                 })
-                assert not executed.isError and executed.structuredContent
-                assert rejected.isError
+                assert not executed.is_error and executed.structured_content
+                assert rejected.is_error
             if catalog_layout == "domains":
                 domain_connection = await session.call_tool("inspect_bridge", {
                     "request": {"operation": "check_qiaotong_connection"},
@@ -79,19 +79,19 @@ async def inspect_package(
                 cross_domain_error = await session.call_tool("inspect_bridge", {
                     "request": {"operation": "initialize_model", "confirm": True},
                 })
-                assert not domain_connection.isError and domain_connection.structuredContent
-                assert domain_connection.structuredContent["connection_status"] == "software_not_running"
-                assert domain_query_error.isError and cross_domain_error.isError
+                assert not domain_connection.is_error and domain_connection.structured_content
+                assert domain_connection.structured_content["connection_status"] == "software_not_running"
+                assert domain_query_error.is_error and cross_domain_error.is_error
 
-    assert initialized.serverInfo.name == "qiao-mcp"
-    assert initialized.serverInfo.version == expected_version, initialized.serverInfo
+    assert initialized.server_info.name == "qiao-mcp"
+    assert initialized.server_info.version == expected_version, initialized.server_info
     assert initialized.instructions and "get_model_status" in initialized.instructions
     assert len(tools) == expected_tools, f"Expected {expected_tools} tools, got {len(tools)}"
     assert len(resources) == 7 and len(prompts) == 5
     assert "analyze_transversal" in {prompt.name for prompt in prompts}
     parameters = [
         (tool.name, name, schema)
-        for tool in tools for name, schema in tool.inputSchema.get("properties", {}).items()
+        for tool in tools for name, schema in tool.input_schema.get("properties", {}).items()
     ]
     missing = [f"{tool}.{name}" for tool, name, schema in parameters if not schema.get("description")]
     assert not missing, f"Missing parameter descriptions: {missing}"
@@ -101,21 +101,21 @@ async def inspect_package(
     if catalog_layout == "discovery":
         image_tools = {"execute_operation"}
     for tool in tools:
-        assert (tool.outputSchema is None) == (tool.name in image_tools), tool.name
-    assert not connection.isError and connection.structuredContent
-    assert connection.structuredContent["connection_status"] == "software_not_running"
-    assert connection.structuredContent["connected"] is False
-    assert not readiness.isError and readiness.structuredContent
-    assert readiness.structuredContent["status"] in {"not_connected", "api_unavailable"}
-    assert invalid_query.isError, "Invalid nested query inputs must use the MCP error channel"
-    assert invalid.isError, "Invalid arguments must use the MCP error channel"
+        assert (tool.output_schema is None) == (tool.name in image_tools), tool.name
+    assert not connection.is_error and connection.structured_content
+    assert connection.structured_content["connection_status"] == "software_not_running"
+    assert connection.structured_content["connected"] is False
+    assert not readiness.is_error and readiness.structured_content
+    assert readiness.structured_content["status"] in {"not_connected", "api_unavailable"}
+    assert invalid_query.is_error, "Invalid nested query inputs must use the MCP error channel"
+    assert invalid.is_error, "Invalid arguments must use the MCP error channel"
     operations = discovered if catalog_layout == "discovery" else [tool.name for tool in tools]
     operation_parameters = len(parameters)
     if catalog_layout == "domains":
         operations = []
         operation_parameters = 0
         for tool in tools:
-            schema = tool.inputSchema
+            schema = tool.input_schema
             branches = schema["properties"]["request"]["discriminator"]["mapping"]
             operations.extend(branches)
             for ref in branches.values():
@@ -128,8 +128,8 @@ async def inspect_package(
         output.write_text(json.dumps({
             "catalog_layout": catalog_layout,
             "operations": operations,
-            "initialize": initialized.model_dump(mode="json", exclude_none=True),
-            "tools": [tool.model_dump(mode="json", exclude_none=True) for tool in tools],
+            "initialize": initialized.model_dump(mode="json", by_alias=True, exclude_none=True),
+            "tools": [tool.model_dump(mode="json", by_alias=True, exclude_none=True) for tool in tools],
         }, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({
         "version": expected_version,
@@ -141,7 +141,7 @@ async def inspect_package(
         "resources": len(resources),
         "prompts": len(prompts),
         "instructions": True,
-        "output_schemas": sum(tool.outputSchema is not None for tool in tools),
+        "output_schemas": sum(tool.output_schema is not None for tool in tools),
         "structured_response": True,
         "invalid_input_is_error": True,
     }))

@@ -5,10 +5,10 @@ MCP Prompts for bridge design workflows.
 Provides guided workflow templates for common bridge design scenarios.
 """
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 
-def register_prompts(mcp: FastMCP):
+def register_prompts(mcp: MCPServer):
     """Register all MCP prompts."""
 
     @mcp.prompt()

@@ -1,6 +1,6 @@
 """Canonical tool registration, also usable for offline schema inspection."""
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools import register_modeling_tools
@@ -39,7 +39,7 @@ TOOL_REGISTRARS = (
 )
 
 
-def register_tool_catalog(mcp: FastMCP, provider: BridgeProvider) -> None:
+def register_tool_catalog(mcp: MCPServer, provider: BridgeProvider) -> None:
     """Register the same complete catalog for the server and offline validation."""
     for registrar in TOOL_REGISTRARS:
         register_tools_with_envelope(mcp, registrar, provider)

@@ -6,11 +6,11 @@ from functools import reduce
 from operator import or_
 from typing import Annotated, Any, Literal
 
-from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.tools.base import Tool as RegisteredTool
-from mcp.types import Tool, ToolAnnotations
+from mcp.server.mcpserver import Context
+from mcp.types import CallToolResult, InputRequiredResult, Tool, ToolAnnotations
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, create_model
 
+from qiao_mcp.registration import OperationServer, RegisteredTool
 from qiao_mcp.tools.domains import TOOL_DOMAINS, ToolDomain
 from qiao_mcp.tools.envelope import ToolInputError
 from qiao_mcp.tools.schemas import ObjectResult
@@ -78,25 +78,25 @@ def _bind_domain(domain: ToolDomain, operations: dict[str, RegisteredTool]) -> B
         output_schema["type"] = "object"
     annotations = [tool.annotations or ToolAnnotations() for tool in members]
     combined = ToolAnnotations(
-        readOnlyHint=all(a.readOnlyHint is True for a in annotations),
-        destructiveHint=any(a.destructiveHint is not False for a in annotations),
-        idempotentHint=all(a.idempotentHint is True for a in annotations),
-        openWorldHint=any(a.openWorldHint is not False for a in annotations),
+        read_only_hint=all(a.read_only_hint is True for a in annotations),
+        destructive_hint=any(a.destructive_hint is not False for a in annotations),
+        idempotent_hint=all(a.idempotent_hint is True for a in annotations),
+        open_world_hint=any(a.open_world_hint is not False for a in annotations),
     )
     return BoundDomain(
         tool=Tool(
             name=domain.name,
             title=domain.title,
             description=domain.description,
-            inputSchema=envelope.model_json_schema(),
-            outputSchema=output_schema,
+            input_schema=envelope.model_json_schema(),
+            output_schema=output_schema,
             annotations=combined,
         ),
         request_adapter=TypeAdapter(envelope),
     )
 
 
-class DomainFastMCP(FastMCP):
+class DomainMCPServer(OperationServer):
     """List domain schemas and dispatch both domain and legacy tool calls.
 
     The registered operation catalog remains the single source of argument
@@ -114,8 +114,8 @@ class DomainFastMCP(FastMCP):
         self._bound_domains: dict[str, BoundDomain] = {}
         self._catalog_key: tuple[int, ...] | None = None
         super().__init__(name, **kwargs)
-        self._discovery = FastMCP("operation-discovery")
-        readonly = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+        self._discovery = OperationServer("operation-discovery")
+        readonly = ToolAnnotations(read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=False)
 
         @self._discovery.tool(annotations=readonly)
         def search_operations(
@@ -135,7 +135,7 @@ class DomainFastMCP(FastMCP):
                 raise ToolInputError(f"Unknown domain: {domain}")
             terms = re.findall(r"[\w]+", query.casefold())
             matches = []
-            for tool in self._tool_manager.list_tools():
+            for tool in list(self.registered_tools.values()):
                 if domain and domains.get(tool.name) != domain:
                     continue
                 searchable = f"{tool.name} {tool.description}".casefold()
@@ -147,7 +147,7 @@ class DomainFastMCP(FastMCP):
             items = [{
                 "operation": tool.name, "domain": domains.get(tool.name),
                 "description": tool.description.strip().split("\n\n")[0][:350],
-                "annotations": tool.annotations.model_dump() if tool.annotations else {},
+                "annotations": tool.annotations.model_dump(by_alias=True) if tool.annotations else {},
             } for _, tool in matches[offset:offset + limit]]
             return SearchResult(status="success", items=items, total=len(matches),
                                 next_offset=offset + limit if offset + limit < len(matches) else None)
@@ -161,15 +161,15 @@ class DomainFastMCP(FastMCP):
             No backend access. Pass its input fields as execute_operation.arguments;
             preserve any nested request field. Schema availability is not desktop capability.
             """
-            tool = self._tool_manager.get_tool(operation)
+            tool = self.registered_tools.get(operation)
             if tool is None:
                 raise ToolInputError(f"Unknown operation: {operation}")
             return OperationSchemaResult(status="success", operation=tool.name, description=tool.description,
                                 inputSchema=tool.parameters, outputSchema=tool.output_schema,
-                                annotations=tool.annotations.model_dump() if tool.annotations else {})
+                                annotations=tool.annotations.model_dump(by_alias=True) if tool.annotations else {})
 
         @self._discovery.tool(structured_output=False, annotations=ToolAnnotations(
-            readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=True,
+            read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=True,
         ))
         def execute_operation(
             operation: Annotated[str, Field(description="Exact operation name; read get_operation_schema first (先查操作定义).")],
@@ -184,7 +184,7 @@ class DomainFastMCP(FastMCP):
             raise RuntimeError("Execution is dispatched by the owning server")
 
     def _domains(self) -> dict[str, BoundDomain]:
-        registered = self._tool_manager.list_tools()
+        registered = list(self.registered_tools.values())
         key = tuple(id(tool) for tool in registered)
         if key != self._catalog_key:
             operations = {tool.name: tool for tool in registered}
@@ -210,16 +210,18 @@ class DomainFastMCP(FastMCP):
             return await super().list_tools()
         return [domain.tool for domain in self._domains().values()]
 
-    async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
-        discovery = self._discovery._tool_manager.get_tool(name)
+    async def call_tool(
+        self, name: str, arguments: dict[str, Any], context: Context | None = None,
+    ) -> CallToolResult | InputRequiredResult:
+        discovery = self._discovery.registered_tools.get(name)
         if discovery is not None:
             try:
                 if set(arguments) - set(discovery.parameters["properties"]):
                     raise ValueError("Unexpected discovery argument")
                 parsed = discovery.fn_metadata.arg_model.model_validate(arguments).model_dump_one_level()
                 if name != "execute_operation":
-                    return await self._discovery.call_tool(name, arguments)
-                selected = self._tool_manager.get_tool(parsed["operation"])
+                    return await self._discovery.call_tool(name, arguments, context)
+                selected = self.registered_tools.get(parsed["operation"])
                 if selected is None:
                     raise ValueError(f"Unknown operation: {parsed['operation']}")
                 if set(parsed["arguments"]) - set(selected.parameters["properties"]):
@@ -227,10 +229,10 @@ class DomainFastMCP(FastMCP):
                 selected.fn_metadata.arg_model.model_validate(parsed["arguments"])
             except (ValueError, ValidationError) as exc:
                 raise ToolInputError(f"Invalid request for {name}: {exc}") from exc
-            return await super().call_tool(parsed["operation"], parsed["arguments"])
+            return await super().call_tool(parsed["operation"], parsed["arguments"], context)
         # Legacy clients retain their exact entry points and response behavior.
-        if self._tool_manager.get_tool(name) is not None:
-            return await super().call_tool(name, arguments)
+        if self.registered_tools.get(name) is not None:
+            return await super().call_tool(name, arguments, context)
         domain = self._domains().get(name)
         if domain is None:
             raise ToolInputError(f"Unknown tool: {name}")
@@ -244,4 +246,4 @@ class DomainFastMCP(FastMCP):
         selected = arguments["request"]
         operation = selected["operation"]
         fields = {key: value for key, value in selected.items() if key != "operation"}
-        return await super().call_tool(operation, fields)
+        return await super().call_tool(operation, fields, context)

@@ -15,9 +15,9 @@ from unittest.mock import Mock
 
 import pytest
 from conftest import ready_model_state
-from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers.qtmodel_provider import QtModelProvider
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.resources import register_resources
 from qiao_mcp.tools import register_modeling_tools
 from qiao_mcp.tools.advanced_boundary import register_advanced_boundary_tools
@@ -74,9 +74,9 @@ def _real_provider():
 
 
 def _tools(register, provider):
-    mcp = FastMCP("t")
+    mcp = MCPServer("t")
     register_tools_with_envelope(mcp, register, provider)
-    return {t.name: t.fn for t in mcp._tool_manager.list_tools()}
+    return {t.name: t.fn for t in mcp.registered_tools.values()}
 
 
 # ── 建模：批量节点/单元的真实下发 ─────────────────────────────────────
@@ -240,7 +240,7 @@ def test_typed_model_queries_preserve_wire_fields_in_tool_json(wire, kind, heade
 def test_material_resource_serializes_typed_records(wire):
     row = {"index": 7, "name": "C50", "mat_type": 1, "future_server_field": "kept"}
     wire._response = json.dumps([row])
-    server = FastMCP("resource-test")
+    server = MCPServer("resource-test")
     register_resources(server, _real_provider())
     contents = list(asyncio.run(server.read_resource("bridge://model/materials")))
     assert json.loads(contents[0].content) == [row]

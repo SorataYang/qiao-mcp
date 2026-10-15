@@ -10,7 +10,7 @@ single discover-then-call surface instead of one wrapper tool per method.
 import json
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError
@@ -22,7 +22,7 @@ from qiao_mcp.tools.schemas import (
 )
 
 
-def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
+def register_api_gateway_tools(mcp: MCPServer, provider: BridgeProvider) -> None:
     """Register the qtmodel API discovery + call gateway."""
 
     @mcp.tool()

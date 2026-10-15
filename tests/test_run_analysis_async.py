@@ -6,8 +6,8 @@ import time
 
 import pytest
 from conftest import FakeDb, ready_model_state, tool_text
-from mcp.server.fastmcp import FastMCP
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools import register_modeling_tools
 from qiao_mcp.tools.envelope import register_tools_with_envelope
 
@@ -37,9 +37,9 @@ def _provider_with_solve(solve_fn):
 
 
 def _run_analysis_fn(provider):
-    mcp = FastMCP("t")
+    mcp = MCPServer("t")
     register_tools_with_envelope(mcp, register_modeling_tools, provider)
-    return {t.name: t.fn for t in mcp._tool_manager.list_tools()}["run_analysis"]
+    return {t.name: t.fn for t in mcp.registered_tools.values()}["run_analysis"]
 
 
 @pytest.mark.parametrize("show_view", [False, True])

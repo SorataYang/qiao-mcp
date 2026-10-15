@@ -16,7 +16,7 @@ All list outputs are paginated (limit/offset) to protect the LLM context window.
 import json
 from typing import Any, Literal
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from pydantic import StrictInt, TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
@@ -83,7 +83,7 @@ def _paginate(data: Any, limit: int, offset: int) -> str:
     return f"{header}\n{_fmt(window)}"
 
 
-def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
+def register_query_tools(mcp: MCPServer, provider: BridgeProvider) -> None:
     """Register consolidated read-only query tools."""
 
     @mcp.tool()

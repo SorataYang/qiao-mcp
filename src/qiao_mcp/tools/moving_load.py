@@ -9,7 +9,7 @@ node tandems (节点纵列) → influence planes (影响面) → lane lines (车
 
 from typing import Any, Literal
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from pydantic import StrictBool, TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
@@ -21,7 +21,7 @@ from qiao_mcp.tools.schemas import DataResult, MessageResult
 _SUB_CASE_ADAPTER = TypeAdapter(LiveLoadSubCases)
 
 
-def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
+def register_moving_load_tools(mcp: MCPServer, provider: BridgeProvider):
     """Register moving load MCP tools."""
 
     @mcp.tool()

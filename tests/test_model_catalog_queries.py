@@ -7,8 +7,8 @@ from unittest.mock import Mock
 
 import pytest
 from conftest import tool_fns
-from mcp.server.fastmcp import FastMCP
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools.envelope import ToolError, register_tools_with_envelope
 from qiao_mcp.tools.queries import register_query_tools
 
@@ -80,7 +80,7 @@ def test_real_catalog_constructor_keeps_http_fields(fake_provider, monkeypatch, 
 @pytest.mark.parametrize("kind", ["material_detail", "load_case_detail", "load_combination_detail", "element_section"])
 @pytest.mark.parametrize("ids", [None, [], [1, 2], True, 1.5, 0, -1, "1to2", "7", [True]])
 def test_details_reject_ambiguous_ids_before_query(fake_provider, kind, ids):
-    mcp = FastMCP("catalog-details")
+    mcp = MCPServer("catalog-details")
     register_tools_with_envelope(mcp, register_query_tools, fake_provider)
     with pytest.raises(ToolError):
         asyncio.run(mcp.call_tool("get_model_data", {"kind": kind, "ids": ids}))

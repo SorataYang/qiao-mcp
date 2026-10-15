@@ -8,14 +8,14 @@ import pytest
 from conftest import PNG_BYTES
 from mcp.types import ImageContent
 
-from qiao_mcp.domain_server import DomainFastMCP
+from qiao_mcp.domain_server import DomainMCPServer
 from qiao_mcp.tools.catalog import register_tool_catalog
 from qiao_mcp.tools.envelope import ToolError
 
 
 @pytest.fixture
 def server(fake_provider):
-    server = DomainFastMCP("discovery")
+    server = DomainMCPServer("discovery")
     register_tool_catalog(server, fake_provider)
     return server
 
@@ -35,7 +35,7 @@ def test_initial_catalog_is_small_and_complete_catalog_is_reachable(server, fake
     names = []
     offset = 0
     while True:
-        page = call(server, "search_operations", offset=offset, limit=50)[1]
+        page = call(server, "search_operations", offset=offset, limit=50).structured_content
         names.extend(item["operation"] for item in page["items"])
         offset = page["next_offset"]
         if offset is None:
@@ -43,9 +43,9 @@ def test_initial_catalog_is_small_and_complete_catalog_is_reachable(server, fake
     assert set(names) == {tool.name for tool in flat}
     assert len(names) == len(set(names))
     for tool in flat:
-        details = call(server, "get_operation_schema", operation=tool.name)[1]
-        assert details["inputSchema"] == tool.inputSchema
-        assert details["outputSchema"] == tool.outputSchema
+        details = call(server, "get_operation_schema", operation=tool.name).structured_content
+        assert details["inputSchema"] == tool.input_schema
+        assert details["outputSchema"] == tool.output_schema
     fake_provider.ensure_operation_allowed.assert_not_called()
 
 
@@ -54,7 +54,7 @@ def test_initial_catalog_is_small_and_complete_catalog_is_reachable(server, fake
     ("截面", "create_section"), ("self weight", "set_self_weight_stage"),
 ])
 def test_english_and_chinese_search(server, query, expected):
-    matches = call(server, "search_operations", query=query, limit=50)[1]["items"]
+    matches = call(server, "search_operations", query=query, limit=50).structured_content["items"]
     assert expected in [item["operation"] for item in matches]
 
 
@@ -95,4 +95,4 @@ def test_discovered_image_retains_content_type(server, fake_provider, tmp_path):
     result = call(server, "execute_operation", operation="save_model_screenshot", arguments={
         "file_path": str(target), "view_angle": "current", "return_image": True,
     })
-    assert any(isinstance(item, ImageContent) for item in result)
+    assert any(isinstance(item, ImageContent) for item in result.content)

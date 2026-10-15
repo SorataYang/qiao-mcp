@@ -11,8 +11,8 @@ from collections.abc import Callable
 from contextlib import ExitStack
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.exceptions import ResourceError
+from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ResourceError
 
 from qiao_mcp.providers import BridgeProvider
 
@@ -33,7 +33,7 @@ def _read_model_resource(provider: BridgeProvider, query: Callable[[], Any]) -> 
         raise ResourceError(f"Unable to read model resource: {exc}") from exc
 
 
-def register_resources(mcp: FastMCP, provider: BridgeProvider):
+def register_resources(mcp: MCPServer, provider: BridgeProvider):
     """Register all MCP resources."""
 
     @mcp.resource("bridge://model/summary")

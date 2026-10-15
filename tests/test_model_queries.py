@@ -11,9 +11,9 @@ from unittest.mock import Mock
 
 import pytest
 from conftest import ready_model_state, tool_fns
-from mcp.server.fastmcp import FastMCP
 from pydantic import TypeAdapter
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools.envelope import ToolError, _operation_for, register_tools_with_envelope
 from qiao_mcp.tools.queries import register_query_tools
 from qiao_mcp.tools.schemas import ModelQuery
@@ -41,7 +41,7 @@ QUERIES = [
 
 @pytest.fixture
 def query_catalog(fake_provider):
-    mcp = FastMCP("model-queries")
+    mcp = MCPServer("model-queries")
     register_tools_with_envelope(mcp, register_query_tools, fake_provider)
     return mcp
 
@@ -52,9 +52,9 @@ def test_query_dispatch_keeps_native_page(query_catalog, fake_provider, query, m
             "has_more": True, "missing_ids": [999], "future_field": "kept"}
     fn = Mock(return_value=page)
     setattr(fake_provider._mdb, method, fn)
-    _, result = asyncio.run(query_catalog.call_tool("query_model_data", {
+    result = asyncio.run(query_catalog.call_tool("query_model_data", {
         "request": {**query, "limit": 2, "offset": 40},
-    }))
+    })).structured_content
     assert result == {"status": "success", "data": page}
     assert "total" not in result["data"]
     kwargs = fn.call_args.kwargs
@@ -143,7 +143,7 @@ def test_query_allowed_without_write_permission(query_catalog, fake_provider):
     state["model_state"]["capabilities"]["modify_model"] = False
     fake_provider.get_model_state = lambda: state
     fake_provider._mdb.query_element_data = Mock(return_value={"items": [], "has_more": False})
-    _, result = asyncio.run(query_catalog.call_tool("query_model_data", {"request": {"kind": "elements"}}))
+    result = asyncio.run(query_catalog.call_tool("query_model_data", {"request": {"kind": "elements"}})).structured_content
     assert result["data"]["items"] == []
     assert fake_provider._mdb.calls == []
 
@@ -183,15 +183,15 @@ def test_section_page_keeps_truncation_missing_ids_and_input_order(fake_provider
 
 def test_query_schema_is_discriminated_closed_and_readonly(query_catalog):
     tool = next(t for t in asyncio.run(query_catalog.list_tools()) if t.name == "query_model_data")
-    request = tool.inputSchema["properties"]["request"]
+    request = tool.input_schema["properties"]["request"]
     assert request["discriminator"]["propertyName"] == "kind"
     assert len(request["oneOf"]) == 6
-    for schema in tool.inputSchema["$defs"].values():
+    for schema in tool.input_schema["$defs"].values():
         assert schema["additionalProperties"] is False
         assert all(field.get("description") for field in schema["properties"].values())
-    assert tool.annotations.readOnlyHint and tool.annotations.idempotentHint
-    assert not tool.annotations.destructiveHint
+    assert tool.annotations.read_only_hint and tool.annotations.idempotent_hint
+    assert not tool.annotations.destructive_hint
     assert _operation_for(tool.name) == "model_read"
-    assert "data" in tool.outputSchema["properties"]
+    assert "data" in tool.output_schema["properties"]
     # The cap differs only for the section endpoint.
     assert TypeAdapter(ModelQuery).validate_python({"kind": "elements", "limit": 500}).limit == 500

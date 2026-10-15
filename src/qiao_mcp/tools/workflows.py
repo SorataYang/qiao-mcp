@@ -3,7 +3,7 @@
 import math
 from typing import Annotated
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
 from qiao_mcp.providers import BridgeProvider
@@ -178,7 +178,7 @@ def _build_bridge(
     })
 
 
-def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
+def register_workflow_tools(mcp: MCPServer, provider: BridgeProvider):
     """Register workflows for standard straight bridge layouts."""
 
     @mcp.tool()

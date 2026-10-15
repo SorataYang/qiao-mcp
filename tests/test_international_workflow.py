@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 from conftest import ready_model_state
-from mcp.server.fastmcp import FastMCP
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools.catalog import register_tool_catalog
 from qiao_mcp.tools.envelope import ToolError
 
@@ -92,9 +92,9 @@ def test_definition_commit_references_explicit_solve_and_full_result_name(fake_p
     p._mdb.get_international_live_load_cases = lambda: list(records["cases"].values())
     p._mdb.update_operation_stage_setting = write_settings
     p._mdb.do_solve = solve
-    mcp = FastMCP("international-flow")
+    mcp = MCPServer("international-flow")
     register_tool_catalog(mcp, p)
-    fns = {t.name: t.fn for t in mcp._tool_manager.list_tools()}
+    fns = {t.name: t.fn for t in mcp.registered_tools.values()}
 
     fns["configure_live_load_system"](system=system)
     if standard == "EN1991":

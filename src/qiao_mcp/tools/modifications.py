@@ -8,7 +8,7 @@ sections, boundaries, and structure groups.
 
 from typing import Any, Literal
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from pydantic import StrictBool
 
 from qiao_mcp.providers import BridgeProvider
@@ -16,7 +16,7 @@ from qiao_mcp.tools.envelope import ToolError, ToolInputError
 from qiao_mcp.tools.schemas import FiniteNumber, NonnegativeNumber, QueryId, SelectedIds
 
 
-def register_modification_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
+def register_modification_tools(mcp: MCPServer, provider: BridgeProvider) -> None:
     """Register all modify-type MCP tools."""
 
     # ── 1. General model operations ───────────────────────────────────

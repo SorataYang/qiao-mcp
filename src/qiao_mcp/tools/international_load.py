@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from pydantic import TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
@@ -21,7 +21,7 @@ _VEHICLE_ADAPTER: TypeAdapter[InternationalVehicleWrite] = TypeAdapter(Internati
 _FACTORY_ADAPTER: TypeAdapter[En1991FactoryRequest] = TypeAdapter(En1991FactoryRequest)
 
 
-def register_international_load_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
+def register_international_load_tools(mcp: MCPServer, provider: BridgeProvider) -> None:
     """Keep the catalog stable across SDK versions; probe capabilities on use."""
 
     @mcp.tool()

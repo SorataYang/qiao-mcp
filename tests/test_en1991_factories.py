@@ -7,8 +7,8 @@ from unittest.mock import Mock
 
 import pytest
 from conftest import tool_fns
-from mcp.server.fastmcp import FastMCP
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools.envelope import ToolError, register_tools_with_envelope
 from qiao_mcp.tools.international_load import register_international_load_tools
 
@@ -99,7 +99,7 @@ def test_user_lm71_leaves_null_axles_for_the_native_four_axle_default(fake_provi
     ("user", {"load_type": "HSLMA", "point_load": 0}),
 ])
 def test_factory_invalid_or_ineffective_options_fail_before_guard(fake_provider, source, patch):
-    mcp = FastMCP("factory")
+    mcp = MCPServer("factory")
     register_tools_with_envelope(mcp, register_international_load_tools, fake_provider)
     fake_provider.ensure_operation_allowed = Mock()
     with pytest.raises(ToolError):
@@ -131,10 +131,10 @@ def test_factory_failures_do_not_replay_writes(fake_provider, source, failure):
 
 
 def test_factory_schema_separates_effective_standard_and_user_controls(fake_provider):
-    mcp = FastMCP("factory")
+    mcp = MCPServer("factory")
     register_tools_with_envelope(mcp, register_international_load_tools, fake_provider)
     tool = next(t for t in asyncio.run(mcp.list_tools()) if t.name == "create_en1991_vehicle")
-    schema = tool.inputSchema
+    schema = tool.input_schema
     assert schema["properties"]["request"]["discriminator"]["propertyName"] == "source"
     standard = schema["$defs"]["En1991StandardFactory"]
     user = schema["$defs"]["En1991UserFactory"]
@@ -143,5 +143,5 @@ def test_factory_schema_separates_effective_standard_and_user_controls(fake_prov
     assert {"p", "dis", "load_length", "num", "point_load"} <= user["properties"].keys()
     assert standard["additionalProperties"] is user["additionalProperties"] is False
     assert "name" in standard["required"] and "name" in user["required"]
-    assert tool.annotations.destructiveHint and not tool.annotations.readOnlyHint
-    assert tool.outputSchema
+    assert tool.annotations.destructive_hint and not tool.annotations.read_only_hint
+    assert tool.output_schema

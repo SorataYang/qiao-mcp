@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from pydantic import TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
@@ -21,7 +21,7 @@ from qiao_mcp.tools.schemas import MessageResult, PageLimit, PageOffset, QueryNa
 _REMOVAL_ADAPTER: TypeAdapter[TransversalRemoval] = TypeAdapter(TransversalRemoval)
 
 
-def register_transversal_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
+def register_transversal_tools(mcp: MCPServer, provider: BridgeProvider) -> None:
     """Register transversal definition tools independently of installed capabilities."""
 
     @mcp.tool()

@@ -4,7 +4,7 @@ import json
 
 import pytest
 from conftest import PNG_BASE64, PNG_BYTES, tool_fns
-from mcp.server.fastmcp import Image
+from mcp.server.mcpserver import Image
 
 from qiao_mcp.tools.envelope import ToolError
 from qiao_mcp.tools.visualization import register_visualization_tools

@@ -7,8 +7,8 @@ from unittest.mock import Mock
 
 import pytest
 from conftest import ready_model_state, tool_fns
-from mcp.server.fastmcp import FastMCP
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools.envelope import (
     ToolError,
     _annotations_for,
@@ -63,7 +63,7 @@ def test_real_settings_payload(qtmodel_wire, tool, method, header, args, payload
 
 @pytest.mark.parametrize("field", list(OPERATION)[:-1])
 def test_omitted_operation_selection_fails_before_guard(fake_provider, field):
-    mcp = FastMCP("configuration")
+    mcp = MCPServer("configuration")
     register_tools_with_envelope(mcp, register_moving_load_tools, fake_provider)
     fake_provider.ensure_operation_allowed = Mock()
     args = {k: v for k, v in OPERATION.items() if k != field}
@@ -78,7 +78,7 @@ def test_omitted_operation_selection_fails_before_guard(fake_provider, field):
     {"system": "aashto", "clear_existing": 1},
 ])
 def test_bad_system_options_fail_before_guard(fake_provider, args):
-    mcp = FastMCP("configuration")
+    mcp = MCPServer("configuration")
     register_tools_with_envelope(mcp, register_moving_load_tools, fake_provider)
     fake_provider.ensure_operation_allowed = Mock()
     with pytest.raises(ToolError):
@@ -136,5 +136,5 @@ def test_settings_annotations_and_operation_classes():
     assert _operation_for("configure_operation_stage") == "stage_write"
     assert _operation_for("configure_live_load_system") == "model_write"
     for name in ("configure_operation_stage", "configure_live_load_system"):
-        assert _annotations_for(name).destructiveHint
-        assert not _annotations_for(name).readOnlyHint
+        assert _annotations_for(name).destructive_hint
+        assert not _annotations_for(name).read_only_hint

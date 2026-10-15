@@ -1,6 +1,6 @@
 """Complete base-model definitions, separate from legacy CSAN editing tools."""
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from pydantic import TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
@@ -28,7 +28,7 @@ def _commit_snapshot(provider: BridgeProvider, method: str, message: str, **kwar
         raise ToolError(f"Error writing model check snapshot (写入基础模型检算快照失败): {exc}") from exc
 
 
-def register_check_snapshot_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
+def register_check_snapshot_tools(mcp: MCPServer, provider: BridgeProvider) -> None:
     """Register fixed snapshot operations without changing legacy check contracts."""
 
     @mcp.tool()

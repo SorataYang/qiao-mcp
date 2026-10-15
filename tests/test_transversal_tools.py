@@ -8,8 +8,8 @@ from unittest.mock import Mock
 
 import pytest
 from conftest import ready_model_state, tool_fns
-from mcp.server.fastmcp import FastMCP
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools.envelope import ToolError, register_tools_with_envelope
 from qiao_mcp.tools.transversal import register_transversal_tools
 
@@ -86,7 +86,7 @@ def test_auto_id_is_read_not_guessed(fake_provider, kind):
     ("lane", {"distribution_widths": [1, False, 1]}),
 ])
 def test_invalid_definition_fails_before_guard(fake_provider, kind, patch):
-    mcp = FastMCP("transversal")
+    mcp = MCPServer("transversal")
     register_tools_with_envelope(mcp, register_transversal_tools, fake_provider)
     guard = Mock()
     fake_provider.ensure_operation_allowed = guard
@@ -244,7 +244,7 @@ def test_delete_defaults_to_no_cascade_and_preserves_rejection(fake_provider):
     {"kind": "lane", "index": True}, {"kind": "vehicle", "index": 9, "cascade": "true"},
 ])
 def test_deletion_invalid_selectors_fail_before_guard(fake_provider, selector):
-    mcp = FastMCP("transversal")
+    mcp = MCPServer("transversal")
     register_tools_with_envelope(mcp, register_transversal_tools, fake_provider)
     fake_provider.ensure_operation_allowed = Mock()
     with pytest.raises(ToolError):

@@ -18,9 +18,8 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    # mcp 2.0 移除了 mcp.server.fastmcp（FastMCP 更名为 mcp.server.mcpserver.MCPServer），
-    # 本项目锁定到已验证的 1.29 维护线，直至完成 2.x API 与并发语义迁移
-    "mcp[cli]>=1.29,<2",
+    # MCPServer 迁移以 2.3.0 为基线，暂限同一维护线。
+    "mcp[cli]>=2.3.0,<2.4",
     "numpy>=2.4.2",
     "openpyxl>=3.1.5",
     "pandas>=3.0.1",

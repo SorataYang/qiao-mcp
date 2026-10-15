@@ -8,7 +8,7 @@ and elastic supports (弹性支承).
 
 from typing import Any, Literal
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
@@ -22,7 +22,7 @@ from qiao_mcp.tools.schemas import (
 )
 
 
-def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
+def register_advanced_boundary_tools(mcp: MCPServer, provider: BridgeProvider):
     """Register advanced boundary condition MCP tools."""
 
     @mcp.tool()

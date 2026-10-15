@@ -11,7 +11,7 @@ import math
 from contextvars import copy_context
 from typing import Any, Literal, get_args
 
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.results import data_result
@@ -91,7 +91,7 @@ def _closed_polygon_loops(loops: dict[str, list[list[float]]]) -> dict[str, list
     return closed
 
 
-def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
+def register_modeling_tools(mcp: MCPServer, provider: BridgeProvider):
     """Register all modeling-related MCP tools."""
 
     @mcp.tool()

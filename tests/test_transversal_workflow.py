@@ -8,9 +8,9 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 from conftest import ready_model_state, tool_fns
-from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.prompts import register_prompts
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.tools import register_modeling_tools
 from qiao_mcp.tools.catalog import register_tool_catalog
 from qiao_mcp.tools.envelope import ToolError, register_tools_with_envelope
@@ -62,10 +62,10 @@ def test_real_result_constructor_preserves_full_name(fake_provider, monkeypatch,
 
 
 def test_mode_schema_rejects_unknown_before_guard(fake_provider):
-    mcp = FastMCP("result-modes")
+    mcp = MCPServer("result-modes")
     register_tools_with_envelope(mcp, register_modeling_tools, fake_provider)
     tool = next(t for t in asyncio.run(mcp.list_tools()) if t.name == "get_analysis_results")
-    assert tool.inputSchema["properties"]["case_name_mode"]["enum"] == ["static", "full"]
+    assert tool.input_schema["properties"]["case_name_mode"]["enum"] == ["static", "full"]
     fake_provider.ensure_operation_allowed = Mock()
     with pytest.raises(ToolError):
         asyncio.run(mcp.call_tool("get_analysis_results", {"result_type": "force", "case_name_mode": "guess"}))
@@ -73,7 +73,7 @@ def test_mode_schema_rejects_unknown_before_guard(fake_provider):
 
 
 def test_transversal_prompt_references_registered_tools(fake_provider):
-    mcp = FastMCP("prompts")
+    mcp = MCPServer("prompts")
     register_tool_catalog(mcp, fake_provider)
     register_prompts(mcp)
     prompts = asyncio.run(mcp.list_prompts())
@@ -122,9 +122,9 @@ def test_definitions_flow_through_actual_ids_and_explicit_analysis(fake_provider
         return {"state": "completed"}
 
     p._mdb.do_solve = solve
-    mcp = FastMCP("transversal-flow")
+    mcp = MCPServer("transversal-flow")
     register_tool_catalog(mcp, p)
-    fns = {tool.name: tool.fn for tool in mcp._tool_manager.list_tools()}
+    fns = {tool.name: tool.fn for tool in mcp.registered_tools.values()}
     fns["configure_live_load_system"](system="china_transversal")
     ids = {}
     for kind in ("vehicle", "lane", "case"):

@@ -11,7 +11,7 @@ import pytest
 from conftest import PNG_BYTES
 from mcp.types import ImageContent
 
-from qiao_mcp.domain_server import DomainFastMCP
+from qiao_mcp.domain_server import DomainMCPServer
 from qiao_mcp.tools.catalog import register_tool_catalog
 from qiao_mcp.tools.domains import TOOL_DOMAINS
 from qiao_mcp.tools.envelope import ToolError
@@ -19,7 +19,7 @@ from qiao_mcp.tools.envelope import ToolError
 
 @pytest.fixture
 def domain_server(fake_provider):
-    server = DomainFastMCP("domain-test", catalog_layout="domains")
+    server = DomainMCPServer("domain-test", catalog_layout="domains")
     register_tool_catalog(server, fake_provider)
     return server
 
@@ -30,11 +30,11 @@ def _call(server, domain, operation, **fields):
 
 def test_default_catalog_covers_every_registered_operation_once(domain_server):
     domains = asyncio.run(domain_server.list_tools())
-    operations = {tool.name: tool for tool in domain_server._tool_manager.list_tools()}
+    operations = {tool.name: tool for tool in domain_server.registered_tools.values()}
     assert len(domains) == 15 and len(operations) == 156
     seen = []
     for domain in domains:
-        schema = domain.inputSchema
+        schema = domain.input_schema
         jsonschema.Draft202012Validator.check_schema(schema)
         assert schema["additionalProperties"] is False
         request = schema["properties"]["request"]
@@ -53,24 +53,24 @@ def test_default_catalog_covers_every_registered_operation_once(domain_server):
                 assert ("default" in advertised) == ("default" in info)
                 assert advertised.get("default") == info.get("default")
         if domain.name == "view_model":
-            assert domain.outputSchema is None  # Supports MCP image content.
+            assert domain.output_schema is None  # Supports MCP image content.
         else:
-            assert domain.outputSchema["type"] == "object"
-            jsonschema.Draft202012Validator.check_schema(domain.outputSchema)
+            assert domain.output_schema["type"] == "object"
+            jsonschema.Draft202012Validator.check_schema(domain.output_schema)
     assert len(seen) == len(set(seen)) and set(seen) == set(operations)
 
 
 def test_flat_layout_exposes_all_legacy_tools(fake_provider):
-    server = DomainFastMCP("flat-test", catalog_layout="flat")
+    server = DomainMCPServer("flat-test", catalog_layout="flat")
     register_tool_catalog(server, fake_provider)
     tools = asyncio.run(server.list_tools())
-    assert {tool.name for tool in tools} == {tool.name for tool in server._tool_manager.list_tools()}
+    assert {tool.name for tool in tools} == {tool.name for tool in server.registered_tools.values()}
     assert len(tools) == 156
 
 
 def test_unknown_layout_fails_explicitly():
     with pytest.raises(ValueError, match="QIAO_MCP_CATALOG_LAYOUT"):
-        DomainFastMCP("invalid", catalog_layout="partial")
+        DomainMCPServer("invalid", catalog_layout="partial")
 
 
 def test_adding_unassigned_operation_cannot_silently_hide_it(domain_server):
@@ -135,7 +135,7 @@ def test_nested_query_keeps_native_filters_and_structured_page(domain_server, fa
         request={"kind": "nodes", "node_ids": [1, 2], "limit": 2},
     )
     fake_provider.query_model_data.assert_called_once_with("nodes", node_ids=[1, 2], offset=0, limit=2)
-    assert result[1] == {"status": "success", "data": page}
+    assert result.structured_content == {"status": "success", "data": page}
 
 
 @pytest.mark.parametrize("fields,expected", [
@@ -169,14 +169,13 @@ def test_image_content_survives_domain_dispatch(domain_server, fake_provider, tm
         domain_server, "view_model", "save_model_screenshot",
         file_path=str(target), view_angle="current", return_image=True,
     )
-    image = next(item for item in result if isinstance(item, ImageContent))
+    image = next(item for item in result.content if isinstance(item, ImageContent))
     assert base64.b64decode(image.data) == PNG_BYTES
     assert target.read_bytes() == PNG_BYTES
 
 
 def test_domain_solve_keeps_context_progress_and_background_execution(domain_server, fake_provider, monkeypatch):
     context = Mock(report_progress=AsyncMock())
-    monkeypatch.setattr(domain_server, "get_context", lambda: context)
     solve_threads = []
 
     def solve(**kwargs):
@@ -191,8 +190,10 @@ def test_domain_solve_keeps_context_progress_and_background_execution(domain_ser
         return await real_wait(futures, timeout=0.01)
 
     monkeypatch.setattr(asyncio, "wait", short_heartbeat)
-    result = _call(domain_server, "analyze_model", "run_analysis", read_timeout=60)
-    assert result[1]["status"] == "success"
+    result = asyncio.run(domain_server.call_tool("analyze_model", {
+        "request": {"operation": "run_analysis", "read_timeout": 60},
+    }, context=context))
+    assert result.structured_content["status"] == "success"
     assert len(solve_threads) == 1
     assert solve_threads[0] != threading.current_thread().ident
     assert context.report_progress.await_count > 0
@@ -201,8 +202,8 @@ def test_domain_solve_keeps_context_progress_and_background_execution(domain_ser
 def test_domain_annotations_distinguish_diagnostics_from_writes(domain_server):
     domains = {tool.name: tool for tool in asyncio.run(domain_server.list_tools())}
     for name in ("inspect_bridge", "query_model", "query_results"):
-        assert domains[name].annotations.readOnlyHint is True
-        assert domains[name].annotations.destructiveHint is False
-    assert domains["edit_geometry"].annotations.destructiveHint is True
-    assert domains["access_backend"].annotations.openWorldHint is True
+        assert domains[name].annotations.read_only_hint is True
+        assert domains[name].annotations.destructive_hint is False
+    assert domains["edit_geometry"].annotations.destructive_hint is True
+    assert domains["access_backend"].annotations.open_world_hint is True
     assert {domain.name for domain in TOOL_DOMAINS} == set(domains)

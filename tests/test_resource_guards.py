@@ -5,9 +5,9 @@ import json
 import threading
 
 import pytest
-from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.exceptions import ResourceError
+from mcp.server.mcpserver.exceptions import ResourceError
 
+from qiao_mcp.registration import OperationServer as MCPServer
 from qiao_mcp.resources import register_resources
 
 RESOURCES = {
@@ -36,7 +36,7 @@ def test_resources_are_guarded_and_errors_are_not_data(fake_provider, path, meth
 
     fake_provider.ensure_operation_allowed = guard
     setattr(fake_provider, method, query)
-    server = FastMCP("resources")
+    server = MCPServer("resources")
     register_resources(server, fake_provider)
     if outcome == "empty":
         results = list(asyncio.run(server.read_resource(f"bridge://model/{path}")))
@@ -57,7 +57,7 @@ def test_resource_guard_and_query_do_not_block_event_loop(fake_provider):
         return []
 
     fake_provider.get_material_data = query
-    server = FastMCP("resources")
+    server = MCPServer("resources")
     register_resources(server, fake_provider)
 
     async def scenario():

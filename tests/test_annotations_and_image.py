@@ -5,7 +5,7 @@ import struct
 import zlib
 
 from conftest import tool_fns
-from mcp.server.fastmcp.utilities.types import Image as FastMCPImage
+from mcp.server.mcpserver.utilities.types import Image as MCPServerImage
 
 from qiao_mcp.tools.envelope import _annotations_for
 from qiao_mcp.tools.visualization import register_visualization_tools
@@ -32,9 +32,9 @@ _PNG_BYTES = _png_1x1()
 
 def test_readonly_annotation():
     a = _annotations_for("get_model_data")
-    assert a.readOnlyHint is True
-    assert a.destructiveHint is False
-    assert a.idempotentHint is True
+    assert a.read_only_hint is True
+    assert a.destructive_hint is False
+    assert a.idempotent_hint is True
 
 
 def test_destructive_annotation():
@@ -45,32 +45,31 @@ def test_destructive_annotation():
         "create_tendon_2d", "add_tendon_3d",
     ):
         a = _annotations_for(name)
-        assert a.destructiveHint is True, f"{name} 应标记为破坏性"
-        assert a.readOnlyHint is False
+        assert a.destructive_hint is True, f"{name} 应标记为破坏性"
+        assert a.read_only_hint is False
 
 
 def test_write_tool_is_neither_readonly_nor_destructive():
     a = _annotations_for("create_nodes")
-    assert a.readOnlyHint is False
-    assert a.destructiveHint is False
+    assert a.read_only_hint is False
+    assert a.destructive_hint is False
 
 
 def test_gateway_call_is_open_world():
-    assert _annotations_for("call_qtmodel_api").openWorldHint is True
-    assert _annotations_for("list_qtmodel_api").readOnlyHint is True
+    assert _annotations_for("call_qtmodel_api").open_world_hint is True
+    assert _annotations_for("list_qtmodel_api").read_only_hint is True
 
 
 def test_annotations_applied_on_registered_tools():
-    from mcp.server.fastmcp import FastMCP
-
+    from qiao_mcp.registration import OperationServer as MCPServer
     from qiao_mcp.tools import register_modeling_tools
     from qiao_mcp.tools.envelope import register_tools_with_envelope
 
-    mcp = FastMCP("t")
+    mcp = MCPServer("t")
     register_tools_with_envelope(mcp, register_modeling_tools, provider=None)
     tools = {t.name: t for t in asyncio.run(mcp.list_tools())}
-    assert tools["get_model_info"].annotations.readOnlyHint is True
-    assert tools["create_nodes"].annotations.readOnlyHint is False
+    assert tools["get_model_info"].annotations.read_only_hint is True
+    assert tools["create_nodes"].annotations.read_only_hint is False
 
 
 # ── 截图/云图返回图像内容 ──────────────────────────────────────────────
@@ -84,7 +83,7 @@ def test_screenshot_returns_image_content(fake_provider, tmp_path, monkeypatch):
     )
     fns = tool_fns(register_visualization_tools, fake_provider)
     result = fns["save_model_screenshot"](file_path=str(out), view_angle="current")
-    assert isinstance(result, FastMCPImage), "默认应返回可预览的图像内容"
+    assert isinstance(result, MCPServerImage), "默认应返回可预览的图像内容"
 
 
 def test_screenshot_path_only_when_disabled(fake_provider, tmp_path, monkeypatch):

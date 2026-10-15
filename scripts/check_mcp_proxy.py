@@ -17,9 +17,10 @@ import tempfile
 import time
 from pathlib import Path
 
+import httpx2
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 
 PROXY_VERSION = "6.7.19"
 BRIDGE_ENV = {
@@ -33,26 +34,27 @@ BRIDGE_ENV = {
 async def snapshot(session: ClientSession) -> dict:
     initialized = await session.initialize()
     return {
-        "initialize": initialized.model_dump(mode="json", exclude_none=True),
-        "tools": [t.model_dump(mode="json", exclude_none=True)
+        "initialize": initialized.model_dump(mode="json", by_alias=True, exclude_none=True),
+        "tools": [t.model_dump(mode="json", by_alias=True, exclude_none=True)
                   for t in (await session.list_tools()).tools],
-        "resources": [r.model_dump(mode="json", exclude_none=True)
+        "resources": [r.model_dump(mode="json", by_alias=True, exclude_none=True)
                       for r in (await session.list_resources()).resources],
-        "prompts": [p.model_dump(mode="json", exclude_none=True)
+        "prompts": [p.model_dump(mode="json", by_alias=True, exclude_none=True)
                     for p in (await session.list_prompts()).prompts],
     }
 
 
-async def compare(python: Path, cwd: str, port: int, version: str, catalog: Path) -> dict:
+async def compare(python: Path, cwd: str, port: int, version: str, catalog: Path, bridge_env: dict) -> dict:
     params = StdioServerParameters(
-        command=str(python), args=["-m", "qiao_mcp.server"], cwd=cwd, env=BRIDGE_ENV,
+        command=str(python), args=["-m", "qiao_mcp.server"], cwd=cwd, env=bridge_env,
     )
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
             direct = await snapshot(session)
-    async with streamablehttp_client(
-        f"http://127.0.0.1:{port}/mcp", timeout=15, sse_read_timeout=20,
-    ) as (read, write, _):
+    async with (
+        httpx2.AsyncClient(timeout=httpx2.Timeout(15, read=20)) as http_client,
+        streamable_http_client(f"http://127.0.0.1:{port}/mcp", http_client=http_client) as (read, write),
+    ):
         async with ClientSession(read, write) as session:
             proxy = await snapshot(session)
 
@@ -73,9 +75,12 @@ async def compare(python: Path, cwd: str, port: int, version: str, catalog: Path
         "output_schemas": sum(bool(t.get("outputSchema")) for t in tools),
         "resources": len(proxy["resources"]), "prompts": len(proxy["prompts"]),
     }
+    expected_tools, expected_parameters, expected_outputs = {
+        "discovery": (3, 7, 2), "domains": (15, 15, 14), "flat": (156, 608, 154),
+    }[bridge_env["QIAO_MCP_CATALOG_LAYOUT"]]
     assert counts == {
-        "tools": 153, "parameters": 596, "described_parameters": 596,
-        "output_schemas": 151, "resources": 7, "prompts": 5,
+        "tools": expected_tools, "parameters": expected_parameters, "described_parameters": expected_parameters,
+        "output_schemas": expected_outputs, "resources": 7, "prompts": 5,
     }
     return {
         "server_version": version, "proxy_version": PROXY_VERSION, **counts,
@@ -99,7 +104,8 @@ def main() -> None:
     # Keep the venv path itself; resolving its symlink would bypass the environment.
     python = args.python.absolute()
     output = args.output.absolute()
-    env = {**os.environ, **BRIDGE_ENV}
+    bridge_env = {**BRIDGE_ENV, "QIAO_MCP_CATALOG_LAYOUT": json.loads(args.catalog.read_text()).get("catalog_layout", "flat")}
+    env = {**os.environ, **bridge_env}
     with tempfile.TemporaryDirectory(prefix="qiao-proxy-candidate-") as cwd:
         installed = json.loads(subprocess.check_output([
             str(python), "-c",
@@ -134,7 +140,7 @@ def main() -> None:
                             raise TimeoutError("Proxy did not listen within 20 seconds") from None
                         time.sleep(0.15)
                 report = asyncio.run(asyncio.wait_for(compare(
-                    python, cwd, port, args.version, args.catalog.absolute(),
+                    python, cwd, port, args.version, args.catalog.absolute(), bridge_env,
                 ), timeout=30))
             finally:
                 try:

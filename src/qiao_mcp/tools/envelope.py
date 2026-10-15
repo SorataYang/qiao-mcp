@@ -2,7 +2,7 @@
 
 统一约定（供全部 @mcp.tool() 使用）：
 - 成功：返回 dict（结构化内容），或返回 str（自动包裹为 {status, message}）；
-- 失败：raise ToolError(...)（经 FastMCP 变为 isError 响应，客户端可识别）；
+- 失败：raise ToolError(...)（经 MCPServer 变为 isError 响应，客户端可识别）；
 - 校验拒绝：raise ToolInputError(...)，语义同 ToolError，但便于区分"用户/LLM
   输入不合法"与"后端执行失败"。
 
@@ -20,8 +20,8 @@ from collections.abc import Callable
 from contextlib import ExitStack, contextmanager
 from typing import Annotated, Any
 
-from mcp.server.fastmcp import Context
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver import Context
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 from pydantic import BaseModel, Field
 
@@ -173,11 +173,11 @@ def _annotations_for(name: str) -> ToolAnnotations:
     }
     is_destructive = name.startswith(_DESTRUCTIVE_PREFIXES) or name in _DESTRUCTIVE_NAMES
     return ToolAnnotations(
-        readOnlyHint=is_readonly,
-        destructiveHint=is_destructive,
+        read_only_hint=is_readonly,
+        destructive_hint=is_destructive,
         # 大多数写工具重复调用会累积状态；只读工具天然幂等
-        idempotentHint=is_readonly,
-        openWorldHint=name in _OPEN_WORLD_NAMES,
+        idempotent_hint=is_readonly,
+        open_world_hint=name in _OPEN_WORLD_NAMES,
     )
 
 
@@ -191,7 +191,7 @@ def _normalize(result: Any) -> Any:
         return {"status": "success"}
     if isinstance(result, str):
         return {"status": "success", "message": result}
-    # 其它类型（如 MCP Image / 富内容对象）原样透传，交由 FastMCP 序列化
+    # 其它类型（如 MCP Image / 富内容对象）原样透传，交由 MCPServer 序列化
     return result
 
 
@@ -228,7 +228,7 @@ def _outcome_unknown_error(error: BaseException) -> ToolError:
 
 
 # ── docstring Args → JSON Schema 参数描述 ────────────────────────────────
-# FastMCP 只从函数签名(类型注解 + Annotated 内的 Field)生成参数 schema，不解析
+# MCPServer 只从函数签名(类型注解 + Annotated 内的 Field)生成参数 schema，不解析
 # docstring。本项目各工具的参数说明都写在 Google 风格 docstring 的 Args 段里；
 # 若不回填到 schema，客户端 LLM 读不到参数级说明。这里在注册包装处解析
 # docstring 并注入 Annotated[..., Field(description=...)]，使 docstring 保持唯一
@@ -299,7 +299,7 @@ def _parse_arg_descriptions(doc: str | None) -> dict[str, str]:
 
 
 def _is_context_annotation(annotation: Any) -> bool:
-    """FastMCP 注入的 Context 参数必须保持原注解(它不进 schema)。"""
+    """MCPServer 注入的 Context 参数必须保持原注解(它不进 schema)。"""
     return isinstance(annotation, type) and issubclass(annotation, Context)
 
 
@@ -393,7 +393,7 @@ def _wrap(fn: Callable, provider: Any = None, operation: str = "connection") -> 
     - dict 原样返回（结构化）；
     - str 包裹为 {"status": "success", "message": str}；
     - None 视为无返回值的成功；
-    - 异常向上抛出，由 FastMCP 转为 ToolError 响应。
+    - 异常向上抛出，由 MCPServer 转为 ToolError 响应。
 
     同时支持同步与异步（async def）工具函数。
     """
@@ -446,8 +446,8 @@ def _wrap(fn: Callable, provider: Any = None, operation: str = "connection") -> 
                     raise
                 raise _outcome_unknown_error(e) from e
 
-    # Bare dict has no output schema in FastMCP 1.29. Preserve explicit response
-    # models, and describe normalized text/dict envelopes with concrete models.
+    # Preserve explicit response models and describe normalized text/dict
+    # envelopes with concrete models for a stable structured output contract.
     original_return = sig.return_annotation
     if isinstance(original_return, type) and issubclass(original_return, BaseModel):
         output_type = original_return

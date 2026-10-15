@@ -5,12 +5,12 @@ import json
 import threading
 from copy import deepcopy
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from conftest import ready_model_state, tool_fns
 
-from qiao_mcp.domain_server import DomainFastMCP
+from qiao_mcp.domain_server import DomainMCPServer
 from qiao_mcp.jobs import JobStore, start_job
 from qiao_mcp.providers.qtmodel_provider import QtModelProvider
 from qiao_mcp.tools.api_gateway import register_api_gateway_tools
@@ -86,7 +86,7 @@ def test_durable_job_submission_carries_native_instance(guarded_native, tmp_path
 def test_all_group_mutations_and_commits_keep_one_model(guarded_native, layout):
     provider, _, wire, sdk = guarded_native
     provider.get_model_state = Mock(side_effect=provider.get_model_state)
-    server = DomainFastMCP("guard-test", catalog_layout=layout)
+    server = DomainMCPServer("guard-test", catalog_layout=layout)
     register_tool_catalog(server, provider)
     fields = {"name": "girder", "element_ids": [2, 3]}
     if layout == "domains":
@@ -95,7 +95,7 @@ def test_all_group_mutations_and_commits_keep_one_model(guarded_native, layout):
         }))
     else:
         result = asyncio.run(server.call_tool("create_structure_group", fields))
-    assert result[1]["status"] == "success"
+    assert result.structured_content["status"] == "success"
     assert len(wire.calls) == 4
     assert [header for header, _ in wire.calls].count("UPDATE") == 2
     assert all(body["expected_model_instance_id"] == "project-a" for _, body in wire.calls)
@@ -220,9 +220,8 @@ def test_read_and_initialization_keep_their_payload_contracts(guarded_native):
 
 def test_analysis_worker_receives_instance_context(guarded_native, monkeypatch):
     provider, _, wire, sdk = guarded_native
-    server = DomainFastMCP("guard-solve")
+    server = DomainMCPServer("guard-solve")
     register_tool_catalog(server, provider)
-    monkeypatch.setattr(server, "get_context", lambda: Mock(report_progress=AsyncMock()))
     threads = []
 
     def solve(**kwargs):
@@ -234,7 +233,7 @@ def test_analysis_worker_receives_instance_context(guarded_native, monkeypatch):
     result = asyncio.run(server.call_tool("analyze_model", {
         "request": {"operation": "run_analysis", "read_timeout": 60},
     }))
-    assert result[1]["status"] == "success"
+    assert result.structured_content["status"] == "success"
     assert threads and threads[0] != threading.get_ident()
     assert wire.calls == [("DO-SOLVE", {"expected_model_instance_id": "project-a"})]
     assert_scope_cleared(sdk, wire)
