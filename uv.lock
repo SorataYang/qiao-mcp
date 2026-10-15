@@ -1086,15 +1086,15 @@ dev = [
 
 [[package]]
 name = "qtmodel"
-version = "2.9.2"
+version = "2.9.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "psutil" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ab/95/1501af7391187a759da93ef572fb18c9cd0cacb834897c4e55993b557ca3/qtmodel-2.9.2.tar.gz", hash = "sha256:af3eedcc466dfd4db76c6e7d1bcc72245c062448e5ae805882d4880ebcbf09db", size = 571343, upload-time = "2026-09-22T14:59:12.364Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2b/4e/de9ed519fe9cc2a6229bdda9e0faa8dbcffb6b1d2d4e31db6e8152e0032d/qtmodel-2.9.3.tar.gz", hash = "sha256:63fdfb2ce85bfc006774adefbec2e94be9d5ea5afdd0facabff31d61819ae86f", size = 614013, upload-time = "2026-10-13T08:41:30.873Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8d/e1/bbdd86a6cb81e14af007cd760b60d3257833c9b1dde952fe6fbc4c5fb2b0/qtmodel-2.9.2-py3-none-any.whl", hash = "sha256:3a363eca79c6fa48f6786c986301ee4a43c87f16a4d133ff8fa48c44fe443a41", size = 329343, upload-time = "2026-09-22T14:59:09.021Z" },
+    { url = "https://files.pythonhosted.org/packages/7a/12/9d708c9a255d83f72a5a074a5fb253e5ad882a88ea43ca8fd7fae0615bad/qtmodel-2.9.3-py3-none-any.whl", hash = "sha256:41c4bcf2704f465a6f7e016a6c0272144aa44e6432aa711cd87816df59ea07e6", size = 351930, upload-time = "2026-10-13T08:40:54.53Z" },
 ]
 
 [[package]]
