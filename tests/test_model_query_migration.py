@@ -68,6 +68,9 @@ def test_optional_queries_keep_legacy_odb_support(fake_provider):
 
 
 def test_group_validation_and_boundary_queries_use_mdb(fake_provider):
+    # This test exercises the old SDK collection fallback; native summary has separate tests.
+    fake_provider._mdb.get_model_summary = None
+    fake_provider._odb.get_model_summary = None
     for method in (
         "get_general_support_data", "get_elastic_link_data", "get_elastic_support_data",
         "get_master_slave_link_data", "get_beam_constraint_data", "get_node_data", "get_element_data",

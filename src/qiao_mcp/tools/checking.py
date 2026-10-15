@@ -11,10 +11,12 @@ from pydantic import TypeAdapter
 
 from qiao_mcp.execution import wait_for_operation
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.results import data_result
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
 from qiao_mcp.tools.schemas import (
     CheckDataKind,
     CheckSettingKind,
+    DataResult,
     FiniteNumber,
     PageLimit,
     PageOffset,
@@ -428,7 +430,7 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         name: str = "",
         limit: PageLimit = 100,
         offset: PageOffset = 0,
-    ) -> str:
+    ) -> DataResult:
         """
         Query concrete-check data by kind (按类型查询混凝土检算数据).
 
@@ -477,10 +479,10 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
             )
             if data is None or data == [] or data == {}:
                 return (
-                    f"No data for kind='{kind}' (无数据). "
-                    f"Check case may not be open or analysis not run."
+                    data_result(provider, "get_check_data", data, f"No data for kind='{kind}' (无数据). "
+                    f"Check case may not be open or analysis not run.", selectors={"kind": kind, "element_id": element_id, "stress_type": stress_type, "combine_type": combine_type, "name": name}, limit=limit, offset=offset)
                 )
-            return f"{kind}:\n{_paginate(data, limit, offset)}"
+            return data_result(provider, "get_check_data", data, f"{kind}:\n{_paginate(data, limit, offset)}", selectors={"kind": kind, "element_id": element_id, "stress_type": stress_type, "combine_type": combine_type, "name": name}, limit=limit, offset=offset)
         except ValueError as e:
             raise ToolInputError(
                 f"{e}. See tool description for valid kinds (未知查询类型，请查阅工具说明)"

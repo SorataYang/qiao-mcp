@@ -23,6 +23,15 @@
 读取定义可取得精确的操作级注解与输出 Schema。搜索返回分页摘要，避免一次传输完整目录。
 目录成本下降不等于已证明模型任务成功率提高；两者分别评估。
 
+当前开发版另有 3 个[持久任务操作](analysis-jobs.md)，共 156 项操作。
+
+模型概要与主要结果查询在兼容的 `message` 外增加 `data`、`source`、`pagination`、
+`units`、`coordinate_system` 和 `warnings`。机器读取应使用 `data` 中的原始数值；
+`pagination.scope=local` 表示仍先取回后端完整列表再切片，`backend` 表示保留原生分页。
+`source.selectors` 记录实际查询条件，包括普通静力工况补齐后的 `ST:` 名称。
+观测到的模型修订号不证明结果已按该修订求解；后端没有提供的单位/坐标系元数据为 null，
+需按操作和原生接口文档解释，不能当作已经统一换算。
+
 ## 领域调用示例
 
 读取模型状态，MCP `tools/call` 参数：

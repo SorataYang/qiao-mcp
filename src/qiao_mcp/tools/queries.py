@@ -20,8 +20,10 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import StrictInt, TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.results import data_result
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
 from qiao_mcp.tools.schemas import (
+    DataResult,
     EntitySearch,
     FiveNumbers,
     ModelDataKind,
@@ -124,7 +126,7 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         stage_id: int | None = None,
         limit: PageLimit = 100,
         offset: PageOffset = 0,
-    ) -> str:
+    ) -> DataResult:
         """
         Query model data by kind (按类型查询模型数据) — the single read tool for
         entities, loads, groups and stages. List results are paginated.
@@ -269,7 +271,7 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                     options.update(limit=limit, offset=offset)
                 data = provider.get_model_catalog_data(kind, **options)
                 if kind in _SERVER_PAGED_DETAILS:
-                    return f"{kind}:\n{_fmt(data)}"
+                    return data_result(provider, "get_model_data", data, f"{kind}:\n{_fmt(data)}", selectors={"kind": kind, "ids": ids, "name": name, "sec_id": sec_id, "position": position, "stage_id": stage_id}, limit=limit, offset=offset, backend_page=kind in _SERVER_PAGED_DETAILS)
             elif kind in _OVERVIEW_KINDS:
                 data = provider.get_model_overview(kind)
             else:
@@ -279,13 +281,13 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             if data is None or data == [] or data == {}:
                 if kind in _OVERVIEW_KINDS:
                     return (
-                        f"No data for kind='{kind}' (无数据). These overview kinds need "
+                        data_result(provider, "get_model_data", data, f"No data for kind='{kind}' (无数据). These overview kinds need "
                         "qtmodel 2.8+ and a QiaoTong build that serves them; on older "
                         "versions fall back to nodes/elements/… kinds "
-                        "(概览接口需 qtmodel 2.8+ 与对应桥通版本，旧版本请改用具体实体类型)."
+                        "(概览接口需 qtmodel 2.8+ 与对应桥通版本，旧版本请改用具体实体类型).", selectors={"kind": kind, "ids": ids, "name": name, "sec_id": sec_id, "position": position, "stage_id": stage_id}, limit=limit, offset=offset, backend_page=kind in _SERVER_PAGED_DETAILS)
                     )
-                return f"No data for kind='{kind}' (无数据). Model may be empty or analysis not run."
-            return f"{kind}:\n{_paginate(data, limit, offset)}"
+                return data_result(provider, "get_model_data", data, f"No data for kind='{kind}' (无数据). Model may be empty or analysis not run.", selectors={"kind": kind, "ids": ids, "name": name, "sec_id": sec_id, "position": position, "stage_id": stage_id}, limit=limit, offset=offset, backend_page=kind in _SERVER_PAGED_DETAILS)
+            return data_result(provider, "get_model_data", data, f"{kind}:\n{_paginate(data, limit, offset)}", selectors={"kind": kind, "ids": ids, "name": name, "sec_id": sec_id, "position": position, "stage_id": stage_id}, limit=limit, offset=offset, backend_page=kind in _SERVER_PAGED_DETAILS)
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
@@ -437,7 +439,7 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         increment_type: int = 1,
         limit: PageLimit = 100,
         offset: PageOffset = 0,
-    ) -> str:
+    ) -> DataResult:
         """
         Get special post-analysis results (专项分析结果查询) — beyond the basic
         deformation/force/stress/reaction of get_analysis_results.
@@ -511,8 +513,8 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                 raise ToolInputError(f"Unknown result kind '{kind}' (未知结果类型，请查阅工具说明)")
 
             if data is None or data == []:
-                return f"No results for kind='{kind}' (无结果). Has the analysis been run?"
-            return f"{kind}:\n{_paginate(data, limit, offset)}"
+                return data_result(provider, "get_special_results", data, f"No results for kind='{kind}' (无结果). Has the analysis been run?", selectors={"kind": kind, "ids": ids, "case_name": case_name, "node_id": node_id, "mode": mode, "stage_id": stage_id, "result_kind": result_kind, "envelop_type": envelop_type, "increment_type": increment_type}, limit=limit, offset=offset)
+            return data_result(provider, "get_special_results", data, f"{kind}:\n{_paginate(data, limit, offset)}", selectors={"kind": kind, "ids": ids, "case_name": case_name, "node_id": node_id, "mode": mode, "stage_id": stage_id, "result_kind": result_kind, "envelop_type": envelop_type, "increment_type": increment_type}, limit=limit, offset=offset)
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:

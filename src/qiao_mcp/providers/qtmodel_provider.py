@@ -47,6 +47,9 @@ class QtModelProvider(BridgeProvider):
     _checking_snapshot: ContextVar[tuple[int, dict[str, Any]] | None] = ContextVar(
         "qiao_mcp_checking_snapshot", default=None,
     )
+    _operation_snapshot: ContextVar[tuple[int, dict[str, Any]] | None] = ContextVar(
+        "qiao_mcp_operation_snapshot", default=None,
+    )
 
     def __init__(self):
         """Initialize the qtmodel provider and bind the qtmodel API objects.
@@ -394,7 +397,20 @@ class QtModelProvider(BridgeProvider):
                     if state.get("model_revision_uncertain") is True or state["pending_command_count"]:
                         raise RuntimeError("MODEL_REVISION_UNCERTAIN: 存在待提交或状态不确定的修改，请先在桥通中核对，勿自动撤销。")
                     stack.enter_context(bind_revision(state["model_revision"], state["history_revision"]))
-            yield
+            token = self._operation_snapshot.set((id(self), snapshot) if snapshot is not None else None)
+            try:
+                yield
+            finally:
+                self._operation_snapshot.reset(token)
+
+    def get_result_observation(self) -> dict[str, Any]:
+        """State observed at tool entry, not proof of numerical result freshness."""
+        bound = self._operation_snapshot.get()
+        state = bound[1].get("model_state", {}) if bound and bound[0] == id(self) else {}
+        return {
+            "observed_model_instance_id": state.get("model_instance_id"),
+            "observed_model_revision": state.get("model_revision"),
+        }
 
     @property
     def name(self) -> str:
@@ -1114,7 +1130,30 @@ class QtModelProvider(BridgeProvider):
 
     def get_model_summary(self) -> dict[str, Any]:
         self._require_available()
+        if callable(self._model_query_method("get_model_summary")):
+            native = self._query_model("get_model_summary")
+            if not isinstance(native, dict) or native.get("error") or native.get("has_project") is False:
+                raise RuntimeError("get_model_summary returned no valid model summary")
+            names = {
+                "node_count": "nodes", "element_count": "elements", "material_count": "materials",
+                "section_count": "sections", "stage_count": "construction_stages",
+                "load_case_count": "load_cases", "structure_group_count": "structure_groups",
+                "boundary_group_count": "boundary_groups",
+            }
+            counts = native.get("counts", {})
+            if not isinstance(counts, dict):
+                raise RuntimeError("get_model_summary returned invalid counts")
+            normalized = {}
+            for field, key in names.items():
+                value = counts.get(key, native.get(field))
+                if type(value) is not int or value < 0:
+                    raise RuntimeError(f"get_model_summary missing/invalid count: {key}")
+                normalized[field] = value
+            return {**native, **normalized, "summary_source": "native"}
+        # Only SDK absence permits full-collection fallback. A broken native
+        # read must remain an error, not silently fetch an entire large model.
         return {
+            "summary_source": "legacy_collections",
             "node_count":            self._count(self.get_node_data()),
             "element_count":         self._count(self.get_element_data()),
             "material_count":        self._count(self.get_material_data()),

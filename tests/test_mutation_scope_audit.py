@@ -104,6 +104,8 @@ def test_failed_collection_read_is_not_an_empty_model(fake_provider, method, res
 
 
 def test_summary_propagates_query_failure(fake_provider):
+    fake_provider._mdb.get_model_summary = None
+    fake_provider._odb.get_model_summary = None
     fake_provider._mdb.get_node_data = Mock(side_effect=RuntimeError("bridge read rejected"))
     with pytest.raises(RuntimeError, match="bridge read rejected"):
         fake_provider.get_model_summary()

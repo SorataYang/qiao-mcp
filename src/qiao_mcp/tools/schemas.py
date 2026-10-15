@@ -2,7 +2,15 @@
 
 from typing import Annotated, Any, Literal
 
-from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    JsonValue,
+    model_validator,
+)
 
 PositiveNumber = Annotated[float, Field(gt=0, allow_inf_nan=False)]
 FiniteNumber = Annotated[float, Field(allow_inf_nan=False)]
@@ -208,6 +216,34 @@ class MessageResult(ObjectResult):
 
     status: Literal["success"] = Field(description="The tool completed without an execution error.")
     message: str = Field(description="Operation summary, query results, or instructions for the next step.")
+
+
+class ResultPage(BaseModel):
+    scope: Literal["local", "backend", "none"] = Field(description="Where pagination occurred; local does not reduce backend transfer.")
+    offset: int = Field(ge=0, description="Offset of returned rows.")
+    limit: int | None = Field(description="Requested page size, null for non-paged replies.")
+    returned: int | None = Field(description="Rows in this page, null for non-list replies.")
+    total: int | None = Field(description="Total rows when known, never inferred from a partial backend page.")
+    next_offset: int | None = Field(description="Offset of next page when known.")
+
+
+class ResultSource(BaseModel):
+    software: str
+    adapter_version: str
+    operation: str
+    selectors: dict[str, JsonValue] = Field(description="Actual query selectors, including resolved case identifiers.")
+    read_at: str = Field(description="UTC response construction time, not analysis execution time.")
+    observed_model_instance_id: str | None = Field(description="Instance at the operation guard; not a result snapshot binding.")
+    observed_model_revision: str | None = Field(description="Revision at the operation guard; not proof that results match that revision.")
+
+
+class DataResult(MessageResult):
+    data: JsonValue = Field(description="Native JSON values, with numeric types and fields retained; local lists contain only the requested page.")
+    source: ResultSource
+    pagination: ResultPage
+    units: JsonValue = Field(description="Units explicitly returned by the backend, otherwise null; no inferred conversion.")
+    coordinate_system: JsonValue = Field(description="Coordinate system explicitly returned by the backend, otherwise null.")
+    warnings: list[str] = Field(description="Unknown provenance/units or empty-result caveats; empty is not proof of zero response.")
 
 
 class ConnectionResult(MessageResult):

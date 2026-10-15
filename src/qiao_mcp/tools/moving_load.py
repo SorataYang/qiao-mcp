@@ -13,9 +13,10 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import StrictBool, TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.results import data_result
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
 from qiao_mcp.tools.live_load_schemas import LiveLoadCaseNames, LiveLoadSubCases, LiveLoadSystem
-from qiao_mcp.tools.schemas import MessageResult
+from qiao_mcp.tools.schemas import DataResult, MessageResult
 
 _SUB_CASE_ADAPTER = TypeAdapter(LiveLoadSubCases)
 
@@ -367,7 +368,7 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         result_type: Literal["force", "stress", "deformation"] = "force",
         element_ids: list[int] | str = "",
         envelope_type: Literal[1, 2] = 1,
-    ) -> str:
+    ) -> DataResult:
         """
         Get moving load analysis results (获取移动荷载分析结果).
 
@@ -408,7 +409,7 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
                 ids=element_ids,
                 envelope_type=envelope_type,
             )
-            return str(result)
+            return data_result(provider, "get_live_load_results", result, str(result), selectors={"case_name": case_name, "result_type": result_type, "ids": element_ids, "envelope_type": envelope_type})
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:

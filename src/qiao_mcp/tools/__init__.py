@@ -14,9 +14,11 @@ from typing import Any, Literal, get_args
 from mcp.server.fastmcp import Context, FastMCP
 
 from qiao_mcp.providers import BridgeProvider
+from qiao_mcp.results import data_result
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
 from qiao_mcp.tools.schemas import (
     CurvePoints,
+    DataResult,
     FiniteNumber,
     FiveNumbers,
     FourNumbers,
@@ -3031,7 +3033,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             raise ToolError(f"Error validating model (模型验证失败): {e}") from e
 
     @mcp.tool()
-    def get_model_info() -> str:
+    def get_model_info() -> DataResult:
         """
         Read eight entity counts from the active bridge model (读取当前模型八类实体数量).
 
@@ -3050,7 +3052,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             summary = provider.get_model_summary()
             return (
-                f"📊 Bridge Model Summary (桥梁模型概要):\n"
+                data_result(provider, "get_model_info", summary, f"📊 Bridge Model Summary (桥梁模型概要):\n"
                 f"  Nodes (节点): {summary['node_count']}\n"
                 f"  Elements (单元): {summary['element_count']}\n"
                 f"  Materials (材料): {summary['material_count']}\n"
@@ -3058,7 +3060,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 f"  Construction Stages (施工阶段): {summary['stage_count']}\n"
                 f"  Load Cases (荷载工况): {summary['load_case_count']}\n"
                 f"  Structure Groups (结构组): {summary['structure_group_count']}\n"
-                f"  Boundary Groups (边界组): {summary['boundary_group_count']}"
+                f"  Boundary Groups (边界组): {summary['boundary_group_count']}", selectors={})
             )
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
@@ -3074,7 +3076,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         limit: int = 100,
         offset: int = 0,
         case_name_mode: Literal["static", "full"] = "static",
-    ) -> str:
+    ) -> DataResult:
         """
         Read solved displacements, element forces/stresses or support reactions
         for one analysis stage and case (读取指定阶段工况的结构计算结果).
@@ -3150,7 +3152,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             else:
                 raise ToolInputError(f"Unknown result_type '{result_type}'. "
                     "Available: deformation, force, stress, reaction")
-            return f"{result_type} results:\n{_paginate(result, limit, offset)}"
+            return data_result(provider, "get_analysis_results", result, f"{result_type} results:\n{_paginate(result, limit, offset)}", selectors={"result_type": result_type, "ids": ids, "stage_id": stage_id, "case_name": kwargs.get("case_name", ""), "case_name_mode": case_name_mode}, limit=limit, offset=offset)
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:

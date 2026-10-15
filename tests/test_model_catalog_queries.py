@@ -104,4 +104,4 @@ def test_catalog_failure_is_not_empty_success(fake_provider):
 def test_legacy_list_output_stays_paginated_text(fake_provider):
     fake_provider._mdb.get_node_data = Mock(return_value=[{"id": 1}, {"id": 2}])
     result = tool_fns(register_query_tools, fake_provider)["get_model_data"](kind="nodes", limit=1, offset=1)
-    assert result == {"status": "success", "message": 'nodes:\n[2–2 of 2]\n[\n  {\n    "id": 2\n  }\n]'}
+    assert {key: result[key] for key in ("status", "message")} == {"status": "success", "message": 'nodes:\n[2–2 of 2]\n[\n  {\n    "id": 2\n  }\n]'}
