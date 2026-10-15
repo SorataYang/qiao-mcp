@@ -11,9 +11,13 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-### 🔧 Tools (15 domain entry points, 153 operations)
+### 🔧 Tools (on-demand discovery, all engineering operations retained)
 
-Version 0.6.0 exposes 15 domain tools. Each takes a `request`
+The current development version defaults to `discovery`: `search_operations`,
+`get_operation_schema`, and `execute_operation`. Full schemas are loaded only
+for selected operations. Restart the server and refresh the client catalog after upgrading.
+
+Set `QIAO_MCP_CATALOG_LAYOUT=domains` for the 15 domain tools. Each takes a `request`
 with an `operation` selector and the matching fields; its schema includes every
 operation's full parameter descriptions, defaults and constraints. All 153 legacy
 names remain directly callable with their original arguments.

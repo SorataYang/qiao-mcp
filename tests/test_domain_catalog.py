@@ -19,7 +19,7 @@ from qiao_mcp.tools.envelope import ToolError
 
 @pytest.fixture
 def domain_server(fake_provider):
-    server = DomainFastMCP("domain-test")
+    server = DomainFastMCP("domain-test", catalog_layout="domains")
     register_tool_catalog(server, fake_provider)
     return server
 

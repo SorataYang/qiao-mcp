@@ -63,6 +63,7 @@ jobs:
       - name: Check packaged MCP protocol and catalog without QiaoTong
         run: |
           uv run --locked python scripts/check_mcp_package.py dist/*.whl
+          uv run --locked python scripts/check_mcp_package.py dist/*.whl --catalog-layout domains
           uv run --locked python scripts/check_mcp_package.py dist/*.whl --catalog-layout flat
 
       - name: Upload verified distributions

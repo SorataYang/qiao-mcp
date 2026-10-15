@@ -71,6 +71,16 @@ _CATALOG_GUIDE = (
     "with their original arguments; domain requests are also accepted.\n\n"
 )
 
+if _CATALOG_LAYOUT == "discovery":
+    _CATALOG_GUIDE = (
+        "The compact catalog loads operation schemas on demand. Use search_operations "
+        "with English/Chinese keywords, then get_operation_schema(operation=...) to read "
+        "the complete parameters and side effects. Call execute_operation(operation=..., "
+        "arguments={...}) with those original fields; preserve nested request fields. "
+        "Begin by describing and executing check_qiaotong_connection and get_model_status. "
+        "All original operations and domain calls remain callable for compatibility.\n\n"
+    )
+
 _SERVER_INSTRUCTIONS = (
     f"You are an AI assistant for bridge structural design "
     f"using {provider.get_software_name()} via Qiao-MCP.\n"

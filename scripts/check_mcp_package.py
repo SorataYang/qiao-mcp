@@ -17,7 +17,7 @@ from mcp.client.stdio import stdio_client
 
 
 async def inspect_package(
-    wheel: Path, expected_tools: int, output: Path | None, catalog_layout: str = "domains",
+    wheel: Path, expected_tools: int, output: Path | None, catalog_layout: str = "discovery",
 ) -> None:
     with zipfile.ZipFile(wheel) as archive:
         metadata_name = next(name for name in archive.namelist() if name.endswith(".dist-info/METADATA"))
@@ -47,6 +47,26 @@ async def inspect_package(
                 "request": {"kind": "nodes", "near": [0, 0, 0]},
             })
             invalid = await session.call_tool("create_nodes_linear", {"count": 0})
+            discovered = []
+            if catalog_layout == "discovery":
+                offset = 0
+                while True:
+                    page = await session.call_tool("search_operations", {"offset": offset, "limit": 50})
+                    assert not page.isError
+                    discovered.extend(item["operation"] for item in page.structuredContent["items"])
+                    offset = page.structuredContent["next_offset"]
+                    if offset is None:
+                        break
+                schema = await session.call_tool("get_operation_schema", {"operation": "get_model_status"})
+                assert not schema.isError and "inputSchema" in schema.structuredContent
+                executed = await session.call_tool("execute_operation", {
+                    "operation": "check_qiaotong_connection", "arguments": {},
+                })
+                rejected = await session.call_tool("execute_operation", {
+                    "operation": "create_nodes", "arguments": {"unexpected": True},
+                })
+                assert not executed.isError and executed.structuredContent
+                assert rejected.isError
             if catalog_layout == "domains":
                 domain_connection = await session.call_tool("inspect_bridge", {
                     "request": {"operation": "check_qiaotong_connection"},
@@ -78,6 +98,8 @@ async def inspect_package(
     assert all(name != "ctx" for _, name, _ in parameters), "Injected Context leaked into the schema"
     assert all(tool.annotations is not None for tool in tools), "Missing tool annotations"
     image_tools = {"view_model"} if catalog_layout == "domains" else {"save_model_screenshot", "plot_analysis_result"}
+    if catalog_layout == "discovery":
+        image_tools = {"execute_operation"}
     for tool in tools:
         assert (tool.outputSchema is None) == (tool.name in image_tools), tool.name
     assert not connection.isError and connection.structuredContent
@@ -87,7 +109,7 @@ async def inspect_package(
     assert readiness.structuredContent["status"] in {"not_connected", "api_unavailable"}
     assert invalid_query.isError, "Invalid nested query inputs must use the MCP error channel"
     assert invalid.isError, "Invalid arguments must use the MCP error channel"
-    operations = [tool.name for tool in tools]
+    operations = discovered if catalog_layout == "discovery" else [tool.name for tool in tools]
     operation_parameters = len(parameters)
     if catalog_layout == "domains":
         operations = []
@@ -129,10 +151,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("wheel", type=Path)
     parser.add_argument("--expected-tools", type=int)
-    parser.add_argument("--catalog-layout", choices=("domains", "flat"), default="domains")
+    parser.add_argument("--catalog-layout", choices=("discovery", "domains", "flat"), default="discovery")
     parser.add_argument("--output", type=Path, help="Write the inspected protocol catalog as JSON")
     args = parser.parse_args()
-    expected_tools = args.expected_tools if args.expected_tools is not None else (15 if args.catalog_layout == "domains" else 153)
+    expected_tools = args.expected_tools if args.expected_tools is not None else {"discovery": 3, "domains": 15, "flat": 153}[args.catalog_layout]
     asyncio.run(asyncio.wait_for(
         inspect_package(args.wheel.resolve(), expected_tools, args.output, args.catalog_layout), timeout=30,
     ))

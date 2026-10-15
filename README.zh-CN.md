@@ -9,9 +9,13 @@ Qiao-MCP 是一个基于 [Model Context Protocol (MCP)](https://modelcontextprot
 
 ## 功能特性
 
-### 🔧 工具（15 个领域入口，完整覆盖 153 项操作）
+### 🔧 工具（按需发现，保留完整工程操作）
 
-0.6.0 按领域提供 15 个工具。每个工具接收 `request`，通过 `operation`
+当前开发版默认使用 `discovery`：`search_operations` 搜索，
+`get_operation_schema` 按需获取完整参数，`execute_operation` 执行。
+升级后需重启服务并刷新客户端目录。
+
+设置 `QIAO_MCP_CATALOG_LAYOUT=domains` 可列出 15 个领域工具。每个工具接收 `request`，通过 `operation`
 选择具体操作并填写对应字段；Schema 完整保留各操作的参数说明、默认值与约束。
 原有 153 个名称仍可使用原参数直接调用。
 
