@@ -17,6 +17,7 @@ import inspect
 import re
 import textwrap
 from collections.abc import Callable
+from contextlib import ExitStack, contextmanager
 from typing import Annotated, Any
 
 from mcp.server.fastmcp import Context
@@ -42,6 +43,8 @@ _DESTRUCTIVE_NAMES = {
     "remove_unused_sections",
     "call_qtmodel_api",  # 长尾调用可能删除或覆盖数据
     "save_model_file",   # 保存到已有路径会覆盖文件
+    "save_model_screenshot",  # PNG 目标路径已存在时会覆盖
+    "plot_analysis_result",
     "add_load_combine",  # qtmodel 明确支持覆盖既有组合
     "set_gravity",  # 总体设置 API 同时下发元数据/基准温度默认值，不能保证保留原值
     "create_material",  # SDK 明确支持同名覆盖
@@ -49,6 +52,8 @@ _DESTRUCTIVE_NAMES = {
     "create_polygon_section",
     "create_line_width_section",
     "create_section_from_properties",
+    "create_tendon_2d",  # SDK 同名覆盖
+    "add_tendon_3d",
     "calculate_section_property",  # 重写全部已有截面特性
     "set_support",  # 可替换约束并清空附加参数
     "set_self_weight_stage",  # 重写既有结构组的自重阶段
@@ -57,6 +62,7 @@ _DESTRUCTIVE_NAMES = {
     "merge_operation_stage",  # 重组已有施工阶段
     "configure_analysis",  # 覆盖分析开关
     "configure_check_analysis",  # 修改检算设置
+    "add_parametric_reinforcement",  # SDK 明确说明覆盖既有截面配筋
     "manage_check_stirrup",  # 可删除箍筋定义
     "assign_element_stirrup",  # 可删除所有单元箍筋
     "manage_check_case_file",  # 可替换当前检算工况或覆盖文件
@@ -396,26 +402,30 @@ def _wrap(fn: Callable, provider: Any = None, operation: str = "connection") -> 
         sig = inspect.signature(fn)
     sig = _describe_params(fn, sig)
 
-    def ensure_allowed() -> None:
-        if provider is None:
-            return
-        guard = getattr(provider, "ensure_operation_allowed", None)
-        if guard is None:
-            return
-        try:
-            guard(operation)
-        except ToolError:
-            raise
-        except Exception as e:
-            raise ToolError(f"Operation blocked by QiaoTong state (桥通状态禁止操作): {e}") from e
+    @contextmanager
+    def allowed_operation():
+        with ExitStack() as stack:
+            try:
+                context = getattr(provider, "operation_context", None)
+                if callable(context):
+                    stack.enter_context(context(operation))
+                else:
+                    guard = getattr(provider, "ensure_operation_allowed", None)
+                    if callable(guard):
+                        guard(operation)
+            except ToolError:
+                raise
+            except Exception as e:
+                raise ToolError(f"Operation blocked by QiaoTong state (桥通状态禁止操作): {e}") from e
+            yield
 
     if inspect.iscoroutinefunction(fn):
 
         @functools.wraps(fn)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            ensure_allowed()
             try:
-                return _normalize(await fn(*args, **kwargs))
+                with allowed_operation():
+                    return _normalize(await fn(*args, **kwargs))
             except Exception as e:
                 if not _outcome_unknown(e):
                     raise
@@ -425,9 +435,9 @@ def _wrap(fn: Callable, provider: Any = None, operation: str = "connection") -> 
 
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            ensure_allowed()
             try:
-                return _normalize(fn(*args, **kwargs))
+                with allowed_operation():
+                    return _normalize(fn(*args, **kwargs))
             except Exception as e:
                 if not _outcome_unknown(e):
                     raise

@@ -44,6 +44,21 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         Elastic links model connections like bearings between members.
         弹性连接用于模拟支座等节点间的连接关系。
 
+        Both endpoint nodes must already exist. Use this for a connection between
+        two nodes; add_elastic_support connects a node to ground, and
+        add_master_slave_link couples one master to a set of slave nodes.
+
+        link_type selects the applicable stiffness input: general links use the
+        six-component stiffness_values; tension/compression-only links use kx
+        and gap, while rigid links do not need a finite spring stiffness.
+        Values use the bridge's local-link and unit conventions; no conversion is
+        performed. beta_angle sets orientation and group_name is a boundary group.
+
+        Writes and refreshes the model and returns an endpoint/type confirmation.
+        It does not create missing nodes, check structural stability or solve.
+        Repeated endpoint/type handling belongs to the bridge; inspect existing
+        links before adding another definition. (节点间连接与对地支承分开，刚度字段按连接类型选用。)
+
         Args:
             start_node_id: Start node ID (起始节点编号)
             end_node_id: End node ID (终止节点编号)
@@ -110,6 +125,20 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         of the master node (typically for diaphragm rigid zones).
         用于模拟刚域，从节点跟随主节点运动（典型应用：隔板刚域）。
 
+        Master and slave nodes must exist. Use for one-to-many rigid kinematic
+        coupling; add_elastic_link provides a two-node link with selectable
+        stiffness, and set_support restrains nodes against ground.
+
+        dof_constraints applies the same six coupling flags to every selected
+        slave. True couples that component to the master; it does not fix the
+        component in space. Omitting the vector constrains all six components.
+        Boundary-group membership enables later construction-stage control.
+
+        Writes and refreshes the model, returning a confirmation of the master
+        and requested slave selection. The bridge validates references and
+        constraint consistency; no stability check or analysis runs here.
+        (True 表示与主节点联动，不是对地固定；省略六项标志时全约束，所有从节点使用同一组标志。)
+
         Args:
             master_node_id: Master node ID (主节点编号)
             slave_node_ids: Slave node ID(s), list or range string like "2to5"
@@ -151,10 +180,27 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         axis_direction: Literal[0, 1, 2, 3, 4, 5] | None = None,
     ) -> str:
         """
-        Add elastic spring supports on nodes (添加弹性支承/弹簧支座).
+        Assign nodal springs to ground for foundations or flexible bearings
+        (给节点施加对地弹性支承).
 
-        Models foundation flexibility, pile caps, or rubber bearing stiffness.
-        用于模拟地基柔度、桩基础、橡胶支座刚度等。
+        Use for support stiffness or one-way contact. set_support gives fixed/free
+        restraints; add_elastic_link connects two nodes. The selected nodes and
+        any named boundary group must exist before assignment.
+
+        support_type selects the spring vector: six translational/rotational
+        stiffnesses for a linear support, or one axis and one stiffness for
+        tension-only/compression-only support. axis_direction refines that same
+        one-way axis with a sign; it cannot choose a different axis or accompany
+        a six-value linear spring. For example, [3, 1e6], support_type=3 and
+        axis_direction=5 describes the negative-Z compression-only choice.
+
+        Writes the support and refreshes the model, with no solve. Optional
+        coordinate/friction controls require a supporting SDK. Supplying
+        extra_parameters implicitly enables them unless extra_enabled=False,
+        which explicitly clears them; omitting both preserves their setting.
+        Read query_model_data(request={"kind":"boundaries", ...}) after editing
+        an existing support; the returned message confirms the request, not a
+        readback of the complete saved definition.
 
         Args:
             node_id: Node ID(s), list or range string (节点编号)
@@ -300,6 +346,21 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         master DOFs: slave_dof = Σ(coefficient × master_dof).
         建立从属自由度与主自由度之间的线性约束关系。
 
+        Use for a weighted relation between specific node components. For the
+        usual rigid master/slave coupling use add_master_slave_link; set_support
+        fixes components against ground. All referenced nodes must already exist.
+
+        Every master_info row pairs a node ID, a DOF index and its coefficient;
+        terms are summed in the declared equation. slave_dof selects one component,
+        not a six-flag vector. Provide the intended master terms explicitly:
+        omitting them does not generate a rigid-link relationship automatically.
+
+        Writes and refreshes the model, returning the equation name and slave
+        component. The bridge checks references and constraint consistency; no
+        solve is run. Remove a saved equation with remove_boundary using kind
+        constraint_equation, the slave node and the equation name as extra_name.
+        (显式列出主节点自由度及系数；普通刚域用主从约束，本工具不自动推导刚体关系。)
+
         Args:
             name: Constraint equation name (约束方程名称)
             slave_node: Slave node ID (从节点编号)
@@ -352,7 +413,24 @@ def register_advanced_boundary_tools(mcp: FastMCP, provider: BridgeProvider):
         extra_name: str = "I",
     ) -> str:
         """
-        Remove a specific boundary condition (删除指定边界条件).
+        Remove one selected support, link or constraint definition from the model
+        (按类型和目标编号删除支承、连接或约束定义).
+
+        Use when a boundary condition is no longer wanted. To change ordinary
+        restraint flags, use set_support; to deactivate a boundary group in one
+        stage while retaining its definitions, use update_construction_stage.
+        Removing a boundary does not request removal of its nodes or elements.
+
+        Match kind to the existing definition: remove_id is its node, element or
+        slave-node ID as documented below. group_name narrows the boundary group;
+        extra_name identifies the I/J end for links or the named constraint
+        equation. Confirm the combination with query_model_data
+        before deletion rather than treating IDs from different kinds as interchangeable.
+
+        Writes and refreshes the model, then returns a confirmation. There is no
+        backup or automatic solve; removing a restraint can change stability, so
+        inspect the remaining supports before the next analysis.
+        (编号含义随边界类型变化；删除会改变约束条件，后续分析前须检查支承体系。)
 
         Args:
             remove_id: Node or element ID to remove boundary from

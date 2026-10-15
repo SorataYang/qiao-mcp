@@ -1,9 +1,17 @@
 """共享测试设施：假 qtmodel 数据库对象与脱离真实连接的 provider。"""
 
+import base64
+
 import pytest
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers.qtmodel_provider import QtModelProvider
+
+PNG_BASE64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jG9s"
+    "AAAAASUVORK5CYII="
+)
+PNG_BYTES = base64.b64decode(PNG_BASE64, validate=True)
 
 
 def ready_model_state():
@@ -71,7 +79,7 @@ def fake_provider():
 
 @pytest.fixture
 def qtmodel_wire(fake_provider, monkeypatch):
-    """Run tools against real MDB constructors without connecting to QiaoTong."""
+    """Run real SDK constructors and MDB/ODB fallbacks without a connection."""
     import json
 
     import qtmodel
@@ -85,6 +93,8 @@ def qtmodel_wire(fake_provider, monkeypatch):
 
     monkeypatch.setattr(QtServer, "send_command", staticmethod(record))
     fake_provider._mdb = qtmodel.mdb
+    fake_provider._odb = qtmodel.odb
+    fake_provider._cdb = qtmodel.cdb
     return fake_provider, requests
 
 

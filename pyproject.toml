@@ -1,6 +1,6 @@
 [project]
 name = "qiao-mcp"
-version = "0.5.1"
+version = "0.6.0"
 description = "MCP server for intelligent bridge structural design and analysis (桥梁智能设计 MCP 服务器)"
 readme = "README.md"
 authors = [
@@ -24,7 +24,8 @@ dependencies = [
     "numpy>=2.4.2",
     "openpyxl>=3.1.5",
     "pandas>=3.0.1",
-    # qtmodel 自身未声明任何依赖，但 import 时需要 psutil/requests 等，须在此代为声明
+    # 旧 qtmodel 未声明 import 所需的 psutil/requests；2.9.3 已补声明，
+    # 此处仍为支持范围内的旧版本保留这些直接依赖。
     "psutil>=5.9",
     # 2.6.x 曾对桥通做精确版本握手（QT_VERSION 硬编码，不匹配即拒连），故上界一度收在
     # <2.7。2.8.2 起该握手被移除（get_connection_status 恒返回 compatible=True），

@@ -34,7 +34,8 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         It distinguishes the failure modes, which need different fixes:
         （任一工具报后端不可用时先调用本工具，它区分需要不同处置的状态）
 
-        - connected (已连接): ready to model.
+        - connected (已连接): HTTP service is reachable; use get_model_status
+          to check whether the current model permits the intended operation.
         - software_not_running (软件未启动): start QiaoTong and wait for the
           main window, then retry. （启动桥通并等待主界面加载）
         - version_mismatch (版本不匹配): only with qtmodel 2.6/2.7, which pinned
@@ -125,6 +126,9 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Call this before starting a model workflow and whenever an operation is
         rejected. This tool only observes state; it never switches stages,
         deletes results, or changes the model.
+        Newer desktops also report opaque model_instance_id, model_revision,
+        history_revision and pending_command_count fields. These identify the
+        opened model and command state; do not derive or reuse them across models.
         """
         try:
             return ModelStateResult.model_validate(provider.get_model_state())
@@ -214,6 +218,16 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         real signature with list_qtmodel_api first. Arguments are validated
         against the real signature before dispatch, so a wrong parameter name
         fails fast with the correct signature rather than corrupting the model.
+        A listed SDK method does not prove the desktop route is available.
+        qtmodel 2.9.3 rejects several historical routes, including model-check
+        snapshots, with API_NOT_OPEN; that error is preserved without a commit.
+
+        With supporting SDK/desktop protocols, writes and commits are bound to
+        the model instance checked at entry. undo_model additionally binds the
+        model/history revisions and rejects pending or uncertain changes.
+        Mismatch errors require model/history inspection, not automatic retries.
+        Older protocols keep state checks. open_file/save_file/import_file use
+        legacy raw-path payloads and cannot carry the new instance guard.
 
         Destructive/long-running methods (initial 清空模型, do_solve/wait_solve 求解)
         are blocked here — use initialize_model / run_analysis instead. So are methods

@@ -103,6 +103,7 @@ QueryId = Annotated[int, Field(strict=True, gt=0)]
 QueryIds = QueryId | Annotated[list[QueryId], Field(min_length=1, max_length=500)]
 QueryName = Annotated[str, Field(min_length=1, pattern=r"\S")]
 QueryNames = Annotated[list[QueryName], Field(min_length=1, max_length=500)]
+SelectedIds = QueryId | Annotated[list[QueryId], Field(min_length=1)] | QueryName
 
 
 class ModelQueryPage(BaseModel):
@@ -222,7 +223,7 @@ class ModelStateResult(ObjectResult):
     connected: bool | None = Field(default=None, description="Whether QiaoTong is connected, when reported.")
     compatible: bool | None = Field(default=None, description="Backend compatibility, when reported.")
     model_state: dict[str, Any] | None = Field(
-        default=None, description="Backend snapshot: model_opened, phase, stage_name, capabilities and result availability.",
+        default=None, description="Backend snapshot: lifecycle, capabilities, result availability, and optional model_instance_id, model_revision, history_revision and pending_command_count.",
     )
     message: str | None = Field(default=None, description="State explanation or reason state reporting is unavailable.")
 

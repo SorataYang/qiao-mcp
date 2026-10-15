@@ -125,6 +125,11 @@ def test_run_check_requires_result_data(fake_provider):
 
 
 def test_run_check_is_allowed_with_result_data(fake_provider):
+    def solved(**kwargs):
+        fake_provider._cdb.calls.append(("solve_concrete_check", (), kwargs))
+        return {"state": "succeeded", "is_running": False, "ok": True}
+
+    fake_provider._cdb.solve_concrete_check = solved
     fake_provider.get_model_state = lambda: state_with(
         phase="postprocessing",
         stage_name="运营阶段",

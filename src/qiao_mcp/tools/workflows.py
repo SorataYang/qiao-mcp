@@ -156,7 +156,9 @@ def _build_bridge(
         # One span uses a pin/roller. For multiple spans the piers restrain X.
         fixed_x = position == 0 if len(spans) == 1 else 0 < position < len(node_ids) - 1
         provider.add_general_support(
-            node_id=node_id, boundary_info=[fixed_x, True, True, False, False, False],
+            # Collinear supports cannot restrain rigid rotation about the girder
+            # axis through translations alone. One Rx restraint removes that mode.
+            node_id=node_id, boundary_info=[fixed_x, True, True, position == 0, False, False],
         )
     return BridgeWorkflowResult.model_validate({
         "status": "success",
@@ -198,7 +200,10 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
         Nodes at matching coordinates are reused; elements receive unused IDs.
         Repeating the workflow can add duplicate elements and supports. It does not
         clear the model or roll back partial writes on error; save_model_file first.
-        (复用同名属性及重合节点，追加梁和支座；失败不会自动回滚。)
+        The first support also restrains global Rx to stabilize this 3D line beam;
+        bending rotations Ry/Rz remain free. Review bearings for the actual bridge.
+        (复用同名属性及重合节点，追加梁和支座；首支座约束 Rx 消除绕梁轴刚体转动，
+        Ry/Rz 自由；实际支承须按工程核对。失败不会自动回滚。)
 
         Args:
             span: Positive span in meters (正跨径，m)
@@ -245,15 +250,28 @@ def register_workflow_tools(mcp: FastMCP, provider: BridgeProvider):
         section_name: str = "箱梁截面",
         self_weight_case: str = "SW",
     ) -> BridgeWorkflowResult:
-        """Build a straight continuous girder along global X (创建连续梁桥).
+        """Build a straight continuous girder along global X using an existing section
+        (复用已有截面创建直线连续梁).
 
-        Uses rollers at abutments and X/Y/Z restraints at interior piers, with free
-        rotations. A single span uses a pin/roller. For different bearings, use the
-        individual modeling tools. Requires an editable base-stage model and the named
-        section already created. Reuses the named material, or creates concrete of that
-        database grade. Coincident nodes are reused; new element IDs follow the existing
-        maximum. Repeating adds elements/supports; failures can leave partial writes.
-        Save the model before running (复用重合节点，追加单元；不清空模型、不自动回滚).
+        Use for a standard line-beam layout. create_simple_beam_bridge can create
+        a rectangular section for one span; use individual node/element/support
+        tools for curved geometry or different bearings. This workflow requires
+        an editable base-stage model and resolves the exact section name before
+        writing geometry. It reuses material_name or creates that concrete grade.
+
+        spans are successive lengths, not support coordinates: [30,50,30] places
+        supports at X=0,30,80,110 m. Each span receives num_elements_per_span
+        elements even when lengths differ; boundary nodes are shared. Omitted
+        spans use that 30+50+30 layout. Abutments restrain Y/Z; interior piers
+        restrain X/Y/Z. The first abutment also restrains Rx for torsional
+        stability; Ry/Rz stay free. A single span instead uses a pin/roller pair.
+
+        Coincident nodes are reused, and elements are appended after the current
+        maximum ID. Repeating can add duplicate elements/supports, and failures
+        can leave partial writes; save first and inspect before retrying.
+        The created/reused self_weight_case is only a case definition. Configure
+        self-weight stages, merge_operation_stage and loads before run_analysis;
+        this workflow returns the model identifiers without solving.
 
         Args:
             spans: Nonempty list of positive spans in meters; None uses [30, 50, 30]

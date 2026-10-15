@@ -8,9 +8,14 @@ the BridgeProvider interface.
 """
 
 import ast
+import base64
 import json
+import math
 import time
 from collections.abc import Mapping
+from contextlib import ExitStack, contextmanager
+from contextvars import ContextVar
+from pathlib import Path
 from typing import Any
 
 from qiao_mcp.providers import BridgeProvider
@@ -36,6 +41,12 @@ class QtModelProvider(BridgeProvider):
     # 没有这两个默认值，那些实例一调 is_available() 就 AttributeError。
     _probe_cache: dict[str, Any] | None = None
     _probe_at: float = 0.0
+    _bound_model_instance: ContextVar[str | None] = ContextVar(
+        "qiao_mcp_bound_model_instance", default=None,
+    )
+    _checking_snapshot: ContextVar[tuple[int, dict[str, Any]] | None] = ContextVar(
+        "qiao_mcp_checking_snapshot", default=None,
+    )
 
     def __init__(self):
         """Initialize the qtmodel provider and bind the qtmodel API objects.
@@ -271,7 +282,8 @@ class QtModelProvider(BridgeProvider):
         if operation == "connection":
             return
 
-        result = self.get_model_state()
+        checking = self._checking_snapshot.get()
+        result = checking[1] if checking is not None and checking[0] == id(self) else self.get_model_state()
         if result.get("status") == "guard_unavailable":
             return
 
@@ -319,6 +331,70 @@ class QtModelProvider(BridgeProvider):
             f"has_result_data={state.get('has_result_data')}。"
             "请先调用 get_model_status，并由用户在桥通中切换到满足条件的状态。"
         )
+
+    @contextmanager
+    def operation_context(
+        self, operation: str, *, guard_revision: bool = False, bind_model: bool = True,
+    ):
+        """Keep supported mutations bound to the model checked at tool entry.
+
+        SDK and desktop capabilities are detected independently. Older pairs keep
+        the existing state guard. A desktop that advertises a new protocol must
+        supply valid identifiers; a nested call cannot replace the outer model.
+        Revision binding is used only for explicit gateway Undo, never for a
+        multi-command write whose own mutations advance the revision.
+        """
+        snapshot = self.get_model_state() if operation != "connection" else None
+        # The permission check and binding consume the same fresh snapshot.
+        # Expose it only while the public guard runs, so nested checks stay fresh
+        # and its existing provider contract/overrides continue to work.
+        snapshot_token = self._checking_snapshot.set((id(self), snapshot) if snapshot is not None else None)
+        try:
+            self.ensure_operation_allowed(operation)
+        finally:
+            self._checking_snapshot.reset(snapshot_token)
+        state = snapshot.get("model_state") if snapshot is not None else None
+        with ExitStack() as stack:
+            if bind_model and snapshot is not None and isinstance(state, dict) and operation in {
+                "model_write", "stage_write", "check_write", "check_run", "analysis_run", "view",
+            }:
+                from qtmodel.core.qt_server import QtServer
+
+                server = snapshot.get("server")
+                server = server if isinstance(server, dict) else {}
+                instance_guard = server.get("model_instance_guard", snapshot.get("model_instance_guard"))
+                bind_instance = getattr(QtServer, "require_model_instance", None)
+                if instance_guard not in (None, 0) and callable(bind_instance):
+                    if type(instance_guard) is not int or instance_guard != 1:
+                        raise RuntimeError("MODEL_IDENTITY_UNAVAILABLE: 桥通的模型实例保护协议无效，请更新并重启桥通。")
+                    instance = state.get("model_instance_id")
+                    if not isinstance(instance, str) or not instance.strip() or len(instance) > 128:
+                        raise RuntimeError("MODEL_IDENTITY_UNAVAILABLE: 桥通未返回有效的 model_instance_id，请重新检查模型状态。")
+                    bound = self._bound_model_instance.get()
+                    if bound is not None and bound != instance:
+                        raise RuntimeError("MODEL_INSTANCE_MISMATCH: 工程在本次操作期间已切换，请检查当前工程，勿重复写入。")
+                    if bound is None:
+                        instance_token = self._bound_model_instance.set(instance)
+                        stack.callback(self._bound_model_instance.reset, instance_token)
+                        stack.enter_context(bind_instance(instance))
+
+                revision_schema = server.get("model_revision_schema", snapshot.get("model_revision_schema"))
+                bind_revision = getattr(QtServer, "require_model_revision", None)
+                if guard_revision and revision_schema not in (None, 0) and callable(bind_revision):
+                    if (
+                        type(revision_schema) is not int or revision_schema != 1
+                        or any(not isinstance(state.get(key), str) or not state[key].strip()
+                               for key in ("model_revision", "history_revision"))
+                        or type(state.get("pending_command_count")) is not int
+                        or state["pending_command_count"] < 0
+                        or ("model_revision_uncertain" in state
+                            and type(state["model_revision_uncertain"]) is not bool)
+                    ):
+                        raise RuntimeError("MODEL_REVISION_UNAVAILABLE: 桥通未返回有效的模型与命令历史修订号，无法执行撤销。")
+                    if state.get("model_revision_uncertain") is True or state["pending_command_count"]:
+                        raise RuntimeError("MODEL_REVISION_UNCERTAIN: 存在待提交或状态不确定的修改，请先在桥通中核对，勿自动撤销。")
+                    stack.enter_context(bind_revision(state["model_revision"], state["history_revision"]))
+            yield
 
     @property
     def name(self) -> str:
@@ -526,7 +602,7 @@ class QtModelProvider(BridgeProvider):
         """Commit one successful model command; never replay after a lost reply."""
         result = fn(**kwargs)
         try:
-            self._mdb.update_model()
+            self.update_model()
         except Exception as exc:
             raise RuntimeError(
                 f"{method} completed but update_model failed. The model may have changed; "
@@ -765,9 +841,9 @@ class QtModelProvider(BridgeProvider):
         """Dispatch an explicit base-model snapshot command with model permissions."""
         if method not in self._API_CDB_MODEL_WRITES:
             raise ValueError(f"Not a model snapshot method: {method}")
-        self.ensure_operation_allowed("model_write")
-        fn = self._validated_method("cdb", method, kwargs)
-        return self._execute_model_command(fn, method, kwargs)
+        with self.operation_context("model_write"):
+            fn = self._validated_method("cdb", method, kwargs)
+            return self._execute_model_command(fn, method, kwargs)
 
     def _resolve_api_object(self, api_object: str):
         obj = {"mdb": self._mdb, "odb": self._odb, "cdb": self._cdb}.get(api_object)
@@ -839,23 +915,27 @@ class QtModelProvider(BridgeProvider):
             operation = "result_read"
         else:
             operation = "model_read"
-        self.ensure_operation_allowed(operation)
-
-        kwargs = kwargs or {}
-        sig = inspect.signature(fn)
-        try:
-            sig.bind(**kwargs)
-        except TypeError as e:
-            raise ValueError(
-                f"Arguments do not match (参数不匹配): {e}. Real signature (真实签名): {method}{sig}"
-            ) from e
-        if (
-            api_object == "mdb"
-            and operation == "model_write"
-            and method not in self._API_NO_COMMIT
-        ) or (api_object == "cdb" and method in self._API_CDB_MODEL_WRITES):
-            return self._execute_model_command(fn, method, kwargs)
-        return self._parse(fn(**kwargs))
+        with self.operation_context(
+            operation, guard_revision=api_object == "mdb" and method == "undo_model",
+            # These SDK routes send a bare path; their desktop payload contract
+            # cannot carry model identifiers. Preserve their existing state gate.
+            bind_model=not (api_object == "mdb" and method in {"open_file", "save_file", "import_file"}),
+        ):
+            kwargs = kwargs or {}
+            sig = inspect.signature(fn)
+            try:
+                sig.bind(**kwargs)
+            except TypeError as e:
+                raise ValueError(
+                    f"Arguments do not match (参数不匹配): {e}. Real signature (真实签名): {method}{sig}"
+                ) from e
+            if (
+                api_object == "mdb"
+                and operation == "model_write"
+                and method not in self._API_NO_COMMIT
+            ) or (api_object == "cdb" and method in self._API_CDB_MODEL_WRITES):
+                return self._execute_model_command(fn, method, kwargs)
+            return self._parse(fn(**kwargs))
 
     # ── Model Information ──────────────────────────────────────────────
 
@@ -898,8 +978,8 @@ class QtModelProvider(BridgeProvider):
 
 
     @staticmethod
-    def _validate_ids(ids, required: bool = False):
-        """Validate and normalize ids input for robust error handling."""
+    def _validate_ids(ids, required: bool = False, *, allow_empty: bool = False):
+        """Preserve explicit scope; never truncate IDs or turn blank writes into all."""
         if ids is None:
             if required:
                 raise ValueError("ids parameter is required but was empty or None.")
@@ -908,23 +988,35 @@ class QtModelProvider(BridgeProvider):
         if isinstance(ids, str):
             cleaned = ids.strip()
             if not cleaned:
-                if required:
-                    raise ValueError("ids string cannot be empty.")
-                return None
+                if allow_empty and not required:
+                    return None
+                raise ValueError("ids string cannot be empty; use explicit None only where all IDs are supported.")
+            from qtmodel.core.data_helper import QtDataHelper
+
+            parsed = QtDataHelper.parse_ids_to_array(cleaned)
+            if not parsed or any(type(value) is not int or value <= 0 for value in parsed):
+                raise ValueError("ids must select positive integers (编号必须为正整数)")
             return cleaned
             
         if isinstance(ids, (int, float)):
-            if ids <= 0:
+            if isinstance(ids, bool) or not math.isfinite(ids) or ids <= 0 or int(ids) != ids:
                 raise ValueError(f"Invalid ID: {ids}. IDs must be positive integers.")
             return int(ids)
             
         if isinstance(ids, (list, tuple)):
-            if not ids and required:
+            if not ids and (required or not allow_empty):
                 raise ValueError("ids list cannot be empty.")
             valid_ids = []
             for i in ids:
                 try:
-                    val = int(i)
+                    if isinstance(i, str):
+                        if not i.strip().isdecimal():
+                            raise ValueError(f"Invalid ID in list: {i}")
+                        val = int(i)
+                    elif type(i) in (int, float) and math.isfinite(i) and int(i) == i:
+                        val = int(i)
+                    else:
+                        raise ValueError(f"Invalid ID in list: {i}")
                     if val <= 0:
                         raise ValueError(f"Invalid ID in list: {i}. IDs must be positive.")
                     valid_ids.append(val)
@@ -991,41 +1083,46 @@ class QtModelProvider(BridgeProvider):
         return result
 
     def _safe_get(self, fn_name: str, *args, **kwargs) -> Any:
-        """Call an optional model query, returning None on error."""
-        fn = self._model_query_method(fn_name)
-        if fn is None:
-            # Fallback: if this python version of qtmodel wrapper is missing the method, 
-            # attempt to send it directly as a REST command header to the running QT Server.
-            try:
-                from qtmodel.core.qt_server import QtServer
-                header = fn_name.replace("_", "-").upper()
-                raw_result = QtServer.send_dict(header=header)
-                return self._parse(raw_result)
-            except Exception:
-                return None
-                
+        """Best-effort geometry read; None means verification was unavailable.
+
+        Only coordinate matching uses this. Ordinary queries must propagate
+        errors, rather than presenting failed reads as an empty model.
+        """
         try:
-            return self._parse(fn(*args, **kwargs))
+            return self._query_model(fn_name, *args, **kwargs)
         except Exception:
             return None
+
+    def _first_model_query(self, *methods: str) -> Any:
+        """Use a legacy alias only when the preferred SDK method is absent."""
+        for method in methods:
+            if callable(self._model_query_method(method)):
+                return self._query_model(method)
+        raise AttributeError(f"qtmodel has none of these model queries: {', '.join(methods)}")
+
+    @staticmethod
+    def _query_list(result: Any, method: str) -> list:
+        if not isinstance(result, list):
+            raise RuntimeError(f"{method} returned no valid list (查询未返回有效列表，不能视为空模型)")
+        return result
 
     @staticmethod
     def _count(result) -> int:
         if isinstance(result, (list, dict)):
             return len(result)
-        return 0
+        raise RuntimeError("Cannot count an unavailable query result (无法对失败的查询计数)")
 
     def get_model_summary(self) -> dict[str, Any]:
         self._require_available()
         return {
-            "node_count":            self._count(self._safe_get("get_node_data")),
-            "element_count":         self._count(self._safe_get("get_element_data")),
-            "material_count":        self._count(self._safe_get("get_material_data")),
+            "node_count":            self._count(self.get_node_data()),
+            "element_count":         self._count(self.get_element_data()),
+            "material_count":        self._count(self.get_material_data()),
             "section_count":         self._count(self.get_section_names()),
             "stage_count":           self._count(self.get_stage_names()),
             "load_case_count":       self._count(self.get_load_case_names()),
-            "structure_group_count": self._count(self._safe_get("get_structure_group_names")),
-            "boundary_group_count":  self._count(self._safe_get("get_boundary_group_names")),
+            "structure_group_count": self._count(self.get_structure_group_names()),
+            "boundary_group_count":  self._count(self._query_model("get_boundary_group_names")),
         }
 
     # qtmodel 2.8 新增的轻量概览接口（现位于 mdb_model_overview / mdb_model_structure），
@@ -1040,18 +1137,17 @@ class QtModelProvider(BridgeProvider):
     }
 
     def get_model_overview(self, kind: str) -> Any:
-        """Return one of qtmodel 2.8's lightweight overview payloads, or None.
-
-        2.6.3 没有这些方法：_safe_get 会退回按 header 直发，旧桥通不认识该命令
-        时抛错被吞掉，最终返回 None——由工具层报"无数据"，不阻断其它查询。
-        """
+        """Read a native overview; missing/failed queries are errors, not empty data."""
         self._require_available()
         method = self._OVERVIEW_METHODS.get(kind)
         if method is None:
             raise ValueError(
                 f"unknown overview kind: {kind}. Use: {', '.join(self._OVERVIEW_METHODS)}"
             )
-        return self._safe_get(method)
+        result = self._query_model(method)
+        if not isinstance(result, (dict, list)):
+            raise RuntimeError(f"{method} returned no valid overview; check SDK/bridge support (概览查询无有效返回)")
+        return result
 
     @staticmethod
     def _to_dicts(result: Any) -> list[dict]:
@@ -1068,53 +1164,63 @@ class QtModelProvider(BridgeProvider):
     def get_node_data(self, ids: Any = None) -> list[dict]:
         self._require_available()
         if ids is not None:
-            ids = self._validate_ids(ids)
+            ids = self._validate_ids(ids, allow_empty=True)
         result = self._query_model("get_node_data", ids=ids)
+        if not isinstance(result, (dict, list)):
+            raise RuntimeError("get_node_data returned no valid node records (节点查询无有效返回)")
         return self._to_dicts(result)
 
     def get_element_data(self, ids: Any = None) -> list[dict]:
         self._require_available()
         if ids is not None:
-            ids = self._validate_ids(ids)
+            ids = self._validate_ids(ids, allow_empty=True)
         result = self._query_model("get_element_data", ids=ids)
+        if not isinstance(result, (dict, list)):
+            raise RuntimeError("get_element_data returned no valid element records (单元查询无有效返回)")
         return self._to_dicts(result)
 
     def get_material_data(self) -> list[dict]:
         self._require_available()
         result = self._query_model("get_material_data")
-        return result if isinstance(result, list) else []
+        return self._query_list(result, "get_material_data")
 
     def get_section_data(self, sec_id: int, position: int = 0) -> dict:
         self._require_available()
         result = self._query_model("get_section_data", sec_id, position=position)
-        return result if isinstance(result, dict) else {}
+        if not isinstance(result, dict):
+            raise RuntimeError("get_section_data returned no valid section (截面查询无有效返回)")
+        return result
 
     def get_section_names(self) -> dict[str, str] | list:
         """Return section info (dict of id->name, or list of IDs/dicts depending on API version)."""
         self._require_available()
         
-        # New API returns JSON dict {"3": "上横梁", "4": "下横梁", ...}
-        for method in ("get_section_names", "get_section_ids", "get_all_section_data"):
-            result = self._safe_get(method)
-            # dict output: {"3": "SectionName"}
-            if isinstance(result, dict):
-                return {str(k): str(v) for k, v in result.items()}
-            # list output: [{"id": 3, "name": "SectionName"}] or [3, 4]
-            if isinstance(result, list) and result:
-                if isinstance(result[0], dict):
-                    return {str(d.get("id", i + 1)): d.get("name", f"Section {i + 1}") for i, d in enumerate(result)}
-                return result
-        return {}
+        result = self._first_model_query("get_section_names", "get_section_ids", "get_all_section_data")
+        if isinstance(result, dict):
+            if any(not isinstance(value, str) for value in result.values()):
+                raise RuntimeError("Section names must be an ID-to-name mapping (截面名称映射无效)")
+            return {str(key): value for key, value in result.items()}
+        if isinstance(result, list):
+            # Preserve real IDs and native key names. Never invent IDs from a
+            # record's list position: workflows use these values for assignment.
+            for row in result:
+                if isinstance(row, dict):
+                    values = [row.get(key) for key in ("id", "index", "sec_id", "section_id")]
+                    if not any(type(value) is int and value > 0 for value in values) or not isinstance(row.get("name"), str):
+                        raise RuntimeError("Section record is missing its actual ID/name (截面记录缺少实际编号或名称)")
+                elif not ((type(row) is int and row > 0) or (isinstance(row, str) and row.isdecimal() and int(row) > 0)):
+                    raise RuntimeError("Section list is missing actual IDs (截面列表缺少实际编号)")
+            return result
+        raise RuntimeError("Cannot read section names (无法读取截面名称)")
 
     def get_boundary_data(self) -> dict[str, list[dict]]:
         self._require_available()
-        return {
-            "general_supports": self._safe_get("get_general_support_data") or [],
-            "elastic_links":    self._safe_get("get_elastic_link_data") or [],
-            "elastic_supports": self._safe_get("get_elastic_support_data") or [],
-            "master_slave_links": self._safe_get("get_master_slave_link_data") or [],
-            "beam_constraints": self._safe_get("get_beam_constraint_data") or [],
+        methods = {
+            "general_supports": "get_general_support_data", "elastic_links": "get_elastic_link_data",
+            "elastic_supports": "get_elastic_support_data", "master_slave_links": "get_master_slave_link_data",
+            "beam_constraints": "get_beam_constraint_data",
         }
+        return {kind: self._query_list(self._query_model(method), method) for kind, method in methods.items()}
 
     def get_load_group_names(self) -> list[str]:
         """Read load groups before a workflow decides whether creation is needed."""
@@ -1127,26 +1233,19 @@ class QtModelProvider(BridgeProvider):
     def get_load_case_names(self) -> list[str]:
         """Return load case names."""
         self._require_available()
-        # Older version uses get_load_case_names, newer uses get_case_names
-        for method in ("get_load_case_names", "get_case_names"):
-            result = self._safe_get(method)
-            if isinstance(result, list):
-                return result
-        return []
+        result = self._first_model_query("get_load_case_names", "get_case_names")
+        return self._query_list(result, "get_load_case_names")
 
     def get_stage_names(self) -> list[str]:
         """Return construction stage names."""
         self._require_available()
-        for method in ("get_stage_names", "get_stage_name"):
-            result = self._safe_get(method)
-            if isinstance(result, list):
-                return result
-        return []
+        result = self._first_model_query("get_stage_names", "get_stage_name")
+        return self._query_list(result, "get_stage_names")
 
     def get_structure_group_names(self) -> list[str]:
         self._require_available()
-        result = self._safe_get("get_structure_group_names")
-        return result if isinstance(result, list) else []
+        result = self._query_model("get_structure_group_names")
+        return self._query_list(result, "get_structure_group_names")
 
     # ── Modeling Operations ────────────────────────────────────────────
 
@@ -1155,9 +1254,16 @@ class QtModelProvider(BridgeProvider):
         self._mdb.initial()
 
     def update_model(self) -> None:
-        """Refresh the model display in QiaoTong software."""
+        """Commit model changes and preserve uncertainty if that commit fails."""
         self._require_available()
-        self._mdb.update_model()
+        try:
+            self._mdb.update_model()
+        except Exception as exc:
+            raise RuntimeError(
+                "update_model failed; earlier writes may have changed the model. "
+                "Read the model/undo history before retrying "
+                f"(提交失败，之前写入可能已生效；请先回读及检查撤销记录，勿自动重试): {exc}"
+            ) from exc
 
     def save_model_file(self, file_path: str) -> None:
         self._require_available()
@@ -1170,14 +1276,14 @@ class QtModelProvider(BridgeProvider):
     def remove_unused_sections(self) -> None:
         self._require_available()
         self._mdb.remove_unused_sections()
-        self._mdb.update_model()
+        self.update_model()
 
     def add_nodes(self, node_data: list[list[float]], **kwargs) -> None:
         self._require_available()
         if not node_data:
             raise ValueError("node_data cannot be empty")
         self._mdb.add_nodes(node_data=node_data, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_nodes_returning_ids(
         self, node_data: list[list[float]], **kwargs
@@ -1191,60 +1297,64 @@ class QtModelProvider(BridgeProvider):
         - is_merged 生效时，新节点会被**合并到已存在的旧节点**上，该旧 ID 不属于
           "新增"，仅靠前后集合差会漏掉它。
 
-        因此这里按坐标匹配：对每个请求坐标，回查落在容差内的节点 ID。这样无论
-        后端是新建还是复用了旧节点，调用方得到的都是"该坐标处真实可用的编号"
-        —— 这正是 LLM 建单元时需要的东西。
-
-        返回的 ID 按请求坐标的顺序排列（不是按 ID 大小），未能匹配到的坐标跳过。
-        代价是一次额外的 get_node_data 往返（实测约 20ms）。查询失败时返回空
-        列表，由调用方降级为不声明 ID，而不是让整个写入操作失败。
+        合并开启时，在实际合并容差内找最近节点；关闭时先读已有编号，随后只从
+        新增节点中匹配。不得放大合并容差，也不得用查询返回顺序决定节点身份。
+        返回列表与请求坐标一一对应（合并时可重复）。有任一位置无法确定或出现
+        等距离候选时返回空列表，避免调用者把缺项后的列表当成连续节点链。
         """
         self._require_available()
         if not node_data:
             raise ValueError("node_data cannot be empty")
 
+        def read_coords() -> dict[int, tuple[float, float, float]] | None:
+            rows = self._safe_get("get_node_data")
+            if not isinstance(rows, list):
+                return None
+            coords = {}
+            for row in rows:
+                if not isinstance(row, dict):
+                    return None
+                node_id = row.get("node_id", row.get("id"))
+                if isinstance(node_id, bool) or not isinstance(node_id, int):
+                    return None
+                try:
+                    xyz = (float(row["x"]), float(row["y"]), float(row["z"]))
+                except (KeyError, TypeError, ValueError):
+                    return None
+                if not all(math.isfinite(value) for value in xyz):
+                    return None
+                coords[node_id] = xyz
+            return coords
+
+        merging = kwargs.get("is_merged", False)
+        before = read_coords() if not merging else {}
         self._mdb.add_nodes(node_data=node_data, **kwargs)
-        self._mdb.update_model()
-
-        rows = self._safe_get("get_node_data")
-        if rows is None:
+        self.update_model()
+        after = read_coords()
+        if before is None or after is None:
             return []
-
-        # 容差取 merge_error 的量级，略放宽以吸收浮点往返误差
-        tol = max(float(kwargs.get("merge_error", 1e-3)), 1e-6) * 10
-        existing = []
-        for row in self._to_dicts(rows):
-            node_id = row.get("node_id", row.get("id"))
-            if not isinstance(node_id, int):
-                continue
-            try:
-                existing.append(
-                    (node_id, float(row["x"]), float(row["y"]), float(row["z"]))
-                )
-            except (KeyError, TypeError, ValueError):
-                continue
-
+        candidates = {nid: xyz for nid, xyz in after.items() if nid not in before}
+        # An explicit merge radius, including zero, must never be enlarged.
+        # Without merging, a tiny tolerance only covers coordinate round trips;
+        # candidates are already restricted to IDs created by this call.
+        tolerance = float(kwargs.get("merge_error", 1e-3)) if merging else 1e-9
         found: list[int] = []
-        seen: set[int] = set()
         for coord in node_data:
-            # node_data 可能是 [x,y,z] 或 [id,x,y,z]
-            xyz = coord[1:4] if len(coord) >= 4 else coord[0:3]
-            if len(xyz) < 3:
-                continue
-            try:
-                tx, ty, tz = (float(v) for v in xyz)
-            except (TypeError, ValueError):
-                continue
-            for node_id, x, y, z in existing:
-                if (
-                    abs(x - tx) <= tol
-                    and abs(y - ty) <= tol
-                    and abs(z - tz) <= tol
-                    and node_id not in seen
-                ):
-                    found.append(node_id)
-                    seen.add(node_id)
-                    break
+            xyz = coord[1:4] if len(coord) == 4 else coord
+            if len(xyz) != 3:
+                return []
+            matches = sorted(
+                (math.dist(xyz, point), nid) for nid, point in candidates.items()
+                if math.dist(xyz, point) <= tolerance
+            )
+            if not matches or (
+                len(matches) > 1
+                and math.isclose(matches[0][0], matches[1][0], rel_tol=1e-12, abs_tol=1e-12)
+            ):
+                return []
+            found.append(matches[0][1])
+            if not merging:
+                candidates.pop(matches[0][1])
         return found
 
     def add_elements(self, ele_data: list[list], **kwargs) -> None:
@@ -1252,7 +1362,7 @@ class QtModelProvider(BridgeProvider):
         if not ele_data:
             raise ValueError("ele_data cannot be empty")
         self._mdb.add_elements(ele_data=ele_data, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def get_node_coords(self, node_ids: list[int]) -> dict[int, tuple[float, float, float]]:
         """Return {node_id: (x, y, z)} for the requested IDs that actually exist.
@@ -1348,55 +1458,57 @@ class QtModelProvider(BridgeProvider):
         params.update(kwargs)
         params.update(options)
         self._mdb.add_material(**params)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_time_parameter(self, **kwargs) -> None:
         self._require_available()
         self._mdb.add_time_parameter(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_creep_function(self, name: str, creep_data: list, scale_factor: float = 1) -> None:
         self._require_available()
         self._mdb.add_creep_function(name=name, creep_data=creep_data, scale_factor=scale_factor)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_shrink_function(self, name: str, shrink_data: list, scale_factor: float = 1) -> None:
         self._require_available()
         self._mdb.add_shrink_function(name=name, shrink_data=shrink_data, scale_factor=scale_factor)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_thickness(self, *, t_out: float | None = None, **kwargs) -> None:
         self._require_available()
         options = self._optional_mdb_parameter("add_thickness", "t_out", t_out)
         self._mdb.add_thickness(**kwargs, **options)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_effective_width(self, element_ids, **kwargs) -> None:
         self._require_available()
         self._mdb.add_effective_width(element_ids=element_ids, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_tapper_section_group(self, **kwargs) -> None:
         self._require_available()
         self._mdb.add_tapper_section_group(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_section(self, name: str, sec_type: str, **kwargs) -> None:
         self._require_available()
+        # add_section's SDK default is 1, which can overwrite section 1.
+        # -1 is the automatic ID also used by add_single_section for ADD-SECTION.
+        kwargs.setdefault("index", -1)
         self._mdb.add_section(name=name, sec_type=sec_type, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_tapper_section_by_id(self, name: str, begin_id: int, end_id: int, shear_consider: bool = True, sec_normalize: bool = False) -> None:
         self._require_available()
         self._mdb.add_tapper_section_by_id(name=name, begin_id=begin_id, end_id=end_id, shear_consider=shear_consider, sec_normalize=sec_normalize)
-        self._mdb.update_model()
+        self.update_model()
 
     def remove_section(self, ids: Any) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
+        ids = self._validate_ids(ids, required=True)
         self._mdb.remove_section(ids=ids)
-        self._mdb.update_model()
+        self.update_model()
 
     def update_section_bias(self, index: int, bias_type: str, center_type: str = "质心", shear_consider: bool = True, bias_point: list[float] | None = None, side_i: bool = True) -> None:
         self._require_available()
@@ -1425,19 +1537,29 @@ class QtModelProvider(BridgeProvider):
             return entity.get(name)
         return getattr(entity, name, None)
 
+    def _one_entity(self, records: list, index: int, kind: str) -> Any:
+        keys = ("node_id", "id", "index") if kind == "Node" else ("index", "element_id", "ele_id", "id")
+        matches = [record for record in records if any(
+            self._field(record, key) == index and not isinstance(self._field(record, key), bool)
+            for key in keys
+        )]
+        if len(matches) != 1:
+            raise ValueError(f"{kind} {index} not found uniquely; cannot fill unchanged fields (无法唯一回读目标，未修改)")
+        return matches[0]
+
     def update_node(self, node_id: int, **kwargs) -> None:
         self._require_available()
         # qtmodel 的 update_node 会把未传入的坐标按默认值 1 整体下发，
         # 部分更新会静默改写其余坐标；此处先读回当前坐标补齐缺省分量。
         if not {"x", "y", "z"} <= kwargs.keys():
             nodes = self.get_node_data(ids=node_id)
-            if not nodes:
-                raise ValueError(
-                    f"Node {node_id} not found; cannot fill unchanged coordinates "
-                    f"(节点 {node_id} 不存在，无法回填未指定坐标)"
-                )
+            current = self._one_entity(nodes, node_id, "Node")
             for axis in ("x", "y", "z"):
-                kwargs.setdefault(axis, self._field(nodes[0], axis))
+                if axis not in kwargs:
+                    value = self._field(current, axis)
+                    if type(value) not in (int, float) or not math.isfinite(value):
+                        raise ValueError(f"Node {node_id} is missing coordinate {axis}; no update was sent")
+                    kwargs[axis] = value
         self._mdb.update_node(node_id=node_id, **kwargs)
 
     def update_node_id(self, node_id: int, new_id: int) -> None:
@@ -1446,43 +1568,62 @@ class QtModelProvider(BridgeProvider):
 
     def renumber_nodes(self, ids: Any = None, new_ids: Any = None) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
-        if ids is None:
+        if ids is None and new_ids is None:
             self._mdb.renumber_nodes()
         else:
+            ids, new_ids = self._renumber_mapping(ids, new_ids)
             self._mdb.renumber_nodes(ids, new_ids)
+
+    def _renumber_mapping(self, ids: Any, new_ids: Any) -> tuple[list[int], list[int]]:
+        from qtmodel.core.data_helper import QtDataHelper
+
+        old = QtDataHelper.parse_ids_to_array(self._validate_ids(ids, required=True))
+        new = QtDataHelper.parse_ids_to_array(self._validate_ids(new_ids, required=True))
+        if len(old) != len(new) or len(set(old)) != len(old) or len(set(new)) != len(new):
+            raise ValueError("Renumbering requires equal-length, unique old/new ID lists (改号须等长且两列各自无重复)")
+        return old, new
 
     def move_nodes(self, ids: Any, offset_x: float = 0, offset_y: float = 0, offset_z: float = 0) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
+        ids = self._validate_ids(ids, required=True)
         self._mdb.move_nodes(ids=ids, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
 
     def update_element(self, old_id: int, **kwargs) -> None:
         self._require_available()
         # 同 update_node：qtmodel 的 update_element 整体下发全部字段，
         # 未指定字段会被默认值覆盖（如 ele_type→1、beta_angle→0、plate_type→0 薄板），
-        # 先读回当前单元数据补齐。plate_type 由较新的查询模型提供（wheel 侧
-        # core/model_db.py 的 Element.to_dict 含该字段）；旧版查询不返回时
-        # _field 得到 None，下面的判空会跳过它，行为与不回填时一致。
+        # 先读回唯一目标，并确认适用字段完整；不能把缺失字段当作默认值覆盖。
         fields = ("ele_type", "node_ids", "beta_angle", "mat_id", "sec_id",
                   "initial_type", "initial_value", "plate_type")
         missing = [f for f in fields if f not in kwargs]
         if missing:
             elements = self.get_element_data(ids=old_id)
-            if not elements:
-                raise ValueError(
-                    f"Element {old_id} not found; cannot fill unchanged fields "
-                    f"(单元 {old_id} 不存在，无法回填未指定字段)"
-                )
-            current = elements[0]
+            current = self._one_entity(elements, old_id, "Element")
             for f in missing:
                 value = self._field(current, f)
                 if f == "ele_type" and isinstance(value, str):
                     value = self._ELE_TYPE_TO_INT.get(value.upper(), value)
                 if value is not None:
                     kwargs.setdefault(f, value)
+        needed = {"ele_type", "node_ids", "beta_angle", "mat_id", "sec_id"}
+        element_type = kwargs.get("ele_type")
+        if element_type == 3:
+            needed.update({"initial_type", "initial_value"})
+        if element_type == 4:
+            needed.add("plate_type")
+        if needed - kwargs.keys() or any(kwargs.get(key) is None for key in needed):
+            raise ValueError(
+                "Element readback is incomplete; use a targeted update_element_* tool "
+                "(单元回读缺少适用字段；请使用单字段修改工具，未提交修改)"
+            )
+        nodes = kwargs["node_ids"]
+        # Frame connectivity has two ends. Preserve a plate's complete readback
+        # without assuming every backend represents it with exactly four IDs.
+        valid_nodes = isinstance(nodes, (list, tuple)) and (
+            len(nodes) >= 3 if element_type == 4 else len(nodes) == 2
+        )
+        if element_type not in {1, 2, 3, 4} or not valid_nodes:
+            raise ValueError("Element type/connectivity mismatch (单元类型与节点数量不一致，未提交修改)")
         self._mdb.update_element(old_id=old_id, **kwargs)
 
     def update_element_id(self, old_id: int, new_id: int) -> None:
@@ -1491,33 +1632,30 @@ class QtModelProvider(BridgeProvider):
 
     def renumber_elements(self, element_ids: Any = None, new_ids: Any = None) -> None:
         self._require_available()
-        if element_ids is None:
+        if element_ids is None and new_ids is None:
             self._mdb.renumber_elements()
         else:
+            element_ids, new_ids = self._renumber_mapping(element_ids, new_ids)
             self._mdb.renumber_elements(element_ids, new_ids)
 
     def revert_local_orientation(self, ids: Any) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
+        ids = self._validate_ids(ids, required=True)
         self._mdb.revert_local_orientation(ids=ids)
 
     def update_element_material(self, ids: Any, mat_id: int) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
+        ids = self._validate_ids(ids, required=True)
         self._mdb.update_element_material(ids=ids, mat_id=mat_id)
 
     def update_frame_section(self, ids: Any, sec_id: int) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
+        ids = self._validate_ids(ids, required=True)
         self._mdb.update_frame_section(ids=ids, sec_id=sec_id)
 
     def update_element_beta(self, ids: Any, beta: float) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
+        ids = self._validate_ids(ids, required=True)
         self._mdb.update_element_beta(ids=ids, beta=beta)
 
     def update_element_node(self, element_id: int, node_ids: list) -> None:
@@ -1526,7 +1664,13 @@ class QtModelProvider(BridgeProvider):
 
     def remove_structure_from_group(self, name: str, **kwargs) -> None:
         self._require_available()
+        if all(kwargs.get(key) is None for key in ("node_ids", "element_ids")):
+            raise ValueError("Explicit node_ids or element_ids are required (必须明确指定要移出的成员)")
+        for key in ("node_ids", "element_ids"):
+            if kwargs.get(key) is not None:
+                kwargs[key] = self._validate_ids(kwargs[key], required=True)
         self._mdb.remove_structure_from_group(name=name, **kwargs)
+        self.update_model()
 
     def remove_nodes(self, ids: Any = None) -> None:
         self._require_available()
@@ -1541,6 +1685,15 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         if ids is not None:
             ids = self._validate_ids(ids)
+        elif remove_free:
+            # The SDK's ids=None branch omits remove_free entirely. Resolve the
+            # actual selection so the requested free-node cleanup is transmitted.
+            records = self.get_element_data()
+            ids = [self._field(row, "index") if self._field(row, "index") is not None
+                   else self._field(row, "element_id") for row in records]
+            if not ids:
+                return
+            ids = self._validate_ids(ids, required=True)
         if ids is not None:
             self._mdb.remove_elements(ids=ids, remove_free=remove_free)
         else:
@@ -1580,7 +1733,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_elastic_link(
             link_type=link_type, start_id=start_id, end_id=end_id, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     def add_beam_constraint(
         self, beam_id: int, info_i: list[bool] | None = None, info_j: list[bool] | None = None, group_name: str = ""
@@ -1594,29 +1747,29 @@ class QtModelProvider(BridgeProvider):
         if group_name:
             kwargs["group_name"] = group_name
         self._mdb.add_beam_constraint(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_constraint_equation(self, **kwargs) -> None:
         self._require_available()
         self._mdb.add_constraint_equation(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def remove_boundary(self, **kwargs) -> None:
         self._require_available()
         self._mdb.remove_boundary(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     # ── Load Operations ────────────────────────────────────────────────
 
     def add_load_group(self, name: str) -> None:
         self._require_available()
         self._mdb.add_load_group(name=name)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_load_case(self, name: str, case_type: str = "施工阶段荷载", desc: str = "") -> None:
         self._require_available()
         self._mdb.add_load_case(name=name, case_type=case_type)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_load_combine(self, index: int = -1, name: str = "", combine_type: int = 1, describe: str = "", combine_info: list[tuple] | None = None) -> None:
         self._require_available()
@@ -1624,7 +1777,7 @@ class QtModelProvider(BridgeProvider):
         if combine_info is not None:
             kwargs["combine_info"] = combine_info
         self._mdb.add_load_combine(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_nodal_force(
         self, node_id: Any, case_name: str, load_info: list, **kwargs
@@ -1633,7 +1786,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_nodal_force(
             node_id=node_id, case_name=case_name, load_info=load_info, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     def add_beam_element_load(
         self, element_id: Any, case_name: str, load_type: int, **kwargs
@@ -1642,7 +1795,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_beam_element_load(
             element_id=element_id, case_name=case_name, load_type=load_type, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     def add_system_temperature(
         self, element_id: Any, case_name: str, temperature: float, **kwargs
@@ -1651,7 +1804,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_element_temperature(
             element_id=element_id, case_name=case_name, temperature=temperature, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     def add_gradient_temperature(
         self, element_id: Any, case_name: str, temperature: float, **kwargs
@@ -1660,38 +1813,38 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_gradient_temperature(
             element_id=element_id, case_name=case_name, temperature=temperature, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
 
     def add_custom_temperature(self, element_id, case_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_custom_temperature(element_id=element_id, case_name=case_name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_beam_section_temperature(self, element_id, case_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_beam_section_temperature(element_id=element_id, case_name=case_name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_initial_tension_load(self, element_id, case_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_initial_tension_load(element_id=element_id, case_name=case_name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_cable_length_load(self, element_id, case_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_cable_length_load(element_id=element_id, case_name=case_name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_plate_element_load(self, element_id, case_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_plate_element_load(element_id=element_id, case_name=case_name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_distribute_plane_load(self, index: int, case_name: str, type_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_distribute_plane_load(index=index, case_name=case_name, type_name=type_name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_support_settlement(
         self, node_id: Any, case_name: str, displacement_info: list, **kwargs
@@ -1701,31 +1854,30 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_node_displacement(
             node_id=node_id, case_name=case_name, load_info=displacement_info, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     # ── Tendon Operations ──────────────────────────────────────────────
 
     def add_tendon_property(self, name: str, tendon_type: int, **kwargs) -> None:
         self._require_available()
         self._mdb.add_tendon_property(name=name, tendon_type=tendon_type, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_tendon_2d(self, name: str, property_name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_tendon_2d(name=name, property_name=property_name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_tendon_3d(self, name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.add_tendon_3d(name=name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_tendon_elements(self, ids: Any) -> None:
         self._require_available()
-        if ids is not None:
-            ids = self._validate_ids(ids)
+        ids = self._validate_ids(ids, required=True)
         self._mdb.add_tendon_elements(ids=ids)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_pre_stress(
         self, case_name: str, tendon_name: str, force: float, **kwargs
@@ -1734,7 +1886,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_pre_stress(
             case_name=case_name, tendon_name=tendon_name, force=force, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     # ── Construction Stage Operations ──────────────────────────────────
 
@@ -1753,17 +1905,17 @@ class QtModelProvider(BridgeProvider):
                 ) from exc
         options = self._optional_mdb_parameter("add_construction_stage", "sub_steps", sub_steps)
         self._mdb.add_construction_stage(name=name, duration=duration, **options, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def merge_all_stages(self, name: str, **kwargs) -> None:
         self._require_available()
         self._mdb.merge_all_stages(name=name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def remove_construction_stage(self, name: str = "") -> None:
         self._require_available()
         self._mdb.remove_construction_stage(name=name)
-        self._mdb.update_model()
+        self.update_model()
 
     def update_construction_stage(
         self, name: str, *, sub_steps: list[float] | None = None, **kwargs
@@ -1771,34 +1923,39 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         options = self._optional_mdb_parameter("update_construction_stage", "sub_steps", sub_steps)
         self._mdb.update_construction_stage(name=name, **options, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def switch_display_stage(self, stage_name: str) -> None:
         self._require_available()
         self._mdb.update_view_stage(stage_name=stage_name)
-        self._mdb.update_model()
+        self.update_model()
 
     # ── Analysis Operations ────────────────────────────────────────────
 
     def update_project_setting(self, **kwargs) -> None:
         self._require_available()
         self._mdb.update_project_setting(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def update_construction_stage_setting(self, **kwargs) -> None:
         self._require_available()
         self._mdb.update_construction_stage_setting(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
+
+    def update_global_setting(self, **kwargs) -> None:
+        self._require_available()
+        self._mdb.update_global_setting(**kwargs)
+        self.update_model()
 
     def update_self_vibration_setting(self, **kwargs) -> None:
         self._require_available()
         self._mdb.update_self_vibration_setting(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def update_bulking_setting(self, **kwargs) -> None:
         self._require_available()
         self._mdb.update_bulking_setting(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_nodal_mass(
         self,
@@ -1833,32 +1990,32 @@ class QtModelProvider(BridgeProvider):
                     "(各向不同的平动质量需要支持 mass_xyz 的 qtmodel 2.9.0+，旧版只能三向相同)"
                 ) from exc
         self._mdb.add_nodal_mass(node_id=node_id, mass_info=[mass_z, *rotation], **options)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_load_to_mass(self, name: str, factor: float = 1.0) -> None:
         self._require_available()
         self._mdb.add_load_to_mass(name=name, factor=factor)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_spectrum_function(self, **kwargs) -> None:
         self._require_available()
         self._mdb.add_spectrum_function(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_spectrum_case(self, **kwargs) -> None:
         self._require_available()
         self._mdb.add_spectrum_case(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_time_history_function(self, **kwargs) -> None:
         self._require_available()
         self._mdb.add_time_history_function(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_time_history_case(self, **kwargs) -> None:
         self._require_available()
         self._mdb.add_time_history_case(**kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def run_analysis(self, read_timeout: int = 3600, show_view: bool = False) -> Any:
         """启动后台求解并轮询至任务真正结束，返回 qtmodel 给出的最终状态。
@@ -1902,7 +2059,9 @@ class QtModelProvider(BridgeProvider):
 
     def add_node_tandem(self, *args, **kwargs):
         self._require_available()
-        return self._mdb.add_node_tandem(*args, **kwargs)
+        result = self._mdb.add_node_tandem(*args, **kwargs)
+        self.update_model()
+        return result
 
     def add_influence_plane(
         self, *args, always_divided_by_beam_shape: bool | None = None, **kwargs
@@ -1911,32 +2070,34 @@ class QtModelProvider(BridgeProvider):
         options = self._optional_mdb_parameter(
             "add_influence_plane", "always_divided_by_beam_shape", always_divided_by_beam_shape
         )
-        return self._mdb.add_influence_plane(*args, **options, **kwargs)
+        result = self._mdb.add_influence_plane(*args, **options, **kwargs)
+        self.update_model()
+        return result
 
     # ── Result Extraction ──────────────────────────────────────────────
 
     def get_deformation(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
         if ids is not None:
-            ids = self._validate_ids(ids)
+            ids = self._validate_ids(ids, allow_empty=True)
         return self._odb.get_deformation(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_element_force(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
         if ids is not None:
-            ids = self._validate_ids(ids)
+            ids = self._validate_ids(ids, allow_empty=True)
         return self._odb.get_element_force(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_element_stress(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
         if ids is not None:
-            ids = self._validate_ids(ids)
+            ids = self._validate_ids(ids, allow_empty=True)
         return self._odb.get_element_stress(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_reaction(self, ids: Any, stage_id: int, **kwargs) -> str:
         self._require_available()
         if ids is not None:
-            ids = self._validate_ids(ids)
+            ids = self._validate_ids(ids, allow_empty=True)
         return self._odb.get_reaction(ids=ids, stage_id=stage_id, **kwargs)
 
     def get_vibration_modal_results(self, mode: int = 1) -> list[dict]:
@@ -1958,7 +2119,7 @@ class QtModelProvider(BridgeProvider):
 
     def get_group_nodes(self, *args, **kwargs):
         self._require_available()
-        return self._query_model("get_group_nodes", *args, **kwargs)
+        return self._query_list(self._query_model("get_group_nodes", *args, **kwargs), "get_group_nodes")
 
     def get_elements_by_point(self, *args, **kwargs):
         self._require_available()
@@ -2151,28 +2312,86 @@ class QtModelProvider(BridgeProvider):
 
     def save_model_image(self, file_path: str) -> str:
         self._require_available()
-        return self._odb.save_png(file_path=file_path)
+        # Nonempty SDK paths refer to the controlled Windows host. Retrieve the
+        # bytes and save on the MCP host where Image can read the file instead.
+        return self._save_png_result(self._odb.save_png(file_path=""), file_path)
+
+    @staticmethod
+    def _save_png_result(result: Any, file_path: str) -> str:
+        if not isinstance(result, str):
+            raise ValueError("QiaoTong did not return PNG Base64 (桥通未返回图片内容)")
+        encoded = result.strip().removeprefix("data:image/png;base64,")
+        try:
+            data = base64.b64decode(encoded, validate=True)
+        except ValueError as exc:
+            raise ValueError("QiaoTong returned invalid PNG Base64 (图片内容不是有效Base64)") from exc
+        if not data.startswith(b"\x89PNG\r\n\x1a\n"):
+            raise ValueError("QiaoTong did not return a PNG image (返回内容不是PNG图片)")
+        path = Path(file_path).expanduser()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        return str(path)
 
     def plot_result(self, result_type: str, file_path: str, **kwargs) -> str:
         self._require_available()
         plot_methods = {
-            "displacement": self._odb.plot_displacement_result,
-            "reaction": self._odb.plot_reaction_result,
-            "beam_force": self._odb.plot_beam_element_force,
-            "beam_stress": self._odb.plot_beam_element_stress,
-            "truss_force": self._odb.plot_truss_element_force,
-            "truss_stress": self._odb.plot_truss_element_stress,
-            "plate_force": self._odb.plot_plate_element_force,
-            "plate_stress": self._odb.plot_plate_element_stress,
-            "modal": self._odb.plot_modal_result,
+            "displacement": "plot_displacement_result",
+            "reaction": "plot_reaction_result",
+            "beam_force": "plot_beam_element_force",
+            "beam_stress": "plot_beam_element_stress",
+            "truss_force": "plot_truss_element_force",
+            "truss_stress": "plot_truss_element_stress",
+            "plate_force": "plot_plate_element_force",
+            "plate_stress": "plot_plate_element_stress",
+            "modal": "plot_modal_result",
         }
-        method = plot_methods.get(result_type)
-        if method is None:
+        method_name = plot_methods.get(result_type)
+        if method_name is None:
             raise ValueError(
                 f"Unknown result_type '{result_type}'. "
                 f"Available types: {list(plot_methods.keys())}"
             )
-        return method(file_path=file_path, **kwargs)
+        stage_id = kwargs.pop("stage_id", -1)
+        case_name = kwargs.pop("case_name", "")
+        component = kwargs.pop("component", "")
+        mode = kwargs.pop("mode", 1)
+        mode_kind = kwargs.pop("mode_kind", 1)
+        if result_type == "modal":
+            if stage_id != -1 or case_name or component not in (None, ""):
+                raise ValueError("Modal plots use mode/mode_kind, not stage_id/case_name/component")
+            kwargs.update(mode=mode, mode_kind=mode_kind)
+        else:
+            if mode != 1 or mode_kind != 1:
+                raise ValueError("mode/mode_kind apply only to modal plots")
+            kwargs["stage_id"] = stage_id
+            if case_name:
+                kwargs["case_name"] = case_name
+            if component not in (None, ""):
+                components = {
+                    "displacement": {"dx": 1, "dy": 2, "dz": 3, "ux": 1, "uy": 2, "uz": 3,
+                                     "rx": 4, "ry": 5, "rz": 6},
+                    "reaction": {"fx": 1, "fy": 2, "fz": 3, "fxyz": 4, "mx": 5, "my": 6,
+                                 "mz": 7, "mxyz": 8},
+                    "beam_force": {"fx": 1, "fy": 2, "fz": 3, "mx": 4, "my": 5, "mz": 6},
+                    "beam_stress": {"axial": 1, "mz": 2, "my": 3, "envelope": 4,
+                                    "upper_left": 5, "upper_right": 6,
+                                    "lower_right": 7, "lower_left": 8},
+                    "truss_force": {"n": 0, "fx": 1, "fy": 2, "fz": 3},
+                    "plate_force": {"fxx": 1, "fyy": 2, "fxy": 3, "mxx": 4, "myy": 5, "mxy": 6},
+                    "plate_stress": {"fxx": 1, "fyy": 2, "fxy": 3, "mxx": 4, "myy": 5, "mxy": 6},
+                }.get(result_type, {})
+                if isinstance(component, str):
+                    token = component.strip().lower()
+                    component = int(token) if token.isdecimal() else components.get(token)
+                if isinstance(component, bool) or component not in components.values():
+                    raise ValueError(
+                        f"Invalid component for {result_type}; allowed names/IDs: {components}. "
+                        "truss_stress has no component parameter."
+                    )
+                kwargs["component"] = component
+        arguments = {"file_path": "", **kwargs}
+        method = self._validated_method("odb", method_name, arguments)
+        return self._save_png_result(method(**arguments), file_path)
 
     # ── Validation ─────────────────────────────────────────────────────
 
@@ -2315,7 +2534,7 @@ class QtModelProvider(BridgeProvider):
 
     def get_reinforcement_data(self) -> dict[str, Any]:
         self._require_available()
-        return self._cdb.get_reinforcement_data()
+        return self._parse(self._cdb.get_reinforcement_data())
 
     # ── Concrete Check: 2.5.0 新增能力 ─────────────────────────────────
     #
@@ -2350,28 +2569,31 @@ class QtModelProvider(BridgeProvider):
         self._require_available()
         if kind in self._CHECK_QUERY_METHODS:
             method = getattr(self._cdb, self._CHECK_QUERY_METHODS[kind])
-            return method(**{k: v for k, v in kwargs.items() if v is not None})
+            # Only the case getter accepts a name. The other mapped getters
+            # have no model selector parameters; tool defaults are not SDK args.
+            params = {"name": kwargs.get("name", "")} if kind == "case" else {}
+            return self._parse(method(**params))
         # 需要参数的查询单独分派
         if kind == "stress":
-            return self._cdb.get_concrete_check_stress_info(
+            return self._parse(self._cdb.get_concrete_check_stress_info(
                 stress_type=kwargs.get("stress_type", 1),
                 specific_load_type_name=kwargs.get("name", ""),
-            )
+            ))
         if kind == "load_table":
-            return self._cdb.get_check_case_load_table_info(
+            return self._parse(self._cdb.get_check_case_load_table_info(
                 combine_type=kwargs.get("combine_type", 1),
                 specific_load_type_name=kwargs.get("name", ""),
-            )
+            ))
         if kind == "shear_stirrup":
             ele_id = kwargs.get("element_id")
-            return self._cdb.get_element_shear_stirrup_data(
+            return self._parse(self._cdb.get_element_shear_stirrup_data(
                 ele_id=-1 if ele_id is None else ele_id
-            )
+            ))
         if kind == "torsion_stirrup":
             ele_id = kwargs.get("element_id")
-            return self._cdb.get_element_torsion_stirrup_data(
+            return self._parse(self._cdb.get_element_torsion_stirrup_data(
                 ele_id=-1 if ele_id is None else ele_id
-            )
+            ))
         raise ValueError(f"unknown check data kind: {kind}")
 
     # 分析设置：kind → qtmodel update 方法；参数原样透传（原生 mm/MPa）
@@ -2472,12 +2694,12 @@ class QtModelProvider(BridgeProvider):
     def add_structure_group(self, name: str) -> None:
         self._require_available()
         self._mdb.add_structure_group(name=name)
-        self._mdb.update_model()
+        self.update_model()
 
     def update_structure_group_name(self, name: str, new_name: str) -> None:
         self._require_available()
         self._mdb.update_structure_group_name(name=name, new_name=new_name)
-        self._mdb.update_model()
+        self.update_model()
 
     def remove_structure_group(self, name: str = "") -> None:
         self._require_available()
@@ -2485,17 +2707,23 @@ class QtModelProvider(BridgeProvider):
             self._mdb.remove_structure_group(name=name)
         else:
             self._mdb.remove_structure_group()
-        self._mdb.update_model()
+        self.update_model()
 
     def add_structure_to_group(
         self, name: str, node_ids: Any = None, element_ids: Any = None
     ) -> None:
         """Add nodes and/or elements to a structure group. 向结构组添加节点/单元"""
         self._require_available()
+        if node_ids is None and element_ids is None:
+            raise ValueError("Explicit node_ids or element_ids are required (必须明确指定要加入的成员)")
+        if node_ids is not None:
+            node_ids = self._validate_ids(node_ids, required=True)
+        if element_ids is not None:
+            element_ids = self._validate_ids(element_ids, required=True)
         self._mdb.add_structure_to_group(
             name=name, node_ids=node_ids, element_ids=element_ids
         )
-        self._mdb.update_model()
+        self.update_model()
 
     def add_elements_to_structure_group(self, name: str, element_ids: Any) -> None:
         self.add_structure_to_group(name=name, element_ids=element_ids)
@@ -2503,12 +2731,12 @@ class QtModelProvider(BridgeProvider):
     def get_structure_group_elements(self, name: str) -> list:
         self._require_available()
         # qtmodel 的参数名为 group_name
-        return self._query_model("get_group_elements", group_name=name) or []
+        return self._query_list(self._query_model("get_group_elements", group_name=name), "get_group_elements")
 
     def add_boundary_group(self, name: str) -> None:
         self._require_available()
         self._mdb.add_boundary_group(name=name)
-        self._mdb.update_model()
+        self.update_model()
 
     # ── Advanced Boundary ──────────────────────────────────────────────
 
@@ -2517,7 +2745,7 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_master_slave_link(
             master_id=master_id, slave_id=slave_id, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     def add_elastic_support(
         self, node_id: Any, support_type: int = 1, boundary_info: list | None = None,
@@ -2547,13 +2775,13 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_standard_vehicle(
             name=name, standard_code=standard_code, load_type=load_type, **kwargs
         )
-        self._mdb.update_model()
+        self.update_model()
 
     def add_lane(self, name: str, **kwargs) -> None:
         self._require_available()
         # Real API method is add_lane_line
         self._mdb.add_lane_line(name=name, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
     def add_live_load_case(
         self, name: str, *, sub_case_optimized: list[bool] | None = None, **kwargs
@@ -2563,20 +2791,28 @@ class QtModelProvider(BridgeProvider):
             "add_live_load_case", "sub_case_optimized", sub_case_optimized
         )
         self._mdb.add_live_load_case(name=name, **options, **kwargs)
-        self._mdb.update_model()
+        self.update_model()
 
-    def get_live_load_results(self, case_name: str, result_type: str, ids: Any) -> Any:
+    def get_live_load_results(
+        self, case_name: str, result_type: str, ids: Any, envelope_type: int = 1,
+    ) -> Any:
         self._require_available()
         if ids is not None:
-            ids = self._validate_ids(ids)
+            ids = self._validate_ids(ids, allow_empty=True)
         # Live load results are embedded in standard result queries (deformation/force/stress)
         # Query using the live load case name directly
         if result_type == "force":
-            return self._odb.get_element_force(ids=ids, stage_id=-1, case_name=case_name)
+            return self._parse(self._odb.get_element_force(
+                ids=ids, stage_id=-1, case_name=case_name, envelop_type=envelope_type,
+            ))
         elif result_type == "stress":
-            return self._odb.get_element_stress(ids=ids, stage_id=-1, case_name=case_name)
+            return self._parse(self._odb.get_element_stress(
+                ids=ids, stage_id=-1, case_name=case_name, envelop_type=envelope_type,
+            ))
         elif result_type == "deformation":
-            return self._odb.get_deformation(ids=ids, stage_id=-1, case_name=case_name)
+            return self._parse(self._odb.get_deformation(
+                ids=ids, stage_id=-1, case_name=case_name, envelop_type=envelope_type,
+            ))
         else:
             raise ValueError(
                 f"Unknown result_type '{result_type}'. "
@@ -2600,7 +2836,7 @@ class QtModelProvider(BridgeProvider):
             structure_group_name=structure_group_name,
             weight_stage_id=weight_stage_id,
         )
-        self._mdb.update_model()
+        self.update_model()
 
     # ── Tendon Data ────────────────────────────────────────────────────
 

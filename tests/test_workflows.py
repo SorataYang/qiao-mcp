@@ -120,6 +120,42 @@ def test_continuous_bridge_places_piers_by_coordinate_order(model):
     ]
 
 
+@pytest.mark.parametrize("tool, arguments", [
+    ("create_simple_beam_bridge", {"span": 20, "num_elements": 2}),
+    ("create_continuous_beam_bridge", {"spans": [10, 20], "num_elements_per_span": 2}),
+    ("create_continuous_beam_bridge", {"spans": [20], "num_elements_per_span": 2}),
+])
+def test_bridge_supports_constrain_all_six_rigid_body_modes(model, tool, arguments):
+    _, db, functions = model
+    functions[tool](**arguments)
+    coords = {node["node_id"]: (node["x"], node["y"], node["z"]) for node in db.nodes}
+    matrix = []
+    for method, _, support in db.calls:
+        if method != "add_general_support":
+            continue
+        x, y, z = coords[support["node_id"]]
+        # Rigid motion: translation + rotation cross position. These rows
+        # relate each constrained DOF to the six independent rigid motions.
+        modes = [
+            [1, 0, 0, 0, z, -y], [0, 1, 0, -z, 0, x], [0, 0, 1, y, -x, 0],
+            [0, 0, 0, 1, 0, 0], [0, 0, 0, 0, 1, 0], [0, 0, 0, 0, 0, 1],
+        ]
+        matrix.extend(row for fixed, row in zip(support["boundary_info"], modes, strict=True) if fixed)
+    rank = 0
+    for col in range(6):
+        pivot = next((i for i in range(rank, len(matrix)) if abs(matrix[i][col]) > 1e-9), None)
+        if pivot is None:
+            continue
+        matrix[rank], matrix[pivot] = matrix[pivot], matrix[rank]
+        scale = matrix[rank][col]
+        matrix[rank] = [value / scale for value in matrix[rank]]
+        for row in range(rank + 1, len(matrix)):
+            scale = matrix[row][col]
+            matrix[row] = [a - scale * b for a, b in zip(matrix[row], matrix[rank], strict=True)]
+        rank += 1
+    assert rank == 6, "A free rigid rotation about the girder axis must not remain"
+
+
 def test_missing_continuous_section_fails_before_any_write(model):
     _, db, functions = model
     with pytest.raises(ToolInputError, match="must already exist"):
