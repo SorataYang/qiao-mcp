@@ -4,13 +4,13 @@ MCP Tools for visualization — screenshots and result plots.
 """
 
 import os
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP, Image
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
-from qiao_mcp.tools.schemas import PlotResultKind, ViewAngle, ViewSelection
+from qiao_mcp.tools.schemas import PlotResultKind, PositiveInteger, ViewAngle, ViewSelection
 
 # Default output directory for images (图片默认保存目录)
 DEFAULT_IMAGE_DIR = os.path.join(os.path.expanduser("~"), "qiao_mcp_images")
@@ -49,9 +49,22 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         By default returns the image itself so it can be viewed directly.
         默认直接返回图像内容，可在客户端预览。
 
+        Use to inspect the current model visually. For a requested result contour
+        use plot_analysis_result; save_model_file saves the editable model instead.
+        A connected QiaoTong desktop view is required, but no analysis is started.
+
+        A preset changes the desktop camera; view_angle="current" keeps it.
+        If setting a valid preset fails, the current view is still captured and
+        the response is text with a warning instead of image content. PNG bytes
+        are retrieved from QiaoTong and written on the MCP host. An existing path
+        is overwritten; the default is ~/qiao_mcp_images/model_view.png.
+        return_image=False returns a saved-path message without inline image data.
+        (相机预设失败时仍截当前视图并文字提示；文件保存于 MCP 主机，已有同名 PNG 会覆盖。)
+
         Args:
-            file_path: Output file path (.png). If empty, saves to default directory.
-                       输出路径（.png格式），为空则保存到默认目录
+            file_path: PNG path on the MCP host (not the controlled Windows host).
+                       Empty uses the local default directory. Image bytes are
+                       retrieved from QiaoTong (MCP所在电脑的路径，空值使用本机默认目录)
             view_angle: View preset (视角预设): 'iso'(空间视图), 'front'(前视),
                 'side'(左视), 'top'(俯视), 'right'(右视), 'back'(后视), 'bottom'(仰视),
                 or 'current' to keep the current view (保持当前视角)
@@ -62,6 +75,7 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
             if not file_path:
                 _ensure_dir(DEFAULT_IMAGE_DIR)
                 file_path = os.path.join(DEFAULT_IMAGE_DIR, "model_view.png")
+            file_path = os.path.expanduser(file_path)
 
             warning = ""
             if view_angle != "current":
@@ -89,15 +103,23 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         result_type: PlotResultKind,
         stage_id: int = -1,
         case_name: str = "",
-        component: str = "",
+        component: str | int = "",
         file_path: str = "",
         return_image: bool = True,
+        mode: PositiveInteger = 1,
+        mode_kind: Literal[1, 2] = 1,
     ) -> str | Image:
         """
         Generate an analysis result contour plot (生成分析结果云图).
 
         By default returns the plot image itself for direct viewing.
         默认直接返回云图图像内容，可在客户端预览。
+
+        Rendering changes the desktop result view and writes a PNG on the MCP
+        host, replacing an existing file at the selected path. It does not run
+        analysis or replace the editable model file. Use save_model_screenshot
+        to capture the current model view without requesting a result contour.
+        (修改结果视图并保存 PNG，同名文件会覆盖；不求解，也不替代原生模型文件。)
 
         Args:
             result_type: Result type (结果类型):
@@ -106,16 +128,22 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
                 'truss_force'(杆内力), 'truss_stress'(杆应力),
                 'plate_force'(板内力), 'plate_stress'(板应力),
                 'modal'(振型)
-            stage_id: Construction stage ID (施工阶段ID):
-                -1=operation(运营), 0=envelope(包络), n=stage n (第n阶段)
-            case_name: Load case name for operation stage (运营阶段荷载工况名)
-            component: Result component to display (显示分量), e.g.
-                'uy'(Y向位移), 'mz'(弯矩), 'fx'(轴力), 'sz'(正应力)
-                Leave empty to use default component.
-            file_path: Output file path (.png). Empty = default directory.
-                       输出路径，为空则保存到默认目录
+            stage_id: For non-modal plots: -1=operation, 0=envelope, n=stage n.
+                Keep -1 for modal plots, which use mode/mode_kind (振型图不使用阶段号)
+            case_name: Verified native case identifier for a non-modal plot;
+                empty keeps the SDK default (原生工况标识，振型图留空)
+            component: Native integer component ID or name. Displacement: dx/dy/dz
+                (also ux/uy/uz), rx/ry/rz. Reaction and beam force: fx/fy/fz/mx/my/mz;
+                reaction also fxyz/mxyz. Truss force: n/fx/fy/fz. Plate: fxx/fyy/fxy/
+                mxx/myy/mxy. Beam stress: axial/mz/my/envelope/upper_left/upper_right/
+                lower_right/lower_left. Empty uses default; truss_stress and modal
+                must leave it empty (分量按结果类型映射，杆应力和振型不接收此参数)
+            file_path: PNG output path on the MCP host. Empty uses its default
+                directory (MCP所在电脑的图片路径，空值使用本机默认目录)
             return_image: Return the PNG as viewable image content; if False, return
                           only the saved path (是否直接返回图像内容，否则仅返回路径)
+            mode: Modal order, positive integer; only for result_type='modal' (模态阶次)
+            mode_kind: Modal family: 1=vibration, 2=buckling; only for modal plots (1自振、2屈曲)
         """
         try:
             if not file_path:
@@ -123,11 +151,12 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
                 file_path = os.path.join(
                     DEFAULT_IMAGE_DIR, f"result_{result_type}_stage{stage_id}.png"
                 )
+            file_path = os.path.expanduser(file_path)
 
-            kwargs: dict[str, Any] = {"stage_id": stage_id}
+            kwargs: dict[str, Any] = {"stage_id": stage_id, "mode": mode, "mode_kind": mode_kind}
             if case_name:
                 kwargs["case_name"] = case_name
-            if component:
+            if component != "":
                 kwargs["component"] = component
 
             provider.plot_result(
@@ -149,6 +178,17 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     ) -> str:
         """
         Set the 3D view angle of the bridge model (设置三维视角).
+
+        Use a named preset for a standard orthographic or isometric view. Use
+        angle_preset="custom" when an exact horizontal/vertical rotation in degrees
+        is needed; at least one angle must be supplied, and an omitted companion
+        angle becomes zero. Presets ignore both numeric angle arguments.
+
+        Changes the QiaoTong camera without changing node coordinates, section
+        orientation or analysis settings. For drawing styles use set_render; for
+        labels use display_ids; save_model_screenshot captures the resulting view.
+        Requires a connected desktop view and returns a confirmation, not an image.
+        (只改变相机；custom 至少给一个角度，另一个省略时为零，预设模式忽略数值角度。)
 
         Args:
             angle_preset: View preset (视角预设): 'iso'(空间视图), 'front'(前视图),
@@ -185,6 +225,17 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     ) -> str:
         """
         Toggle the display of node and element IDs (开关节点和单元编号显示).
+
+        Use while inspecting connectivity or before save_model_screenshot.
+        This changes visible labels, not identifiers: update_node_id and
+        update_element_id renumber entities, while set_view_angle changes the camera.
+
+        Both booleans are applied on every call. Omitting either uses False and
+        hides that label family; an omitted flag does not retain its previous
+        state. The two display settings are sent sequentially to the desktop.
+        Requires a connected view and returns a confirmation, without producing
+        an image or changing geometry or analysis results.
+        (省略的开关按 False 隐藏；只控制标签显示，不修改真实编号。)
 
         Args:
             node_id: True to show node IDs, False to hide (显示节点号)
@@ -243,11 +294,19 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def set_render(flag: bool = True) -> str:
         """
-        Toggle solid (rendered) vs wireframe display (开关实体渲染/线框显示).
+        Set solid rendering or wireframe display for the current model view
+        (设置当前模型的实体渲染或线框显示).
 
         Display-only: affects how the model is drawn, not model data or
         results. Pair with save_model_screenshot for solid-shaded captures.
         (纯显示操作，不改模型或结果；配合 save_model_screenshot 出实体图。)
+
+        flag selects the requested state; it does not invert the current mode.
+        Omitting it explicitly chooses solid rendering. For camera direction use
+        set_view_angle; display_ids controls labels, and plot_analysis_result
+        chooses result contours. Requires a connected desktop view and returns
+        a confirmation without capturing an image or saving a model file.
+        (开关值指定目标状态，不是反转当前状态；省略即开启实体渲染。)
 
         Args:
             flag: True for rendered view, False for wireframe (是否渲染)
@@ -292,6 +351,14 @@ def register_visualization_tools(mcp: FastMCP, provider: BridgeProvider):
         does NOT rescale model geometry, section properties, or stored data.
         Set it before taking screenshots or reading displayed quantities.
         (仅显示设置：只改数值显示单位，不缩放模型几何/截面特性/已存数据；读数或截图前先设好。)
+
+        Both arguments are sent each time. Omitting one uses its KN or MM default,
+        not the previously selected unit. Use tokens accepted by the target
+        desktop; unsupported units are reported by the bridge. This setting does
+        not change another tool's documented fixed input units or convert already
+        retrieved numeric results. Returns a confirmation of the requested pair;
+        rendering and screenshots remain separate operations.
+        (两项每次都提交，省略项采用 KN/MM；不改变其他工具的固定输入单位，也不换算已返回数据。)
 
         Args:
             unit_force: Force unit (力单位, 例如: KN, N, TONF)

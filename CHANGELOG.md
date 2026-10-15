@@ -5,6 +5,75 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.6.0] - 2026-10-15
+
+This release includes all changes since GitHub release 0.5.1. Local versions
+0.5.2–0.5.9 were development milestones and are not separate public releases;
+their individual results remain in the [optimization log](docs/optimization-log.md).
+See the [release and upgrade notes](docs/0.6.0-release-notes.md).
+
+### Changed
+
+- Expose 15 domain tools with discriminated `request.operation` schemas while
+  retaining all 153 operations, 601 business parameters and direct legacy calls.
+  `QIAO_MCP_CATALOG_LAYOUT=flat` restores the original discovery list.
+- Generate domain input/output schemas from the existing operation models;
+  retain omission/null/empty-list semantics, permission checks, image content,
+  structured responses and asynchronous solve progress. CI checks both catalogs.
+- Lock qtmodel to 2.9.3 for reproducible installs while retaining the supported
+  dependency range `>=2.6.3,!=2.9.0,<2.10` and its documented capability limits.
+- Clarify selection boundaries, shared property/group/case namespaces, complete
+  replacement versus partial updates, tendon positioning, native units, result
+  selectors, pagination, screenshot defaults and file overwrite behavior.
+
+### Added
+
+- Bind supported model mutations and their commits to the model instance checked
+  at tool entry. The SDK context also reaches background analysis threads; nested
+  calls cannot silently rebind to a different project, and failed/cancelled calls
+  clear their contexts. Requires both an SDK context and the desktop protocol.
+- Bind explicit gateway `undo_model` calls to model/history revisions when the
+  desktop advertises that protocol. Pending, uncertain or invalid revision state
+  blocks that Undo; mismatch errors are preserved without replay or automatic Undo.
+  Older SDK/desktop pairs retain the existing operation-state checks.
+
+### Fixed
+
+- Resolve node IDs from actual readback without enlarging the merge radius or
+  selecting old nodes when merging is disabled; use automatic section numbering.
+- Reject empty mutation selections, Boolean/fractional IDs and incomplete renumber
+  mappings. Preserve applicable fields only after reading the unique target.
+- Send the selected solver and explicit vibration-off setting; require confirmed
+  solve success. Stabilize the idealized straight-beam workflows with one Rx restraint.
+- Query actual group members, normalize typed check results and use only supported
+  checking arguments. Commit node tandems, influence planes and membership removal.
+- Retrieve PNG bytes from QiaoTong for storage on the MCP host, and map result-plot
+  components and modal parameters to their native SDK arguments.
+- Require native three-column temperature/live-load/check-combination layouts and
+  the six-value threaded-bar definition. Expose maximum/minimum live-load selection.
+- Preserve `remove_free_nodes` for explicit delete-all requests and report possible
+  partial writes when a commit fails. Correct overwrite annotations and
+  setting-replacement guidance, reinforcement units and tapered-section workflows.
+
+### Upgrade notes and known limitations
+
+- Refresh the client's tool catalog after upgrading. Existing operation calls are
+  still accepted; clients requiring discovery membership should use `flat`.
+- `add_custom_temperature` now requires `[reference, height, temperature]` rows;
+  legacy two-column rows are rejected. Both renumbering lists must be complete,
+  or both omitted for the documented whole-model mode.
+- qtmodel 2.9.3 explicitly rejects 17 historical desktop routes, including model
+  checking snapshots and full planned-lane creation/update, with `API_NOT_OPEN`.
+  The error is preserved and no commit follows the rejected write.
+- Initialize/open and legacy raw-path file commands cannot carry the new instance
+  binding. Their original state checks and native payloads are preserved. Model
+  instance binding is not transaction rollback or a cross-request review token.
+- Older SDK capability gaps and the existing desktop engineering limitations
+  remain documented. Offline validation does not establish solver accuracy or
+  resolve the previously observed Rz/live-load/snapshot issues.
+
 ## [0.5.1] - 2026-10-13
 
 ### Fixed
@@ -482,6 +551,8 @@ also remain unconfirmed upstream.
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
+[Unreleased]: https://github.com/SorataYang/qiao-mcp/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.3...v0.5.0
 [0.3.3]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.2...v0.3.3

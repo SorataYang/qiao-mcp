@@ -37,7 +37,7 @@ from qiao_mcp.tools.schemas import (
 # 输出保护：单次返回的最大条数上限
 MAX_LIMIT = 500
 
-# qtmodel 2.8 新增的轻量概览接口；2.6.3 没有对应方法，provider 会返回 None
+# qtmodel 2.8 新增的轻量概览接口；旧 SDK 缺少方法时明确报错。
 _OVERVIEW_KINDS = frozenset(
     {"summary", "analysis_context", "project_metadata", "check_context", "structure_group_summaries"}
 )
@@ -300,7 +300,7 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         tolerance: NonnegativeNumber = 1e-3,
         name: str = "",
         index: int | None = None,
-        ids: int | list[int] | str | None = None,
+        ids: StrictInt | list[StrictInt] | str | None = None,
         span_info_name: str = "",
         limit: PageLimit = 100,
         offset: PageOffset = 0,
@@ -308,13 +308,29 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         """
         Locate nodes/elements by coordinates or attributes (按坐标或属性定位节点/单元).
 
+        Use to resolve IDs or inspect one selected attribute before editing the
+        model. get_model_data lists full entity records; query_model_data offers
+        typed combined filters. Choose one by mode and supply its required
+        selector from the schema; unrelated selectors are ignored for that mode.
+
+        Point modes use all three coordinates and the search tolerance. Material
+        searches use a name, section searches use an ID, and span modes use an
+        existing span-info name. element_type accepts one positive ID; element_weight
+        accepts a selection and returns force-weight in N, including material
+        construction factors, independently of displayed units.
+
+        Reads without modifying or refreshing the model. Returns a named text
+        result with local pagination for lists, or "Nothing found" when empty.
+        A missing required mode selector is an input error, not an empty match.
+        (按模式选择参数；列表本地分页，缺少必需筛选条件会报错，查询不改模型。)
+
         Args:
             by: Search mode (查找方式):
                 "node_at_point" (按坐标找节点, 需 x/y/z, 可选 tolerance),
                 "elements_at_point" (按坐标找单元, 需 x/y/z, 可选 tolerance),
                 "elements_by_material" (按材料名找单元, 需 name),
                 "elements_by_section" (按截面号找单元, 需 index),
-                "element_type" (查单元类型, 需 ids),
+                "element_type" (查单个单元类型, ids 须为一个正整数),
                 "element_weight" (查单元重量，固定 N、包含材料构造系数，不随显示单位变化；需 ids),
                 "span_supports" (跨径支承信息, 需 span_info_name),
                 "span_elements" (跨径单元信息, 需 span_info_name)
@@ -324,7 +340,8 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
             tolerance: Search tolerance (容差)
             name: Material name (材料名)
             index: Section ID (截面号)
-            ids: Element IDs (单元编号)
+            ids: Element IDs; element_type accepts one positive integer only
+                (单元编号；element_type 仅接受单个正整数)
             span_info_name: Span info name (跨径信息名)
             limit: Max items per page (单页条数上限)
             offset: Pagination offset (翻页偏移)
@@ -343,9 +360,10 @@ def register_query_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
                     raise ToolInputError("elements_by_section requires index (需要截面号)")
                 data = provider.get_elements_by_section(index)
             elif by == "element_type":
-                if ids is None:
-                    raise ToolInputError("element_type requires ids (需要单元编号)")
-                data = provider.get_element_type(ids)
+                element_id = ids[0] if isinstance(ids, list) and len(ids) == 1 else ids
+                if type(element_id) is not int or element_id <= 0:
+                    raise ToolInputError("element_type requires one positive integer ID (单元类型查询需要单个正整数编号)")
+                data = provider.get_element_type(element_id)
             elif by == "element_weight":
                 if ids is None:
                     raise ToolInputError("element_weight requires ids (需要单元编号)")

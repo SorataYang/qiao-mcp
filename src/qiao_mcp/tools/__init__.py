@@ -8,6 +8,7 @@ nodes, elements, materials, sections, structure groups, etc.
 
 import asyncio
 import math
+from contextvars import copy_context
 from typing import Any, Literal, get_args
 
 from mcp.server.fastmcp import Context, FastMCP
@@ -28,6 +29,7 @@ from qiao_mcp.tools.schemas import (
     PositiveNumber,
     SectionLoop,
     SectionProperties,
+    SelectedIds,
     SupportExtraParameters,
     ThreeNumbers,
     TwoNumbers,
@@ -100,10 +102,23 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         start_id: int = 1,
     ) -> str:
         """
-        Create nodes in the bridge model from an explicit coordinate list (创建节点).
+        Create model nodes at explicitly supplied global coordinates (按坐标创建节点).
 
-        Prefer `create_nodes_linear` when nodes are evenly spaced along a line
-        — it is far more concise for typical bridge models.
+        Use for surveyed points, curved layouts or irregular spacing. For an
+        evenly spaced straight line use create_nodes_linear; move_nodes and
+        update_node change existing nodes instead of submitting new positions.
+
+        With merging enabled, coordinates within merge_error can reuse existing
+        nodes, so the input row count is not the number of newly created nodes.
+        intersected=True also requests element splitting at intersections.
+        Numbering and merging interact: explicit IDs or start_id are requests,
+        and a merged position can keep its old ID. Do not build connectivity by
+        assuming consecutive IDs from the requested start.
+
+        Writes the batch and refreshes the model. The confirmation reports
+        submitted coordinates, without resolving a coordinate-to-ID map. Read
+        get_model_data(kind="nodes") afterwards before creating elements; a lost
+        write reply requires that readback before retrying the batch.
 
         Args:
             node_data: List of node coordinates. Format: [[x,y,z], ...] or [[id,x,y,z], ...]
@@ -127,7 +142,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 numbering_type=numbering_type,
                 start_id=start_id,
             )
-            return f"Successfully created {len(node_data)} nodes (成功创建 {len(node_data)} 个节点)"
+            return (
+                f"Submitted {len(node_data)} node coordinates; merging may reuse existing nodes. "
+                "Read get_model_data(kind='nodes') for actual IDs and counts. "
+                f"(已提交 {len(node_data)} 组坐标；合并可能复用旧节点，请回读实际编号和数量)"
+            )
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
@@ -147,11 +166,25 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         merge_error: NonnegativeNumber = 1e-3,
     ) -> str:
         """
-        Create evenly-spaced nodes along a straight line — the preferred way to model
-        a bridge girder (等间距直线批量创建节点).
+        Generate a regular straight-line node mesh from a start point, count and
+        constant coordinate increments (按起点、数量和固定步长生成直线节点网格).
 
-        Instead of listing 101 coordinates for a 100m span at 1m intervals, just specify
-        the count, starting point, and spacing in each direction.
+        Use for regularly spaced girder nodes. create_nodes accepts an explicit
+        list for irregular or curved coordinates; create_beam_elements_linear
+        connects an existing ordered node chain after node creation.
+        Coordinate i is start + i * spacing, so count nodes span count-1 steps.
+        A nonzero increment is needed to obtain distinct points when count > 1.
+
+        Writes and refreshes the model. With is_merged=True, nearby existing
+        nodes can be reused and the number of distinct nodes can be smaller than
+        count. With merging disabled, coincident nodes may remain. start_id is
+        only a request: conflicts can make the bridge allocate different IDs.
+
+        The confirmation reports IDs resolved by coordinate readback, in input
+        order, including reused nodes. If a coordinate cannot be resolved
+        unambiguously, it requests an explicit node query instead of inventing an
+        ID. Use the reported IDs when constructing elements, not an assumed range.
+        (先读实际编号再建单元；合并可能复用节点，编号冲突时不得假定从 start_id 连续分配。)
 
         Args:
             count: Number of nodes to create (节点数量)
@@ -175,8 +208,6 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             # 100m simply-supported beam, 101 nodes at 1m pitch along X axis:
             create_nodes_linear(count=101, start_x=0, spacing_x=1.0)
 
-            # Two-span 50m+50m continuous beam, start x from 0:
-            create_nodes_linear(count=101, start_x=0, spacing_x=1.0)
         """
         if count <= 0:
             raise ToolInputError("count must be a positive integer > 0 (节点数量必须大于0)")
@@ -206,10 +237,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             # 实际编号由后端裁定，必须回报真实值——LLM 会用它建单元
             if not created_ids:
                 return (
-                    f"Created {count} nodes {span}, but the assigned IDs could not "
-                    f"be read back — query them with get_model_data(kind='nodes') "
+                    f"Submitted {count} node coordinates {span}, but the assigned IDs could not "
+                    f"be resolved unambiguously — query them with get_model_data(kind='nodes') "
                     f"before creating elements "
-                    f"(成功创建 {count} 个节点，但未能读回编号，建单元前请先查询)"
+                    f"(已提交 {count} 组坐标，但未能确定编号，建单元前请先查询)"
                 )
             # created_ids 按请求坐标顺序给出该点真实可用的编号（可能是新建的，
             # 也可能是 is_merged 命中的既有节点），故按序展示而非排序后压缩
@@ -225,8 +256,9 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             first, last = created_ids[0], created_ids[-1]
             order = "" if first <= last else " (note: IDs run opposite to coordinates)"
             return (
-                f"Created/resolved {len(created_ids)} nodes at IDs {id_desc}, {span}"
-                f"{order} (成功创建 {len(created_ids)} 个等间距节点){note}"
+                f"Resolved {count} coordinates to {len(set(created_ids))} distinct nodes "
+                f"at IDs {id_desc}, {span}{order} "
+                f"(已解析 {len(set(created_ids))} 个节点，包含合并复用的节点){note}"
             )
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
@@ -251,8 +283,21 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Create a single frame element (beam/truss/cable) with named parameters
         (创建单个梁/杆/索单元，参数具名).
 
-        This is the preferred way to create individual elements — all parameters
-        have explicit names and inline documentation.
+        Use when creating one frame element from existing node, material and
+        section IDs. For an ordered chain use create_beam_elements_linear; for
+        plate elements or already prepared mixed native rows use create_elements.
+        This tool does not create missing nodes or properties.
+
+        node_i and node_j determine local direction. ele_type selects beam,
+        truss or cable; only cables consume initial_type and initial_value.
+        Cable force inputs use N and unstressed length uses m, according to the
+        selected initialization mode. Set that mode explicitly for cables.
+
+        Writes the element and refreshes the model. element_id=-1 requests
+        automatic numbering; collisions and reference validation belong to the
+        bridge. Returns the endpoint/property summary, not an assigned element
+        ID; query get_model_data(kind="elements") before later ID-based edits.
+        (单个杆系单元使用具名参数；自动编号需回读，节点和材料/截面必须已存在。)
 
         Args:
             node_i: Start node ID (I端节点编号)
@@ -410,10 +455,24 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         element_data: list[list],
     ) -> str:
         """
-        Create elements from a raw data array (通过原始数组创建单元).
+        Import plate elements or mixed element batches from complete native data
+        rows (通过完整原生数据行导入板单元或混合类型单元).
 
-        For beam elements, prefer `create_beam_element` or `create_beam_elements_linear`
-        which have named parameters and are easier to use correctly.
+        Use when the native row layout is already known, particularly for plates
+        or mixed-type batches. For one beam/truss/cable use create_beam_element;
+        for a regular frame chain use create_beam_elements_linear. Nodes,
+        materials, sections and any plate thickness definitions must exist first.
+
+        The row's type selects its remaining layout: a plate references a thickness
+        ID where a frame references a section ID, and its connectivity has a
+        different length. Preserve the exact field order documented in the schema;
+        rows are forwarded without expanding names or filling missing properties.
+
+        Writes and refreshes the model, returning the submitted row count.
+        It does not return newly allocated IDs or prove each row's creation by
+        readback. Query get_model_data(kind="elements") to verify the resulting
+        connectivity and IDs before subsequent operations.
+        (不同单元类型的数据行不同；返回提交行数，实际编号和连接关系需回读确认。)
 
         Args:
             element_data: Element data list. Each item format:
@@ -435,9 +494,18 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Create a load group (创建荷载组).
 
-        Every load in QiaoTong must belong to a load group.
-        Create this before creating a load case or applying loads.
-        每个荷载必须属于某个荷载组，迅建荷载工况之前先建荷载组。
+        Use before applying loads that reference this group_name. A load group
+        collects load definitions for construction-stage activation; create_load_case
+        creates an analysis case, and add_load_combine combines case results.
+        create_structure_group groups model entities and create_boundary_group
+        groups supports/links, each in its own namespace.
+
+        Writes an empty group and refreshes the model, returning a confirmation
+        with its name. No load case, force or stage activation is created. The
+        default name is sent as-is; inspect existing groups before reusing a name
+        because duplicate handling belongs to the bridge. Add loads and configure
+        their stage activation separately after the group exists.
+        (只建立荷载组；荷载工况、实际荷载与施工阶段激活分别配置，名称按原样发送。)
 
         Args:
             name: Load group name (荷载组名称, e.g. "默认荷载组")
@@ -456,13 +524,23 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         case_type: str = "施工阶段荷载",
     ) -> str:
         """
-        Create a load case (创建荷载工况).
+        Create a named static load case for subsequent load assignments
+        (创建静力荷载工况，供后续施加载荷引用).
 
-        A load case must exist before loads can be applied to it.
-        This creates a named case, without applying any load. For automatic
-        structural self-weight, configure set_self_weight_stage and include the
-        stage with merge_operation_stage; a case named "自重" does not enable it.
-        (本工具只建工况，不施加荷载；自动自重由自重阶段及运营阶段合并配置。)
+        Use before apply_nodal_force, temperature or other static load tools.
+        create_load_group instead defines the group activated in a stage;
+        add_load_combine combines existing case results. A case_type of "活载"
+        is a static category: vehicle/lane analysis uses create_live_load_case.
+
+        The case name is an exact reference used by later load calls; its
+        category is the bridge's native Chinese case_type label, not a result
+        identifier such as "ST:...". Read get_model_data(kind="load_cases")
+        before choosing a name; duplicate handling is delegated to the bridge.
+
+        Writes the case and refreshes the model, returning its requested name
+        and type. No force, stage activation or solve is included. Naming a case
+        "自重" does not generate self-weight: configure set_self_weight_stage
+        and merge_operation_stage for that workflow.
 
         Args:
             name: Load case name (工况名称, e.g. "二期恒载", "风荷载")
@@ -806,10 +884,10 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Create a cross-section (创建截面) — one tool for all parametric section types.
 
-        This writes a section with SDK numbering defaults; the SDK can overwrite
-        an existing section ID. Read sections before and after calling, then use
+        This writes a section with automatic numbering (index=-1).
+        Read sections before and after calling, then use
         the actual ID for elements. Initial property calculation belongs to the
-        bridge; the response only confirms the requested name (可覆盖已有截面号，
+        bridge; the response only confirms the requested name (请求自动分配截面号，
         创建前后回读；初始特性由桥通计算，返回名称确认).
 
         Args:
@@ -905,7 +983,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Supply points in perimeter order with no self-intersections; holes must lie
         inside the main outline. Missing closing points are appended automatically.
         Basic point count/area is checked; verify hole containment and intersection
-        topology before calling. Repeating may create or replace a definition under backend rules.
+        topology before calling. Requests automatic numbering (index=-1);
+        verify backend handling before reusing a section name.
         (按边界顺序输入截面平面坐标，孔洞应在外圈内部；自动补闭合点。)
 
         Args:
@@ -954,8 +1033,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         initial property calculation to the bridge. Read the resulting section
         with get_model_data(kind="section_property", sec_id=...). Use
         calculate_section_property when all existing sections need recomputing.
-        The SDK supports overwrite of an existing section ID; this wrapper uses
-        SDK numbering defaults. Read back sections before and after creation.
+        The wrapper requests automatic numbering (index=-1).
+        Read back sections before and after creation.
         Returns the requested name in a confirmation, not computed properties.
 
         When to use vs. siblings: thin-walled centreline shapes here; a solid
@@ -965,7 +1044,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
 
         (写模型。用"骨架"描述截面：每段是一条中心线加壁厚，适合薄壁钢箱、工字形等。
         按实际壁交点输入，本包装不连接或重排线段；初始特性计算交给桥通，创建后回读。
-        SDK 可覆盖已有截面，本工具沿用编号默认值；需全模型重算时调
+        本工具请求自动分配截面号；需全模型重算时调
         calculate_section_property。返回确认消息，不含特性值。选型：薄壁中心线
         形状用本工具；实体轮廓按多边形环给出用 create_polygon_section；已知特性值直接
         建用 create_section_from_properties；只想算某形状的特性而不建截面用
@@ -1007,8 +1086,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Use create_section/create_polygon_section/create_line_width_section when
         geometry should determine properties; calc_section_property only evaluates
         candidate geometry. Here supplied properties skip bridge calculation.
-        SDK numbering defaults can overwrite an existing section; read back the
-        actual ID. Returns a confirmation without assigning elements.
+        Requests automatic numbering with index=-1; read back the actual ID.
+        Returns a confirmation without assigning elements.
         (已有特性直接建截面，不自动由几何补算；回读编号后再赋给单元。)
 
         Args:
@@ -1048,14 +1127,35 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         sec_normalize: bool = False
     ) -> str:
         """
-        Create a tapered section from two existing sections (根据两个已存截面创建渐变截面).
+        Create a tapered section definition joining two existing end sections
+        (由两个已有端截面定义渐变截面).
+
+        First create the constant end sections with create_section (or a custom
+        section tool), then use their saved section IDs as begin_id and end_id.
+        These are section IDs, not node or element IDs. Use create_section for
+        a constant section; use this tool when the start and end shapes differ.
+
+        The call writes one section definition and refreshes the model. Assign
+        the resulting section to elements with create_beam_element or
+        update_element_section. For a taper extending across several elements,
+        add_tapper_section_group defines the interpolation law after assignment.
+        Creating the definition alone does not create those elements or groups.
+
+        Returns a confirmation with the name. To obtain the automatically
+        allocated ID, read get_model_data(kind="sections") before assignment.
+        The bridge validates end-section compatibility and duplicate names;
+        this wrapper does not preflight either condition.
+        (先建立两端截面并取得真实编号；创建后回读新编号再赋给单元。
+        多单元连续变化规律由 add_tapper_section_group 设置。)
 
         Args:
             name: Tapered section name (渐变截面名称)
             begin_id: Start section ID (起始截面编号)
             end_id: End section ID (终止截面编号)
             shear_consider: Consider shear deformation (是否考虑剪切变形), default True
-            sec_normalize: Normalize section (截面归一化), default False
+            sec_normalize: Adaptively order the end sections' loops/line-width
+                contours when their drawing order differs; default False
+                (自动匹配两端线圈/线宽绘制顺序，避免渲染和计算失效；默认关闭)
         """
         try:
             provider.add_tapper_section_by_id(
@@ -1159,6 +1259,21 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Add a plate thickness property (添加板厚度).
 
+        Use before creating plate elements whose native rows reference a thickness
+        ID. create_section defines frame cross-sections instead. This creates a
+        property definition; it does not create plates or assign existing elements.
+
+        t controls in-plane/base thickness in meters. On supporting SDKs t_out
+        controls out-of-plane thickness; omitting it uses t, while explicitly
+        passing it to an unsupported SDK fails before creation. thick_type selects
+        an ordinary or stiffened plate, with advanced rib options left to the SDK.
+
+        Writes and refreshes the model and returns a confirmation with the name.
+        index=-1 requests automatic numbering; the message does not include the
+        allocated ID, so verify it in the bridge before using it in a plate row.
+        Existing-index replacement rules are backend-owned.
+        (板厚定义与杆系截面分开；自动编号须核对，面外厚度仅支持相应 SDK 的版本。)
+
         Args:
             name: Thickness name (厚度名称)
             t: In-plane/base thickness in meters (面内/基板厚度 m)
@@ -1261,14 +1376,32 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         side_i: bool = True
     ) -> str:
         """
-        Update section bias/eccentricity (更新截面偏心/对齐方式).
+        Change the alignment and eccentricity of an existing section definition
+        (修改已有截面定义的对齐和偏心设置).
+
+        Select a saved section ID, not an element ID. Use this to position the
+        section relative to its reference axis; update_element_section changes
+        which section an element uses, and update_element_beta rotates an element.
+        Read get_model_data(kind="sections") to identify the intended definition.
+
+        bias_type selects a named alignment. Supply bias_point only for the
+        custom alignment; its two components use the section-plane coordinates
+        and length convention shown in the bridge. For a tapered section,
+        side_i selects I or J, so changing both ends requires two calls.
+
+        Each call sends center_type and shear_consider, including their defaults;
+        they are not partial-update sentinels. The command changes a shared
+        section definition and can affect every element using it. Returns a
+        confirmation without recalculating analysis or returning section data.
+        (按截面编号修改，可能影响全部引用单元；两端分别设置，中心类型与剪切选项均会提交。)
 
         Args:
             index: Section ID (截面编号)
             bias_type: Bias type (偏心类型): e.g. "中心", "中上", "中下", "左上", "右上", "左下", "右下"
             center_type: Center type (中心类型): "质心" (Centroid) or "剪心" (Shear center), default "质心"
             shear_consider: Consider shear deformation (是否考虑剪切变形), default True
-            bias_point: Custom bias offset [y, z] (自定义偏心距离)
+            bias_point: Two custom offsets in the bridge's section-plane coordinates;
+                        used only with custom alignment (自定义偏心的两个截面平面分量)
             side_i: Apply to I-end (应用于I端) - for tapered sections True means I-end, False means J-end, default True
         """
         try:
@@ -1287,9 +1420,24 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             raise ToolError(f"Error updating section bias (更新截面偏心失败): {e}") from e
 
     @mcp.tool()
-    def remove_section(ids: int | list[int] | str) -> str:
+    def remove_section(ids: SelectedIds) -> str:
         """
-        Delete one or more sections from the model (删除截面).
+        Delete explicitly selected section definitions from the active model
+        (按编号删除指定截面定义).
+
+        Use this for known section IDs. Use remove_unused_sections for automatic
+        cleanup of unused definitions, or remove_elements to delete elements.
+        Inspect get_model_data(kind="sections") and element assignments first;
+        update_element_section changes an assignment without deleting a section.
+
+        Requires a nonempty ID selection. The tool validates that selection,
+        submits one delete command, refreshes the model and returns a confirmation.
+        It does not create a backup or reassign elements. Referenced-section
+        rejection, cascading effects and ID handling belong to the bridge, so
+        inspect affected elements before continuing with cached section IDs.
+        Save a model checkpoint if the definitions may need to be restored.
+        (空选择会被拒绝；删除后刷新并返回确认，不自动备份或改配单元截面。
+        引用关系由桥通处理，应先核对使用情况并保存需要保留的模型。)
 
         Args:
             ids: Section ID(s) to delete. Supports int, list, or range string '3to5'.
@@ -1315,6 +1463,21 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         Use this to manually override Area, Ix, Iy, Iz etc. after creation.
         Typically used for fine-tuning or correcting auto-calculated values.
         (用于手动覆盖截面面积、惯性矩等自动计算值)
+
+        Use a verified complete property table for an existing section. To inspect
+        stored values use get_model_data(kind="section_property", sec_id=...);
+        calc_section_property evaluates supplied geometry, while
+        calculate_section_property recalculates the whole model's sections.
+
+        The array replaces the entire 26- or 29-value table in native UI order;
+        it is not a list of only changed values. Keep every retained value and its
+        corresponding unit, including higher-order section properties. side_i
+        selects one end of a tapered section; update both ends with separate calls.
+
+        Writes to a shared section definition, potentially affecting every element
+        using it, and returns a confirmation. It does not run structural analysis;
+        later automatic property recalculation may replace these manual values.
+        (完整特性表整体覆盖；会影响引用单元，后续自动重算可能覆盖手工值。)
 
         Args:
             index: Section ID (截面编号)
@@ -1374,7 +1537,25 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         extra_parameters: SupportExtraParameters | None = None,
     ) -> str:
         """
-        Set support boundary conditions on nodes (设置节点支承).
+        Set fixed/free translational and rotational restraints on existing nodes
+        (为已有节点设置六自由度固定或自由支承).
+
+        Use for idealized restraints. add_elastic_support defines finite spring
+        stiffness, add_support_settlement applies prescribed displacement as a
+        load, and remove_boundary(kind="support") deletes a support definition.
+        Nodes must exist; group_name identifies a boundary group, not a load case.
+
+        True fixes a degree of freedom and False leaves it free. The complete
+        six-flag vector is sent on every call, replacing existing restraint
+        settings for the selected nodes. Defaults fix all translations and leave
+        rotations free; supply all desired flags when changing an existing support.
+        Every node in a multi-node selection receives the same vector.
+
+        Omitted coordinate/additional settings preserve existing values. Supplying
+        extra_parameters enables them unless extra_enabled=False explicitly clears
+        them. Writes and refreshes the model, then returns a confirmation; analysis
+        must be run separately after the boundary configuration is complete.
+        (六项每次整体提交；省略坐标系和附加设置则保留原值。相同约束用于所选全部节点。)
 
         Args:
             node_id: Node ID(s). Supports int, list, or range string like '1to10'
@@ -1569,7 +1750,26 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "",
     ) -> str:
         """
-        Apply distributed load on beam elements (施加梁单元分布荷载).
+        Apply a distributed force along selected beam elements in an existing
+        static load case (在已有工况中向梁单元施加分布力).
+
+        Create the elements and case first. Use apply_nodal_force for forces at
+        nodes, add_plate_element_load for plate loading, or add_distribute_plane_load
+        to place a separately defined plane-load pattern. This tool's positions
+        are measured along each selected beam from its I end.
+
+        Pair load_positions with load_values: [0, 1] spans the full element;
+        equal endpoint values give a uniform load and differing values describe
+        a linear variation. Positions are relative fractions, not physical
+        distances. The same profile applies to every selected element. Signs and
+        load units follow the chosen global/local axis and the bridge convention;
+        the wrapper performs no unit conversion.
+
+        Nonempty lists are passed through without sorting; omitted/empty lists
+        use SDK defaults, not a generated load profile. Writes and refreshes the
+        model and returns a confirmation without solving. Repeated-load handling
+        belongs to the bridge; inspect existing loads before repeating a request.
+        (位置和值一一对应，从各单元 I 端量取；单位原样传入，空列表不自动生成荷载。)
 
         Args:
             element_id: Element ID(s) (单元编号)
@@ -1705,7 +1905,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         element_id: int | list[int] | str,
         case_name: str,
         orientation: Literal[1, 2] = 1,
-        temperature_data: list[tuple[Literal[1, 2], float, float] | TwoNumbers] | None = None,
+        temperature_data: list[tuple[Literal[1, 2], FiniteNumber, FiniteNumber]] | None = None,
         group_name: str = "",
     ) -> str:
         """
@@ -1723,13 +1923,12 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         code-based section temperature → add_beam_section_temperature.
         (选型：任意/实测分布用本工具；均匀用 add_system_temperature；线性梯度用 add_gradient_temperature；规范梁截面温度用 add_beam_section_temperature。)
 
-        Legacy two-number rows remain accepted and pass through unchanged for
-        compatibility, but the current SDK documents only three-number rows;
-        no top/bottom reference is inferred. Use triples for new calls. None
+        Every row must contain all three values; two-number rows lack a
+        top/bottom reference and are rejected before writing. None
         omits the profile argument; [] sends an empty profile. The SDK does not
         define their bridge behavior, fixed units, interpolation or repeated
         load handling. Verify those in the target bridge. Returns a confirmation
-        without solving. (兼容旧两列透传，但不推断顶底基准，新调用用三列；None 省略参数、
+        without solving. (每行必须三列，缺少顶底基准的两列会被拒绝；None 省略参数、
         [] 传空表，具体空值行为、单位、插值及重复定义策略须核验，返回确认不求解。)
 
         Args:
@@ -1739,8 +1938,8 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                          (单元局部坐标方向：1=Z向，2=Y向)
             temperature_data: Rows [[reference, height, temperature], ...],
                 reference 1=top or 2=bottom; use bridge-verified native units.
-                Legacy pairs pass through unchanged; None omits, [] sends empty.
-                (三列：顶底基准、高度、温度；旧两列兼容透传，空值不推断)
+                None omits, [] sends empty; no reference is inferred.
+                (三列：顶底基准、高度、温度；不推断顶底基准或空值)
             group_name: Load group name (荷载组名)
         """
         try:
@@ -1748,6 +1947,11 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
             if group_name:
                 kwargs["group_name"] = group_name
             if temperature_data is not None:
+                if any(len(item) != 3 or item[0] not in (1, 2) for item in temperature_data):
+                    raise ToolInputError(
+                        "temperature_data rows must be [reference (1=top, 2=bottom), height, "
+                        "temperature]; two-value rows have no reference (自定义温度须提供三列)"
+                    )
                 kwargs["temperature_data"] = [tuple(item) for item in temperature_data]
             provider.add_custom_temperature(element_id=element_id, case_name=case_name, **kwargs)
             return f"Successfully applied custom temperature to element(s) {element_id} (成功施加自定义温度)"
@@ -2235,7 +2439,20 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         factor: float = 1.0,
     ) -> str:
         """
-        Convert a load case to mass for dynamic analysis (将荷载转换为质量).
+        Add a mass-conversion rule for an existing load case used in dynamic
+        analysis (为已有荷载工况设置动力分析的荷载转质量规则).
+
+        Use when an existing load should contribute to the mass model. For
+        explicit nodal masses use add_nodal_mass; for the subsequent vibration
+        analysis enable it with configure_analysis and then call run_analysis.
+        name is the existing load-case name, not a new mass or combination name.
+
+        factor is passed as the conversion coefficient. The bridge performs the
+        actual conversion; this wrapper neither computes masses nor deletes the
+        source loads. It writes the rule, refreshes the model and returns a
+        confirmation, not a mass total. Verify repeated rules in the bridge to
+        avoid unintended mass contributions; replacement behavior is backend-owned.
+        (传入已有工况名和转换系数；本工具仅配置规则，不返回质量数值，也不启动求解。)
 
         Args:
             name: Load case name to convert (要转换为质量的荷载工况名称)
@@ -2641,7 +2858,25 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         solver_type: Literal[0, 1] = 0,
     ) -> str:
         """
-        Configure analysis settings (配置分析设置).
+        Configure structural solver, construction-stage and vibration options
+        before running analysis (配置结构求解、施工阶段和自振分析选项).
+
+        Use after defining the model, supports, loads and stages; run_analysis
+        performs the subsequent solve. configure_check_analysis controls concrete
+        checking instead, and configure_live_load_system selects traffic systems.
+        do_creep affects the construction-stage analysis; vibration_modes is
+        meaningful when do_vibration enables the modal calculation.
+
+        Three setting groups are written in sequence. True and False are both
+        applied, so do_vibration=False explicitly disables vibration. Every call
+        replaces these groups, and unexposed fields such as thread settings use
+        SDK defaults. Supply the complete intended options instead of treating
+        omitted arguments as unchanged values. A later failure can leave an
+        earlier group updated; inspect settings before retrying.
+
+        Returns the configured option summary. It does not run a solver or produce
+        results; use run_analysis once configuration is complete.
+        (三组设置依次整体写入，未暴露项用 SDK 默认值；中途失败可能已写入前面的设置。)
 
         Args:
             do_construction_stage: Enable construction stage analysis (是否进行施工阶段分析)
@@ -2656,13 +2891,13 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 do_analysis=do_construction_stage,
                 do_creep_analysis=do_creep,
             )
-            if do_vibration:
-                provider.update_self_vibration_setting(
-                    do_analysis=True, mode_num=vibration_modes
-                )
+            provider.update_self_vibration_setting(
+                do_analysis=do_vibration, mode_num=vibration_modes
+            )
+            provider.update_global_setting(solver_type=solver_type)
             return (
                 f"Analysis configured: construction_stage={do_construction_stage}, "
-                f"creep={do_creep}, vibration={do_vibration} "
+                f"creep={do_creep}, vibration={do_vibration}, solver_type={solver_type} "
                 f"(分析配置完成)"
             )
         except ToolError:
@@ -2700,7 +2935,7 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                 kwargs["show_view"] = True
             loop = asyncio.get_running_loop()
             solve = loop.run_in_executor(
-                None, lambda: provider.run_analysis(**kwargs)
+                None, copy_context().run, lambda: provider.run_analysis(**kwargs)
             )
             elapsed = 0
             # 每 5 秒发一次进度心跳，直到求解线程返回
@@ -2719,13 +2954,17 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
                     pass  # 进度上报失败不应影响求解
             # 用户终止等结局不抛错而是返回状态，必须核对后才能宣告完成
             state = str(status.get("state", "")).lower() if isinstance(status, dict) else ""
-            if state and state not in _SOLVE_SUCCESS_STATES:
-                message = status.get("message") or ""
+            if (
+                state not in _SOLVE_SUCCESS_STATES
+                or status.get("ok") is False
+                or str(status.get("is_running", "")).lower() == "true"
+            ):
+                message = (status.get("message") or "") if isinstance(status, dict) else ""
                 raise ToolError(
-                    f"Analysis did not complete: state={state}"
+                    f"Analysis success was not confirmed: state={state or 'unknown'}"
                     + (f", message={message}" if message else "")
-                    + ". No new results are available; check the model and rerun. "
-                    f"(结构分析未完成：状态 {state}，没有新的计算结果，请检查后重新求解)"
+                    + ". Inspect the model and solve status before starting another run. "
+                    f"(无法确认结构分析成功：状态 {state or 'unknown'}；再次求解前请先检查模型和求解状态)"
                 )
             return "Analysis successfully completed (结构分析计算完成)"
         except ToolError:
@@ -2743,6 +2982,18 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         - Missing nodes/elements/materials (缺失的节点/单元/材料)
         - Overlapping nodes (重合节点)
         - Overlapping elements (重合单元)
+
+        Use after model edits and before run_analysis for a basic consistency
+        review. get_model_status reports whether operations are currently allowed;
+        get_model_data supplies detailed records. This check only reads the model
+        and never merges duplicates, creates missing entities or starts a solver.
+
+        Returns a text report with a pass/fail label, model counts, errors and
+        warnings. Missing all nodes, all elements or all materials causes failure;
+        overlapping entities are warnings, so PASSED can still include warnings.
+        This is not a stability analysis or a design-code check and does not
+        establish that every assignment or load is correct.
+        (只读基础检查；重合项属于警告，PASSED 仍可能有警告，不代表结构稳定或规范验算合格。)
         """
         try:
             result = provider.validate_model()
@@ -2782,11 +3033,19 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def get_model_info() -> str:
         """
-        Get a summary of the current bridge model (获取当前桥梁模型概要信息).
+        Read eight entity counts from the active bridge model (读取当前模型八类实体数量).
 
-        Returns counts of all model entities: nodes, elements, materials,
-        sections, construction stages, load cases, etc.
-        返回所有模型实体的数量统计。
+        Use for a model inventory before or after edits. For actual IDs and
+        records use get_model_data or query_model_data; get_model_status reports
+        operation readiness, and validate_model adds missing/overlap checks.
+        Entity counts alone do not establish model validity or solve readiness.
+
+        Requires a connected model. Reads nodes, elements, materials, sections,
+        construction stages, load cases, structure groups and boundary groups,
+        returning a formatted count summary. These are separate backend reads,
+        not one atomic snapshot; avoid concurrent model edits when comparing
+        counts. No model update, selection change or analysis is performed.
+        (只返回八类数量，不返回编号、有效性结论或分析状态；分别读取，查询期间应避免并发改模。)
         """
         try:
             summary = provider.get_model_summary()
@@ -2817,12 +3076,34 @@ def register_modeling_tools(mcp: FastMCP, provider: BridgeProvider):
         case_name_mode: Literal["static", "full"] = "static",
     ) -> str:
         """
-        Get analysis results from the bridge model (获取分析结果).
+        Read solved displacements, element forces/stresses or support reactions
+        for one analysis stage and case (读取指定阶段工况的结构计算结果).
+
+        Use after a successful run_analysis and while that solved state is
+        current. get_model_data/query_model_data read definitions, get_check_data
+        reads concrete-checking data, and get_live_load_results selects moving-load
+        envelope extremes. This read does not start or refresh an analysis.
+
+        result_type determines the ID namespace: deformation/reaction select
+        nodes; force/stress select elements. Choose stage_id before case_name:
+        -1 selects operation results, 0 the stage envelope, and a positive value
+        one construction stage. For ordinary operation cases, static mode adds
+        "ST:"; full mode passes a verified complete identifier unchanged. Obtain
+        that identifier from QiaoTong results/UI instead of guessing TV:/MV:
+        prefixes from combination codes.
+
+        List results are sliced locally after retrieval, with total/offset and
+        a next-page hint; limit is clamped to 1..500. It does not limit the
+        backend query, and non-list replies are displayed without slicing.
+        No matches or missing results are not evidence of a zero response;
+        verify the solved case and the node/element selection before interpreting.
 
         Args:
             result_type: Type of result to retrieve (结果类型):
                 'deformation' (变形), 'force' (内力), 'stress' (应力), 'reaction' (反力)
-            ids: Node/Element IDs to query (查询的节点/单元编号)
+            ids: Node IDs for deformation/reaction; element IDs for force/stress.
+                 Integer, ID list or range string; default selects ID 1 only
+                 (位移/反力用节点号，内力/应力用单元号；默认仅编号1)
             stage_id: Construction stage (施工阶段): -1=operation(运营), 0=envelope(包络),
                       n=stage n (第n阶段)
             case_name: Load case name for operation stage (运营阶段荷载工况名).

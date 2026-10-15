@@ -8,6 +8,7 @@ structural analysis tools.
 """
 
 import logging
+import os
 import sys
 
 # Ensure stdout/stderr use UTF-8 to prevent Mojibake in Node.js (MCP Inspector) under Windows
@@ -17,9 +18,8 @@ if sys.platform == "win32":
     if hasattr(sys.stderr, "reconfigure"):
         sys.stderr.reconfigure(encoding="utf-8")
 
-from mcp.server.fastmcp import FastMCP
-
 from qiao_mcp import __version__
+from qiao_mcp.domain_server import CATALOG_LAYOUT_ENV, DEFAULT_CATALOG_LAYOUT, DomainFastMCP
 from qiao_mcp.prompts import register_prompts
 from qiao_mcp.providers import PROVIDER_ENV, create_provider
 from qiao_mcp.resources import register_resources
@@ -46,12 +46,45 @@ if reason := provider.unavailable_reason():
 
 # ── Build MCP instructions dynamically from the active provider ───────
 
+_CATALOG_LAYOUT = os.environ.get(CATALOG_LAYOUT_ENV, DEFAULT_CATALOG_LAYOUT)
+_CATALOG_GUIDE = (
+    "The catalog exposes 15 domain tools covering all 153 operations. Select the "
+    "domain and pass request={operation: <operation name>, ...operation fields}. "
+    "The operation names below are shorthand for these request branches. Each "
+    "branch contains the complete original parameter schema and description.\n"
+    "Start with inspect_bridge(request={operation: check_qiaotong_connection}), "
+    "then inspect_bridge(request={operation: get_model_status}). For filtered "
+    "queries use query_model(request={operation: query_model_data, request: "
+    "{kind: nodes, node_ids: [1, 2]}}): an operation's own request stays nested.\n"
+    "Domain map: inspect_bridge=diagnostics; manage_model_files=open/save/clear; "
+    "query_model=definitions and geometry checks; edit_geometry=nodes/elements/layouts; "
+    "edit_properties=materials/sections; edit_boundaries=supports/links/releases; "
+    "edit_construction=groups/stages/activation; edit_loads=static loads; "
+    "analyze_model=solver settings/dynamics/run; edit_prestress=tendons; "
+    "edit_traffic=vehicles/lanes/live-load cases; manage_checks=code verification; "
+    "query_results=numeric responses; view_model=display/images; "
+    "access_backend=native method discovery/calls.\n"
+    "Legacy operation names remain callable directly with their original arguments "
+    "for existing clients. New calls should use the listed domain tools.\n\n"
+) if _CATALOG_LAYOUT == "domains" else (
+    "The flat catalog lists all 153 original operation names. Call them directly "
+    "with their original arguments; domain requests are also accepted.\n\n"
+)
+
 _SERVER_INSTRUCTIONS = (
     f"You are an AI assistant for bridge structural design "
     f"using {provider.get_software_name()} via Qiao-MCP.\n"
     "Start with check_qiaotong_connection; use get_model_status to confirm the "
     "model and allowed operations before making changes.\n\n"
-    "## Software-Specific Rules — Read Before Using Any Tool\n"
+    "With qtmodel 2.9.3 and a desktop advertising model_instance_guard=1, model writes "
+    "and their commits carry the instance checked at tool entry, including background solves. "
+    "Gateway undo_model also checks model/history revisions when model_revision_schema=1; "
+    "pending or uncertain changes block that Undo. On a mismatch, inspect the active model "
+    "and command history before deciding what to do; never replay automatically. Older "
+    "SDKs/desktops keep state checks. Initialize/open and legacy raw-path file routes do "
+    "not support this instance binding.\n\n"
+    + _CATALOG_GUIDE
+    + "## Software-Specific Rules — Read Before Using Any Tool\n"
     + provider.get_llm_instructions()
     + "\n## Available Tool Groups\n"
     "Core:     create_nodes_linear, create_nodes, create_elements, create_material, create_section (全部参数化截面类型), create_polygon_section, create_line_width_section, create_section_from_properties\n"
@@ -69,6 +102,7 @@ _SERVER_INSTRUCTIONS = (
     "Model reinforcement snapshots: set_section_reinforcement, remove_section_reinforcement — use complete UI-exported model definitions and identifiers; model-write permission and one commit; current CSAN queries are not lossless model snapshots\n"
     "Model stirrups: set_check_stirrup_snapshot (original_id required to renumber), set_element_stirrups (None preserves a family, [] clears it; shear rows have 5 entries, torsion rows 3); legacy CSAN tools remain separate\n"
     "Model checking definitions: manage_check_material(set/reset), manage_check_case_definition(set/remove) for concrete/seismic/strengthening; full exported snapshots use native enums/units, run_concrete_check only imports and solves concrete cases\n"
+    "SDK availability: listed methods still require desktop routes. qtmodel 2.9.3 rejects historical model-check snapshot and planned-lane add/update routes with API_NOT_OPEN; Qiao-MCP preserves that error without committing.\n"
     "International vehicles: set_international_vehicle(request discriminated by AASHTO/BS/EN1991), get_international_live_load_data(vehicles/cases). Select the matching system explicitly. Full replacements reset omitted scalars to new defaults; axle units are AASHTO N,m and EN1991 kN,m. BS axle units are unspecified by the SDK: preserve verified native exports without scaling. AASHTO r uses percent. Writes commit once and read back the exact name/actual ID.\n"
     "International workflow: create_en1991_vehicle(source standard/user) requires an explicit name; standard factory omits ineffective compatibility options, user factory retains axle/HSLM controls. set_planned_lane is distinct from add_traffic_lane(optimize=True), with model-unit lengths and export/UI verification (no getter); gateway removal requires lane_kind=planned. set_international_live_load_case checks vehicle names/standards, EN1991 duplicate lanes, and full native factors; QiaoTong checks lane/plane references. Explicitly configure operating live_load_cases, then run_analysis and use verified full result identifiers.\n"
     "Checking: setup_concrete_check, add_check_load_combination, add_parametric_reinforcement, run_concrete_check, get_check_data(kind=stress|materials|stirrups|reinforcement|*_setting|...), configure_check_analysis(kind=crack_width|limit_state|normal_stress|...), add_check_stirrup, manage_check_stirrup, assign_element_stirrup, update_vertical_steel_tendon, manage_check_case_file\n"
@@ -81,9 +115,9 @@ _SERVER_INSTRUCTIONS = (
     "\n## Choosing Similar Tools\n"
     "Section properties: calc_section_property evaluates supplied geometry; get_model_data(kind=section_property, sec_id=...) reads a stored section; calculate_section_property rewrites properties for all existing sections.\n"
     "Group members: prefer add_to_structure_group for nodes/elements; add_elements_to_group is its element-only convenience tool. remove_from_structure_group removes memberships; remove_structure_group removes the group.\n"
-    "Node edits: update_node sets absolute values and reads current coordinates when any component is omitted; update_node_id changes only one ID without that read; move_nodes adds relative offsets on each call. renumber_nodes requires both equal-length lists for a local mapping; either None renumbers the entire model.\n"
+    "Node edits: update_node sets absolute values and reads current coordinates when any component is omitted; update_node_id changes only one ID without that read; move_nodes adds relative offsets on each call. Renumbering requires both equal-length, unique ID lists for a local mapping; only omitting BOTH lists renumbers the entire model. A single omitted list or a blank selection is rejected.\n"
     "Stage views: switch_display_stage selects the modeling view by stage name; change_construct_stage selects the results view by integer stage index. Neither starts analysis.\n"
-    "Element edits: update_element reads one record to fill omitted properties present there; fields missing from older responses still use SDK defaults. Its node_i/node_j must be supplied together. update_element_id/material/section/beta/nodes target one property without rebuilding the record; material/section/beta accept batches. Reconnect plates through mdb.update_element_node with all four nodes.\n"
+    "Element edits: update_element reads the unique target to fill omitted properties; missing applicable fields prevent writing. SDK query objects may themselves fill absent backend fields with defaults, so use targeted updates if the original record cannot be verified. Its node_i/node_j must be supplied together. update_element_id/material/section/beta/nodes target one property without rebuilding the record; material/section/beta accept batches. Reconnect plates through mdb.update_element_node with the complete node list.\n"
     "Tendons: get_tendon_info reads saved definitions; get_tendon_loss_results requires solved, activated construction-stage data; get_tendon_position_result reads discretized global coordinates with bridge-dependent pre-solve availability.\n"
     "Temperature: add_system_temperature calls the selected-element temperature API (SDK says final temperature, no automatic ΔT conversion); add_gradient_temperature uses a linear difference; add_beam_section_temperature uses code parameters; add_custom_temperature uses [top/bottom reference, height, temperature] rows with orientation 1=local Z and 2=local Y.\n"
     "Cable and tendon loads: add_initial_tension_load controls axial-force input; add_cable_length_load controls unstressed-length input; apply_prestress targets named tendons. These calls use native values; verify units in the relevant bridge definition, without inferring them from similarly named APIs.\n"
@@ -92,7 +126,7 @@ _SERVER_INSTRUCTIONS = (
 
 # ── Initialize MCP Server ─────────────────────────────────────────────
 
-mcp = FastMCP("qiao-mcp", instructions=_SERVER_INSTRUCTIONS)
+mcp = DomainFastMCP("qiao-mcp", catalog_layout=_CATALOG_LAYOUT, instructions=_SERVER_INSTRUCTIONS)
 # FastMCP 1.x otherwise reports the MCP SDK version in initialize.serverInfo.
 # Catalogs need the installed server version to identify a fresh inspection.
 mcp._mcp_server.version = __version__

@@ -40,6 +40,8 @@ def register_check_snapshot_tools(mcp: FastMCP, provider: BridgeProvider) -> Non
         units; do not build a replacement from an incomplete CSAN/material query.
         reset removes only the override for an explicit material ID. This is a
         base-model write with one commit, not a current-CSAN partial update.
+        Requires an SDK/bridge exposing the snapshot route. qtmodel 2.9.3
+        rejects this historical route with API_NOT_OPEN before sending it.
 
         Args:
             request: action=set with full definition, or action=reset with index.
@@ -63,6 +65,8 @@ def register_check_snapshot_tools(mcp: FastMCP, provider: BridgeProvider) -> Non
         This does not import or solve a current CSAN case. For concrete only, use
         run_concrete_check after committing; it imports the named model case first.
         No seismic/strengthening solver is promised by that concrete tool.
+        Requires an SDK/bridge exposing the snapshot route. qtmodel 2.9.3
+        rejects this historical route with API_NOT_OPEN before sending it.
 
         Args:
             request: action=set plus full definition, or action=remove plus
@@ -88,6 +92,8 @@ def register_check_snapshot_tools(mcp: FastMCP, provider: BridgeProvider) -> Non
         model enums. These differ from legacy check-stirrup tool arguments.
         When changing an ID, provide original_id so QiaoTong migrates element
         references; no source ID is inferred. Requires model-write permission.
+        Requires an SDK/bridge exposing the snapshot route. qtmodel 2.9.3
+        rejects this historical route with API_NOT_OPEN before sending it.
 
         Args:
             definition: Complete UI stirrup snapshot, including inactive fields.
@@ -110,6 +116,8 @@ def register_check_snapshot_tools(mcp: FastMCP, provider: BridgeProvider) -> Non
         The same element may occur in both families, but not twice in one family.
         References are validated by QiaoTong. Legacy assign_element_stirrup remains
         available for its existing current-CSAN workflow.
+        Requires an SDK/bridge exposing the snapshot route. qtmodel 2.9.3
+        rejects this historical route with API_NOT_OPEN before sending it.
 
         Args:
             request: shear five-entry rows and/or torsion three-entry rows, or
@@ -133,6 +141,8 @@ def register_check_snapshot_tools(mcp: FastMCP, provider: BridgeProvider) -> Non
         Supports ordinary, I/J-end and tapered-group identifiers. This requires
         model-write permission and commits once. Existing get_check_data results
         describe current CSAN data and are not a lossless source for this snapshot.
+        Requires an SDK/bridge exposing the snapshot route. qtmodel 2.9.3
+        rejects this historical route with API_NOT_OPEN before sending it.
 
         Args:
             definition: Complete exported section definition; retain inactive
@@ -152,6 +162,8 @@ def register_check_snapshot_tools(mcp: FastMCP, provider: BridgeProvider) -> Non
 
         Uses the snapshot by-name endpoint, including tapered groups. It does not
         use the legacy current-CSAN sec_id/position endpoint or default to all sections.
+        Requires an SDK/bridge exposing the snapshot route. qtmodel 2.9.3
+        rejects this historical route with API_NOT_OPEN before sending it.
 
         Args:
             section_id_name: Explicit exported identifier such as 1, 1-I, 1-J,

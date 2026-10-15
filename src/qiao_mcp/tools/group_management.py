@@ -9,13 +9,22 @@ Groups are the foundation of construction stage analysis:
 """
 
 
-from typing import Any
+import json
+from typing import Any, Literal, get_args
 
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
-from qiao_mcp.tools.envelope import ToolError
-from qiao_mcp.tools.schemas import NonnegativeNumber
+from qiao_mcp.tools.envelope import ToolError, ToolInputError
+from qiao_mcp.tools.schemas import (
+    BoundariesQuery,
+    LoadsQuery,
+    NonnegativeNumber,
+    PageLimit,
+    PageOffset,
+    QueryName,
+    SelectedIds,
+)
 
 
 def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -24,13 +33,26 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def create_structure_group(
         name: str,
-        element_ids: list[int] | str | None = None,
+        element_ids: SelectedIds | None = None,
     ) -> str:
         """
         Create a structure group and optionally assign elements to it (创建结构组).
 
         Structure groups are used to control which elements are active during
         each construction stage (施工阶段分析中控制单元激活状态).
+
+        Use for a new group. To append nodes/elements to an existing group, use
+        add_to_structure_group; create_boundary_group groups supports/links and
+        create_load_group groups loads. Creating a structure group does not
+        activate its members in a stage; configure that with add_construction_stage
+        or update_construction_stage after the group exists.
+
+        Omit element_ids to create an empty group. A supplied selection must be
+        nonempty and identify existing elements. Creation and membership assignment
+        are separate writes with refreshes: if assignment fails, the newly created
+        group may remain. Inspect list_group_members before retrying. Returns a
+        confirmation rather than a group snapshot; duplicate-name policy is owned
+        by the bridge. (新建与加成员分步写入，第二步失败后应先检查，不能假定整个操作回滚。)
 
         Args:
             name: Structure group name (结构组名称)
@@ -58,6 +80,17 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Rename an existing structure group (重命名结构组).
 
+        Use when retaining a group's membership but changing its label. For a
+        new group use create_structure_group; to change members use
+        add_to_structure_group or remove_from_structure_group. Read existing
+        group names first and provide the exact old name and intended new name.
+
+        Writes the rename, refreshes the model and returns a confirmation.
+        The bridge handles name collisions and dependent stage references;
+        this wrapper does not preflight them. After renaming, use the new name
+        in later operations and inspect list_group_members and affected stages
+        before reusing cached references. (仅更名；重名与阶段引用由桥通处理，后续使用新名称。)
+
         Args:
             name: Current structure group name (当前结构组名称)
             new_name: New structure group name (新结构组名称)
@@ -75,6 +108,20 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Remove a structure group (删除结构组).
         If no name is provided, removes all structure groups.
+
+        Use for deleting group definitions. remove_from_structure_group removes
+        selected memberships while retaining the group; remove_elements and
+        remove_nodes delete model entities. To deactivate a group in one stage
+        while keeping the definition, use update_construction_stage instead.
+
+        Provide the exact existing name for one group. Empty or omitted name
+        requests deletion of ALL structure groups, not the currently selected
+        group. Save a checkpoint if grouping or stage references must be restored.
+        The bridge handles dependent references; inspect affected stages afterwards.
+
+        Writes and refreshes the model and returns a confirmation, not a deleted
+        member list. It does not run analysis or explicitly delete grouped nodes
+        and elements. (空名称删除全部结构组；只移除成员或阶段钝化应使用对应专用工具。)
 
         Args:
             name: Name of the structure group to remove, leave empty to remove all (待删除的结构组名称，不填则删除全部)
@@ -98,6 +145,17 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         Boundary groups collect supports/links to be activated or deactivated
         together during construction stages (施工阶段中统一控制边界条件激活状态).
 
+        This creates the named group, not the boundary conditions. Create it
+        before passing its name to set_support, add_elastic_support or link tools;
+        then use update_construction_stage to activate/deactivate the group.
+        Use create_structure_group for model entities and create_load_group for
+        loads; these three group namespaces serve different stage controls.
+
+        Writes and refreshes the model, returning a confirmation with the name.
+        No supports or stage assignments are added automatically. Existing-name
+        handling is delegated to the bridge, so inspect the model before reusing
+        a group name. (只建边界组；边界定义和施工阶段激活需后续分别配置。)
+
         Args:
             name: Boundary group name (边界组名称)
         """
@@ -111,31 +169,66 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
 
     @mcp.tool()
     def list_group_members(
-        group_type: str,
-        name: str,
+        group_type: Literal["structure", "boundary", "load"],
+        name: QueryName,
+        limit: PageLimit = 20,
+        offset: PageOffset = 0,
     ) -> str:
         """
         List members of a structure/boundary/load group (查看分组的成员信息).
 
+        Structure groups return node and element IDs. Boundary/load groups use
+        native filtered queries and return a separate page for each supported
+        family: six boundary families or seven nodal/beam/plate load families.
+        These pages do not cover temperature, prestress or other special loads.
+        Page metadata comes from the bridge; use offset/limit for further pages.
+        Requires a bridge/SDK with native queries for boundary/load groups.
+        (结构组返回节点和单元；边界/荷载按支持的原生类别分页，不含温度、预应力等特殊荷载。)
+
+        Use to verify membership before/after add_to_structure_group or
+        remove_from_structure_group. For independent entity filters use
+        query_model_data; get_model_data supplies broader model catalogs.
+        name must be an actual group name, and group_type chooses its namespace.
+
+        Read-only: no group is created and no model refresh occurs. Returns text
+        containing named member pages; offset/limit apply to each family, not a
+        single flattened list. A missing structure group returns a not-found
+        message; empty native boundary/load pages cannot establish that every
+        possible load or constraint family is absent.
+        (按各类分别分页，空页不等于所有特殊荷载均不存在；只查询，不修改分组。)
+
         Args:
             group_type: Type of group (分组类型): 'structure', 'boundary', 'load'
             name: Group name (分组名称)
+            limit: Maximum members per family/page, 1–500 (每类每页最多成员数)
+            offset: Starting offset for each page (各类查询的分页偏移)
         """
         try:
             if group_type == "structure":
                 groups = provider.get_structure_group_names()
                 if name not in groups:
                     return f"Structure group '{name}' not found (未找到结构组 '{name}')"
-                members = provider.get_structure_group_elements(name=name)
-                return f"Structure group '{name}' elements (结构组成员): {members}"
-            elif group_type == "boundary":
-                groups = provider.get_boundary_data()
-                return f"All boundary groups (所有边界组): {list(groups.keys())}"
-            elif group_type == "load":
-                cases = provider.get_load_case_names()
-                return f"All load cases/groups (所有荷载工况): {cases}"
-            else:
-                return "group_type must be 'structure', 'boundary', or 'load'"
+                from qiao_mcp.tools.queries import _paginate
+
+                members = {
+                    "nodes": provider.get_group_nodes(group_name=name),
+                    "elements": provider.get_structure_group_elements(name=name),
+                }
+                pages = {kind: _paginate(ids, limit, offset) for kind, ids in members.items()}
+                return f"Structure group '{name}' members (结构组成员): {json.dumps(pages, ensure_ascii=False)}"
+            if group_type not in {"boundary", "load"}:
+                raise ToolInputError("group_type must be 'structure', 'boundary', or 'load'")
+            schema, field, kind = (
+                (BoundariesQuery, "boundary_type", "boundaries")
+                if group_type == "boundary" else (LoadsQuery, "load_family", "loads")
+            )
+            pages = {
+                family: provider.query_model_data(
+                    kind=kind, **{field: family}, group_names=[name], limit=limit, offset=offset,
+                )
+                for family in get_args(schema.model_fields[field].annotation)
+            }
+            return f"{group_type} group '{name}' member pages (支持类别的成员页): {json.dumps(pages, ensure_ascii=False)}"
         except ToolError:
             raise  # 保留 ToolError/ToolInputError 的原始类型与消息
         except Exception as e:
@@ -144,7 +237,7 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def add_elements_to_group(
         group_name: str,
-        element_ids: list[int] | str,
+        element_ids: SelectedIds,
     ) -> str:
         """
         Add elements to an existing structure group — elements only
@@ -190,11 +283,24 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         name: str = "运营阶段",
     ) -> str:
         """
-        Merge all construction stages into a final operation stage (合并为运营阶段).
+        Merge the current construction-stage definitions into a named operation
+        stage (将当前施工阶段定义合并为指定名称的运营阶段).
 
-        This finalizes the construction stage analysis by creating an operation
-        stage that accumulates all previous stage results.
-        通过合并所有施工阶段创建运营阶段，作为施工阶段分析的最终状态。
+        Use when intentionally consolidating the stage sequence. To add one stage
+        while retaining the sequence, use add_construction_stage; to change
+        activation/deactivation in one stage use update_construction_stage.
+        configure_operation_stage instead selects operating load cases and factors.
+
+        This rewrites stage definitions and refreshes the model; save a checkpoint
+        if the original sequence is needed. It does not solve or combine already
+        computed result arrays. Read get_model_data(kind="stages") afterwards,
+        configure analysis and call run_analysis when new results are required.
+
+        The wrapper uses the SDK merge defaults: deformation-based installation,
+        self-weight in the merged stage and loading age 5 days. Use the verified
+        mdb.merge_all_stages signature through call_qtmodel_api for other options.
+        Returns a confirmation with the requested name, not analysis results.
+        (修改阶段定义而非求解；采用 SDK 合并默认设置，需要其他合并选项时先查真实签名。)
 
         Args:
             name: Name for the merged operation stage (运营阶段名称)
@@ -213,7 +319,24 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def remove_construction_stage(name: str = "") -> str:
         """
-        Remove a construction stage (删除施工阶段).
+        Delete a named construction-stage definition, or all stage definitions
+        when name is omitted or empty (删除指定施工阶段；省略名称或空串删除全部阶段).
+
+        Read get_model_data(kind="stages") and supply the exact stage name for
+        a single deletion. Omitting name is an explicit all-stages operation,
+        not a way to select the current stage. Save a model checkpoint first
+        if the stage sequence may need to be restored.
+
+        To keep a stage and deactivate its structures, boundaries or loads, use
+        update_construction_stage with delete_structures, delete_boundaries or
+        delete_loads. To change only the displayed stage, use switch_display_stage
+        for the model view or change_construct_stage for the results view.
+
+        Writes stage definitions, refreshes the model and returns a confirmation.
+        It does not rerun analysis or verify the validity of existing results.
+        Reference cleanup is handled by the bridge; reread stages after deletion.
+        (只需钝化组或荷载时保留阶段并调用 update_construction_stage；只切换显示
+        时使用视图工具。删除操作不重新求解，后续使用阶段和结果前须核对模型。)
 
         Args:
             name: Name of the stage to remove. If empty, removes all stages.
@@ -243,11 +366,25 @@ def register_group_tools(mcp: FastMCP, provider: BridgeProvider):
         sub_steps: list[NonnegativeNumber] | None = None,
     ) -> str:
         """
-        Update an existing construction stage (修改施工阶段).
+        Edit one construction stage, including activation and deactivation of
+        structure groups, boundary groups and load groups (修改阶段及各类组的激活/钝化).
 
-        Used to activate/deactivate structure groups, boundaries, and loads
-        in a specific construction stage.
-        (用于在特定施工阶段激活/钝化结构组、边界条件和荷载)
+        Use this dedicated stage-editing tool for both activation and deactivation:
+        delete_structures, delete_boundaries and delete_loads deactivate groups
+        within this stage while retaining their model definitions. To delete the
+        stage itself use remove_construction_stage; to select a modeling view use
+        switch_display_stage. Create a missing stage with add_construction_stage.
+
+        name must identify an existing stage and all group references must exist.
+        new_name and duration are always sent, including their defaults. Optional
+        group lists are omitted only when None; supplied empty lists are sent
+        explicitly, so they are not a request to preserve current entries. Load
+        activation/deactivation rows pair a group name with time 0=start or 1=end.
+
+        Writes and refreshes the model and returns a confirmation without solving.
+        Read stages before and after editing when retaining an existing schedule;
+        sub_steps requires SDK support, and [] explicitly clears sub-steps.
+        (钝化不等于删除组；None 省略列表，空列表会下发。名称和工期默认值仍会提交。)
 
         Args:
             name: Existing stage name (现有阶段名称)

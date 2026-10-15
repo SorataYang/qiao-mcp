@@ -1,6 +1,6 @@
 # 相近工具的选择依据
 
-2026-10-12，0.5.1 本地候选。保留 153 个工具；这是源码和 SDK 契约的人工审查，
+最初整理于 2026-10-12，2026-10-14 按本地逐工具代码审计更新。保留 153 个工具；这是源码和 SDK 契约的人工审查，
 不是模型选型成功率测试。先用 `get_model_status` 检查可用操作，写入后需要结果时显式求解。
 下面的场景只描述选型，没有对真实工程执行。
 
@@ -14,7 +14,7 @@
 | 只把节点 7 改号为 17 | `update_node_id(7, 17)` | 不查询坐标；`update_node` 在省略部分坐标时才回读补齐。完成后回读编号及引用。 |
 | 把节点 7 的绝对 Z 改为 -1.5 | `update_node(7, z=-1.5)` | `move_nodes` 是相对位移；重试会再次累加偏移。 |
 | 平移整段节点 | `move_nodes(ids, offset_z=...)` | 显式选择节点；不会改号。原坐标和既有荷载需复核后重新分析。 |
-| 批量按位置映射改号 | `renumber_nodes(ids=[7,9], new_ids=[17,19])` | 两列须成对等长；任一 None 将触发 SDK 全模型重排。只改一个可用单点入口。 |
+| 批量按位置映射改号 | `renumber_nodes(ids=[7,9], new_ids=[17,19])` | 两列须成对等长且各自唯一；仅两列同时省略才全模型重排，单列省略拒绝。只改一个可用单点入口。 |
 | 按“悬臂施工2”查看建模阶段 | `switch_display_stage(stage_name="悬臂施工2")` | 调用 MDB 建模显示，参数为名称；不计算结果。 |
 | 在后处理窗口查看阶段 2 | `change_construct_stage(stage=2)` | 调用 ODB 显示，参数为编号；0 是基本模型。两者都走 view 守卫，能否显示由桥通当前状态决定；结果读取另走 result_read 守卫。 |
 | 未建截面，试算候选多边形或线宽几何 | `calc_section_property` | 二选一传 loop_segments/sec_lines；返回消息中的计算值，不创建截面。 |
@@ -30,7 +30,7 @@
 | 指定单元整个截面一个均匀温度 | `add_system_temperature` | 实际调 `mdb.add_element_temperature`，SDK 称“最终温度”；不自动把 ΔT 换算为终温。 |
 | 给梁/板输入线性温差 | `add_gradient_temperature` | 梁截面方向 0=Y、1=Z；与自定义温度的方向编号不同。 |
 | 按规范给 t1–t4/thick | `add_beam_section_temperature` | code_index 1/2、sec_type 1/2 有 SDK 依据；完整温度剖面和单位需对照相应规范 UI/export。 |
-| 输入实测分段温度点 | `add_custom_temperature` | 三列 `[参考位置1顶/2底, 高度, 温度]`；orientation 1=局部Z、2=局部Y。旧两列继续透传，不补猜测的顶底基准。 |
+| 输入实测分段温度点 | `add_custom_temperature` | 三列 `[参考位置1顶/2底, 高度, 温度]`；orientation 1=局部Z、2=局部Y。缺少参考位置的两列输入会被拒绝。 |
 | 对索/杆输入初始轴力控制 | `add_initial_tension_load` | tension_type 0增量/1全量；application_type 1体外/2体内/3转索长。物理量不是钢束损失结果。 |
 | 对索输入无应力长度控制 | `add_cable_length_load` | 输入 length 和0增量/1全量；不把长度换算成张拉力。两类索荷载原生单位均须核验。 |
 | 对命名钢束施加预应力 | `apply_prestress` | 前置钢束特性、几何和工况；张拉端0始/1末/2两端。不是索单元初始力；返回原生值确认，不臆造 kN 换算。 |

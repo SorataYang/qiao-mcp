@@ -7,12 +7,22 @@ import json
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
-from qiao_mcp.tools.schemas import CheckDataKind, CheckSettingKind, PageLimit, PageOffset
+from qiao_mcp.tools.schemas import (
+    CheckDataKind,
+    CheckSettingKind,
+    FiniteNumber,
+    PageLimit,
+    PageOffset,
+    QueryName,
+)
 
 MAX_LIMIT = 500
+CheckCombinationRows = list[tuple[QueryName, FiniteNumber, FiniteNumber]]
+_COMBINATION_ADAPTER = TypeAdapter(CheckCombinationRows)
 
 
 def _fmt(obj: Any) -> str:
@@ -53,6 +63,21 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Create a concrete structural check case (创建混凝土检算工况).
 
+        Use after defining the model's sections, materials and target structure
+        group. The existing group selects the members to check; standard selects
+        the design code and structure_type the concrete/prestress category.
+        This is case setup, not load creation or the checking solve.
+
+        Add checking combinations with add_check_load_combination and prepare
+        reinforcement/settings, then use run_concrete_check with the case name.
+        manage_check_case_definition handles complete stored case snapshots;
+        configure_check_analysis changes the current checking settings.
+
+        The SDK refreshes preprocessing data before creating the definition.
+        Returns a summary of the chosen name, code, category and group; it does
+        not certify compliance or return results. Duplicate names and missing
+        references are validated by the bridge. (先有模型与结构组，再建检算工况；定义完成后另行检算。)
+
         Args:
             name: Check case name (检算工况名称)
             standard: Design code (检算规范):
@@ -87,11 +112,27 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         name: str,
         standard: int = 1,
         kind: int = 3,
-        load_case_factors: list[list] | None = None,
+        load_case_factors: CheckCombinationRows | None = None,
         combine_method: Literal[1, 2] = 1,
     ) -> str:
         """
         Add a load combination for structural checking (添加检算荷载组合).
+
+        Use for code-based concrete checking. add_load_combine creates a general
+        model/result combination instead; create_load_case defines a basic load
+        case. Referenced case names must match the names available to checking,
+        including any suffix displayed by the bridge.
+
+        Each row contains [case_name, unfavorable_factor, favorable_factor]. Both
+        factors are required; a two-value row is rejected. standard determines
+        the meaning of kind, while combine_method independently chooses summation
+        with selection or envelope. These selectors are not interchangeable.
+
+        Writes a checking combination and returns its name and component count.
+        None or [] sends an empty component list, not an automatically generated
+        combination. No solve is run and repeated-name behavior is backend-owned;
+        inspect the checking data before replacing or repeating a definition.
+        (检算组合与普通模型组合分开；每行必须三列，规范组合类型与组合方式分别选择。)
 
         Args:
             name: Combination name (组合名称)
@@ -106,14 +147,19 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
             combine_method: Combination method (组合方式): 1=相加并判别, 2=包络
         """
         try:
-            factors = load_case_factors or []
-            factors_tuple = [(row[0], row[1], row[2]) for row in factors]
+            try:
+                factors = _COMBINATION_ADAPTER.validate_python(load_case_factors or [])
+            except ValueError as exc:
+                raise ToolInputError(
+                    "load_case_factors requires [case_name, unfavorable_factor, favorable_factor] "
+                    "(检算组合必须为三列，不接受缺项或多余项)"
+                ) from exc
             provider.add_check_load_combine(
                 name=name,
                 standard=standard,
                 combine_type=kind,
                 combine_method=combine_method,
-                combine_info=factors_tuple,
+                combine_info=factors,
             )
             return (
                 f"Load combination '{name}' added with {len(factors)} cases "
@@ -138,6 +184,24 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         when an older SDK returns it without raising an exception.
         先将指定检算工况同步为当前检算数据，再运行规范验算并等待后台任务完成。
 
+        Use after preparing the named case, checking combinations/reinforcement
+        and required structural results. setup_concrete_check creates the case;
+        configure_check_analysis changes settings; run_analysis performs the
+        structural solve. This tool runs concrete code checks, not a general
+        finite-element analysis or seismic/strengthening solver.
+
+        name selects the case imported into the current checking context; it is
+        not merely a label on whatever data is already open. max_wait_seconds
+        limits waiting, not backend execution. A timeout does not cancel the
+        background check: inspect its state before starting another run. None
+        waits without a time limit; there is no start-only mode in this tool.
+
+        Success returns a completion message, not a pass/fail design verdict.
+        Retrieve the check results with get_check_data and review the relevant
+        limits separately. Failure, cancellation or an unconfirmed terminal state
+        uses the MCP error channel.
+        (等待超时不自动终止后台；成功只表示计算完成，规范是否满足须另查检算结果。)
+
         Args:
             name: Check case name to run (要运行的检算工况名)
             max_wait_seconds: Max seconds to wait for completion; None = no limit
@@ -146,12 +210,17 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         try:
             status = provider.solve_concrete_check(name=name, wait=True, max_wait=max_wait_seconds)
             state = str(status.get("state", "")).lower() if isinstance(status, dict) else ""
-            if state and state not in {"succeeded", "success", "completed", "complete"}:
-                message = status.get("message") or ""
+            if (
+                state not in {"succeeded", "success", "completed", "complete"}
+                or status.get("ok") is False
+                or str(status.get("is_running", "")).lower() == "true"
+            ):
+                message = (status.get("message") or "") if isinstance(status, dict) else ""
                 raise ToolError(
-                    f"Concrete check did not complete: state={state}"
+                    f"Concrete check did not complete: state={state or 'unknown'}"
                     + (f", message={message}" if message else "")
-                    + " (混凝土检算未成功完成，已有结果不能作为本次成功的证据)"
+                    + ". Inspect the check status before retrying "
+                    "(混凝土检算未确认成功；请先检查状态，勿盲目重复检算)"
                 )
             return (
                 f"Concrete check '{name}' completed. "
@@ -175,14 +244,33 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         """
         Add parametric reinforcement to a concrete section (添加参数化配筋).
 
+        Use for spacing-based reinforcement layers of an existing section in
+        the current concrete-check data. Material IDs must identify existing
+        reinforcing steel. set_section_reinforcement instead writes a complete
+        model reinforcement snapshot; add_check_stirrup defines shear/torsion
+        stirrups rather than these longitudinal layers.
+
+        Each row is [diameter, material_id, cover, spacing, bars_per_bundle].
+        Diameter, cover and spacing are in meters: 0.016 means a 16 mm bar.
+        The wrapper uses the SDK's spacing mode for both families; it does not
+        expose the count-mode selector, so the fourth value is spacing here.
+        position chooses I/J for tapered sections and normally 0 for a constant
+        section. has_outer/has_inner apply independently to their row families.
+
+        Existing reinforcement is overwritten. Both family flags are always
+        sent; None/[] omits the rows from the wrapper call and the SDK sends an
+        empty row list. Supply the complete desired definition, not a partial
+        patch. Returns a confirmation without running a check.
+        (既有配筋会覆盖；本工具使用间距模式，所有长度均用米，空行表不能当作保留原值。)
+
         Args:
             section_id: Section ID (截面ID)
             position: Section end (截面位置): 0=I端 (start), 1=J端 (end)
             has_outer: Has outer reinforcement (是否有外部钢筋)
             has_inner: Has inner reinforcement (是否有内部钢筋)
             outer_rebar_info: Outer rebar list (外部钢筋信息):
-                              [[diameter, material_id, cover, spacing_or_count, bars_per_bundle], ...]
-                              [[直径mm, 材料号, 层边距m, 间距m/数量, 每束根数], ...]
+                              [[diameter_m, material_id, cover_m, spacing_m, bars_per_bundle], ...]
+                              [[直径m, 材料号, 层边距m, 间距m, 每束根数], ...]
             inner_rebar_info: Inner rebar list (内部钢筋信息), same format as outer
         """
         try:
@@ -221,6 +309,23 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
     ) -> str:
         """
         Add a stirrup definition for checking (添加检算箍筋定义).
+
+        Define a reusable stirrup before assigning it to elements with
+        assign_element_stirrup. Use manage_check_stirrup to update/remove an
+        existing definition, or add_parametric_reinforcement for longitudinal
+        section layers. set_check_stirrup_snapshot writes a complete model-side
+        snapshot and uses a different, native-unit schema.
+
+        stirrup_id is a definition ID, not an element ID; material_id refers to
+        existing reinforcing steel. Normal stirrups use limbs_number; spiral
+        stirrups use loops_number and core_diameter. This tool accepts all lengths
+        in meters. The adapter converts diameter to mm for the SDK, while spacing
+        and core_diameter stay in meters; diameter=0.020 means a 20 mm bar.
+
+        Writes the definition and returns a confirmation with its name. It does
+        not assign elements or run checks. Inspect existing definitions before
+        reusing an ID because duplicate handling belongs to the bridge.
+        (先定义再分配；编号不是单元号，全部长度输入米，仅直径在适配器中换算为毫米。)
 
         Args:
             stirrup_id: Stirrup definition ID (箍筋定义编号)
@@ -261,7 +366,26 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         fpd: float = 900000000.0,
     ) -> str:
         """
-        Update vertical prestress tendon parameters for checking (修改竖向预应力钢束参数).
+        Set the current concrete-check case's vertical prestress reinforcement
+        parameters in SI units (用 SI 单位设置当前混凝土检算的竖向预应力钢束参数).
+
+        Use in the checking workflow established by setup_concrete_check.
+        This sets checking parameters; create_tendon_property and create_tendon_2d
+        define model tendons, while apply_prestress adds their structural load.
+
+        Every call sends all five values. Omitted parameters use the listed
+        defaults instead of preserving previous settings, so supply the complete
+        desired configuration when changing an existing case. area is for ONE
+        limb, not the total across limbs_number; spacing is along the bridge.
+        The adapter converts m² to mm² and Pa to MPa for the backend, while
+        spacing stays in meters. For example, area=0.000804 means 804 mm².
+
+        Returns a confirmation after updating the checking settings. It does not
+        solve the case; use run_concrete_check after all settings are prepared.
+        get_check_data(kind="vertical_prestress") reads the current native
+        settings; account for its backend units when preparing SI inputs here.
+        (每次整体提交五项，省略项恢复所列默认值；单肢面积用 m²，应力用 Pa。
+        完成配置后再运行检算，查询接口的原生单位与本工具的 SI 输入须区分。)
 
         Args:
             limbs_number: Number of vertical limbs/strands (竖向预应力肢数)
@@ -362,18 +486,20 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def configure_check_analysis(kind: CheckSettingKind, settings: dict[str, Any]) -> str:
         """
-        Configure a concrete-check analysis setting group (配置混凝土检算分析设置).
+        Replace a concrete-check analysis setting group (完整配置混凝土检算分析设置).
 
         ⚠️ UNITS (单位): parameters in this tool use qtmodel's NATIVE units —
-        **mm for lengths and MPa for stresses**, NOT the SI (m/Pa) used elsewhere
-        in this server. qtmodel does not document these units; they are inferred
-        from its defaults (e.g. protective_thickness=30.0 means 30 mm,
-        fatigue_limit_steel_bar=145.0 means 145 MPa). Pass values accordingly.
-        本工具参数沿用 qtmodel 原生单位（长度 mm、应力 MPa），与本服务器其余
-        工具的 SI 约定不同；qtmodel 未标注单位，此结论由其默认值推断。
+        no conversion is applied. SDK defaults such as protective_thickness=30.0
+        and fatigue_limit_steel_bar=145.0 suggest mm/MPa, but their units are not
+        explicitly documented; confirm them against the target QiaoTong UI/export.
+        原生值直接透传、不换算；默认值提示 mm/MPa，但单位须由目标桥通界面或导出确认。
 
-        Use get_check_data("<kind>_setting") to read current values first.
-        建议先用 get_check_data 读取当前值，再按需覆盖。
+        The SDK sends every field and saves the current check file. Omitted keys
+        use SDK defaults; {} resets this group to those defaults. To retain fields,
+        read get_check_data("<kind>_setting") and supply all values to preserve.
+        This tool does not merge the current settings or run the check.
+        SDK 完整发送本组并保存检算文件；省略项使用默认值，空字典重置本组。
+        保留已有值须先回读并完整传入；本工具不自动合并或检算。
 
         Args:
             kind: Setting group (设置类别):
@@ -411,15 +537,18 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
                 "bearing_curve" (承载力曲线):
                     bearing_curve_count (计算点数),
                     angle_between_m_and_y_axis (弯矩方向与y轴夹角), force_p (轴力P)
-            settings: Parameter dict for the chosen kind; only pass what you change
-                      (该类别的参数字典，只需传要修改的项)
+            settings: Full desired group; omitted keys use SDK defaults
+                      (该类别的完整目标参数，省略项使用 SDK 默认值)
         """
         try:
             if not isinstance(settings, dict):
                 raise ToolInputError("settings must be a dict (settings 必须为字典)")
             provider.configure_check_analysis(kind, settings)
-            changed = ", ".join(f"{k}={v}" for k, v in settings.items()) or "(no change)"
-            return f"Analysis setting '{kind}' updated: {changed} (检算分析设置已更新)"
+            changed = ", ".join(f"{k}={v}" for k, v in settings.items()) or "(SDK defaults)"
+            return (
+                f"Analysis setting '{kind}' replaced: {changed}; omitted fields use SDK defaults "
+                "(检算分析设置已完整替换；省略项使用 SDK 默认值)"
+            )
         except ValueError as e:
             raise ToolInputError(
                 f"{e}. See tool description for valid kinds (未知设置类别，请查阅工具说明)"
@@ -443,14 +572,31 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         core_diameter: float = 0.0,
     ) -> str:
         """
-        Update or remove a stirrup definition (修改或删除检算箍筋定义).
+        Update or remove a stirrup definition in the current concrete-checking
+        context (修改或删除当前检算窗口内的箍筋定义).
 
-        Use add_check_stirrup to create one. Lengths are in METERS (SI), converted
-        internally. 新增请用 add_check_stirrup；长度入参为米，内部换算。
+        Use add_check_stirrup to create a definition, assign_element_stirrup to
+        change element assignments, and set_check_stirrup_snapshot to write a
+        model-side snapshot. This tool targets the loaded checking context;
+        it does not import a model check case or run verification.
+
+        update requires name and sends every property, including defaults:
+        read get_check_data(kind="stirrups") and carry forward values to retain.
+        This is a full definition update, not a patch of supplied fields.
+        The bridge tries stirrup_id first and falls back to name if not found;
+        keep both identifiers consistent to avoid targeting another definition.
+
+        remove sends only the ID/name selector; the shape fields are ignored.
+        Inspect element references before removing a shared definition, because
+        this wrapper does not reassign dependents or provide an undo operation.
+        Length arguments use meters; only diameter is converted to millimeters
+        for the backend. Returns a confirmation; read the definition and
+        assignments back before the next concrete check.
 
         Args:
             action: "update" (修改) or "remove" (删除)
-            stirrup_id: Stirrup definition ID (箍筋定义编号); <=0 means match by name
+            stirrup_id: Definition ID; the bridge falls back to name if the ID is
+                        nonpositive or not found (编号优先，未找到时按名称匹配)
             name: Stirrup definition name (箍筋定义名称)
             stirrup_type: 1=普通箍筋 (normal), 2=螺旋式箍筋 (spiral)
             material_id: Rebar material ID (钢筋材料号)
@@ -502,10 +648,25 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         stirrup_j: int = 1,
     ) -> str:
         """
-        Assign or remove element stirrups (指定或删除单元箍筋).
+        Assign or remove shear/torsion stirrup references on checking elements
+        (指定或删除检算单元的抗剪/抗扭箍筋引用).
 
-        Stirrup numbers refer to definitions created by add_check_stirrup.
-        箍筋号引用 add_check_stirrup 创建的箍筋定义。
+        Create the stirrup definitions with add_check_stirrup first. This changes
+        element assignments, not the definitions themselves; manage_check_stirrup
+        updates/removes definitions. set_element_stirrups handles bulk model
+        snapshots with a different row schema.
+
+        shear requires a positive element_id and uses the four I/J, vertical/
+        transverse stirrup IDs. torsion also requires a positive element_id but
+        uses only stirrup_i and stirrup_j. Each assignment sends the complete set
+        for that action, including default ID 1 for omitted fields; other-action
+        fields are ignored. Supply all intended IDs when replacing assignments.
+
+        remove deletes assignments on one positive element_id; zero, negative
+        or the default -1 removes assignments for ALL elements. Read the current
+        checking data before a broad removal. Returns a confirmation without
+        running checks or deleting the referenced stirrup definitions.
+        (不同 action 使用不同字段；分配时省略编号采用 1，remove 的默认目标是全部单元。)
 
         Args:
             action: "shear" (抗剪箍筋), "torsion" (抗扭箍筋), or "remove" (删除)
@@ -554,6 +715,21 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
     ) -> str:
         """
         Open or save a concrete check case file (打开或保存混凝土检算工况文件).
+
+        Use for the current checking data, including checkpoints before changing
+        its settings. open_model_file/save_model_file handle the entire structural
+        model instead; setup_concrete_check creates a new checking case definition.
+
+        For open, file_path takes priority over name; with only name the backend
+        resolves its default check-data directory. Opening replaces current
+        checking data, so save existing work first if needed. For save, a nonempty
+        file_path means save-as; otherwise the current case is saved in place.
+        name is ignored on save. Existing destination files may be overwritten.
+
+        Paths belong to the machine running QiaoTong. No file is uploaded or
+        downloaded by the MCP process, and no automatic backup is created.
+        Returns an operation confirmation without solving the case.
+        (路径属于桥通主机；打开会替换当前检算数据，保存可能覆盖文件，不传输文件到 MCP 主机。)
 
         Args:
             action: "open" (打开) or "save" (保存)

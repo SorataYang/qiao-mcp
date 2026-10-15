@@ -10,12 +10,14 @@ node tandems (节点纵列) → influence planes (影响面) → lane lines (车
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
-from pydantic import StrictBool
+from pydantic import StrictBool, TypeAdapter
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
-from qiao_mcp.tools.live_load_schemas import LiveLoadCaseNames, LiveLoadSystem
+from qiao_mcp.tools.live_load_schemas import LiveLoadCaseNames, LiveLoadSubCases, LiveLoadSystem
 from qiao_mcp.tools.schemas import MessageResult
+
+_SUB_CASE_ADAPTER = TypeAdapter(LiveLoadSubCases)
 
 
 def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -87,12 +89,25 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         order_by_x: bool = True,
     ) -> str:
         """
-        Define a node tandem — the node path a moving load travels along
-        (添加节点纵列，移动荷载行进经过的节点序列).
+        Define a named longitudinal node path for a moving-load influence plane
+        (以已有节点定义活载节点纵列).
 
-        This is STEP 1 of the moving load workflow:
-        add_node_tandem → add_influence_plane → add_traffic_lane
-        → add_standard_vehicle → create_live_load_case
+        Use after creating the girder nodes and before add_influence_plane,
+        which refers to this tandem by name. add_traffic_lane defines a lane
+        within that plane; create_nodes and create_nodes_linear create geometry
+        and do not define a moving-load path.
+
+        The selected node IDs must already exist. order_by_x=True asks the
+        bridge to sort by global X, so input list order is not the travel order.
+        For a path that doubles back in X, supply the intended ordered node
+        list with order_by_x=False and verify its direction in QiaoTong. The
+        wrapper forwards the selection without checking the path geometry.
+
+        Writes the named tandem and refreshes the model, returning a
+        confirmation, not generated nodes, an influence plane or results.
+        Existing-name handling belongs to the bridge; inspect the definition
+        before retrying an uncertain write. Continue with the influence plane,
+        lane, vehicle and create_live_load_case, then run_analysis separately.
 
         Args:
             name: Tandem name (节点纵列名, e.g. "节点纵列1")
@@ -119,6 +134,18 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
 
         STEP 2 of the moving load workflow. The influence plane is built
         from one or more node tandems and is required by lanes and load cases.
+
+        Create the referenced tandems with add_node_tandem first. This defines
+        the supporting influence-plane geometry; add_traffic_lane places a lane
+        on it, and create_live_load_case selects vehicles and lanes for analysis.
+        It does not calculate influence ordinates or create vehicles.
+
+        tandem_names contains existing tandem names in the intended plane order.
+        The optional beam-shape division setting is omitted when None; explicitly
+        setting it requires SDK support. Writes and refreshes the model and
+        returns the requested plane name. Reference validation and repeated-name
+        handling belong to the bridge; verify the plane before building lanes.
+        (先建节点纵列，再建影响面与车道；这里只写定义，不计算影响值。)
 
         Args:
             name: Influence plane name (影响面名称, e.g. "影响面1")
@@ -154,6 +181,21 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
 
         STEP 3 of the moving load workflow. Requires an influence plane
         and a node tandem created beforehand.
+
+        Use for an ordinary moving-load lane tied to an influence plane. A
+        transversal lane uses set_transversal_lane; an international planned lane
+        uses set_planned_lane and a separate namespace. This tool does not create
+        a vehicle, a live-load case or a structural beam element.
+
+        influence_name and tandem_name must reference existing definitions.
+        offset locates the lane laterally from its tandem, while lane_width is
+        its width; both use meters. optimize enables lateral vehicle wandering,
+        and direction reverses travel along the same lane definition.
+
+        Writes and refreshes the model and returns the lane/plane summary.
+        Use the lane in create_live_load_case afterwards, then configure and run
+        analysis separately. Duplicate-name and reference handling are backend-owned.
+        (普通移动荷载车道与横向/国际拟定车道分开；偏移和宽度用米，定义后另建活载工况。)
 
         Args:
             name: Lane name (车道线名称, e.g. "车道1")
@@ -196,6 +238,22 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
 
         STEP 4 of the moving load workflow.
 
+        Use for a vehicle or lane-load template provided by the bridge's listed
+        Chinese design-code database. set_international_vehicle and
+        create_en1991_vehicle define international families; set_transversal_vehicle
+        defines transversal vehicles. These use different schemas and namespaces.
+
+        standard_code selects the database and load_type must match an actual
+        entry in that code's desktop UI. load_length and factor are specialized
+        railway options, not universal vehicle geometry or axle-scale controls.
+        The wrapper forwards the selection; it does not synthesize missing templates.
+
+        Writes and refreshes the model, returning a definition summary. The vehicle
+        is not placed on a lane or solved here: reference it in create_live_load_case
+        with the previously created plane/lanes. Inspect definitions before reusing
+        a name because duplicate and unsupported-template handling belongs to the bridge.
+        (规范与荷载类型须匹配界面数据库；车辆定义、车道组合和求解分别执行。)
+
         Args:
             name: Vehicle name (车辆荷载名称)
             standard_code: Design code (荷载规范):
@@ -231,15 +289,30 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
         name: str,
         influence_plane: str,
         span: float,
-        sub_cases: list[list],
+        sub_cases: LiveLoadSubCases,
         sub_case_optimized: list[StrictBool] | None = None,
     ) -> str:
         """
-        Create a moving live load case (创建活载工况).
+        Define a moving vehicle/lane case on an existing influence plane
+        (在已有影响面上定义车辆车道活载工况).
 
-        FINAL STEP of the moving load workflow. The analysis engine finds the
-        worst-case vehicle positions for envelope results
-        (分析引擎自动计算最不利车辆位置得到包络效应).
+        Use after add_influence_plane, add_traffic_lane and add_standard_vehicle.
+        All plane, vehicle and lane names must already identify compatible
+        definitions. create_load_case defines a static case; transversal and
+        international live-load cases use set_transversal_case and
+        set_international_live_load_case respectively.
+
+        Each sub_cases row assigns one vehicle and factor to its lane-name
+        list. Multiple rows are separate sub-cases; sub_case_optimized, when
+        supplied, pairs with those rows by position, not with individual lanes.
+        For two rows it must contain exactly two booleans. None omits that
+        option, and explicit flags require SDK support.
+
+        Writes and refreshes the case, returning a confirmation. It does not
+        find vehicle positions or compute envelopes during this call. Include
+        the case in configure_operation_stage, then run_analysis; read the
+        resulting extremes with get_live_load_results. The bridge validates
+        references and duplicate names; a definition alone is not a solved case.
 
         Args:
             name: Load case name (活载工况名)
@@ -265,7 +338,13 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
                         "(子工况优化标志数量必须与子工况一致)"
                     )
                 kwargs["sub_case_optimized"] = sub_case_optimized
-            formatted = [(str(v), float(f), list(lanes)) for v, f, lanes in sub_cases]
+            try:
+                formatted = _SUB_CASE_ADAPTER.validate_python(sub_cases)
+            except ValueError as exc:
+                raise ToolInputError(
+                    "sub_cases requires [vehicle_name, factor, [lane names...]] rows "
+                    "(子工况必须为三列，车道必须为名称列表)"
+                ) from exc
             provider.add_live_load_case(
                 name=name,
                 influence_plane=influence_plane,
@@ -285,25 +364,49 @@ def register_moving_load_tools(mcp: FastMCP, provider: BridgeProvider):
     @mcp.tool()
     def get_live_load_results(
         case_name: str,
-        result_type: str = "force",
+        result_type: Literal["force", "stress", "deformation"] = "force",
         element_ids: list[int] | str = "",
+        envelope_type: Literal[1, 2] = 1,
     ) -> str:
         """
         Get moving load analysis results (获取移动荷载分析结果).
 
-        Returns envelope (maximum and minimum) results for specified elements.
-        返回指定单元的移动荷载包络结果（最大值和最小值）。
+        Queries operating-stage results for one extreme at a time. The default
+        is maximum; request envelope_type=2 separately for minimum. The case name
+        is passed verbatim: obtain its complete result name from verified model
+        data. This tool neither prefixes a case name nor runs analysis.
+        查询运营阶段已求解结果；默认最大值，最小值须单独指定2；工况全名原样传入。
+
+        Use after a moving-load case has been included in operating-stage
+        configuration and successfully solved. get_analysis_results serves the
+        general result interface; get_transversal_data and
+        get_international_live_load_data read definitions rather than results.
+
+        result_type determines the selection namespace: element_ids selects
+        elements for force/stress but nodes for deformation. The empty string
+        requests all IDs. There is no pagination, and each call returns only the
+        selected maximum or minimum extreme, not both envelope sides together.
+
+        Read-only: returns the native result as text without changing the view,
+        refreshing the model, converting units or filling missing values. An
+        unavailable/empty result needs a check of the solved case and identifiers,
+        not an automatic rerun or guessed case prefix.
+        (变形查询使用节点号；单次只有一侧极值，空选择查全部，返回原生数据且不补造缺失值。)
 
         Args:
-            case_name: Live load case name (活载工况名)
+            case_name: Complete live-load result case name (活载结果工况全名)
             result_type: Result type (结果类型): 'force'(内力), 'stress'(应力), 'deformation'(变形)
-            element_ids: Element or node IDs to query (查询的单元或节点编号)
+            element_ids: Element IDs for force/stress, node IDs for deformation;
+                empty string queries all IDs (内力/应力用单元号，变形用节点号；空串查询全部)
+            envelope_type: Extreme to request: 1=maximum, 2=minimum
+                (单次查询的极值：1最大、2最小)
         """
         try:
             result = provider.get_live_load_results(
                 case_name=case_name,
                 result_type=result_type,
                 ids=element_ids,
+                envelope_type=envelope_type,
             )
             return str(result)
         except ToolError:

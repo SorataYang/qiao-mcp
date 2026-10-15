@@ -42,6 +42,7 @@ def test_destructive_annotation():
         "remove_nodes", "initialize_model", "open_model_file", "merge_nodes",
         "set_gravity", "create_material", "create_polygon_section",
         "update_element", "renumber_nodes", "calculate_section_property",
+        "create_tendon_2d", "add_tendon_3d",
     ):
         a = _annotations_for(name)
         assert a.destructiveHint is True, f"{name} 应标记为破坏性"

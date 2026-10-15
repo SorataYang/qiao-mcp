@@ -194,13 +194,19 @@ def test_created_provider_satisfies_the_contract():
     assert isinstance(p.get_software_name(), str) and p.get_software_name()
 
 
-def test_server_catalog_initializes_without_a_connection_probe(monkeypatch):
+@pytest.mark.parametrize("layout,expected_count", [(None, 15), ("domains", 15), ("flat", 153)])
+def test_server_catalog_initializes_without_a_connection_probe(monkeypatch, layout, expected_count):
+    if layout is None:
+        monkeypatch.delenv("QIAO_MCP_CATALOG_LAYOUT", raising=False)
+    else:
+        monkeypatch.setenv("QIAO_MCP_CATALOG_LAYOUT", layout)
     stub = StubProvider()
     probe = Mock(side_effect=AssertionError("Catalog startup must not probe the backend"))
     monkeypatch.setattr(stub, "is_available", probe)
     monkeypatch.setattr(qiao_mcp.providers, "create_provider", lambda: stub)
     namespace = runpy.run_module("qiao_mcp.server", run_name="qiao_mcp._startup_test")
     tools = asyncio.run(namespace["mcp"].list_tools())
-    assert len(tools) == 153
-    assert "check_qiaotong_connection" in {tool.name for tool in tools}
+    assert len(tools) == expected_count
+    expected_diagnostic = "check_qiaotong_connection" if layout == "flat" else "inspect_bridge"
+    assert expected_diagnostic in {tool.name for tool in tools}
     probe.assert_not_called()

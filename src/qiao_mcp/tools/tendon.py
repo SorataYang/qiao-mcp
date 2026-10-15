@@ -12,7 +12,14 @@ from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
-from qiao_mcp.tools.schemas import FourNumbers, NonnegativeNumber, TendonNames, ThreeNumbers
+from qiao_mcp.tools.schemas import (
+    FiniteNumber,
+    FourNumbers,
+    NonnegativeNumber,
+    SelectedIds,
+    TendonNames,
+    ThreeNumbers,
+)
 
 
 def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
@@ -30,10 +37,27 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         friction: float = 0.25,
         deviation: float = 0.0015,
         anchorage_slip: float = 0.006,
-        steel_detail: list[float] | None = None,
+        steel_detail: list[FiniteNumber] | None = None,
     ) -> str:
         """
         Create a tendon property definition (创建钢束特性).
+
+        Use after creating the prestressing steel material and before defining
+        tendon geometry with create_tendon_2d or add_tendon_3d. This stores reusable
+        section, duct and friction properties; apply_prestress adds an actual load
+        and update_vertical_steel_tendon configures vertical checking reinforcement.
+
+        For strands, area/duct_diameter/friction/deviation form the four-value
+        steel detail unless an explicit steel_detail overrides them. Threaded bars
+        require their six-value native layout; a strand default cannot represent
+        the bar diameter or tension method and is rejected for steel_type=2.
+        anchorage_slip is supplied equally at both ends. Use the units documented
+        in the schema and verify any raw steel_detail layout before overriding it.
+
+        Writes and refreshes the model and returns the property name, without
+        creating tendon paths or solving. Material references and duplicate-name
+        behavior are owned by the bridge; inspect definitions before reusing a name.
+        (先有预应力材料，再建特性和钢束路径；显式 steel_detail 覆盖便捷参数，螺纹钢筋须六项。)
 
         Args:
             name: Tendon property name (钢束特性名)
@@ -49,15 +73,27 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
             friction: Friction coefficient μ (摩阻系数), typically 0.20~0.30
             deviation: Wobble coefficient k (偏差系数), typically 0.0015
             anchorage_slip: Anchorage slip at each end in m (锚固滑移，两端相同), typ. 0.006
-            steel_detail: Advanced override, raw qtmodel steel_detail list
+            steel_detail: Required for steel_type=2; otherwise an advanced override.
+                          Raw qtmodel steel_detail list
                           (高级用法：直接给出原始 steel_detail 列表，覆盖上述四个参数；
                           钢绞线=[面积,孔道直径,摩阻,偏差]，
                           螺纹钢筋=[直径,面积,孔道直径,摩阻,偏差,张拉方式])
         """
         try:
+            if steel_type == 2 and steel_detail is None:
+                raise ToolInputError(
+                    "steel_type=2 requires six steel_detail values "
+                    "[diameter, area, duct diameter, friction, deviation, tension method] "
+                    "(螺纹钢筋须提供六项 steel_detail，不能套用钢绞线四项默认值)"
+                )
             detail = steel_detail if steel_detail is not None else [
                 area, duct_diameter, friction, deviation
             ]
+            expected = 4 if steel_type == 1 else 6
+            if len(detail) != expected:
+                raise ToolInputError(f"steel_type={steel_type} requires {expected} steel_detail values")
+            if steel_type == 2 and detail[5] not in (1, 2):
+                raise ToolInputError("Threaded-bar tension method must be 1 or 2 (张拉方式须为1或2)")
             provider.add_tendon_property(
                 name=name,
                 tendon_type=tendon_type,
@@ -95,6 +131,23 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         The tendon profile lies in the X-Z plane; each control point is
         [x, z, r] where r is the fillet radius (0 for sharp points).
         钢束线形位于XZ平面，控制点为 [x, z, r]，r为圆弧半径（0为折点）。
+
+        Use for a planar tendon profile; add_tendon_3d accepts spatial points.
+        Create the referenced property with create_tendon_property first. This
+        defines the tendon path, while apply_prestress adds its structural load.
+        update_vertical_steel_tendon changes checking parameters rather than paths.
+
+        Point order controls the profile. position_type determines whether
+        point_insert is a coordinate triple or [end, direction, element_id] for
+        track positioning. symmetry selects the mirroring end or an asymmetric
+        profile; num is the tendon count, not the number of control points.
+        Lengths and coordinates are forwarded in the bridge convention.
+
+        Writes the full geometry and refreshes the model; a repeated name can
+        replace an existing tendon. Read get_tendon_info before updating a path.
+        Returns the requested tendon name, not generated coordinates or prestress
+        results, and does not start analysis.
+        (先建特性；插入点含义由定位方式决定，重名可能覆盖完整线形，定义与张拉荷载分开。)
 
         Args:
             name: Tendon name (钢束名称)
@@ -235,7 +288,24 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
         group_name: str = "默认钢束组",
     ) -> str:
         """
-        Add a 3D tendon (添加三维钢束/空间钢束).
+        Define a spatial tendon using ordered three-dimensional control points
+        (用有序三维控制点定义空间钢束).
+
+        Create the material and create_tendon_property first; property_name must
+        name an existing tendon property. Use create_tendon_2d for a planar tendon
+        profile. This tool defines geometry; apply_prestress adds the later load,
+        and update_vertical_steel_tendon changes checking parameters instead.
+
+        Every control point is [x, y, z, fillet_radius] and order is preserved.
+        position_type changes the meaning of point_insert: straight positioning
+        takes three coordinates, while track positioning takes end, direction
+        and a real element ID. Use the bridge's coordinate and length convention;
+        the wrapper performs no geometric or unit conversion.
+
+        Writes the full definition and refreshes the model. A repeated name can
+        replace an existing tendon, so read get_tendon_info before editing it.
+        Returns a confirmation with the name, not discretized tendon positions or
+        prestress results. (空间几何定义与施加预应力分开；重名可能覆盖，点序和单位原样提交。)
 
         Args:
             name: Tendon name (钢束名称)
@@ -269,7 +339,7 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
             raise ToolError(f"Error adding 3D tendon (添加三维钢束失败): {e}") from e
 
     @mcp.tool()
-    def assign_tendon_elements(ids: int | list[int] | str) -> str:
+    def assign_tendon_elements(ids: SelectedIds) -> str:
         """
         Declare which elements contain tendons, i.e. are prestressed-concrete
         members (标记预应力单元：声明哪些单元内有钢束穿过).
@@ -386,6 +456,18 @@ def register_tendon_tools(mcp: FastMCP, provider: BridgeProvider):
     def get_tendon_length_result() -> str:
         """
         Get all tendon length results (获取所有钢束长度结果).
+
+        Use when the bridge has generated tendon length results and a total-length
+        result listing is needed. get_tendon_info reads saved definitions;
+        get_tendon_position_result reads discretized coordinates, and
+        get_tendon_loss_results reads computed loss components.
+
+        This parameterless query reads all available length results without
+        recalculating geometry, running analysis or refreshing the model. Returns
+        the backend records as text; there is no tendon selector or pagination.
+        An empty result is not proof that the model has no tendons: confirm the
+        definitions and the bridge's result availability before interpreting it.
+        (查询已有长度结果，不计算控制点折线长度；全部返回，空结果需结合定义与结果状态判断。)
         """
         try:
             data = provider.get_tendon_length_result()

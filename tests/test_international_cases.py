@@ -182,6 +182,24 @@ def test_planned_lane_export_uses_dedicated_endpoint_and_one_commit(qtmodel_wire
     assert calls[0][1] == {k: v for k, v in request.items() if k != "action"}
 
 
+@pytest.mark.parametrize("action", ["add", "update"])
+def test_sdk_unavailable_planned_lane_is_not_committed(fake_provider, monkeypatch, action):
+    import qtmodel
+    from qtmodel.core.qt_server import QtServer
+
+    contract = pytest.importorskip("qtmodel.core.api_contract")
+    if f"{action.upper()}-PLANNED-LANE-LINE" not in contract.UNAVAILABLE_HTTP_COMMANDS:
+        pytest.skip("SDK does not mark planned-lane routes unavailable")
+    connect = Mock(side_effect=AssertionError("Unexpected connection for an unavailable route"))
+    monkeypatch.setattr(QtServer, "_ensure_connection", connect)
+    # Use real send_command so its API_NOT_OPEN guard is exercised.
+    fake_provider._mdb = qtmodel.mdb
+    functions = tool_fns(register_international_load_tools, fake_provider)
+    with pytest.raises(ToolError, match="API_NOT_OPEN"):
+        functions["set_planned_lane"](request=lane_request(action))
+    connect.assert_not_called()
+
+
 def test_planned_lane_update_keeps_name_and_zero_values(qtmodel_wire):
     p, calls = qtmodel_wire
     if not callable(getattr(p._mdb, "update_planned_lane_line", None)):

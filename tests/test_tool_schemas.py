@@ -128,9 +128,22 @@ def test_schema_exposes_ranges_enums_lengths_and_workflow_fields(catalog):
     ("add_constraint_equation", {"name": "CE", "slave_node": 1, "master_info": [[2, 7, 1.0]]}),
     ("add_beam_section_temperature", {"element_id": 1, "case_name": "T", "sec_type": 3}),
     ("add_custom_temperature", {"element_id": 1, "case_name": "T", "temperature_data": [[3, 0.2, 10]]}),
+    ("add_custom_temperature", {"element_id": 1, "case_name": "T", "temperature_data": [[0.2, 10]]}),
     ("add_custom_temperature", {"element_id": 1, "case_name": "T", "temperature_data": [[1, 0.2, 10, 5]]}),
     ("remove_boundary", {"remove_id": 1, "kind": "unknown"}),
     ("update_element", {"old_id": 1, "ele_type": 5}),
+    ("update_element", {"old_id": True, "mat_id": 2}),
+    ("update_node", {"node_id": 1.5, "x": 3}),
+    ("remove_nodes", {"ids": True}),
+    ("remove_nodes", {"confirm_delete_all": "true"}),
+    ("remove_elements", {"ids": [1.5]}),
+    ("remove_section", {"ids": [True]}),
+    ("assign_tendon_elements", {"ids": True}),
+    ("add_elements_to_group", {"group_name": "G", "element_ids": [True]}),
+    ("create_structure_group", {"name": "G", "element_ids": [True]}),
+    ("move_nodes", {"ids": " ", "offset_x": 3}),
+    ("renumber_nodes", {"ids": [1], "new_ids": [1.5]}),
+    ("find_entities", {"by": "element_type", "ids": True}),
     ("set_view_angle", {"angle_preset": "unknown"}),
     ("manage_check_stirrup", {"action": "unknown"}),
     ("assign_element_stirrup", {"action": "unknown"}),
@@ -158,7 +171,6 @@ def test_spring_type_and_direction_are_validated_before_writing(catalog, fake_pr
 
 @pytest.mark.parametrize("rows", [
     [[2, 0.5, -10], [1, 0.25, 12.5], [2, 0.5, -10]],
-    [[0.5, -10], [0.25, 12.5]],  # accepted legacy pairs must not acquire an inferred reference
     [],
     None,
 ])

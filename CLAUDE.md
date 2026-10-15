@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目简介
 
-Qiao-MCP 是一个 MCP 服务器,把桥梁结构分析软件(当前仅支持桥通/QiaoTong,经 `qtmodel` Python API)的能力暴露给 AI 助手:建模、施工阶段、荷载、预应力、活载、规范验算、结果查询。共 153 个工具、7 个资源、5 个提示模板。
+Qiao-MCP 是一个 MCP 服务器,把桥梁结构分析软件(当前仅支持桥通/QiaoTong,经 `qtmodel` Python API)的能力暴露给 AI 助手:建模、施工阶段、荷载、预应力、活载、规范验算、结果查询。默认 15 个领域工具，完整覆盖 153 项操作、7 个资源、5 个提示模板；旧名称仍可直接调用。
 
 ## 常用命令
 
@@ -37,6 +37,7 @@ PYTHONPATH=reference_codes/qtmodel-release/packages/qtmodel/src:src \
 ```
 src/qiao_mcp/
 ├── server.py                  # 入口:构造 provider → 动态生成 server instructions → 注册工具
+├── domain_server.py           # 领域目录与原操作分发，支持 domains/flat 两种目录
 ├── tools/                     # 工具层,按工作域分模块(按 Phase 1–5 演进而来)
 │   ├── __init__.py            # 建模核心(create_nodes、create_section 等)
 │   ├── envelope.py            # 统一返回协议 + 工具分类(权限映射)— 关键模块,见下
@@ -57,8 +58,9 @@ src/qiao_mcp/
 
 所有工具经 `register_tools_with_envelope` 包装(`tools/catalog.py` 的 `TOOL_REGISTRARS` 统一注册，服务器与离线检查共用入口):
 
+- `tools/domains.py` 将全部操作各归入一个领域；`DomainFastMCP` 从原参数模型生成带 `request.operation` 判别字段的 Schema，再调用原处理函数。保留省略/null/空列表差异、原 Context、状态守卫与错误通道；不要另建评分专用目录或过滤操作。默认 `QIAO_MCP_CATALOG_LAYOUT=domains`，`flat` 列出全部 153 个旧名称，两种模式均接受旧名称调用。新增操作必须明确归属领域，未覆盖时目录生成报错。
 - 成功:返回 dict、响应 BaseModel 或 str(自动包裹为 `{status, message}`)。`tools/schemas.py` 定义输入约束与响应模型；包装器保留显式响应模型，字符串/普通字典分别使用 MessageResult/ObjectResult。不要把返回注解改回裸 dict，FastMCP 1.29 无法据此生成输出 Schema。
-- 图片:两个图片工具显式 `structured_output=False`，保留 MCP Image 内容。其他 151 个工具必须有输出 Schema。
+- 图片:两个图片操作显式 `structured_output=False`，保留 MCP Image 内容。其他 151 项操作必须有输出 Schema；领域层 14 个入口合并原输出模型，`view_model` 不声明整体输出 Schema 以容纳图片。
 - 启动与目录注册不探测桥通连接；连接检查由诊断工具和操作守卫按需执行。
 - 失败:`raise ToolError(...)`;输入不合法用 `ToolInputError`(`tools/envelope.py`)
 - `envelope.py` 同时把每个工具名映射到桥通能力类别(`model_read`/`model_write`/`stage_write`/`result_read`/`check_*`/`analysis_run`/`view`/`lifecycle`/`connection`),用于模型状态守卫
@@ -75,7 +77,9 @@ src/qiao_mcp/
 - **锁 mcp 1.x**:`mcp[cli]>=1.29,<2`——mcp 2.0 移除了 `mcp.server.fastmcp`,迁移未完成前不要升。
 - **"2.8.2" 不是同一个东西**:PyPI wheel(2026-08-20 打包自上游 340e94e)没有 `get_model_state`;上游源码同样标 2.8.2 却有。**按能力探测判断,不能按版本号判断**。2.9.0 起 PyPI 正式发布带 `get_model_state`,守卫对 PyPI 用户也生效。上游源码的 `QT_VERSION` 常滞后于 PyPI 版本号(`8ae651e` 与 2.9.2 wheel 内容相同却仍标 2.9.1),核对时直接 `diff -r --strip-trailing-cr` 源码与 wheel。`reference_codes/qtmodel-release/` 是嵌套的上游仓库(非 submodule),可 `git -C reference_codes/qtmodel-release log` 考证。
 - **qtmodel 2.6/2.7 有精确版本握手**(不匹配拒连),2.8.2 起移除——所以 `check_qiaotong_connection` 的 `version_mismatch` 状态在 2.8.2 上不会再出现。
-- 本轮上游为 `0687ffe`，同样标 2.9.2，却比 PyPI 2.9.2 多出系数、翼缘、统计及结构合并接口，并移除混凝土检算的旧窗口参数；核对见 `docs/0.5.0-upstream-alignment.md`。支承工具在只给附加参数时显式启用，False 清空，两者均省略保持。
+- 0.5.0 对齐时的上游为 `0687ffe`，同样标 2.9.2，却比 PyPI 2.9.2 多出系数、翼缘、统计及结构合并接口，并移除混凝土检算的旧窗口参数；核对见 `docs/0.5.0-upstream-alignment.md`。支承工具在只给附加参数时显式启用，False 清空，两者均省略保持。
+- 当前参考仓库为 `0a36bc5`（qtmodel 2.9.3），74 个 Python 源文件与 PyPI 2.9.3 在统一换行符后相同。0.6.0 已将 `uv.lock` 更新到 2.9.3；17 个未开放路由的限制仍有效。初始核对见 `docs/qtmodel-update-20261015.md`，最终验证见 `docs/0.6.0-validation.md`。
+- 0.6.0 的 `operation_context` 让权限检查与实例绑定消费同一份新快照；SDK 和桌面均支持时，模型写入及提交使用 `require_model_instance`。`run_analysis` 必须通过 `copy_context` 把保护传给工作线程。网关 Undo 在支持的桌面上还使用 `require_model_revision`，拒绝待提交/不确定修订；普通写入不能绑定固定修订号，因为其自身会推进修订。生命周期及原始路径文件命令保留原载荷和状态检查。不要把实例保护宣称为整笔事务回滚或跨工具审阅凭证。
 - 依赖范围 `qtmodel>=2.6.3,!=2.9.0,<2.10` 的注释(pyproject.toml)记录了每次收放的原因,调整前先读。2.9 的补丁版之间也会增删模块,不要放开到 `<3`。2.9.0 被排除:它的 `add_section` 在不传 `sec_property` 时也校验长度,建截面全被拒。
 - 放宽范围前逐个版本跑离线测试:把 PyPI wheel 解压到临时目录,`PYTHONPATH=<解压目录>:src uv run pytest ...`。只有直接调用上游本地构造器的测试(如 `test_section_tools.py` 里的 `get_section_shape`)能抓到客户端校验的缺陷。
 - `do_solve` 的 `sync=True` 默认值(2.6.3 起)会禁用 `max_wait` 等待语义——provider 调用时**始终显式传 `sync=False`**。`wait_solve` 对用户终止等结局返回状态而不抛错,`run_analysis` 必须核对最终 `state`。
@@ -97,6 +101,12 @@ src/qiao_mcp/
 
 发布 workflow 复用 CI，只有完整离线检查通过才上传同一份产物。`scripts/check_release.py`
 检查版本/tag、wheel/sdist 元数据和源码一致性；`--tag` 只校验，不创建标签。
-当前已发布版本为 0.5.0，原 0.4.0 改动一并发布，参见 `docs/0.5.0-publication.md`。
+2026-10-15 核对：GitHub 已发布 v0.5.1，PyPI 最新仍为 0.5.0；v0.5.1 的发布工作流
+`38364092329` 仍在等待审批，不能把 GitHub Release 当成 PyPI 上传完成。
+原 0.4.0 改动一并包含在 0.5.0，参见 `docs/0.5.0-publication.md`。
+当前本地准备版本为 0.6.0，实际发布由用户操作；
+候选说明、检查记录和发布步骤见 `docs/0.6.0-release.md`。
+逐工具审计修正见 CHANGELOG 的相应版本及 `docs/qtmodel-code-audit.md`；
+后续工具优化与验证记录在 `docs/optimization-log.md`。
 CI 和上传任务固定使用已验证的 uv 0.11.6；uv 0.13.0 会重排 sdist 的 pyproject.toml，
 触发源码逐字节检查。推送 develop 会触发 TestPyPI 上传，并非仅同步代码。
