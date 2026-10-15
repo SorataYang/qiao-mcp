@@ -9,6 +9,10 @@
 
 Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI assistants to interact with bridge structural analysis software. It provides tools for creating bridge models, applying loads, running structural analysis, and reviewing results.
 
+Durable analysis/check jobs support reconnectable polling and request-ID deduplication;
+see [analysis jobs](docs/analysis-jobs.md). The current development catalog has
+156 operations: the original 153 plus three job controls.
+
 ## Features
 
 ### 🔧 Tools (on-demand discovery, all engineering operations retained)

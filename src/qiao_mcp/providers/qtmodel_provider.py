@@ -2017,6 +2017,50 @@ class QtModelProvider(BridgeProvider):
         self._mdb.add_time_history_case(**kwargs)
         self.update_model()
 
+    def ensure_analysis_job_supported(self, kind: str, show_view: bool = False) -> None:
+        """Check durable submission requirements before any model mutation."""
+        import inspect
+
+        from qtmodel.core.qt_server import QtServer
+
+        self._require_available()
+        if not callable(getattr(QtServer, "require_model_instance", None)):
+            raise ValueError("SDK has no model instance guard; use legacy run tools")
+        names = ("do_solve", "get_solve_status") if kind == "analysis" else (
+            "import_concrete_check_case", "solve_concrete_check", "get_concrete_check_solve_status",
+        )
+        obj = self._mdb if kind == "analysis" else self._cdb
+        for name in names:
+            if not callable(getattr(obj, name, None)):
+                raise ValueError(f"SDK has no {name}")
+        if show_view and "show_view" not in inspect.signature(self._mdb.do_solve).parameters:
+            raise ValueError("SDK does not support show_view")
+
+    def get_analysis_job_status(self, kind: str) -> dict:
+        """Read latest native solve status; the job layer verifies its identity."""
+        self._require_available()
+        fn = self._mdb.get_solve_status if kind == "analysis" else self._cdb.get_concrete_check_solve_status
+        status = self._parse(fn(read_timeout=30))
+        if not isinstance(status, dict):
+            raise ValueError("Invalid native task status")
+        return status
+
+    def start_analysis_job(self, kind: str, name: str = "", show_view: bool = False) -> dict:
+        """Submit once; do not wait in Python or claim an existing solve as new."""
+        previous = self.get_analysis_job_status(kind)
+        if previous.get("is_running") is True or previous.get("state") == "running":
+            raise ValueError("A desktop solve is already running; inspect it before submitting")
+        if kind == "analysis":
+            options = {"show_view": True} if show_view else {}
+            status = self._mdb.do_solve(sync=False, wait=False, read_timeout=30, **options)
+        else:
+            self._cdb.import_concrete_check_case(case_name=name)
+            status = self._cdb.solve_concrete_check(wait=False, read_timeout=30)
+        status = self._parse(status)
+        if not isinstance(status, dict) or status.get("started_at") == previous.get("started_at"):
+            raise ValueError("No fresh solve identity in the submission receipt")
+        return status
+
     def run_analysis(self, read_timeout: int = 3600, show_view: bool = False) -> Any:
         """启动后台求解并轮询至任务真正结束，返回 qtmodel 给出的最终状态。
 

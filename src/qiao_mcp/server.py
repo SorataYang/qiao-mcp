@@ -48,7 +48,7 @@ if reason := provider.unavailable_reason():
 
 _CATALOG_LAYOUT = os.environ.get(CATALOG_LAYOUT_ENV, DEFAULT_CATALOG_LAYOUT)
 _CATALOG_GUIDE = (
-    "The catalog exposes 15 domain tools covering all 153 operations. Select the "
+    "The catalog exposes 15 domain tools covering all 156 operations. Select the "
     "domain and pass request={operation: <operation name>, ...operation fields}. "
     "The operation names below are shorthand for these request branches. Each "
     "branch contains the complete original parameter schema and description.\n"
@@ -67,7 +67,7 @@ _CATALOG_GUIDE = (
     "Legacy operation names remain callable directly with their original arguments "
     "for existing clients. New calls should use the listed domain tools.\n\n"
 ) if _CATALOG_LAYOUT == "domains" else (
-    "The flat catalog lists all 153 original operation names. Call them directly "
+    "The flat catalog lists all 156 operation names. Call them directly "
     "with their original arguments; domain requests are also accepted.\n\n"
 )
 
@@ -86,6 +86,11 @@ _SERVER_INSTRUCTIONS = (
     f"using {provider.get_software_name()} via Qiao-MCP.\n"
     "Start with check_qiaotong_connection; use get_model_status to confirm the "
     "model and allowed operations before making changes.\n\n"
+    "For long analysis/check runs on an instance-guard-capable desktop, prefer "
+    "start_analysis_job with a unique request_id, then poll get_analysis_job. "
+    "Reuse that request_id after a lost reply; do not submit a new run. Saved job "
+    "handles survive MCP reconnects. Legacy run_analysis/run_concrete_check remain "
+    "available when durable-job requirements are not supported.\n\n"
     "With qtmodel 2.9.3 and a desktop advertising model_instance_guard=1, model writes "
     "and their commits carry the instance checked at tool entry, including background solves. "
     "Gateway undo_model also checks model/history revisions when model_revision_schema=1; "

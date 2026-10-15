@@ -31,7 +31,7 @@ def _call(server, domain, operation, **fields):
 def test_default_catalog_covers_every_registered_operation_once(domain_server):
     domains = asyncio.run(domain_server.list_tools())
     operations = {tool.name: tool for tool in domain_server._tool_manager.list_tools()}
-    assert len(domains) == 15 and len(operations) == 153
+    assert len(domains) == 15 and len(operations) == 156
     seen = []
     for domain in domains:
         schema = domain.inputSchema
@@ -65,7 +65,7 @@ def test_flat_layout_exposes_all_legacy_tools(fake_provider):
     register_tool_catalog(server, fake_provider)
     tools = asyncio.run(server.list_tools())
     assert {tool.name for tool in tools} == {tool.name for tool in server._tool_manager.list_tools()}
-    assert len(tools) == 153
+    assert len(tools) == 156
 
 
 def test_unknown_layout_fails_explicitly():

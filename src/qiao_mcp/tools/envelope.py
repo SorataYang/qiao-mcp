@@ -37,6 +37,7 @@ _READONLY_PREFIXES = ("get_", "list_", "find_", "calc_", "query_")
 # Destructive includes overwriting existing values, not only deleting entities.
 _DESTRUCTIVE_PREFIXES = ("remove_", "delete_", "update_", "renumber_")
 _DESTRUCTIVE_NAMES = {
+    "start_analysis_job",  # Can import/replace the current concrete-check case.
     "initialize_model",   # 清空整个模型
     "open_model_file",    # 覆盖当前模型
     "merge_nodes",        # 合并会删除重合节点
@@ -85,6 +86,8 @@ _DESTRUCTIVE_NAMES = {
 _OPEN_WORLD_NAMES = {"call_qtmodel_api"}
 
 _CONNECTION_NAMES = {
+    "start_analysis_job",  # Worker checks state after idempotent request lookup.
+    "get_analysis_job", "list_analysis_jobs",  # Saved handles work while offline.
     "check_qiaotong_connection",
     "get_model_status",
     "get_model_edit_readiness",

@@ -194,7 +194,7 @@ def test_created_provider_satisfies_the_contract():
     assert isinstance(p.get_software_name(), str) and p.get_software_name()
 
 
-@pytest.mark.parametrize("layout,expected_count", [(None, 3), ("discovery", 3), ("domains", 15), ("flat", 153)])
+@pytest.mark.parametrize("layout,expected_count", [(None, 3), ("discovery", 3), ("domains", 15), ("flat", 156)])
 def test_server_catalog_initializes_without_a_connection_probe(monkeypatch, layout, expected_count):
     if layout is None:
         monkeypatch.delenv("QIAO_MCP_CATALOG_LAYOUT", raising=False)

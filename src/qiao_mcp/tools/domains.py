@@ -291,6 +291,8 @@ TOOL_DOMAINS = (
         function/case operations define solver inputs. set_gravity writes the
         project gravity setting. These configuration operations do not solve:
         choose run_analysis explicitly after model, loads and stages are ready.
+        For recoverable long runs use start_analysis_job, then get_analysis_job;
+        list_analysis_jobs recovers locally saved handles after reconnecting.
         Use query_results for solved responses and manage_checks for concrete
         code verification, which is a separate computation.
 
@@ -309,6 +311,7 @@ TOOL_DOMAINS = (
         set_gravity add_nodal_mass add_load_to_mass add_spectrum_function
         add_spectrum_case add_time_history_function add_time_history_case
         update_bulking_setting configure_analysis run_analysis
+        start_analysis_job get_analysis_job list_analysis_jobs
         """,
     ),
     _domain(

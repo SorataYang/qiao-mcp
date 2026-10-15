@@ -123,7 +123,7 @@ async def inspect_package(
                 assert "ctx" not in properties
                 assert all(prop.get("description") for prop in properties.values())
                 operation_parameters += len(properties) - 1
-    assert len(operations) == len(set(operations)) == 153, "The complete operation catalog must be preserved"
+    assert len(operations) == len(set(operations)) == 156, "The complete operation catalog must be preserved"
     if output:
         output.write_text(json.dumps({
             "catalog_layout": catalog_layout,
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     parser.add_argument("--catalog-layout", choices=("discovery", "domains", "flat"), default="discovery")
     parser.add_argument("--output", type=Path, help="Write the inspected protocol catalog as JSON")
     args = parser.parse_args()
-    expected_tools = args.expected_tools if args.expected_tools is not None else {"discovery": 3, "domains": 15, "flat": 153}[args.catalog_layout]
+    expected_tools = args.expected_tools if args.expected_tools is not None else {"discovery": 3, "domains": 15, "flat": 156}[args.catalog_layout]
     asyncio.run(asyncio.wait_for(
         inspect_package(args.wheel.resolve(), expected_tools, args.output, args.catalog_layout), timeout=30,
     ))

@@ -11,6 +11,7 @@ import pytest
 from conftest import ready_model_state, tool_fns
 
 from qiao_mcp.domain_server import DomainFastMCP
+from qiao_mcp.jobs import JobStore, start_job
 from qiao_mcp.providers.qtmodel_provider import QtModelProvider
 from qiao_mcp.tools.api_gateway import register_api_gateway_tools
 from qiao_mcp.tools.catalog import register_tool_catalog
@@ -56,6 +57,29 @@ def assert_scope_cleared(server, wire):
     server.send_dict("UPDATE")
     assert wire.calls[-1] == ("UPDATE", {})
     assert QtModelProvider._bound_model_instance.get() is None
+
+
+@pytest.mark.parametrize("kind", ["analysis", "concrete_check"])
+def test_durable_job_submission_carries_native_instance(guarded_native, tmp_path, kind):
+    provider, _, wire, sdk = guarded_native
+
+    def response(header, body):
+        if header in {"GET-PROJECT-SOLVE-STATUS", "GET-CONCRETE-CHECK-SOLVE-STATUS"}:
+            return 200, json.dumps({"state": "idle", "started_at": None})
+        if header in {"DO-SOLVE", "SOLVE-CONCRETE-CHECK"}:
+            return 200, json.dumps({"state": "running", "started_at": "T1", "is_running": True})
+        return 200, "{}"
+
+    wire.response = response
+    job = start_job(JobStore(tmp_path / "jobs.db"), provider, "request-native", {
+        "kind": kind, "name": "C1" if kind == "concrete_check" else "", "show_view": False,
+    })
+    assert job["state"] == "running", job
+    writes = [(h, b) for h, b in wire.calls if not h.startswith("GET-")]
+    assert writes
+    for _, body in writes:
+        assert "project-a" in json.dumps(body)
+    assert_scope_cleared(sdk, wire)
 
 
 @pytest.mark.parametrize("layout", ["domains", "flat"])
