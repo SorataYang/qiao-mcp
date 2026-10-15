@@ -12,7 +12,7 @@ import base64
 import json
 import math
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from contextlib import ExitStack, contextmanager
 from contextvars import ContextVar
 from pathlib import Path
@@ -170,7 +170,7 @@ class QtModelProvider(BridgeProvider):
             }
 
         try:
-            return probe()
+            return self._retry_disconnected_probe(probe)
         except Exception as e:
             return {
                 "status": "probe_failed",
@@ -180,6 +180,25 @@ class QtModelProvider(BridgeProvider):
                 "action": "确认桥通软件已启动，并检查 QIAOTONG_HTTP_URL 是否指向正确端口。",
                 "client": {"qtmodel_version": self.version},
             }
+
+    @staticmethod
+    def _retry_disconnected_probe(probe: Callable[[], Any]) -> Any:
+        """Re-read a missing connection once; never reuse stale state or replay a write.
+
+        qtmodel's discovery read timeout is 0.8 seconds. A live SSH tunnel can
+        exceed that briefly and then answer the next probe immediately. Only
+        the explicit disconnected result warrants a retry; capability/version
+        errors and a connected desktop's current restrictions remain final.
+        """
+        result = probe()
+        if (
+            isinstance(result, dict)
+            and result.get("status") == "software_not_running"
+            and result.get("connected") is False
+        ):
+            time.sleep(0.1)
+            return probe()
+        return result
 
     def get_model_state(self) -> dict[str, Any]:
         """Return the bridge-owned lifecycle and operation-capability snapshot.
@@ -226,7 +245,7 @@ class QtModelProvider(BridgeProvider):
                 ),
             }
         try:
-            result = probe()
+            result = self._retry_disconnected_probe(probe)
             return result if isinstance(result, dict) else {
                 "status": "state_unknown",
                 "message": "qtmodel 返回了无效的模型状态。",
