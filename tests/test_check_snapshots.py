@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from conftest import ready_model_state, tool_fns
+from conftest import ready_model_state, run_async_tool, tool_fns
 from mcp.server.fastmcp import FastMCP
 
 from qiao_mcp.tools.api_gateway import register_api_gateway_tools
@@ -316,6 +316,6 @@ def test_model_snapshots_commit_before_named_concrete_import_and_solve(fake_prov
     state = ready_model_state()
     state["model_state"]["capabilities"]["modify_model"] = False
     p.get_model_state = lambda: state
-    result = tool_fns(register_checking_tools, p)["run_concrete_check"](name=case["name"], max_wait_seconds=12)
+    result = run_async_tool(tool_fns(register_checking_tools, p)["run_concrete_check"], name=case["name"], max_wait_seconds=12)
     assert events[-2:] == ["import", "solve"]
     assert "get_check_data" in result["message"]

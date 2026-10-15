@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
-from conftest import ready_model_state, tool_fns
+from conftest import ready_model_state, run_async_tool, tool_fns
 
 from qiao_mcp.tools.api_gateway import register_api_gateway_tools
 from qiao_mcp.tools.checking import register_checking_tools
@@ -133,10 +133,10 @@ def test_named_concrete_check_uses_supported_background_signature(fake_provider,
     fake_provider._cdb = qtmodel.cdb
     run = tool_fns(register_checking_tools, fake_provider)["run_concrete_check"]
     if outcome == "succeeded":
-        assert run(name="具名检算", max_wait_seconds=12)["status"] == "success"
+        assert run_async_tool(run, name="具名检算", max_wait_seconds=12)["status"] == "success"
     else:
         with pytest.raises(ToolError, match=outcome):
-            run(name="具名检算", max_wait_seconds=12)
+            run_async_tool(run, name="具名检算", max_wait_seconds=12)
     assert [h for h, _ in calls] == ["IMPORT-CONCRETE-CHECK-CASE", "SOLVE-CONCRETE-CHECK", "GET-CONCRETE-CHECK-SOLVE-STATUS"]
     assert calls[0][1]["case_name"] == "具名检算"
     assert not {"sync", "show_view", "modal", "auto_close"} & (calls[1][1] or {}).keys()

@@ -6,9 +6,10 @@ MCP Tools for structural concrete checking and reinforcement design.
 import json
 from typing import Any, Literal
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 from pydantic import TypeAdapter
 
+from qiao_mcp.execution import wait_for_operation
 from qiao_mcp.providers import BridgeProvider
 from qiao_mcp.tools.envelope import ToolError, ToolInputError
 from qiao_mcp.tools.schemas import (
@@ -171,7 +172,8 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
             raise ToolError(f"Error adding load combination (添加荷载组合失败): {e}") from e
 
     @mcp.tool()
-    def run_concrete_check(
+    async def run_concrete_check(
+        ctx: Context,
         name: str,
         max_wait_seconds: float | None = 1800.0,
     ) -> str:
@@ -179,7 +181,8 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         Execute concrete structural checking analysis (运行混凝土检算).
 
         Syncs the named check case into the current check data, then runs the
-        code-based verification and waits for the background task to finish.
+        code-based verification and waits in a worker thread, with progress
+        heartbeats, so other MCP requests remain responsive.
         A reported failed/canceled or other non-success state is an error, even
         when an older SDK returns it without raising an exception.
         先将指定检算工况同步为当前检算数据，再运行规范验算并等待后台任务完成。
@@ -193,7 +196,8 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
         name selects the case imported into the current checking context; it is
         not merely a label on whatever data is already open. max_wait_seconds
         limits waiting, not backend execution. A timeout does not cancel the
-        background check: inspect its state before starting another run. None
+        background check; cancelling the MCP wait does not stop it either.
+        Inspect its state before starting another run. None
         waits without a time limit; there is no start-only mode in this tool.
 
         Success returns a completion message, not a pass/fail design verdict.
@@ -208,7 +212,10 @@ def register_checking_tools(mcp: FastMCP, provider: BridgeProvider):
                               (最长等待秒数，None 表示不限时)
         """
         try:
-            status = provider.solve_concrete_check(name=name, wait=True, max_wait=max_wait_seconds)
+            status = await wait_for_operation(
+                lambda: provider.solve_concrete_check(name=name, wait=True, max_wait=max_wait_seconds),
+                ctx, label="Concrete check / 混凝土检算", total=max_wait_seconds,
+            )
             state = str(status.get("state", "")).lower() if isinstance(status, dict) else ""
             if (
                 state not in {"succeeded", "success", "completed", "complete"}

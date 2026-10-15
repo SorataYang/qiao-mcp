@@ -1,7 +1,7 @@
 """Model lifecycle state and MCP operation guard tests."""
 
 import pytest
-from conftest import ready_model_state, tool_fns
+from conftest import ready_model_state, run_async_tool, tool_fns
 
 from qiao_mcp.providers.qtmodel_provider import QtModelProvider
 from qiao_mcp.tools import register_modeling_tools
@@ -121,7 +121,7 @@ def test_run_check_requires_result_data(fake_provider):
     fns = tool_fns(register_checking_tools, fake_provider)
 
     with pytest.raises(ToolError):
-        fns["run_concrete_check"](name="C1")
+        run_async_tool(fns["run_concrete_check"], name="C1")
 
 
 def test_run_check_is_allowed_with_result_data(fake_provider):
@@ -139,7 +139,7 @@ def test_run_check_is_allowed_with_result_data(fake_provider):
     )
     fns = tool_fns(register_checking_tools, fake_provider)
 
-    fns["run_concrete_check"](name="C1")
+    run_async_tool(fns["run_concrete_check"], name="C1")
     assert fake_provider._cdb.last("solve_concrete_check") is not None
 
 

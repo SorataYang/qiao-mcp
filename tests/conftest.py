@@ -129,3 +129,12 @@ def tool_text(result):
         parts = [str(v) for k, v in result.items() if k != "status"]
         return " ".join(parts) if parts else str(result)
     return str(result)
+
+
+def run_async_tool(fn, **kwargs):
+    """Invoke an async handler with the Context normally supplied by FastMCP."""
+    import asyncio
+
+    from mcp.server.fastmcp import Context
+
+    return asyncio.run(fn(ctx=Context(), **kwargs))

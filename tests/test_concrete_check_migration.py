@@ -12,7 +12,7 @@
 from __future__ import annotations
 
 import pytest
-from conftest import tool_fns
+from conftest import run_async_tool, tool_fns
 
 from qiao_mcp.tools.checking import register_checking_tools
 from qiao_mcp.tools.envelope import ToolError
@@ -105,7 +105,7 @@ def test_load_combine_default_method_is_additive(tools, fake_provider):
 
 def test_run_concrete_check_imports_case_then_solves(tools, fake_provider):
     """2.5.0 solve 不再接受 name，须先 import_concrete_check_case 同步工况。"""
-    tools["run_concrete_check"](name="混凝土检算")
+    run_async_tool(tools["run_concrete_check"], name="混凝土检算")
     calls = [c[0] for c in fake_provider._cdb.calls]
     assert calls.index("import_concrete_check_case") < calls.index("solve_concrete_check"), (
         "必须先同步工况再求解，否则会对上一次的检算数据求解"
@@ -118,13 +118,13 @@ def test_run_concrete_check_imports_case_then_solves(tools, fake_provider):
 
 
 def test_run_concrete_check_passes_max_wait(tools, fake_provider):
-    tools["run_concrete_check"](name="C1", max_wait_seconds=600.0)
+    run_async_tool(tools["run_concrete_check"], name="C1", max_wait_seconds=600.0)
     _, _, kw = fake_provider._cdb.last("solve_concrete_check")
     assert kw["max_wait"] == pytest.approx(600.0)
 
 
 def test_run_concrete_check_accepts_unlimited_wait(tools, fake_provider):
-    tools["run_concrete_check"](name="C1", max_wait_seconds=None)
+    run_async_tool(tools["run_concrete_check"], name="C1", max_wait_seconds=None)
     _, _, kw = fake_provider._cdb.last("solve_concrete_check")
     assert kw["max_wait"] is None
 
@@ -140,7 +140,7 @@ def test_returned_non_success_is_an_error_without_replaying(tools, fake_provider
 
     fake_provider._cdb.solve_concrete_check = stopped
     with pytest.raises(ToolError, match=f"state={state}, message=native detail"):
-        tools["run_concrete_check"](name="C1", max_wait_seconds=12)
+        run_async_tool(tools["run_concrete_check"], name="C1", max_wait_seconds=12)
     assert len(solve_calls) == 1
     assert fake_provider._cdb.count("import_concrete_check_case") == 1
     assert fake_provider._mdb.calls == []
@@ -155,7 +155,7 @@ def test_concrete_check_timeout_is_an_error_without_replaying(tools, fake_provid
 
     fake_provider._cdb.solve_concrete_check = timed_out
     with pytest.raises(ToolError, match="did not finish within 12 seconds"):
-        tools["run_concrete_check"](name="C1", max_wait_seconds=12)
+        run_async_tool(tools["run_concrete_check"], name="C1", max_wait_seconds=12)
     assert len(solve_calls) == 1
     assert fake_provider._cdb.count("import_concrete_check_case") == 1
     assert fake_provider._mdb.calls == []
