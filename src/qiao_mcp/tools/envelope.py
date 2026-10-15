@@ -17,6 +17,7 @@ import inspect
 import re
 import textwrap
 from collections.abc import Callable
+from contextlib import ExitStack, contextmanager
 from typing import Annotated, Any
 
 from mcp.server.fastmcp import Context
@@ -402,26 +403,30 @@ def _wrap(fn: Callable, provider: Any = None, operation: str = "connection") -> 
         sig = inspect.signature(fn)
     sig = _describe_params(fn, sig)
 
-    def ensure_allowed() -> None:
-        if provider is None:
-            return
-        guard = getattr(provider, "ensure_operation_allowed", None)
-        if guard is None:
-            return
-        try:
-            guard(operation)
-        except ToolError:
-            raise
-        except Exception as e:
-            raise ToolError(f"Operation blocked by QiaoTong state (桥通状态禁止操作): {e}") from e
+    @contextmanager
+    def allowed_operation():
+        with ExitStack() as stack:
+            try:
+                context = getattr(provider, "operation_context", None)
+                if callable(context):
+                    stack.enter_context(context(operation))
+                else:
+                    guard = getattr(provider, "ensure_operation_allowed", None)
+                    if callable(guard):
+                        guard(operation)
+            except ToolError:
+                raise
+            except Exception as e:
+                raise ToolError(f"Operation blocked by QiaoTong state (桥通状态禁止操作): {e}") from e
+            yield
 
     if inspect.iscoroutinefunction(fn):
 
         @functools.wraps(fn)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            ensure_allowed()
             try:
-                return _normalize(await fn(*args, **kwargs))
+                with allowed_operation():
+                    return _normalize(await fn(*args, **kwargs))
             except Exception as e:
                 if not _outcome_unknown(e):
                     raise
@@ -431,9 +436,9 @@ def _wrap(fn: Callable, provider: Any = None, operation: str = "connection") -> 
 
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            ensure_allowed()
             try:
-                return _normalize(fn(*args, **kwargs))
+                with allowed_operation():
+                    return _normalize(fn(*args, **kwargs))
             except Exception as e:
                 if not _outcome_unknown(e):
                     raise

@@ -126,6 +126,9 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         Call this before starting a model workflow and whenever an operation is
         rejected. This tool only observes state; it never switches stages,
         deletes results, or changes the model.
+        Newer desktops also report opaque model_instance_id, model_revision,
+        history_revision and pending_command_count fields. These identify the
+        opened model and command state; do not derive or reuse them across models.
         """
         try:
             return ModelStateResult.model_validate(provider.get_model_state())
@@ -218,6 +221,13 @@ def register_api_gateway_tools(mcp: FastMCP, provider: BridgeProvider) -> None:
         A listed SDK method does not prove the desktop route is available.
         qtmodel 2.9.3 rejects several historical routes, including model-check
         snapshots, with API_NOT_OPEN; that error is preserved without a commit.
+
+        With supporting SDK/desktop protocols, writes and commits are bound to
+        the model instance checked at entry. undo_model additionally binds the
+        model/history revisions and rejects pending or uncertain changes.
+        Mismatch errors require model/history inspection, not automatic retries.
+        Older protocols keep state checks. open_file/save_file/import_file use
+        legacy raw-path payloads and cannot carry the new instance guard.
 
         Destructive/long-running methods (initial 清空模型, do_solve/wait_solve 求解)
         are blocked here — use initialize_model / run_analysis instead. So are methods
