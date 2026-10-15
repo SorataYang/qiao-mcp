@@ -1744,9 +1744,18 @@ class QtModelProvider(BridgeProvider):
         self._mdb.update_frame_section(ids=ids, sec_id=sec_id)
 
     def update_element_beta(self, ids: Any, beta: float) -> None:
+        from qtmodel.core.data_helper import QtDataHelper
+        from qtmodel.core.qt_server import QtServer
+
         self._require_available()
         ids = self._validate_ids(ids, required=True)
-        self._mdb.update_element_beta(ids=ids, beta=beta)
+        if type(beta) not in (int, float) or not math.isfinite(beta):
+            raise ValueError("Element beta must be finite")
+        # The desktop route reads beta. qtmodel 2.9.3 sends beta_angle instead,
+        # which silently resets the selected elements to zero (live verified).
+        QtServer.send_dict("UPDATE-ELEMENT-BETA", {
+            "ids": QtDataHelper.parse_ids_to_array(ids), "beta": beta,
+        })
 
     def update_element_node(self, element_id: int, node_ids: list) -> None:
         self._require_available()
