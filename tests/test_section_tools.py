@@ -72,6 +72,34 @@ def test_polygon_payload_is_accepted_by_the_real_geometry_builder(fake_provider)
     assert shape.parts[0].loop_segments
 
 
+def test_line_width_payload_is_accepted_by_the_real_geometry_builder(fake_provider):
+    lines = [[0, 0, 0, 1, 0.1], [-0.5, 1, 0.5, 1, 0.1]]
+    functions = tool_fns(register_modeling_tools, fake_provider)
+    functions["create_line_width_section"](name="ThinT", sec_lines=lines)
+    kwargs = fake_provider._mdb.last("add_section")[2]
+    shape = qtmodel.mdb.get_section_shape(
+        sec_type=kwargs["sec_type"], sec_lines=kwargs["sec_lines"],
+    )
+    assert shape.shape_type == "lines"
+    assert len(shape.parts) == 1
+    assert [
+        [line.x1, line.y1, line.x2, line.y2, line.thickness]
+        for line in shape.parts[0].lines
+    ] == lines
+
+
+def test_property_payload_is_accepted_by_the_real_geometry_builder(fake_provider):
+    functions = tool_fns(register_modeling_tools, fake_provider)
+    functions["create_section_from_properties"](
+        name="Properties", area=1.5, ix=0.14, iy=0.08, iz=0.09,
+    )
+    kwargs = fake_provider._mdb.last("add_section")[2]
+    shape = qtmodel.mdb.get_section_shape(sec_type=kwargs["sec_type"])
+    assert shape.shape_type == "property_only"
+    assert not shape.parts
+    assert kwargs["sec_property"][:6] == [1.5, 0, 0, 0.14, 0.08, 0.09]
+
+
 @pytest.mark.parametrize("loops", [
     {"sub1": [[0, 0], [1, 0], [1, 1]]},
     {"main": [[0, 0], [1, 0]]},

@@ -51,6 +51,8 @@ SectionProperties = Annotated[
     Field(min_length=26, max_length=29),
     AfterValidator(_section_property_layout),
 ]
+# 自定义特性截面的创建参数 sec_info 要求完整 29 项，不能使用更新接口的旧格式。
+FullSectionProperties = Annotated[list[FiniteNumber], Field(min_length=29, max_length=29)]
 
 
 def _database_name(value: Any) -> Any:

@@ -112,6 +112,9 @@ def test_schema_exposes_ranges_enums_lengths_and_workflow_fields(catalog):
     ("create_nodes", {"node_data": [[0, 0, 0], [1, 2]]}),
     ("create_material", {"name": "M", "mat_type": 5, "data_info": [1, 2, 3]}),
     ("create_line_width_section", {"name": "S", "sec_lines": [[0, 0, 1, 1]]}),
+    ("create_section_from_properties", {
+        "name": "S", "area": 1, "ix": 1, "iy": 1, "iz": 1, "sec_property": [0.0] * 26,
+    }),
     ("add_spectrum_case", {"name": "RS", "info_x": ["F"]}),
     ("add_time_history_function", {"name": "TH", "function_info": [[0, 0, 1]]}),
     ("add_creep_function", {"name": "C", "creep_data": [[0, float("nan")]]}),

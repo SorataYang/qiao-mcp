@@ -119,7 +119,25 @@ def test_all_section_creation_tools_request_automatic_numbering(qtmodel_wire, to
         from qtmodel.core.section_db import SectionProperty
 
         # The SDK's C# field layout is the independent source of truth.
-        assert payload["sec_property"] == SectionProperty(Ax=6, Ix=1, Iy=2, Iz=3).to_list()
+        expected = SectionProperty(Ax=6, Ix=1, Iy=2, Iz=3).to_list()
+        assert payload["sec_info"] == expected
+        assert payload["sec_property"] == expected
+
+
+def test_property_section_keeps_the_full_native_vector(qtmodel_wire):
+    from qtmodel.core.section_db import SectionProperty
+
+    provider, requests = qtmodel_wire
+    values = SectionProperty(
+        Ax=2, Ay=1.5, Az=1.6, Ix=0.1, Iy=0.2, Iz=0.3,
+        ShearCenterY=0.01, ShearCenterZ=0.02, Hys=0.4, Hzs=0.5, Sys=0.6, Szs=0.7,
+    ).to_list()
+    tool_fns(register_modeling_tools, provider)["create_section_from_properties"](
+        name="Full properties", area=99, ix=98, iy=97, iz=96, sec_property=values,
+    )
+    payload = next(payload for header, payload in requests if header == "ADD-SECTION")
+    assert payload["sec_info"] == values
+    assert payload["sec_property"] == values
 
 
 def test_custom_temperature_rejects_missing_reference_before_any_write(fake_provider):

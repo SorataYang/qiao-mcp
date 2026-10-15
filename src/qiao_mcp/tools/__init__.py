@@ -22,6 +22,7 @@ from qiao_mcp.tools.schemas import (
     FiniteNumber,
     FiveNumbers,
     FourNumbers,
+    FullSectionProperties,
     FunctionReference,
     LoadCaseKind,
     LoadCombinationItem,
@@ -1063,7 +1064,7 @@ def register_modeling_tools(mcp: MCPServer, provider: BridgeProvider):
         try:
             provider.add_section(
                 name=name,
-                sec_type="线宽",
+                sec_type="自定义线宽截面",
                 sec_info=[],
                 sec_lines=sec_lines
             )
@@ -1080,7 +1081,7 @@ def register_modeling_tools(mcp: MCPServer, provider: BridgeProvider):
         ix: float,
         iy: float,
         iz: float,
-        sec_property: list[float] | None = None
+        sec_property: FullSectionProperties | None = None
     ) -> str:
         """
         Create a section directly from its pre-calculated properties (通过截面特性直接创建截面).
@@ -1098,20 +1099,24 @@ def register_modeling_tools(mcp: MCPServer, provider: BridgeProvider):
             ix: Torsional constant (扭转惯性矩 Ixx)
             iy: Moment of inertia about y-axis (抗弯惯性矩 Iyy)
             iz: Moment of inertia about z-axis (抗弯惯性矩 Izz)
-            sec_property: Complete native property vector; current SDK accepts
-                26 or 29 values in its UI/export order. When None, this wrapper
+            sec_property: Complete native property vector: creation requires
+                29 values in the UI/export order. When None, this wrapper
                 builds [area,0,0,ix,iy,iz] + 23 zeros; verify omitted properties
                 before analysis. A supplied list takes precedence over scalars.
-                (原生26/29项；省略时仅填面积/惯性矩，其余补零，不代表完整工程截面特性)
+                (创建要求完整29项；省略时仅填面积/惯性矩，其余补零，不代表完整工程截面特性)
         """
         try:
             if sec_property is None:
                 sec_property = [area, 0, 0, ix, iy, iz] + [0] * 23
+            if len(sec_property) != 29:
+                raise ToolInputError("Property-only section creation requires 29 property values")
 
             provider.add_section(
                 name=name,
-                sec_type="任意",
-                sec_info=[],
+                sec_type="自定义特性截面",
+                # The desktop initializes property-only sections from sec_info;
+                # sec_property alone only supplies the property override.
+                sec_info=sec_property,
                 sec_property=sec_property
             )
             return f"Successfully created property-based section '{name}'"
