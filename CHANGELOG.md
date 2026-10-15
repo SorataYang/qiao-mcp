@@ -7,69 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.9] - 2026-10-15
+## [0.6.0] - 2026-10-15
+
+This release includes all changes since GitHub release 0.5.1.
 
 ### Changed
 
-- Clarify shared property namespaces and overwrite scope, static case/group references, and complete load-combination replacement.
-- Explain tendon positioning, native prestress units, screenshot camera fallback, display defaults and image-file overwrite behavior.
-- Validate the complete default domain catalog and its 153 legacy operations; document the achieved evaluation target and known report limitations.
+- Expose 15 domain tools with discriminated `request.operation` schemas while
+  retaining all 153 operations, 601 business parameters and direct legacy calls.
+  `QIAO_MCP_CATALOG_LAYOUT=flat` restores the original discovery list.
+- Generate domain input/output schemas from the existing operation models;
+  retain omission/null/empty-list semantics, permission checks, image content,
+  structured responses and asynchronous solve progress. CI checks both catalogs.
+- Lock qtmodel to 2.9.3 for reproducible installs while retaining the supported
+  dependency range `>=2.6.3,!=2.9.0,<2.10` and its documented capability limits.
+- Clarify selection boundaries, shared property/group/case namespaces, complete
+  replacement versus partial updates, tendon positioning, native units, result
+  selectors, pagination, screenshot defaults and file overwrite behavior.
 
-## [0.5.8] - 2026-10-15
+### Added
 
-### Changed
-
-- Explain ground versus node links, frame-end releases, contrasting DOF flag meanings, and support replacement effects in the boundary domain.
-- Document numerical result families, ID namespaces, stage selectors, formatted responses and operation-specific pagination in the result domain.
-
-## [0.5.7] - 2026-10-15
-
-### Changed
-
-- Expose 15 domain tools with discriminated operation requests while retaining every one of the 153 existing operations and direct legacy calls.
-- Generate domain schemas from the original argument and response models; preserve omission semantics, operation guards, MCP images and asynchronous solve progress.
-- Provide QIAO_MCP_CATALOG_LAYOUT=flat for clients requiring the original tool list, and check both layouts over packaged stdio in CI.
-
-## [0.5.6] - 2026-10-15
-
-### Changed
-
-- Explain node merge identity, static case categories, longitudinal traffic ordering, and concrete-check stirrup replacement behavior.
-- Clarify signed ground springs, result ID namespaces and pagination, moving-case activation, and continuous-girder span layouts.
-
-## [0.5.5] - 2026-10-15
-
-### Changed
-
-- Clarify the model inventory scope, separate entity counts from edit readiness, and document the non-atomic summary reads.
-- Describe planar tendon positioning, weighted constraint terms, node merge identity changes, and concrete checking timeout semantics.
-- Distinguish saved traffic definitions from solved envelope results and document display-setting defaults.
-
-## [0.5.4] - 2026-10-15
-
-### Changed
-
-- Clarify regular node meshes, native element imports, property definitions and actual-ID readback.
-- Explain model validation limits, targeted queries, group namespaces and moving-load steps.
-- Distinguish tendon definitions from computed length results and elastic links from rigid coupling.
-- Document image-file overwrites and label controls; expose overwrite annotations for PNG exports.
-
-## [0.5.3] - 2026-10-14
-
-### Changed
-
-- Clarify cleanup, support, loading, grouping, tendon and visualization workflows.
-- Separate construction-stage editing and merging from analysis execution.
-- Correct parametric reinforcement diameter units and spacing-only rows; mark existing-data replacement.
-- Explain checking definitions, assignments, combinations and file replacement.
-
-## [0.5.2] - 2026-10-14
-
-### Changed
-
-- Explain tapered section creation, real-ID readback and subsequent element assignment.
-- Clarify selected section deletion and stage deletion versus stage deactivation.
-- Document complete vertical prestress checking settings, SI conversions and defaults.
+- Bind supported model mutations and their commits to the model instance checked
+  at tool entry. The SDK context also reaches background analysis threads; nested
+  calls cannot silently rebind to a different project, and failed/cancelled calls
+  clear their contexts. Requires both an SDK context and the desktop protocol.
+- Bind explicit gateway `undo_model` calls to model/history revisions when the
+  desktop advertises that protocol. Pending, uncertain or invalid revision state
+  blocks that Undo; mismatch errors are preserved without replay or automatic Undo.
+  Older SDK/desktop pairs retain the existing operation-state checks.
 
 ### Fixed
 
@@ -83,18 +48,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   checking arguments. Commit node tandems, influence planes and membership removal.
 - Retrieve PNG bytes from QiaoTong for storage on the MCP host, and map result-plot
   components and modal parameters to their native SDK arguments.
-- Require three-column temperature/live-load/check-combination layouts and the
-  six-value threaded-bar definition. Expose maximum/minimum live-load selection.
+- Require native three-column temperature/live-load/check-combination layouts and
+  the six-value threaded-bar definition. Expose maximum/minimum live-load selection.
 - Preserve `remove_free_nodes` for explicit delete-all requests and report possible
-  partial writes when a commit fails. Correct overwrite annotations and setting-replacement guidance.
+  partial writes when a commit fails. Correct overwrite annotations and
+  setting-replacement guidance, reinforcement units and tapered-section workflows.
 
-### Validation and limitations
+### Upgrade notes and known limitations
 
-- Audit all 153 tools against qtmodel source.
-- qtmodel 2.9.3 marks historical check-snapshot and planned-lane routes `API_NOT_OPEN`. Older SDKs
-  lack some new capabilities. Typed SDK records can supply defaults or convert
-  unavailable responses to empty lists before Qiao-MCP sees them. These limits
-  remain explicit; offline checks do not establish engineering acceptance.
+- Refresh the client's tool catalog after upgrading. Existing operation calls are
+  still accepted; clients requiring discovery membership should use `flat`.
+- `add_custom_temperature` now requires `[reference, height, temperature]` rows;
+  legacy two-column rows are rejected. Both renumbering lists must be complete,
+  or both omitted for the documented whole-model mode.
+- qtmodel 2.9.3 explicitly rejects 17 historical desktop routes, including model
+  checking snapshots and full planned-lane creation/update, with `API_NOT_OPEN`.
+  The error is preserved and no commit follows the rejected write.
+- Initialize/open and legacy raw-path file commands cannot carry the new instance
+  binding. Their original state checks and native payloads are preserved. Model
+  instance binding is not transaction rollback or a cross-request review token.
+- Older SDK capability gaps and the existing desktop engineering limitations
+  remain documented. Offline validation does not establish solver accuracy or
+  resolve the previously observed Rz/live-load/snapshot issues.
 
 ## [0.5.1] - 2026-10-13
 
@@ -571,14 +546,8 @@ remain unconfirmed upstream.
 - Solve and query tools for structural analysis results
 - Generic API gateway for qtmodel methods not yet wrapped
 
-[0.5.9]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.8...v0.5.9
-[0.5.8]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.7...v0.5.8
-[0.5.7]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.6...v0.5.7
-[0.5.6]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.5...v0.5.6
-[0.5.5]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.4...v0.5.5
-[0.5.4]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.3...v0.5.4
-[0.5.3]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.2...v0.5.3
-[0.5.2]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.1...v0.5.2
+[Unreleased]: https://github.com/SorataYang/qiao-mcp/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/SorataYang/qiao-mcp/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.3...v0.5.0
 [0.3.3]: https://github.com/SorataYang/qiao-mcp/compare/v0.3.2...v0.3.3

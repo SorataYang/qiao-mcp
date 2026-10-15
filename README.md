@@ -13,7 +13,7 @@ Qiao-MCP is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ### 🔧 Tools (15 domain entry points, 153 operations)
 
-The local development version exposes 15 domain tools. Each takes a `request`
+Version 0.6.0 exposes 15 domain tools. Each takes a `request`
 with an `operation` selector and the matching fields; its schema includes every
 operation's full parameter descriptions, defaults and constraints. All 153 legacy
 names remain directly callable with their original arguments.
@@ -39,7 +39,7 @@ names remain directly callable with their original arguments.
 For example, send `{"request":{"operation":"get_model_status"}}` to
 `inspect_bridge`. See [request examples and compatibility](docs/tool-catalog.md).
 Set `QIAO_MCP_CATALOG_LAYOUT=flat` to list the original 153 names instead.
-Published 0.5.1 continues to use that flat catalog.
+Version 0.5.1 used the flat catalog by default.
 
 The 151 non-image operations retain their output schemas and MCP structured content
 (`{status, message, ...}`). Connection diagnostics also expose `connection_status`
@@ -62,10 +62,10 @@ Support overrides preserve omitted coordinate/additional settings. Supplying
 `extra_parameters` enables them unless `extra_enabled=False` explicitly clears
 them; this behavior also applies to older SDKs that support these options.
 
-### 0.5.9: tool optimizations (local version)
+### 0.6.0: domain tools and qtmodel 2.9.3
 
-The current development version retains all 153 operations and legacy calls behind 15
-domain entry points. These changes are not in published 0.5.1. Section
+Version 0.6.0 combines the local 0.5.2–0.5.9 improvements since GitHub release 0.5.1. It
+retains all 153 operations and legacy calls behind 15 domain entry points. Section
 creation/deletion, stage deletion and vertical prestress checking now explain their
 prerequisites, selection boundaries and write behavior. `add_custom_temperature` accepts
 native `[reference, height, temperature]` rows (reference 1=top, 2=bottom; orientation
@@ -78,11 +78,20 @@ updates require unique, complete readback; checking queries preserve typed field
 Live-load results expose `envelope_type=1` (maximum) or `2` (minimum). Inspect the
 audit for solver, section-numbering, group-query and idealized support corrections.
 
-### 0.5.1: tool guidance and compatibility
+Locked installs now use qtmodel 2.9.3. With its instance context and a desktop
+advertising `model_instance_guard=1`, mutations and commits carry the same model
+instance identifier, including analysis worker threads. Gateway `undo_model`
+also checks model/history revisions when `model_revision_schema=1`; pending or
+uncertain edits block that Undo. On mismatch, inspect the active model and command
+history before deciding whether to issue another operation. Older protocols keep
+existing state checks. Initialize/open and legacy raw-path file routes retain
+their existing contracts and cannot carry this new binding; it does not provide
+transaction rollback or bind separate client requests into one reviewed plan.
 
-Published 0.5.1 keeps all 153 tools. Complete Args text is published in parameter
-schemas without repeating it in tool descriptions. It introduced clearer
-selection guidance; the unreleased audit above corrects remaining behavior.
+### Choosing operations
+
+Complete Args text is published in parameter schemas; each domain lists the
+operations it accepts. Select the operation matching the intended effect.
 
 Choose absolute node edits with `update_node`, offsets with `move_nodes`, and
 numbering with `update_node_id`/`renumber_nodes`. For sections,
@@ -270,7 +279,7 @@ changes. See [Backend Selection](./INTEGRATION_GUIDE.md#后端选择-backend-sel
 ### Prerequisites
 - Python >= 3.11
 - [uv](https://docs.astral.sh/uv/) package manager
-- `qtmodel` 2.6.3 – 2.9.x, except 2.9.0 (installed by `uv sync`; 2.9.2 is the current lock)
+- `qtmodel` 2.6.3 – 2.9.x, except 2.9.0 (installed by `uv sync`; 2.9.3 is the current lock)
 - QiaoTong software running when calling backend model, analysis, or visualization operations
   (see [Compatibility](#compatibility) for which versions pair with which)
 
@@ -431,7 +440,7 @@ where it belongs: in the dependency constraint.
 
 | Qiao-MCP           | qtmodel       | QiaoTong software                          |
 |--------------------|---------------|--------------------------------------------|
-| 0.5.9 (local)      | 2.6.3 – 2.9.x, not 2.9.0 | Same backend requirements; 15 domain tools with all 153 legacy operations |
+| 0.6.0             | 2.6.3 – 2.9.x, not 2.9.0 | Same backend requirements; 15 domain tools with all 153 legacy operations |
 | 0.5.1              | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
 | 0.5.0              | 2.6.3 – 2.9.x, not 2.9.0 | With 2.9.x, QiaoTong must report model state; new commands require server support |
 | 0.3.2 – 0.3.3     | 2.6.3 – 2.8.x | 2.6.3+; 2.8.x pairs are no longer pinned   |
