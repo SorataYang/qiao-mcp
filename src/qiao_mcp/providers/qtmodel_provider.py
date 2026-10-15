@@ -1243,8 +1243,14 @@ class QtModelProvider(BridgeProvider):
         return self._query_list(result, "get_material_data")
 
     def get_section_data(self, sec_id: int, position: int = 0) -> dict:
+        from qtmodel.core.qt_server import QtServer
+
         self._require_available()
-        result = self._query_model("get_section_data", sec_id, position=position)
+        # The desktop still reads the historical misspelling postion. Send both
+        # spellings so the requested end also survives a future desktop fix.
+        result = self._parse(QtServer.send_dict("GET-SECTION-DATA", {
+            "sec_id": sec_id, "position": position, "postion": position,
+        }))
         if not isinstance(result, dict):
             raise RuntimeError("get_section_data returned no valid section (截面查询无有效返回)")
         return result

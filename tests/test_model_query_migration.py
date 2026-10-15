@@ -17,7 +17,6 @@ from qiao_mcp.tools.envelope import ToolError
     ("get_element_data", (), {"ids": [2]}, "get_element_data", [{"index": 2}]),
     ("get_material_data", (), {}, "get_material_data", [{"index": 3}]),
     ("get_load_group_names", (), {}, "get_load_group_names", ["默认荷载组"]),
-    ("get_section_data", (3,), {"position": 1}, "get_section_data", {"name": "主梁"}),
     ("get_section_shape", (3,), {}, "get_model_section_shape", {"parts": []}),
     ("get_section_property", (3,), {}, "get_section_property", {"Ax": 2.0}),
     ("get_thickness_data", (), {}, "get_thickness_data", [{"thick_id": 1}]),
@@ -42,6 +41,27 @@ def test_model_queries_prefer_mdb_and_fall_back_only_when_absent(
     local_shape.assert_not_called()
     if modern:
         legacy.assert_not_called()
+
+
+@pytest.mark.parametrize("position", [0, 1])
+def test_section_detail_preserves_the_requested_end(qtmodel_wire, monkeypatch, position):
+    from qtmodel.core.qt_server import QtServer
+
+    provider, requests = qtmodel_wire
+
+    def desktop(command="", header="", **kwargs):
+        payload = json.loads(command)
+        requests.append((header, payload))
+        # The actual desktop reads this historical spelling, defaulting to I.
+        end = payload.get("postion", 0)
+        return json.dumps({"sec_info": [[1, 1], [1, 2]][end]})
+
+    monkeypatch.setattr(QtServer, "send_command", desktop)
+    result = provider.get_section_data(3, position=position)
+    assert result["sec_info"] == [[1, 1], [1, 2]][position]
+    assert len(requests) == 1
+    assert requests[0][0] == "GET-SECTION-DATA"
+    assert requests[0][1]["position"] == requests[0][1]["postion"] == position
 
 
 def test_query_failure_does_not_retry_the_legacy_namespace(fake_provider):
