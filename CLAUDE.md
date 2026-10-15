@@ -77,7 +77,8 @@ src/qiao_mcp/
 - **锁 mcp 1.x**:`mcp[cli]>=1.29,<2`——mcp 2.0 移除了 `mcp.server.fastmcp`,迁移未完成前不要升。
 - **"2.8.2" 不是同一个东西**:PyPI wheel(2026-08-20 打包自上游 340e94e)没有 `get_model_state`;上游源码同样标 2.8.2 却有。**按能力探测判断,不能按版本号判断**。2.9.0 起 PyPI 正式发布带 `get_model_state`,守卫对 PyPI 用户也生效。上游源码的 `QT_VERSION` 常滞后于 PyPI 版本号(`8ae651e` 与 2.9.2 wheel 内容相同却仍标 2.9.1),核对时直接 `diff -r --strip-trailing-cr` 源码与 wheel。`reference_codes/qtmodel-release/` 是嵌套的上游仓库(非 submodule),可 `git -C reference_codes/qtmodel-release log` 考证。
 - **qtmodel 2.6/2.7 有精确版本握手**(不匹配拒连),2.8.2 起移除——所以 `check_qiaotong_connection` 的 `version_mismatch` 状态在 2.8.2 上不会再出现。
-- 本轮上游为 `0687ffe`，同样标 2.9.2，却比 PyPI 2.9.2 多出系数、翼缘、统计及结构合并接口，并移除混凝土检算的旧窗口参数；核对见 `docs/0.5.0-upstream-alignment.md`。支承工具在只给附加参数时显式启用，False 清空，两者均省略保持。
+- 0.5.0 对齐时的上游为 `0687ffe`，同样标 2.9.2，却比 PyPI 2.9.2 多出系数、翼缘、统计及结构合并接口，并移除混凝土检算的旧窗口参数；核对见 `docs/0.5.0-upstream-alignment.md`。支承工具在只给附加参数时显式启用，False 清空，两者均省略保持。
+- 当前参考仓库已于 2026-10-15 快进至 `0a36bc5`（qtmodel 2.9.3），74 个 Python 源文件与 PyPI 2.9.3 在统一换行符后相同；当前 0.5.9 的 1978 项离线测试全部通过。`uv.lock` 仍固定 2.9.2，发布前建议统一到已核对的 2.9.3；新模型实例/修订上下文尚未接入 Qiao-MCP，17 个未开放路由的限制仍有效。详见 `docs/qtmodel-update-20261015.md`。
 - 依赖范围 `qtmodel>=2.6.3,!=2.9.0,<2.10` 的注释(pyproject.toml)记录了每次收放的原因,调整前先读。2.9 的补丁版之间也会增删模块,不要放开到 `<3`。2.9.0 被排除:它的 `add_section` 在不传 `sec_property` 时也校验长度,建截面全被拒。
 - 放宽范围前逐个版本跑离线测试:把 PyPI wheel 解压到临时目录,`PYTHONPATH=<解压目录>:src uv run pytest ...`。只有直接调用上游本地构造器的测试(如 `test_section_tools.py` 里的 `get_section_shape`)能抓到客户端校验的缺陷。
 - `do_solve` 的 `sync=True` 默认值(2.6.3 起)会禁用 `max_wait` 等待语义——provider 调用时**始终显式传 `sync=False`**。`wait_solve` 对用户终止等结局返回状态而不抛错,`run_analysis` 必须核对最终 `state`。
