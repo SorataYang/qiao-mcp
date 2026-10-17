@@ -1,5 +1,7 @@
 """Exercise workflows against a model with existing entities and nonsequential IDs."""
 
+import json
+
 import pytest
 from conftest import FakeDb, tool_fns
 
@@ -179,13 +181,27 @@ def test_simple_bridge_resolves_new_properties_after_creation(model):
 
 @pytest.mark.parametrize("shape", ["ids", "records"])
 def test_legacy_section_queries_resolve_the_requested_name(model, monkeypatch, shape):
-    provider, _, functions = model
+    from qtmodel.core.qt_server import QtServer
+
+    provider, db, functions = model
+    queried_ids = []
+
+    def section_reply(command="", header="", **kwargs):
+        assert header == "GET-SECTION-DATA"
+        index = json.loads(command)["sec_id"]
+        queried_ids.append(index)
+        return json.dumps(db.get_section_data(index))
+
+    # Section details now use the corrected native payload. Keep this legacy
+    # workflow fixture fully offline at that same transport boundary.
+    monkeypatch.setattr(QtServer, "send_command", staticmethod(section_reply))
     data = [2, 29, 31] if shape == "ids" else [
         {"id": 2, "name": "Other"}, {"id": 29, "name": "矩形梁"},
     ]
     monkeypatch.setattr(provider, "get_section_names", lambda: data)
     result = functions["create_simple_beam_bridge"](num_elements=2)
     assert result["section_id"] == 29
+    assert queried_ids == ([2, 29, 31] if shape == "ids" else [])
 
 
 def test_unresolved_node_ids_stop_before_elements_and_supports(model, monkeypatch):
