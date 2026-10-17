@@ -771,6 +771,11 @@ def register_modification_tools(mcp: MCPServer, provider: BridgeProvider) -> Non
         """
         Delete elements from the model (删除单元).
 
+        By default, precise object deletion preserves nodes and their attached
+        data. It requires delete_model_object support in qtmodel/QiaoTong.
+        A batch failure can leave partial deletions pending; inspect the model
+        before retrying (默认保留节点及关联数据；批量失败后检查模型，勿直接重试).
+
         Args:
             ids: Element ID(s) to delete. Supports int, list, or range string '1to10'.
                  Omit/use None plus confirm_delete_all=True to delete ALL elements;

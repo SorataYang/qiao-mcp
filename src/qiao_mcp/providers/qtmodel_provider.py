@@ -1788,9 +1788,42 @@ class QtModelProvider(BridgeProvider):
 
     def remove_elements(self, ids: Any = None, remove_free: bool = False) -> None:
         self._require_available()
+        if type(remove_free) is not bool:
+            raise ValueError("remove_free must be a boolean")
         if ids is not None:
             ids = self._validate_ids(ids)
-        elif remove_free:
+        if not remove_free:
+            from qtmodel.core.data_helper import QtDataHelper
+
+            # REMOVE-ELEMENTS deletes orphaned endpoints even when remove_free
+            # is false on the current desktop. Precise object deletion retains
+            # the actual nodes and their boundary/load/group references.
+            delete = getattr(self._mdb, "delete_model_object", None)
+            if not callable(delete):
+                raise ValueError(
+                    "Preserving nodes requires qtmodel delete_model_object "
+                    "(保留节点需要支持精确对象删除的 qtmodel/桥通版本)"
+                )
+            records = self.get_element_data(ids=ids)
+            existing = [self._field(row, "index") if self._field(row, "index") is not None
+                        else self._field(row, "element_id") for row in records]
+            if existing:
+                existing = self._validate_ids(existing, required=True)
+            selected = QtDataHelper.parse_ids_to_array(ids) if ids is not None else existing
+            missing = sorted(set(selected) - set(existing))
+            if missing:
+                raise ValueError(f"Elements not found; nothing deleted (单元不存在，未删除): {missing}")
+            for index in dict.fromkeys(selected):
+                try:
+                    delete(object_type="element", index=index)
+                except Exception as exc:
+                    raise RuntimeError(
+                        f"Deletion failed at element {index}; earlier deletions may be pending "
+                        "or applied. Inspect the model before retrying "
+                        "(删除可能已部分写入，请检查模型后再操作)"
+                    ) from exc
+            return
+        if ids is None:
             # The SDK's ids=None branch omits remove_free entirely. Resolve the
             # actual selection so the requested free-node cleanup is transmitted.
             records = self.get_element_data()
@@ -1799,10 +1832,7 @@ class QtModelProvider(BridgeProvider):
             if not ids:
                 return
             ids = self._validate_ids(ids, required=True)
-        if ids is not None:
-            self._mdb.remove_elements(ids=ids, remove_free=remove_free)
-        else:
-            self._mdb.remove_elements(remove_free=remove_free)
+        self._mdb.remove_elements(ids=ids, remove_free=True)
 
     def merge_nodes(self, ids: Any = None, tolerance: float = 1e-4) -> None:
         self._require_available()

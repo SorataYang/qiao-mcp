@@ -23,10 +23,16 @@ def test_invalid_ids_never_turn_into_delete_all(fake_provider, name, ids):
 @pytest.mark.parametrize("name", ["remove_nodes", "remove_elements"])
 def test_explicit_confirmed_delete_all_still_works(qtmodel_wire, name):
     provider, requests = qtmodel_wire
+    if name == "remove_elements":
+        provider.get_element_data = lambda **kwargs: [{"index": 7}, {"index": 90}]
     functions = tool_fns(register_modification_tools, provider)
     functions[name](ids=None, confirm_delete_all=True)
-    assert [header for header, _ in requests] == [name.replace("_", "-").upper(), "UPDATE"]
-    assert requests[0][1] is None
+    if name == "remove_nodes":
+        assert [header for header, _ in requests] == ["REMOVE-NODES", "UPDATE"]
+        assert requests[0][1] is None
+    else:
+        assert [header for header, _ in requests] == ["DELETE-MODEL-OBJECT"] * 2 + ["UPDATE"]
+        assert [payload["index"] for _, payload in requests[:-1]] == [7, 90]
 
 
 @pytest.mark.parametrize("name", ["remove_nodes", "remove_elements"])
