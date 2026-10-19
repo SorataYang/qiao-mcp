@@ -12,7 +12,7 @@
 from __future__ import annotations
 
 import pytest
-from conftest import tool_fns
+from conftest import ready_model_state, tool_fns
 
 from qiao_mcp.tools import register_modeling_tools
 from qiao_mcp.tools.envelope import ToolError
@@ -26,10 +26,12 @@ def modeling(fake_provider):
 # ── 节点质量 ──────────────────────────────────────────────────────────
 
 
-def test_isotropic_mass_uses_legacy_layout_for_every_build(modeling, fake_provider):
+def test_isotropic_mass_explicitly_supplies_all_directions_when_supported(modeling, fake_provider):
     modeling["add_nodal_mass"](node_id=1, mass=12.5, rot_x=1.0, rot_y=2.0, rot_z=3.0)
     _, _, kwargs = fake_provider._mdb.last("add_nodal_mass")
-    assert kwargs == {"node_id": 1, "mass_info": [12.5, 1.0, 2.0, 3.0]}
+    assert kwargs == {
+        "node_id": 1, "mass_info": [12.5, 1.0, 2.0, 3.0], "mass_xyz": [12.5, 12.5, 12.5],
+    }
     assert fake_provider._mdb.count("update_model") == 1
 
 
@@ -62,6 +64,29 @@ def test_all_zero_mass_is_rejected_before_writing(modeling, fake_provider):
     with pytest.raises(ToolError, match="nonzero"):
         modeling["add_nodal_mass"](node_id=1)
     assert fake_provider._mdb.calls == []
+
+
+@pytest.mark.parametrize("mass_arguments", [{"mass": 10}, {"mass_x": 10}, {"mass_y": 10}])
+def test_known_desktop_mass_loss_is_rejected_before_write(fake_provider, mass_arguments):
+    snapshot = ready_model_state()
+    snapshot["server"] = {"software_version": "26.1.116.1015"}
+    fake_provider.get_model_state = lambda: snapshot
+    functions = tool_fns(register_modeling_tools, fake_provider)
+    with pytest.raises(ToolError, match="discards X/Y nodal masses; no mass was written"):
+        functions["add_nodal_mass"](node_id=1, **mass_arguments)
+    assert fake_provider._mdb.calls == []
+
+
+def test_known_desktop_accepts_deliberately_vertical_mass(fake_provider):
+    snapshot = ready_model_state()
+    snapshot["server"] = {"software_version": "26.1.116.1015"}
+    fake_provider.get_model_state = lambda: snapshot
+    tool_fns(register_modeling_tools, fake_provider)["add_nodal_mass"](
+        node_id=1, mass_z=300, rot_x=10, rot_y=20, rot_z=30,
+    )
+    assert fake_provider._mdb.last("add_nodal_mass")[2] == {
+        "node_id": 1, "mass_info": [300, 10, 20, 30], "mass_xyz": [0, 0, 300],
+    }
 
 
 # ── 收缩徐变材料 ──────────────────────────────────────────────────────

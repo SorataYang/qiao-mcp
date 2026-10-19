@@ -2111,24 +2111,29 @@ class QtModelProvider(BridgeProvider):
     ) -> None:
         """Add a lumped nodal mass in QiaoTong's native field layout.
 
-        qtmodel 的 mass_info 是 (平动质量, 绕X, 绕Y, 绕Z 转动惯量)，并非 2.8.2
-        docstring 自称"示例"的 (mx, my, mz, mrx)——桥通 C# 导出日志、
-        get_node_mass_data 的返回说明与 2.9 docstring 三方一致。旧格式只有一个平动
-        质量；2.9 起可另传 mass_xyz=(mX, mY, mZ) 表达各向不同的平动质量，导出日志中
-        此时 mass_info 首项取 mZ。
-
-        三向相等时始终走旧格式（任何版本的桥通都认）；三向不等时必须由 qtmodel 提供
-        mass_xyz，旧版直接拒绝，而不是把三个值静默合并成一个。
+        mass_info uses (mZ, rotationX, rotationY, rotationZ). Send mass_xyz
+        explicitly when supported, including isotropic masses. The live-tested
+        26.1.116.1015 desktop ignores mass_xyz and writes only Z; reject X/Y
+        requests on that build before mutating instead of reporting success.
         """
         self._require_available()
         mass_x, mass_y, mass_z = mass_xyz
+        bound = self._operation_snapshot.get()
+        snapshot = bound[1] if bound and bound[0] == id(self) else self.get_model_state()
+        server = snapshot.get("server") or {}
+        if server.get("software_version") == "26.1.116.1015" and (mass_x or mass_y):
+            raise ValueError(
+                "QiaoTong 26.1.116.1015 discards X/Y nodal masses; no mass was written. "
+                "Update the desktop to assign these components "
+                "(当前桥通忽略 X/Y 节点质量，已在写入前拒绝；请更新桌面程序)"
+            )
         options: dict[str, Any] = {}
-        if not (mass_x == mass_y == mass_z):
-            try:
-                options = self._optional_mdb_parameter(
-                    "add_nodal_mass", "mass_xyz", [mass_x, mass_y, mass_z]
-                )
-            except ValueError as exc:
+        try:
+            options = self._optional_mdb_parameter(
+                "add_nodal_mass", "mass_xyz", [mass_x, mass_y, mass_z]
+            )
+        except ValueError as exc:
+            if not (mass_x == mass_y == mass_z):
                 raise ValueError(
                     "Direction-specific translational masses need a qtmodel build whose "
                     "add_nodal_mass accepts mass_xyz (2.9.0+); older builds carry one "
@@ -2377,7 +2382,26 @@ class QtModelProvider(BridgeProvider):
 
     def get_node_mass_data(self, *args, **kwargs):
         self._require_available()
-        return self._query_model("get_node_mass_data", *args, **kwargs)
+        from qtmodel.core.qt_server import QtServer
+
+        # The desktop can encode the four legacy values as a .NET tuple.
+        # qtmodel 2.9.3's NodalMass constructor calls list(dict), losing all
+        # numeric values and returning Item1...Item4 instead. Normalize the
+        # wire reply before that constructor; do not invent missing Y/Z masses.
+        rows = self._query_list(
+            self._parse(QtServer.send_dict("GET-NODE-MASS-DATA", None)),
+            "get_node_mass_data",
+        )
+        normalized = []
+        for row in rows:
+            mass_info = row.get("mass_info")
+            if isinstance(mass_info, dict):
+                keys = [f"Item{i}" for i in range(1, 5)]
+                if set(mass_info) != set(keys):
+                    raise ValueError("Unrecognized nodal mass tuple (无法识别节点质量字段)")
+                row = {**row, "mass_info": [mass_info[key] for key in keys]}
+            normalized.append(row)
+        return normalized
 
     def get_nodal_force_load_data(self, *args, **kwargs):
         self._require_available()

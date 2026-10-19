@@ -2386,6 +2386,12 @@ def register_modeling_tools(mcp: MCPServer, provider: BridgeProvider):
         qtmodel 2.9+ and are rejected on older builds rather than merged.
         rot_x / rot_y / rot_z are rotational mass moments of inertia.
 
+        Desktop 26.1.116.1015 ignores the X/Y inputs even with qtmodel 2.9.3.
+        Requests with nonzero X/Y mass, including mass alone, are rejected
+        before writing on that build. A deliberately vertical-only mass uses
+        mass=0 and mass_z; upgrading the desktop is required for X/Y components.
+        (已实测该桌面版本丢失 X/Y 质量，因此写入前拒绝；仅竖向质量可用 mass_z。)
+
         Create mass before the relevant vibration/dynamic analysis; to include
         eigenvalue analysis use configure_analysis(do_vibration=True). This
         tool returns a confirmation and does not start a solve. Mass from dead load is usually

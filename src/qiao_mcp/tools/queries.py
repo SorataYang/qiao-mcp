@@ -151,7 +151,9 @@ def register_query_tools(mcp: MCPServer, provider: BridgeProvider) -> None:
                 "nodal_displacement_loads" (节点位移/沉降), "beam_element_loads" (梁单元荷载),
                 "plate_element_loads" (板单元荷载), "initial_tension_loads" (初拉力),
                 "cable_length_loads" (索长荷载), "pre_stress_loads" (预应力荷载),
-                "node_masses" (节点质量), "tendon_properties" (钢束特性),
+                "node_masses" (节点质量；旧版 mass_info 为 [X质量, X惯量, Y惯量, Z惯量]，
+                不含 Y/Z 平动质量，不可当作完整六自由度质量或直接写回),
+                "tendon_properties" (钢束特性),
                 "deviation_parameters" (制造偏差参数), "deviation_loads" (制造偏差荷载)
                 ── 施工阶段 Stages ──
                 "stages" (施工阶段名), "stage_elements" (阶段内单元, 需 stage_id),
