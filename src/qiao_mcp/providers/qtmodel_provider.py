@@ -2520,6 +2520,8 @@ class QtModelProvider(BridgeProvider):
 
     def reset_display(self) -> None:
         self._require_available()
+        # Native RESET-DISPLAY clears overlays but keeps the visibility filter.
+        self._odb.activate_structure()
         self._odb.reset_display()
 
     def set_unit(self, unit_force: str = 'KN', unit_length: str = 'MM') -> None:
