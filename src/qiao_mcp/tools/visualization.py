@@ -121,6 +121,10 @@ def register_visualization_tools(mcp: MCPServer, provider: BridgeProvider):
         to capture the current model view without requesting a result contour.
         (修改结果视图并保存 PNG，同名文件会覆盖；不求解，也不替代原生模型文件。)
 
+        Modal plots first read the selected mode. Missing or unreadable modal
+        data stops the request before rendering, because some desktop builds
+        can crash when asked to plot unavailable modes (振型数据不可读时不执行绘图).
+
         Args:
             result_type: Result type (结果类型):
                 'displacement'(位移), 'reaction'(反力),

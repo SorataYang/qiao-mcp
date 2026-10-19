@@ -19,6 +19,8 @@ def image_wire(fake_provider, monkeypatch):
 
     def send(command="", header="", read_timeout=600):
         requests.append((header, json.loads(command) if command else None))
+        if header in {"GET-VIBRATION-MODAL-RESULTS", "GET-BUCKLING-MODAL-RESULTS"}:
+            return json.dumps([{"node_id": 1, "dx": 0, "dy": 1, "dz": 0, "rx": 0, "ry": 0, "rz": 0}])
         return PNG_BASE64
 
     monkeypatch.setattr(QtServer, "send_command", send)
@@ -71,15 +73,42 @@ def test_plot_components_reach_actual_sdk_as_native_integers(
         assert payload["component"] == expected
 
 
-def test_modal_plot_uses_mode_fields_instead_of_unsupported_stage_fields(image_wire, tmp_path):
+@pytest.mark.parametrize("kind, query_header", [
+    (1, "GET-VIBRATION-MODAL-RESULTS"), (2, "GET-BUCKLING-MODAL-RESULTS"),
+])
+def test_modal_plot_uses_mode_fields_instead_of_unsupported_stage_fields(image_wire, tmp_path, kind, query_header):
     functions, requests = image_wire
     functions["plot_analysis_result"](
-        result_type="modal", mode=3, mode_kind=2, file_path=str(tmp_path / "modal.png"),
+        result_type="modal", mode=3, mode_kind=kind, file_path=str(tmp_path / "modal.png"),
     )
-    command, payload = requests[0]
+    assert len(requests) == 2
+    assert requests[0][0] == query_header
+    assert requests[0][1]["mode"] == 3
+    command, payload = requests[1]
     assert command == "PLOT-MODAL-RESULT"
-    assert (payload["mode"], payload["mode_kind"]) == (3, 2)
+    assert (payload["mode"], payload["mode_kind"]) == (3, kind)
     assert not {"stage_id", "case_name", "component"}.intersection(payload)
+
+
+@pytest.mark.parametrize("kind", [1, 2])
+@pytest.mark.parametrize("unavailable", ["empty", "error"])
+def test_unavailable_modal_data_never_reaches_desktop_plot(fake_provider, tmp_path, kind, unavailable):
+    def query(mode):
+        if unavailable == "error":
+            raise RuntimeError("结果不存在，请计算后再次查询")
+        return []
+
+    method = "get_vibration_modal_results" if kind == 1 else "get_buckling_modal_results"
+    setattr(fake_provider._odb, method, query)
+    path = tmp_path / "existing.png"
+    path.write_bytes(PNG_BYTES)
+    functions = tool_fns(register_visualization_tools, fake_provider)
+    with pytest.raises(ToolError, match="no plot was requested"):
+        functions["plot_analysis_result"](
+            result_type="modal", mode_kind=kind, file_path=str(path),
+        )
+    assert fake_provider._odb.calls == []
+    assert path.read_bytes() == PNG_BYTES
 
 
 @pytest.mark.parametrize("arguments", [

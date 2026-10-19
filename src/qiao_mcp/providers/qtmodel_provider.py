@@ -2581,6 +2581,23 @@ class QtModelProvider(BridgeProvider):
                 kwargs["component"] = component
         arguments = {"file_path": "", **kwargs}
         method = self._validated_method("odb", method_name, arguments)
+        if result_type == "modal":
+            # On 26.1.116.1015 the plot route can terminate the desktop when
+            # its modal data is unavailable, even when a result file exists.
+            # Check the selected family/order through the read-only route first.
+            query_name = (
+                "get_vibration_modal_results" if mode_kind == 1
+                else "get_buckling_modal_results"
+            )
+            query = self._validated_method("odb", query_name, {"mode": mode})
+            try:
+                modal_data = self._query_list(self._parse(query(mode=mode)), query_name)
+            except Exception as exc:
+                raise ValueError(
+                    f"Modal data is unavailable; no plot was requested (振型数据不可读，未执行绘图): {exc}"
+                ) from exc
+            if not modal_data:
+                raise ValueError("Modal data is empty; no plot was requested (振型数据为空，未执行绘图)")
         return self._save_png_result(method(**arguments), file_path)
 
     # ── Validation ─────────────────────────────────────────────────────
