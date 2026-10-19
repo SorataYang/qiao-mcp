@@ -56,7 +56,15 @@ def register_modification_tools(mcp: MCPServer, provider: BridgeProvider) -> Non
         """
         Save the active QiaoTong model to its native file (保存当前桥通模型).
 
-        Use before model changes or to create a checkpoint. For an image use
+        Use before model changes or to create a checkpoint. For a restorable
+        checkpoint, save to a checkpoint path and then save again to a different
+        working path before editing. QiaoTong 26.1.116.1015 saves the active
+        project before opening another file, including the same path; reopening
+        the active path therefore does not discard edits or restore a checkpoint.
+        (检查点与工作文件须使用不同路径；当前桥通打开文件前会保存活动工程，
+        重新打开当前路径不能撤销修改。)
+
+        For an image use
         save_model_screenshot; this saves the editable model. Requires an open model
         and a writable path on the machine running QiaoTong. Existing files may be
         overwritten; the wrapper creates no backup and returns no downloaded file.
@@ -88,6 +96,11 @@ def register_modification_tools(mcp: MCPServer, provider: BridgeProvider) -> Non
 
         Replaces the active model. Save unsaved work with save_model_file first.
         The path is read by QiaoTong on its host, not uploaded from the MCP machine.
+        QiaoTong 26.1.116.1015 saves the active project before opening, even when
+        opening its current path. This is not a revert operation: restore from a
+        separate checkpoint while the active project uses a different working path.
+        (当前桥通会先保存活动工程；从不同于活动工作文件的检查点恢复，不能靠重开
+        当前路径撤销修改。)
 
         Args:
             file_path: Native model path on the QiaoTong host (.bfmd in the qtmodel SDK;

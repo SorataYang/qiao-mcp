@@ -51,8 +51,10 @@ TOOL_DOMAINS = (
         request.operation selects the matching fields. File paths are interpreted
         by the QiaoTong host, which may be a remote Windows machine, not by the
         MCP client's local filesystem. initialize_model requires confirm=true;
-        open can discard unsaved work and save can overwrite an existing file.
-        No automatic backup or rollback is provided. Save important work first
+        save can overwrite an existing file. QiaoTong 26.1.116.1015 also saves
+        the active project before opening a file, including its current path.
+        Reopening that path cannot revert edits. Keep a separate checkpoint and
+        working path. No automatic backup or rollback is provided. Save work first
         and verify the active model after opening or initializing. Returns a
         completion message, without model contents or analysis results.
         """,
