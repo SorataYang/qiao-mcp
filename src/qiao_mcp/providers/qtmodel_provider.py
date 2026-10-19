@@ -2055,8 +2055,19 @@ class QtModelProvider(BridgeProvider):
     def update_construction_stage(
         self, name: str, *, sub_steps: list[float] | None = None, **kwargs
     ) -> None:
+        import inspect
+
         self._require_available()
         options = self._optional_mdb_parameter("update_construction_stage", "sub_steps", sub_steps)
+        # The desktop UPDATE route enumerates these string lists without a
+        # null check. The SDK serializes omitted arguments as null, so even a
+        # duration-only update fails. Send empty definitions for absent lists;
+        # keep explicit selections and SDKs without these parameters intact.
+        parameters = inspect.signature(self._mdb.update_construction_stage).parameters
+        accepts_keywords = any(p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters.values())
+        for field in ("delete_structures", "delete_boundaries", "temp_loads"):
+            if kwargs.get(field) is None and (field in parameters or accepts_keywords):
+                kwargs[field] = []
         self._mdb.update_construction_stage(name=name, **options, **kwargs)
         self.update_model()
 

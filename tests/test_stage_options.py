@@ -87,3 +87,35 @@ def test_stage_real_wire(qtmodel_wire, register, method, header, duration, sub_s
         # QiaoTong export: load_stage_replay_logs.json (not required at test runtime).
         assert payload["sub_steps"] == sub_steps
     assert len(requests) == 2  # write + update_model
+
+
+@pytest.mark.parametrize("explicit_none", [False, True])
+def test_stage_update_never_sends_null_string_lists(qtmodel_wire, explicit_none):
+    """The live UPDATE route throws before modifying a stage for these nulls."""
+    provider, requests = qtmodel_wire
+    fields = ("delete_structures", "delete_boundaries", "temp_loads")
+    kwargs = dict.fromkeys(fields) if explicit_none else {}
+    tool_fns(register_group_tools, provider)["update_construction_stage"](
+        name="既有阶段", duration=2, **kwargs,
+    )
+    payload = next(p for h, p in requests if h == "UPDATE-CONSTRUCTION-STAGE")
+    assert {field: payload[field] for field in fields} == dict.fromkeys(fields, [])
+    assert payload["duration"] == 2
+    assert len(requests) == 2
+
+
+def test_stage_update_keeps_explicit_definitions(qtmodel_wire):
+    provider, requests = qtmodel_wire
+    definitions = {
+        "active_structures": [["主梁", 7, 1, 1]],
+        "delete_structures": ["支架"],
+        "delete_boundaries": ["临时支座"],
+        "temp_loads": ["吊装荷载"],
+        "delete_loads": [["施工荷载", 1]],
+    }
+    tool_fns(register_group_tools, provider)["update_construction_stage"](
+        name="既有阶段", duration=2, **definitions,
+    )
+    payload = next(p for h, p in requests if h == "UPDATE-CONSTRUCTION-STAGE")
+    assert {field: payload[field] for field in definitions} == definitions
+    assert len(requests) == 2

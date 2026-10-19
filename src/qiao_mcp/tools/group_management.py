@@ -376,15 +376,20 @@ def register_group_tools(mcp: MCPServer, provider: BridgeProvider):
         switch_display_stage. Create a missing stage with add_construction_stage.
 
         name must identify an existing stage and all group references must exist.
-        new_name and duration are always sent, including their defaults. Optional
-        group lists are omitted only when None; supplied empty lists are sent
-        explicitly, so they are not a request to preserve current entries. Load
-        activation/deactivation rows pair a group name with time 0=start or 1=end.
+        new_name and duration are always sent, including their defaults.
+        delete_structures, delete_boundaries and temp_loads default to empty
+        lists because QiaoTong rejects null for these definitions. Other optional
+        group lists follow SDK defaults when None. This is not a read/merge patch:
+        supply the complete group definitions that must remain in the stage.
+        Supplied empty lists clear entries. Load activation/deactivation rows
+        pair a group name with time 0=start or 1=end.
 
         Writes and refreshes the model and returns a confirmation without solving.
         Read stages before and after editing when retaining an existing schedule;
         sub_steps requires SDK support, and [] explicitly clears sub-steps.
-        (钝化不等于删除组；None 省略列表，空列表会下发。名称和工期默认值仍会提交。)
+        (钝化不等于删除组；钝化结构组、钝化边界组和临时荷载组省略时按空列表下发，
+        其余列表沿用 SDK 默认行为。不会自动回读合并；须完整提供要保留的阶段定义。
+        名称和工期默认值仍会提交。)
 
         Args:
             name: Existing stage name (现有阶段名称)
