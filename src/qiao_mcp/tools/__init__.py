@@ -30,6 +30,8 @@ from qiao_mcp.tools.schemas import (
     NonnegativeNumber,
     PositiveInteger,
     PositiveNumber,
+    QueryName,
+    QueryNames,
     SectionLoop,
     SectionProperties,
     SelectedIds,
@@ -2710,9 +2712,13 @@ def register_modeling_tools(mcp: MCPServer, provider: BridgeProvider):
 
     @mcp.tool()
     def update_bulking_setting(
+        variable_cases: QueryNames,
         do_analysis: bool = True,
-        mode_count: int = 3,
+        mode_count: PositiveInteger = 3,
         stage_id: int = -1,
+        constant_cases: list[QueryName] | None = None,
+        calculate_kind: Literal[1, 2] = 1,
+        stressed: bool = True,
     ) -> str:
         """
         Configure linear buckling analysis (屈曲分析设定；方法名 bulking 为历史拼写).
@@ -2721,31 +2727,24 @@ def register_modeling_tools(mcp: MCPServer, provider: BridgeProvider):
         run_analysis afterwards. The misspelling "bulking" is the upstream
         method name; renaming it would break existing callers.
 
-        LIMITATION — this tool exposes only the three basic switches. The
-        load-case assignment (constant_cases / variable_cases), whether
-        self-weight is treated as constant or variable, and whether the
-        prestressed or unstressed geometry is used, are reachable only via
-        the escape hatch:
-        call_qtmodel_api(api_object="mdb", method="update_bulking_setting",
-                         kwargs={"variable_cases": ["工况1"], "calculate_kind": 1,
-                                 "stressed": True, ...}).
-        Without at least one variable_cases name, a buckling run typically has
-        nothing to vary.
+        Supply at least one existing ordinary static case in variable_cases.
+        QiaoTong requires this list even when do_analysis=False; an empty or
+        omitted list cannot disable analysis through this setting route.
+        constant_cases is the complete fixed-load selection; omission clears it.
+        calculate_kind classifies self-weight, while stressed selects the
+        stressed or unstressed reference geometry.
 
-        (写模型。打开分析开关并不求解——之后还要调 run_analysis。"bulking" 是上游
-        方法名的历史拼写，改名会破坏已有调用。局限：本工具只暴露三个基本开关；
-        荷载工况分配(constant_cases / variable_cases)、恒载归为不变还是可变、
-        以及采用预应力还是无应力几何，都需经逃生舱设置。不指定 variable_cases
-        时屈曲分析通常没有可变荷载。)
+        (须提供至少一个已有普通静力工况作为可变荷载；关闭分析时桌面仍要求此列表。
+        constant_cases 为完整不变荷载列表，省略则清空；其余选项控制自重归类及基准状态。)
 
         Use configure_analysis for the other global solve switches, or
-        update_construction_stage to change a stage's contents. This sends SDK
-        defaults for unexposed buckling fields without reading/merging previous
-        settings; do not assume an earlier gateway configuration is preserved.
-        Returns a confirmation (区别于全局分析开关和阶段内容修改；未暴露字段沿用 SDK
-        默认值，不回读合并，不能保证保留此前网关设置，返回确认消息).
+        update_construction_stage to change a stage's contents. This replaces
+        the full buckling definition without reading/merging previous settings.
+        Returns a confirmation (整体替换屈曲设置，不回读合并；返回确认消息，不启动求解).
 
         Args:
+            variable_cases: Nonempty list of existing ordinary static case names
+                whose load factors vary (可变荷载工况，至少一个；关闭分析时也必填).
             do_analysis: Enable linear buckling analysis (是否进行线性屈曲分析)
             mode_count: Number of buckling modes to compute, must be positive
                         (屈曲模态数，须为正整数)
@@ -2755,10 +2754,21 @@ def register_modeling_tools(mcp: MCPServer, provider: BridgeProvider):
                       (最后施工阶段，不是基本模型);
                       a positive integer must already exist
                       (正整数必须对应已有阶段)
+            constant_cases: Complete fixed ordinary static case names; None or []
+                clears the selection (完整不变荷载列表，省略或空列表均清空).
+            calculate_kind: Self-weight classification: 1=fixed, 2=variable
+                (自重归类：1不变荷载，2可变荷载).
+            stressed: True uses the stressed base-stage state; False uses its
+                unstressed state (是否采用基准阶段末受力状态).
         """
         try:
+            if not variable_cases or any(not name.strip() for name in variable_cases):
+                raise ToolInputError("variable_cases requires existing static case names (可变荷载工况不能为空)")
             provider.update_bulking_setting(
-                do_analysis=do_analysis, mode_count=mode_count, stage_id=stage_id
+                do_analysis=do_analysis, mode_count=mode_count, stage_id=stage_id,
+                variable_cases=variable_cases,
+                constant_cases=[] if constant_cases is None else constant_cases,
+                calculate_kind=calculate_kind, stressed=stressed,
             )
             return "Successfully updated buckling analysis settings (成功设定屈曲分析)"
         except ToolError:
