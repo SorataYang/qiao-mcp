@@ -219,3 +219,10 @@ examples/*
 # Reference codes for AI learning
 reference_codes/*
 !reference_codes/.gitkeep
+
+CLAUDE.md
+AGENTS.md
+
+docs/*
+!docs/tool-catalog.md
+!docs/analysis-jobs.md
