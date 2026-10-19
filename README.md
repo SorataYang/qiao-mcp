@@ -64,19 +64,22 @@ them; this behavior also applies to older SDKs that support these options.
 
 ### 0.6.0: domain tools and qtmodel 2.9.3
 
-Version 0.6.0 combines the local 0.5.2–0.5.9 improvements since GitHub release 0.5.1. It
-retains all 153 operations and legacy calls behind 15 domain entry points. Section
-creation/deletion, stage deletion and vertical prestress checking now explain their
-prerequisites, selection boundaries and write behavior. `add_custom_temperature` accepts
-native `[reference, height, temperature]` rows (reference 1=top, 2=bottom; orientation
-1=local Z, 2=local Y). Two-value rows are rejected because they omit the reference.
-Mutation selections reject blank, Boolean and fractional IDs; renumbering requires BOTH
-complete lists, or BOTH omitted to intentionally renumber the whole model.
+Version 0.6.0 combines the local 0.5.2–0.5.9 improvements since GitHub release 0.5.1.
+It retains all 153 operations and legacy calls behind 15 domain entry points,
+including the per-tool corrections listed in the [changelog](CHANGELOG.md).
+See the [release and upgrade notes](https://github.com/SorataYang/qiao-mcp/releases/tag/v0.6.0).
+Section creation/deletion, stage deletion and vertical prestress checking now
+explain their prerequisites, selection boundaries and write behavior.
+`add_custom_temperature` accepts native `[reference, height, temperature]` rows
+(reference 1=top, 2=bottom; orientation 1=local Z, 2=local Y). Two-value rows are
+rejected because they omit the reference. Mutation selections reject blank,
+Boolean and fractional IDs; renumbering requires BOTH complete lists, or BOTH
+omitted to intentionally renumber the whole model.
 
 Screenshots and plots now retrieve PNG bytes for storage on the MCP host. Partial
 updates require unique, complete readback; checking queries preserve typed fields.
-Live-load results expose `envelope_type=1` (maximum) or `2` (minimum). Inspect the
-audit for solver, section-numbering, group-query and idealized support corrections.
+Live-load results expose `envelope_type=1` (maximum) or `2` (minimum). See the
+changelog for solver, section-numbering, group-query and idealized support corrections.
 
 Locked installs now use qtmodel 2.9.3. With its instance context and a desktop
 advertising `model_instance_guard=1`, mutations and commits carry the same model
@@ -100,13 +103,17 @@ properties, and `calculate_section_property` rewrites all existing sections.
 Tendon definitions, computed losses and coordinates have separate query tools.
 Automatic self-weight is controlled by stages, not by creating a case named 自重.
 
+See the [domain boundaries](docs/tool-catalog.md#选择边界与响应) for which entry
+point covers each task.
+
 ### 0.5.0: queries, transversal analysis, check snapshots and international loads
 
-This version implements B1–B4 with 20 new tools and one workflow prompt. It includes all
-changes since 0.3.3, including work previously labeled 0.4.0. See
-[upgrading from 0.3.3](#upgrading-from-033). New commands require a supporting QiaoTong
-build. Live testing confirmed basic statics and partial B1 coverage; see the
-[known backend limitations](#live-tested-backend-limitations).
+This version implements B1–B4 with 20 new tools and one workflow prompt.
+It includes all changes since 0.3.3, including work previously labeled 0.4.0.
+See the [release notes](https://github.com/SorataYang/qiao-mcp/releases/tag/v0.5.0)
+and [upgrading from 0.3.3](#upgrading-from-033).
+New commands require a supporting QiaoTong build. Live testing confirmed basic
+statics and partial B1 coverage; see the [known backend limitations](#live-tested-backend-limitations).
 
 `get_model_edit_readiness` is read-only and remains accessible when model operations are blocked. Its `success`
 status means a response was received, not that editing is safe; inspect the raw
@@ -221,9 +228,9 @@ result identifier verified from QiaoTong. Definitions never start analysis.
 Vehicle/case deletion remains available through `remove_international_vehicle`
 and `remove_live_load_case` in the existing gateway.
 
-0.5.0 also tracks upstream `0687ffe` through the existing gateway for mass/stiffness
-factors, flange/effective-width definitions, statistics and structure merges. Model
-weight queries use fixed N, independent of display units.
+0.5.0 also tracks upstream `0687ffe` through the existing gateway
+for mass/stiffness factors, flange/effective-width definitions, statistics and
+structure merges. Model weight queries use fixed N, independent of display units.
 
 ### 📦 Resources (7 resources)
 | URI | Description |
@@ -263,7 +270,7 @@ qiao-mcp/
 │       ├── __init__.py        # BridgeProvider abstract base
 │       └── qtmodel_provider.py  # QiaoTong adapter
 ├── tests/                     # Offline unit, integration, and API contract tests
-└── reference-docs/            # Review notes and project documentation
+└── reference-docs/            # Local reference material (not committed)
 ```
 
 The **Provider pattern** keeps the 153 operations decoupled from any single backend. Select one with
@@ -449,14 +456,13 @@ where it belongs: in the dependency constraint.
 
 Known lower-bound limitation: qtmodel 2.6.3 lacks `get_load_group_names`, so the
 one-shot bridge workflow tools cannot run on that version. This is an existing
-limitation; use 2.6.4 or later for those workflows (2.9.0 remains excluded). The
-dependency range does not guarantee every new tool on every build: missing methods or
-incompatible parameters fail explicitly before writes. Capability differences were
-checked on PyPI 2.6.3, 2.6.4, 2.8.2, 2.9.1, 2.9.2 and 2.9.3, plus reference `0687ffe`.
+limitation; use 2.6.4 or later for those workflows (2.9.0 remains excluded).
+The dependency range does not guarantee every new tool on every build: missing
+methods or incompatible parameters fail explicitly before writes. The offline
+suite is run against PyPI 2.6.3, 2.6.4, 2.8.2, 2.9.1, 2.9.2 and 2.9.3, plus reference `0687ffe`.
 These tests verify software contracts; complete engineering acceptance remains pending.
-qtmodel 2.9.3 explicitly rejects historical check-snapshot and planned-lane add/update
-routes with `API_NOT_OPEN`; a method appearing in the SDK catalog does not prove that
-its desktop route exists.
+qtmodel 2.9.3 explicitly rejects historical check-snapshot and planned-lane add/update routes with `API_NOT_OPEN`;
+a method appearing in the SDK catalog does not prove that its desktop route exists.
 
 How the two sides are matched changed in qtmodel 2.8.2:
 
@@ -493,8 +499,9 @@ The same run confirmed these backend limitations:
 - `SET-SECTION-REINFORCEMENT`, `SET-CHECK-STIRRUP` and `SET-CHECK-CASE` are rejected
   as unknown commands. Full reinforcement/check-snapshot acceptance remains open.
 
-`connected` or `compatible` does not certify these features. Use a supporting QiaoTong
-build. BS axle-force units also remain unconfirmed upstream.
+`connected` or `compatible` does not certify these features. Use a supporting
+QiaoTong build and verify these features on a disposable model.
+BS axle-force units also remain unconfirmed upstream.
 
 ### Upgrading from 0.3.3
 
@@ -516,9 +523,9 @@ fractional stage durations and the model-state requirements above.
 
 ### Upstream qtmodel 2.9 alignment
 
-The current reference is `0687ffe`, labeled 2.9.2 but different from the PyPI 2.9.2
-wheel. The earlier local baseline was `8ae651e`, whose package matched that wheel apart
-from its older version label.
+The current reference is `0687ffe`, labeled 2.9.2 but different from the PyPI
+2.9.2 wheel. The earlier local baseline was `8ae651e`, whose package matched that wheel
+apart from its older version label.
 
 - **Write safety.** A write whose reply is lost raises `CommandOutcomeUnknownError`
   and is no longer resent. Qiao-MCP reports it as an unknown outcome and tells the

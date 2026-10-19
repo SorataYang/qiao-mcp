@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.0] - 2026-10-15
 
-This release includes all changes since GitHub release 0.5.1.
+This release includes all changes since GitHub release 0.5.1. Local versions
+0.5.2–0.5.9 were development milestones and are not separate public releases.
+See the [release and upgrade notes](https://github.com/SorataYang/qiao-mcp/releases/tag/v0.6.0).
 
 ### Changed
 
@@ -113,9 +115,10 @@ and state guards. Full engineering acceptance remains incomplete:
 - The section-reinforcement, check-stirrup and check-case snapshot commands are
   unknown to that server build, so the full B3 workflow could not be verified.
 
-Use a QiaoTong build that supports the required commands. A successful version or
-connection check alone does not establish feature support. BS axle-force units also
-remain unconfirmed upstream.
+Use a QiaoTong build that supports the required commands and check results on a
+disposable model. A successful version or
+connection check alone does not establish feature support. BS axle-force units
+also remain unconfirmed upstream.
 
 ### Added
 
@@ -208,9 +211,9 @@ remain unconfirmed upstream.
   one-commit writes and explicit rejection on older clients. Model weight-query
   documentation now specifies fixed N instead of display units.
 - **Compatibility validation.** PyPI 2.9.2 and source `0687ffe` each pass the complete
-  offline suite. 2.6.4, 2.8.2 and 2.9.1 have no failures, with missing-feature skips
-  recorded separately. The two existing 2.6.3 `get_load_group_names` contract failures
-  remain visible.
+  offline suite. 2.6.4, 2.8.2 and 2.9.1 have no failures, with missing-feature
+  skips recorded separately. The two existing 2.6.3 `get_load_group_names`
+  contract failures remain visible.
 - **Tool selection guidance.** Section geometry evaluation, stored-property
   queries and model-wide recalculation now name their distinct scopes. Group
   membership guidance points to the existing dedicated removal tool. Server
