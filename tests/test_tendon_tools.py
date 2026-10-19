@@ -1,5 +1,6 @@
 """钢束工具行为测试：参数组装与格式转换。"""
 
+import pytest
 from conftest import tool_fns
 
 from qiao_mcp.tools.tendon import register_tendon_tools
@@ -55,3 +56,38 @@ def test_apply_prestress_passes_list_and_tension_type(fake_provider):
     _, _, kw = fake_provider._mdb.last("add_pre_stress")
     assert kw["tendon_name"] == ["T1", "T2"], "qtmodel 原生支持列表，应一次下发"
     assert kw["tension_type"] == 0
+
+
+@pytest.mark.parametrize("dimension", [2, 3])
+def test_straight_tendon_default_direction_survives_sdk_serialization(qtmodel_wire, dimension):
+    provider, requests = qtmodel_wire
+    fns = tool_fns(register_tendon_tools, provider)
+    name = "create_tendon_2d" if dimension == 2 else "add_tendon_3d"
+    points = [[0, -0.3, 0], [20, -0.3, 0]] if dimension == 2 else [
+        [0, 0.2, -0.3, 0], [20, 0.2, -0.3, 0]
+    ]
+    fns[name](name="T", property_name="P", control_points=points, point_insert=[0, 0, 0])
+    command, payload = requests[0]
+    assert command == f"ADD-TENDON-{dimension}D"
+    assert payload["tendon_direction"] == [1.0, 0.0, 0.0]
+    assert payload["control_points"] == points
+    assert payload["rotate_bias"] is None
+    if dimension == 2:
+        assert payload["control_points_lateral"] is None
+    assert [command for command, _ in requests[1:]] == ["UPDATE"]
+
+
+@pytest.mark.parametrize("method", ["add_tendon_2d", "add_tendon_3d"])
+@pytest.mark.parametrize("position_type,direction,expected", [
+    (1, None, (1.0, 0.0, 0.0)),
+    (1, (0.0, 1.0, 0.0), (0.0, 1.0, 0.0)),
+    (2, None, None),
+])
+def test_tendon_direction_preserves_explicit_and_track_values(
+    fake_provider, method, position_type, direction, expected
+):
+    getattr(fake_provider, method)(
+        name="T", property_name="P", position_type=position_type, tendon_direction=direction
+    )
+    assert fake_provider._mdb.last(method)[2]["tendon_direction"] == expected
+    assert fake_provider._mdb.count("update_model") == 1

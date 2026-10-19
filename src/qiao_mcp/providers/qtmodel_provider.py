@@ -2000,11 +2000,17 @@ class QtModelProvider(BridgeProvider):
 
     def add_tendon_2d(self, name: str, property_name: str, **kwargs) -> None:
         self._require_available()
+        # The SDK documents +X as the straight-positioning default but sends
+        # null, which QiaoTong 26.1.116.1015 dereferences during creation.
+        if kwargs.get("position_type", 1) == 1 and kwargs.get("tendon_direction") is None:
+            kwargs["tendon_direction"] = (1.0, 0.0, 0.0)
         self._mdb.add_tendon_2d(name=name, property_name=property_name, **kwargs)
         self.update_model()
 
     def add_tendon_3d(self, name: str, **kwargs) -> None:
         self._require_available()
+        if kwargs.get("position_type", 1) == 1 and kwargs.get("tendon_direction") is None:
+            kwargs["tendon_direction"] = (1.0, 0.0, 0.0)
         self._mdb.add_tendon_3d(name=name, **kwargs)
         self.update_model()
 

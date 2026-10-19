@@ -141,7 +141,8 @@ def register_tendon_tools(mcp: MCPServer, provider: BridgeProvider):
         point_insert is a coordinate triple or [end, direction, element_id] for
         track positioning. symmetry selects the mirroring end or an asymmetric
         profile; num is the tendon count, not the number of control points.
-        Lengths and coordinates are forwarded in the bridge convention.
+        Straight positioning uses the global +X direction. Lengths and coordinates
+        are forwarded in the bridge convention.
 
         Writes the full geometry and refreshes the model; a repeated name can
         replace an existing tendon. Read get_tendon_info before updating a path.
@@ -299,7 +300,8 @@ def register_tendon_tools(mcp: MCPServer, provider: BridgeProvider):
         Every control point is [x, y, z, fillet_radius] and order is preserved.
         position_type changes the meaning of point_insert: straight positioning
         takes three coordinates, while track positioning takes end, direction
-        and a real element ID. Use the bridge's coordinate and length convention;
+        and a real element ID. Straight positioning uses the global +X direction.
+        Use the bridge's coordinate and length convention;
         the wrapper performs no geometric or unit conversion.
 
         Writes the full definition and refreshes the model. A repeated name can
