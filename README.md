@@ -236,7 +236,7 @@ result identifier verified from QiaoTong. Definitions never start analysis.
 Vehicle/case deletion remains available through `remove_international_vehicle`
 and `remove_live_load_case` in the existing gateway.
 
-0.5.0 also tracks upstream `0687ffe` through the existing gateway
+0.5.0 also tracks upstream qtmodel 2.9 through the existing gateway
 for mass/stiffness factors, flange/effective-width definitions, statistics and
 structure merges. Model weight queries use fixed N, independent of display units.
 
@@ -277,8 +277,7 @@ qiao-mcp/
 │   └── providers/             # Backend adapters
 │       ├── __init__.py        # BridgeProvider abstract base
 │       └── qtmodel_provider.py  # QiaoTong adapter
-├── tests/                     # Offline unit, integration, and API contract tests
-└── reference-docs/            # Local reference material (not committed)
+└── tests/                     # Offline unit, integration, and API contract tests
 ```
 
 The **Provider pattern** keeps the 153 operations decoupled from any single backend. Select one with
@@ -469,7 +468,8 @@ one-shot bridge workflow tools cannot run on that version. This is an existing
 limitation; use 2.6.4 or later for those workflows (2.9.0 remains excluded).
 The dependency range does not guarantee every new tool on every build: missing
 methods or incompatible parameters fail explicitly before writes. The offline
-suite is run against PyPI 2.6.3, 2.6.4, 2.8.2, 2.9.1, 2.9.2 and 2.9.3, plus reference `0687ffe`.
+suite is run against PyPI 2.6.3, 2.6.4, 2.8.2, 2.9.1, 2.9.2 and 2.9.3, plus the
+upstream 2.9.2 source tree (distinct from the PyPI wheel).
 These tests verify software contracts; complete engineering acceptance remains pending.
 qtmodel 2.9.3 explicitly rejects historical check-snapshot and planned-lane add/update routes with `API_NOT_OPEN`;
 a method appearing in the SDK catalog does not prove that its desktop route exists.
@@ -533,9 +533,8 @@ fractional stage durations and the model-state requirements above.
 
 ### Upstream qtmodel 2.9 alignment
 
-The current reference is `0687ffe`, labeled 2.9.2 but different from the PyPI
-2.9.2 wheel. The earlier local baseline was `8ae651e`, whose package matched that wheel
-apart from its older version label.
+The current reference is the upstream 2.9.2 source tree, which differs from the
+PyPI 2.9.2 wheel.
 
 - **Write safety.** A write whose reply is lost raises `CommandOutcomeUnknownError`
   and is no longer resent. Qiao-MCP reports it as an unknown outcome and tells the
@@ -579,20 +578,20 @@ apart from its older version label.
 
 ### Upstream Source Changes (2026-09-04–08)
 
-These changes, first synced at `2316654` while still labeled `2.8.2`, are part of 2.9.0:
+These changes, first synced while the package was still labeled `2.8.2`, are part of 2.9.0:
 
-- `ac4dbad` moves model queries from `odb` to `mdb`. Qiao-MCP prefers the new
+- Model queries moved from `odb` to `mdb`. Qiao-MCP prefers the new
   namespace and falls back to `odb` when the method is absent. Existing-model
   section geometry uses `mdb.get_model_section_shape`; `mdb.get_section_shape`
   remains the local geometry builder. Analysis results and views stay on `odb`.
-- `bc1ee99` returns typed model records supporting `to_dict()` and `Mapping`.
+- Model queries return typed records supporting `to_dict()` and `Mapping`.
   The provider recursively converts them to plain JSON data for tools, resources
   and the API gateway, preserving original server fields. MDB query calls use
   read permission, not model-write permission, and never refresh the model.
   State-changing calls such as `calculate_section_property` still require
   model-write permission.
-- `6821413` splits model objects into domain modules and keeps `core.model_db`
-  as a compatibility export. The adapter does not depend on those internal paths.
+- Model objects are split into domain modules, with `core.model_db`
+  kept as a compatibility export. The adapter does not depend on those internal paths.
 - The September 7–8 updates add `t_out` to thickness definitions, `show_view` to
   solving, twelve analysis-setting reset APIs and three batch thickness APIs.
   Qiao-MCP exposes the two new options on its existing tools; the fifteen

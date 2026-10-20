@@ -217,12 +217,12 @@ also remain unconfirmed upstream.
 
 ### Changed
 
-- Audited upstream `0687ffe`, including native factor/flange definitions,
+- Audited the upstream 2.9.2 source tree, including native factor/flange definitions,
   effective-width calculations, statistics, compound merges and the new
   concrete-check signature. Gateway tests cover real SDK transport, permissions,
   one-commit writes and explicit rejection on older clients. Model weight-query
   documentation now specifies fixed N instead of display units.
-- **Compatibility validation.** PyPI 2.9.2 and source `0687ffe` each pass the complete
+- **Compatibility validation.** PyPI 2.9.2 and the upstream 2.9.2 source each pass the complete
   offline suite. 2.6.4, 2.8.2 and 2.9.1 have no failures, with missing-feature
   skips recorded separately. The two existing 2.6.3 `get_load_group_names`
   contract failures remain visible.
@@ -233,8 +233,8 @@ also remain unconfirmed upstream.
   existing tool names and call signatures are retained.
 
 - **qtmodel 2.9 support.** The dependency range is now `qtmodel>=2.6.3,!=2.9.0,<2.10`
-  and the lock uses 2.9.2 (identical to upstream `8ae651e` apart from its unbumped
-  version label). Every direct mdb/odb/cdb call and model query was checked against
+  and the lock uses 2.9.2 (identical to an upstream source revision apart from its
+  unbumped version label). Every direct mdb/odb/cdb call and model query was checked against
   actual SDK signatures, including the newer source-only concrete-check changes.
   The offline suite passes on 2.6.4, 2.8.2, 2.9.1 and 2.9.2.
   A pre-existing 2.6.3 limitation remains:
@@ -401,16 +401,16 @@ also remain unconfirmed upstream.
 
 ### Changed
 
-- **Sync qtmodel source through `2316654` (2026-09-08), including the query
-  migration (`ac4dbad`, `bc1ee99`, `6821413`).** Model queries now prefer `mdb`, with capability-based fallback
+- **Sync qtmodel source through 2026-09-08, including the query migration,
+  typed model records and domain-module split.** Model queries now prefer `mdb`, with capability-based fallback
   to legacy `odb` builds. Existing-model section geometry maps to
   `mdb.get_model_section_shape`, not the local `get_section_shape` builder.
   Analysis results and visualization remain on `odb`. MDB `get_`, `query_` and
   `calc_` gateway calls require read permission and do not refresh the model;
   state-changing calls such as `calculate_section_property` retain the write guard.
 - **Keep the published qtmodel dependency and lock unchanged.** Upstream still
-  labels these commits 2.8.2. Source revision `2316654` restores the helper
-  deleted by `6821413`; offline compatibility checks now cover this latest
+  labels these commits 2.8.2. The 2026-09-08 source restores the helper
+  deleted by the module split; offline compatibility checks now cover this latest
   source and the PyPI 2.8.2 build. The published wheel does not yet include the
   new options or management APIs; support is detected by capability, not version.
 - **Dependency bound widened to `qtmodel>=2.6.3,<2.9`.** qtmodel 2.8.2 removed
@@ -420,8 +420,8 @@ also remain unconfirmed upstream.
   qtmodel 2.6/2.7; docs and the `check_qiaotong_connection` description say so.
 - **Compatibility table rewritten** to describe the pre- and post-2.8.2 matching
   rules, and to note that two builds of "2.8.2" exist: the PyPI wheel
-  (2026-08-20, built from upstream `340e94e`) lacks `get_model_state`, while the
-  upstream source at the same version (merged in `5f4f4eb`) has it. Qiao-MCP
+  (2026-08-20) lacks `get_model_state`, while the upstream source at the same
+  version has it. Qiao-MCP
   detects the capability, not the version.
 
 ### Fixed
