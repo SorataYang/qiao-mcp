@@ -2824,16 +2824,18 @@ class QtModelProvider(BridgeProvider):
                 combine_type=kwargs.get("combine_type", 1),
                 specific_load_type_name=kwargs.get("name", ""),
             ))
-        if kind == "shear_stirrup":
-            ele_id = kwargs.get("element_id")
-            return self._parse(self._cdb.get_element_shear_stirrup_data(
-                ele_id=-1 if ele_id is None else ele_id
-            ))
-        if kind == "torsion_stirrup":
-            ele_id = kwargs.get("element_id")
-            return self._parse(self._cdb.get_element_torsion_stirrup_data(
-                ele_id=-1 if ele_id is None else ele_id
-            ))
+        if kind in {"shear_stirrup", "torsion_stirrup"}:
+            element_id = kwargs.get("element_id")
+            method = getattr(self._cdb, f"get_element_{kind}_data")
+            records = self._parse(method(ele_id=-1 if element_id is None else element_id))
+            if records is None or element_id is None or element_id <= 0:
+                return records
+            if not isinstance(records, list) or any(
+                not isinstance(record, dict) or type(record.get("ele_id")) is not int
+                for record in records
+            ):
+                raise RuntimeError("Cannot verify selected element in stirrup data (无法核实箍筋记录的单元编号)")
+            return [record for record in records if record["ele_id"] == element_id]
         raise ValueError(f"unknown check data kind: {kind}")
 
     # 分析设置：kind → qtmodel update 方法；参数原样透传（原生 mm/MPa）

@@ -457,7 +457,9 @@ def register_checking_tools(mcp: MCPServer, provider: BridgeProvider):
                 "limit_state_setting" (极限状态法), "normal_stress_setting" (正应力),
                 "crack_width_setting" (裂缝宽度), "moment_curvature_setting" (弯矩曲率),
                 "bearing_curve_setting" (承载力曲线)
-            element_id: Element ID for stirrup queries; omit for all (单元号，省略则查全部)
+            element_id: Element ID for stirrup queries; omit for all. A positive
+                ID is filtered locally before pagination, even if the desktop
+                returns other elements (单元号；正编号在分页前精确筛选，省略查全部)
             stress_type: Stress combination type for kind="stress" (应力组合类型):
                 非 AASHTO: 1=标准值组合, 2=频遇组合, 3=准永久值组合, 4=主力组合,
                           5=主加附组合, 6=施工组合, 7=主加特殊组合, 8=恒载作用,

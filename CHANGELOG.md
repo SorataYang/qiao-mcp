@@ -52,6 +52,9 @@ See the [release and upgrade notes](https://github.com/SorataYang/qiao-mcp/relea
 
 ### Fixed
 
+- Filter checking shear/torsion stirrup records by the requested element before
+  pagination, including when the desktop ignores its element selector. Reject
+  records whose identity cannot be verified instead of returning another element.
 - Guard vertical-prestress checking parameters with `check_model` rather than
   `modify_model`, so dispatch no longer requires unlocking structural results
   or permission to edit structural tendons.

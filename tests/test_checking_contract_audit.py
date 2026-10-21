@@ -50,6 +50,42 @@ def test_case_query_passes_only_its_supported_name(fake_provider, monkeypatch):
     assert requests == [("GET-CONCRETE-CHECK-CASE", {"name": "Chosen"})]
 
 
+@pytest.mark.parametrize("kind", ["shear_stirrup", "torsion_stirrup"])
+@pytest.mark.parametrize("element_id,expected_ids", [(4, [4]), (5, []), (None, [4, 6])])
+def test_stirrup_query_filters_native_rows_before_pagination(fake_provider, monkeypatch, kind, element_id, expected_ids):
+    import qtmodel
+    from qtmodel.core.qt_server import QtServer
+
+    rows = [{"ele_id": 4}, {"ele_id": 6}]
+    monkeypatch.setattr(QtServer, "send_command", staticmethod(lambda **kwargs: json.dumps(rows)))
+    fake_provider._cdb = qtmodel.cdb
+    result = tool_fns(register_checking_tools, fake_provider)["get_check_data"](
+        kind=kind, element_id=element_id, limit=1,
+    )
+    assert [row["ele_id"] for row in result["data"]] == expected_ids[:1]
+    assert result["pagination"]["total"] == len(expected_ids)
+    assert fake_provider._mdb.calls == []
+
+
+@pytest.mark.parametrize("kind", ["shear_stirrup", "torsion_stirrup"])
+def test_stirrup_query_offset_applies_after_selection(fake_provider, kind):
+    method = f"get_element_{kind}_data"
+    setattr(fake_provider._cdb, method, lambda **kwargs: [{"ele_id": 4}, {"ele_id": 6}])
+    result = tool_fns(register_checking_tools, fake_provider)["get_check_data"](
+        kind=kind, element_id=6, offset=1,
+    )
+    assert result["data"] == []
+    assert result["pagination"]["total"] == 1
+
+
+@pytest.mark.parametrize("kind", ["shear_stirrup", "torsion_stirrup"])
+@pytest.mark.parametrize("rows", [[{}], [{"ele_id": True}], {"ele_id": 4}])
+def test_selected_stirrup_query_rejects_unverifiable_identity(fake_provider, kind, rows):
+    setattr(fake_provider._cdb, f"get_element_{kind}_data", lambda **kwargs: rows)
+    with pytest.raises(ToolError, match="verify.*element"):
+        tool_fns(register_checking_tools, fake_provider)["get_check_data"](kind=kind, element_id=4)
+
+
 def test_typed_check_records_remain_objects_after_pagination(fake_provider, monkeypatch):
     import qtmodel
     from qtmodel.core.qt_server import QtServer
