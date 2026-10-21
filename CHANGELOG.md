@@ -52,6 +52,9 @@ See the [release and upgrade notes](https://github.com/SorataYang/qiao-mcp/relea
 
 ### Fixed
 
+- Document native checking case labels such as `P1 (ST)` and distinguish
+  combination-definition kinds from checking load-table selectors; keep labels
+  and selectors unchanged rather than guessing conversions.
 - Clarify that checking reinforcement definitions are stored in the model while
   queries and solves can reuse an older CSAN snapshot. Document construction-stage
   prerequisites, partial setup failures and explicit regeneration without adding

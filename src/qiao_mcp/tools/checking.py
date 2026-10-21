@@ -145,6 +145,12 @@ def register_checking_tools(mcp: MCPServer, provider: BridgeProvider):
         inspect the checking data before replacing or repeating a definition.
         (检算组合与普通模型组合分开；每行必须三列，规范组合类型与组合方式分别选择。)
 
+        Checking labels are passed verbatim. The SDK's static-case format is
+        "P1 (ST)", not the result-query form "ST:P1". Use verified native labels;
+        an unrecognized label can leave a named combination without its factors.
+        Inspect the saved definition and generated checking load table afterward.
+        (检算静力工况示例为“P1 (ST)”；不是结果查询前缀“ST:P1”，不能混用。)
+
         Args:
             name: Combination name (组合名称)
             standard: Code standard (规范): 1=JTG D60-2015, 2=TB 2017
@@ -493,7 +499,10 @@ def register_checking_tools(mcp: MCPServer, provider: BridgeProvider):
                           5=主加附组合, 6=施工组合, 7=主加特殊组合, 8=恒载作用,
                           9=预应力作用, 10~13=使用组合Ⅰ~Ⅳ, 14=永久作用组合
                 AASHTO 2020: 1~4=使用组合Ⅰ~Ⅳ, 5=永久作用组合, 6=施工组合
-            combine_type: Combination type for kind="load_table" (荷载表组合类型)
+            combine_type: Table selector for kind="load_table", not the kind used
+                by add_check_load_combination. In the JTG checking context,
+                standard-value loads use table 1 although their definition kind
+                is 3; confirm selectors for other codes (荷载表序号与建组合类型不同)
             name: Explicit display name; overrides stress_type/combine_type when set
                   (指定组合显示名，非空时优先于类型序号)
             limit: Max items per page, default 100, max 500 (单页条数上限)

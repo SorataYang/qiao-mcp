@@ -151,6 +151,33 @@ def test_check_combinations_do_not_drop_extra_columns(fake_provider, rows):
     assert fake_provider._cdb.calls == []
 
 
+@pytest.mark.parametrize("label", ["P1 (ST)", "ST:P1", "工况(左幅) (ST)"])
+def test_check_combination_labels_and_query_selectors_are_not_rewritten(fake_provider, monkeypatch, label):
+    import qtmodel
+    from qtmodel.core.qt_server import QtServer
+
+    requests = []
+
+    def reply(command="", header="", **kwargs):
+        requests.append((header, json.loads(command) if command else {}))
+        return "[]"
+
+    monkeypatch.setattr(QtServer, "send_command", staticmethod(reply))
+    fake_provider._cdb = qtmodel.cdb
+    functions = tool_fns(register_checking_tools, fake_provider)
+    functions["add_check_load_combination"](
+        name="验算组合", kind=3, load_case_factors=[[label, 1.2, 0.9]],
+    )
+    functions["get_check_data"](kind="load_table", combine_type=1)
+    assert requests[0][0] == "ADD-CHECK-LOAD-COMBINE"
+    assert requests[0][1]["combine_type"] == 3
+    assert requests[0][1]["combine_info"] == [[label, 1.2, 0.9]]
+    assert requests[1][0] == "GET-CHECK-CASE-LOAD-TABLE-INFO"
+    assert requests[1][1]["combine_type"] == 1
+    assert "P1 (ST)" in functions["add_check_load_combination"].__doc__
+    assert "definition kind" in functions["get_check_data"].__doc__
+
+
 @pytest.mark.parametrize("name", [
     "add_parametric_reinforcement", "add_check_stirrup", "manage_check_stirrup",
     "assign_element_stirrup", "update_vertical_steel_tendon",
