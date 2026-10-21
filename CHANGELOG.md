@@ -52,6 +52,10 @@ See the [release and upgrade notes](https://github.com/SorataYang/qiao-mcp/relea
 
 ### Fixed
 
+- Clarify that checking reinforcement definitions are stored in the model while
+  queries and solves can reuse an older CSAN snapshot. Document construction-stage
+  prerequisites, partial setup failures and explicit regeneration without adding
+  destructive automatic case recreation.
 - Filter checking shear/torsion stirrup records by the requested element before
   pagination, including when the desktop ignores its element selector. Reject
   records whose identity cannot be verified instead of returning another element.

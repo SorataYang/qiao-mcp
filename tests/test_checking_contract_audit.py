@@ -149,3 +149,22 @@ def test_check_combinations_do_not_drop_extra_columns(fake_provider, rows):
             name="Combination", load_case_factors=rows,
         )
     assert fake_provider._cdb.calls == []
+
+
+@pytest.mark.parametrize("name", [
+    "add_parametric_reinforcement", "add_check_stirrup", "manage_check_stirrup",
+    "assign_element_stirrup", "update_vertical_steel_tendon",
+])
+def test_definition_tools_distinguish_model_writes_from_csan_snapshots(fake_provider, name):
+    doc = tool_fns(register_checking_tools, fake_provider)[name].__doc__
+    assert "model checking definitions" in doc
+    assert "CSAN snapshot" in doc
+
+
+def test_check_setup_and_run_document_verified_lifecycle_limits(fake_provider):
+    functions = tool_fns(register_checking_tools, fake_provider)
+    assert "solved construction stage" in functions["setup_concrete_check"].__doc__
+    assert "component_force_type" in functions["setup_concrete_check"].__doc__
+    assert "case definition behind" in functions["setup_concrete_check"].__doc__
+    assert "reuse an existing check file" in functions["run_concrete_check"].__doc__
+    assert "do not regenerate" in functions["get_check_data"].__doc__

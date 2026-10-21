@@ -71,6 +71,14 @@ def register_checking_tools(mcp: MCPServer, provider: BridgeProvider):
         the design code and structure_type the concrete/prestress category.
         This is case setup, not load creation or the checking solve.
 
+        Verify nonempty group membership and solved structural data first.
+        Some desktops require a solved construction stage even when operating
+        results exist. A setup error can leave a project case definition behind;
+        inspect it before retrying instead of assuming the write was rolled back.
+        The SDK's default component_force_type is axial (1). For bending or
+        automatic force selection, discover cdb.add_concrete_check_case through
+        the gateway and explicitly choose its supported component_force_type.
+
         Add checking combinations with add_check_load_combination and prepare
         reinforcement/settings, then use run_concrete_check with the case name.
         manage_check_case_definition handles complete stored case snapshots;
@@ -182,7 +190,7 @@ def register_checking_tools(mcp: MCPServer, provider: BridgeProvider):
         """
         Execute concrete structural checking analysis (运行混凝土检算).
 
-        Syncs the named check case into the current check data, then runs the
+        Imports the named check case into the current check data, then runs the
         code-based verification and waits in a worker thread, with progress
         heartbeats, so other MCP requests remain responsive.
         A reported failed/canceled or other non-success state is an error, even
@@ -194,6 +202,12 @@ def register_checking_tools(mcp: MCPServer, provider: BridgeProvider):
         configure_check_analysis changes settings; run_analysis performs the
         structural solve. This tool runs concrete code checks, not a general
         finite-element analysis or seismic/strengthening solver.
+
+        Import can reuse an existing check file rather than regenerate it from
+        changed model checking definitions. Verify the imported snapshot first;
+        when necessary, explicitly regenerate through a supported bridge workflow
+        or create a new case. This tool does not delete/recreate cases or force
+        regeneration, which could discard case-specific settings.
 
         name selects the case imported into the current checking context; it is
         not merely a label on whatever data is already open. max_wait_seconds
@@ -253,8 +267,9 @@ def register_checking_tools(mcp: MCPServer, provider: BridgeProvider):
         """
         Add parametric reinforcement to a concrete section (添加参数化配筋).
 
-        Use for spacing-based reinforcement layers of an existing section in
-        the current concrete-check data. Material IDs must identify existing
+        Use for spacing-based reinforcement layers of an existing model section.
+        This writes model checking definitions, not a live edit of an imported
+        CSAN snapshot. Material IDs must identify existing
         reinforcing steel. set_section_reinforcement instead writes a complete
         model reinforcement snapshot; add_check_stirrup defines shear/torsion
         stirrups rather than these longitudinal layers.
@@ -325,6 +340,10 @@ def register_checking_tools(mcp: MCPServer, provider: BridgeProvider):
         section layers. set_check_stirrup_snapshot writes a complete model-side
         snapshot and uses a different, native-unit schema.
 
+        This writes model checking definitions. Existing imported CSAN snapshots
+        need not refresh; verify a newly generated case or native model export,
+        not only get_check_data on an older case.
+
         stirrup_id is a definition ID, not an element ID; material_id refers to
         existing reinforcing steel. Normal stirrups use limbs_number; spiral
         stirrups use loops_number and core_diameter. This tool accepts all lengths
@@ -375,8 +394,8 @@ def register_checking_tools(mcp: MCPServer, provider: BridgeProvider):
         fpd: float = 900000000.0,
     ) -> str:
         """
-        Set the current concrete-check case's vertical prestress reinforcement
-        parameters in SI units (用 SI 单位设置当前混凝土检算的竖向预应力钢束参数).
+        Set the model's vertical prestress checking definition in SI units
+        (用 SI 单位设置模型的竖向预应力检算定义).
 
         Use in the checking workflow established by setup_concrete_check.
         This sets checking parameters; create_tendon_property and create_tendon_2d
@@ -391,8 +410,11 @@ def register_checking_tools(mcp: MCPServer, provider: BridgeProvider):
 
         Returns a confirmation after updating the checking settings. It does not
         solve the case; use run_concrete_check after all settings are prepared.
-        get_check_data(kind="vertical_prestress") reads the current native
-        settings; account for its backend units when preparing SI inputs here.
+        This writes model checking definitions. Existing imported CSAN snapshots
+        need not refresh. get_check_data(kind="vertical_prestress") reads that
+        snapshot, so verify a newly generated case or native model export instead
+        of treating an old snapshot as live readback. Account for backend units
+        when preparing SI inputs here.
         (每次整体提交五项，省略项恢复所列默认值；单肢面积用 m²，应力用 Pa。
         完成配置后再运行检算，查询接口的原生单位与本工具的 SI 输入须区分。)
 
@@ -436,6 +458,12 @@ def register_checking_tools(mcp: MCPServer, provider: BridgeProvider):
 
         Read-only. Requires a check case to be open/imported first.
         只读工具；需先创建或打开检算工况。列表结果分页返回。
+
+        Case information identifies the model's check definition; reinforcement,
+        stirrup, vertical-prestress and result queries read the imported CSAN
+        snapshot. They do not regenerate it after model checking definitions
+        change. An existing case file can remain stale even after import; inspect
+        the generated snapshot before treating these values as current definitions.
 
         Args:
             kind: What to query (查询类型):
@@ -583,13 +611,13 @@ def register_checking_tools(mcp: MCPServer, provider: BridgeProvider):
         core_diameter: float = 0.0,
     ) -> str:
         """
-        Update or remove a stirrup definition in the current concrete-checking
-        context (修改或删除当前检算窗口内的箍筋定义).
+        Update or remove a model checking stirrup definition
+        (修改或删除模型中的检算箍筋定义).
 
         Use add_check_stirrup to create a definition, assign_element_stirrup to
         change element assignments, and set_check_stirrup_snapshot to write a
-        model-side snapshot. This tool targets the loaded checking context;
-        it does not import a model check case or run verification.
+        model-side snapshot. This writes model checking definitions, not the
+        imported CSAN snapshot; it does not regenerate a case or run verification.
 
         update requires name and sends every property, including defaults:
         read get_check_data(kind="stirrups") and carry forward values to retain.
@@ -666,6 +694,10 @@ def register_checking_tools(mcp: MCPServer, provider: BridgeProvider):
         element assignments, not the definitions themselves; manage_check_stirrup
         updates/removes definitions. set_element_stirrups handles bulk model
         snapshots with a different row schema.
+
+        This writes model checking definitions. Imported CSAN snapshots can
+        retain old assignments; use a newly generated case or native model export
+        for readback after changing them.
 
         shear requires a positive element_id and uses the four I/J, vertical/
         transverse stirrup IDs. torsion also requires a positive element_id but

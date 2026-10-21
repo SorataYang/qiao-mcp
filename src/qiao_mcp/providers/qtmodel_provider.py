@@ -2695,10 +2695,11 @@ class QtModelProvider(BridgeProvider):
         max_wait: float | None = None,
         poll_interval: float = 5.0,
     ) -> Any:
-        """同步指定检算工况后启动检算；返回启动或等待结束后的原生状态。
+        """导入指定检算工况后启动检算；返回启动或等待结束后的原生状态。
 
         2.5.0 起 solve_concrete_check 不再接受 name，改为对"当前检算数据"求解，
         故先用 import_concrete_check_case 把目标工况同步为当前 CSAN 检算数据。
+        桌面可能复用已有检算文件；此处不保证重建修改后的模型检算定义。
         旧版等待器在 is_running=False 时直接返回，失败/取消也可能不抛错；
         调用方必须核对返回状态后再报告成功。
         """
