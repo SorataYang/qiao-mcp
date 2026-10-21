@@ -52,6 +52,9 @@ See the [release and upgrade notes](https://github.com/SorataYang/qiao-mcp/relea
 
 ### Fixed
 
+- Guard vertical-prestress checking parameters with `check_model` rather than
+  `modify_model`, so dispatch no longer requires unlocking structural results
+  or permission to edit structural tendons.
 - Guard the gateway's `mdb.update_to_post` as a view operation, not a model edit,
   so result viewing remains available when model editing is disabled. Keep
   `update_to_pre` under the model-write guard and do not commit view switches.

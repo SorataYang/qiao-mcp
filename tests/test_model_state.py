@@ -35,6 +35,7 @@ def state_with(**updates):
         ("update_construction_stage", "stage_write"),
         ("initialize_model", "lifecycle"),
         ("setup_concrete_check", "check_write"),
+        ("update_vertical_steel_tendon", "check_write"),
         ("get_check_data", "check_read"),
         ("run_concrete_check", "check_run"),
         ("get_tendon_loss_results", "result_read"),
@@ -48,6 +49,33 @@ def state_with(**updates):
 )
 def test_tool_operation_classification(name, expected):
     assert _operation_for(name) == expected
+
+
+def test_vertical_check_parameters_do_not_require_model_editing(fake_provider):
+    fake_provider.get_model_state = lambda: state_with(
+        has_result_data=True, capabilities={"modify_model": False, "check_model": True},
+    )
+    functions = tool_fns(register_checking_tools, fake_provider)
+    functions["update_vertical_steel_tendon"](
+        limbs_number=2, area=0.0008, spacing=0.25,
+        effective_prestress=700000000, fpd=900000000,
+    )
+    assert fake_provider._cdb.calls == [("update_vertical_steel_tendon", (), {
+        "limbs_number": 2, "single_limb_area": 800.0, "spacing": 0.25,
+        "effective_prestress": 700.0, "strength_design_value": 900.0,
+    })]
+    assert fake_provider._mdb.calls == []
+
+
+def test_vertical_check_parameters_require_check_permission(fake_provider):
+    fake_provider.get_model_state = lambda: state_with(
+        capabilities={"modify_model": True, "check_model": False},
+    )
+    functions = tool_fns(register_checking_tools, fake_provider)
+    with pytest.raises(ToolError, match="capability=check_model"):
+        functions["update_vertical_steel_tendon"]()
+    assert fake_provider._cdb.calls == []
+    assert fake_provider._mdb.calls == []
 
 
 def test_get_model_status_returns_structured_snapshot(fake_provider):

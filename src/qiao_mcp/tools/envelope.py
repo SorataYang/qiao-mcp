@@ -123,6 +123,9 @@ _VIEW_NAMES = {
 _CHECK_READ_NAMES = {
     "get_check_data",
 }
+_CHECK_WRITE_NAMES = {
+    "update_vertical_steel_tendon",
+}
 _CHECK_RUN_NAMES = {
     "run_concrete_check",
 }
@@ -155,7 +158,7 @@ def _operation_for(name: str) -> str:
         return "result_read"
     if any(token in name for token in ("result", "results")):
         return "result_read"
-    if any(token in name for token in ("check", "stirrup", "reinforcement")):
+    if name in _CHECK_WRITE_NAMES or any(token in name for token in ("check", "stirrup", "reinforcement")):
         return "check_write"
     if name in _VIEW_NAMES or name.startswith(("plot_", "display_", "set_view_")):
         return "view"
