@@ -52,6 +52,9 @@ See the [release and upgrade notes](https://github.com/SorataYang/qiao-mcp/relea
 
 ### Fixed
 
+- Guard the gateway's `mdb.update_to_post` as a view operation, not a model edit,
+  so result viewing remains available when model editing is disabled. Keep
+  `update_to_pre` under the model-write guard and do not commit view switches.
 - Resolve node IDs from actual readback without enlarging the merge radius or
   selecting old nodes when merging is disabled; use automatic section numbering.
 - Reject empty mutation selections, Boolean/fractional IDs and incomplete renumber

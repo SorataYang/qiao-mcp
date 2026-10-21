@@ -241,9 +241,12 @@ def register_api_gateway_tools(mcp: MCPServer, provider: BridgeProvider) -> None
 
         MDB get_/query_/calc_ methods are read-only model operations, as are the
         local helpers list_parameter_section_types, build_parameter_section_*_spec
-        and generate_curve_node_data, and resolve_node_selection. Other MDB methods,
-        including calculate_section_property and calculate_effective_width,
-        require model-write permission.
+        and generate_curve_node_data, and resolve_node_selection. update_to_post
+        requires view_model permission and does not commit model edits; entering
+        postprocessing does not guarantee available results. update_to_pre still
+        requires modify_model permission and cannot bypass result protection.
+        Other MDB methods, including calculate_section_property and
+        calculate_effective_width, require model-write permission.
         Every MDB write is committed with update_model afterwards, as QiaoTong
         requires; project/file/view management calls (save_file, close_project,
         undo_model, update_to_pre, …) are not.

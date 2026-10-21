@@ -169,6 +169,55 @@ def test_call_api_guards_unprefixed_helpers_as_reads(gateway_provider):
     assert [name for name, _ in gateway_provider._mdb.calls] == ["resolve_node_selection"]
 
 
+@pytest.mark.parametrize("phase", ["preprocessing", "postprocessing"])
+def test_gateway_post_view_uses_view_permission_without_committing(fake_provider, phase):
+    state = ready_model_state()
+    state["model_state"].update(phase=phase, has_result_data=True)
+    state["model_state"]["capabilities"].update(modify_model=False, view_model=True)
+    fake_provider.get_model_state = lambda: state
+
+    tool_fns(register_api_gateway_tools, fake_provider)["call_qtmodel_api"](
+        api_object="mdb", method="update_to_post",
+    )
+
+    assert fake_provider._mdb.calls == [("update_to_post", (), {})]
+
+
+def test_gateway_post_view_requires_view_permission(fake_provider):
+    state = ready_model_state()
+    state["model_state"]["capabilities"]["view_model"] = False
+    fake_provider.get_model_state = lambda: state
+
+    with pytest.raises(ToolError, match="capability=view_model"):
+        tool_fns(register_api_gateway_tools, fake_provider)["call_qtmodel_api"](
+            api_object="mdb", method="update_to_post",
+        )
+
+    assert fake_provider._mdb.calls == []
+
+
+@pytest.mark.parametrize("method", ["update_to_pre", "update_model", "undo_model"])
+def test_gateway_post_view_permission_does_not_allow_model_edits(fake_provider, method):
+    state = ready_model_state()
+    state["model_state"]["capabilities"]["modify_model"] = False
+    fake_provider.get_model_state = lambda: state
+
+    with pytest.raises(ToolError, match="capability=modify_model"):
+        tool_fns(register_api_gateway_tools, fake_provider)["call_qtmodel_api"](
+            api_object="mdb", method=method,
+        )
+
+    assert fake_provider._mdb.calls == []
+
+
+def test_gateway_post_view_real_wire_does_not_commit(qtmodel_wire):
+    provider, requests = qtmodel_wire
+    tool_fns(register_api_gateway_tools, provider)["call_qtmodel_api"](
+        api_object="mdb", method="update_to_post",
+    )
+    assert [header for header, _ in requests] == ["UPDATE-TO-POST"]
+
+
 def test_call_api_unknown_method(gateway_provider):
     fns = tool_fns(register_api_gateway_tools, gateway_provider)
     with pytest.raises(ToolError) as exc:

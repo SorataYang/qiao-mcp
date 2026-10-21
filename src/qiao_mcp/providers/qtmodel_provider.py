@@ -927,11 +927,12 @@ class QtModelProvider(BridgeProvider):
             )
 
         if api_object == "mdb":
-            operation = (
-                "model_read"
-                if method.startswith(("get_", "query_", "calc_")) or method in self._API_MDB_READS
-                else "model_write"
-            )
+            if method == "update_to_post":
+                operation = "view"
+            elif method.startswith(("get_", "query_", "calc_")) or method in self._API_MDB_READS:
+                operation = "model_read"
+            else:
+                operation = "model_write"
         elif api_object == "cdb":
             if method in self._API_CDB_MODEL_WRITES:
                 operation = "model_write"
