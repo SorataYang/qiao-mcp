@@ -64,7 +64,7 @@ def test_exported_vehicle_fields_reach_real_sdk_unchanged(fake_provider, monkeyp
         result = tool_fns(register_international_load_tools, fake_provider)["set_international_vehicle"](request=request)
         assert result == {"status": "success", "committed": True, "data": record}
     assert [h for h, _ in calls] == [f"{action.upper()}-INTERNATIONAL-VEHICLE", "UPDATE"] + ([] if gateway else ["GET-INTERNATIONAL-VEHICLES"])
-    calls[0][1].pop("version", None)
+    assert "version" not in calls[0][1]
     assert calls[0][1] == expected
 
 

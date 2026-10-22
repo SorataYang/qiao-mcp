@@ -635,7 +635,9 @@ class QtModelProvider(BridgeProvider):
 
     def _execute_model_command(self, fn, method: str, kwargs: dict[str, Any]) -> Any:
         """Commit one successful model command; never replay after a lost reply."""
-        result = fn(**kwargs)
+        from qiao_mcp.providers.international_commands import call_model_command
+
+        result = call_model_command(fn, method, kwargs)
         try:
             self.update_model()
         except Exception as exc:

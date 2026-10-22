@@ -59,6 +59,42 @@ def assert_scope_cleared(server, wire):
     assert QtModelProvider._bound_model_instance.get() is None
 
 
+@pytest.mark.parametrize("action", ["add", "update"])
+@pytest.mark.parametrize("family", ["vehicle", "live_load_case"])
+@pytest.mark.parametrize("outcome", ["success", "rejected", "timeout"])
+def test_international_native_payload_keeps_guards_without_replay(guarded_native, action, family, outcome):
+    from requests.exceptions import ReadTimeout
+
+    provider, _, wire, sdk = guarded_native
+    method = f"{action}_international_{family}"
+    kwargs = {"name": "定义"}
+    if family == "live_load_case":
+        kwargs.update(influence_plane="影响面", sub_cases=[{"vehicle_name": "车辆", "lane_names": ["车道"]}])
+
+    def response(header, body):
+        if outcome == "timeout":
+            raise ReadTimeout("reply lost")
+        return (409, "strict DTO rejected") if outcome == "rejected" else (200, "")
+
+    wire.response = response
+    tool = tool_fns(register_api_gateway_tools, provider)["call_qtmodel_api"]
+    with sdk.require_model_edit_ready():
+        if outcome == "success":
+            tool(api_object="mdb", method=method, kwargs=kwargs)
+            assert len(wire.calls) == 2
+            assert wire.calls[1][0] == "UPDATE"
+        else:
+            with pytest.raises(ToolError):
+                tool(api_object="mdb", method=method, kwargs=kwargs)
+            assert len(wire.calls) == 1
+    for _header, payload in wire.calls:
+        assert payload["expected_model_instance_id"] == "project-a"
+        assert payload["require_edit_ready"] is True
+        assert "version" not in payload
+    wire.response = lambda header, body: (200, "")
+    assert_scope_cleared(sdk, wire)
+
+
 @pytest.mark.parametrize("kind", ["analysis", "concrete_check"])
 def test_durable_job_submission_carries_native_instance(guarded_native, tmp_path, kind):
     provider, _, wire, sdk = guarded_native

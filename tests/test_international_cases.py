@@ -65,7 +65,7 @@ def test_csharp_case_export_preserves_all_factor_fields(fake_provider, monkeypat
         headers = ["GET-INTERNATIONAL-VEHICLES", *headers, "GET-INTERNATIONAL-LIVE-LOAD-CASES"]
     assert [h for h, _ in calls] == headers
     payload = calls[0 if gateway else 1][1]
-    payload.pop("version", None)
+    assert "version" not in payload
     assert payload == expected
 
 

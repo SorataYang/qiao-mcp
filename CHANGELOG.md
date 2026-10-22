@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Send international vehicle and live-load case definitions without the SDK-only
+  `version` field rejected by strict desktop DTOs. Both dedicated tools and the
+  API gateway retain native defaults, validation, model guards and single-commit
+  behavior; failed or uncertain writes are never replayed automatically.
+
 ### Changed
 
 - Migrate from the bundled FastMCP in MCP SDK 1.29 to `MCPServer` in SDK 2.3.0,
