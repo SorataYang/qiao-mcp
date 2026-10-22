@@ -225,3 +225,4 @@ AGENTS.md
 docs/*
 !docs/tool-catalog.md
 !docs/analysis-jobs.md
+!docs/tool-audit-remediation.md
