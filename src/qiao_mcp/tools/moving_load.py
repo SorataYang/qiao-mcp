@@ -142,6 +142,9 @@ def register_moving_load_tools(mcp: MCPServer, provider: BridgeProvider):
         It does not calculate influence ordinates or create vehicles.
 
         tandem_names contains existing tandem names in the intended plane order.
+        A defined plane does not prove a usable loading surface. Check its
+        geometry and lane placement; a single collinear tandem produced zero
+        live-load results on the audited desktop even with nonzero vehicles.
         The optional beam-shape division setting is omitted when None; explicitly
         setting it requires SDK support. Writes and refreshes the model and
         returns the requested plane name. Reference validation and repeated-name
@@ -378,6 +381,11 @@ def register_moving_load_tools(mcp: MCPServer, provider: BridgeProvider):
         data. This tool neither prefixes a case name nor runs analysis.
         查询运营阶段已求解结果；默认最大值，最小值须单独指定2；工况全名原样传入。
 
+        The desktop can encode the result family and extreme in that name,
+        e.g. MV:<case>_合计_最大. Its name takes precedence over envelop_type.
+        Known maximum/minimum suffixes must agree with envelope_type; a combined
+        _包络 name cannot select one side. Conflicts are rejected, never renamed.
+
         Use after a moving-load case has been included in operating-stage
         configuration and successfully solved. get_analysis_results serves the
         general result interface; get_transversal_data and
@@ -395,7 +403,9 @@ def register_moving_load_tools(mcp: MCPServer, provider: BridgeProvider):
         (变形查询使用节点号；单次只有一侧极值，空选择查全部，返回原生数据且不补造缺失值。)
 
         Args:
-            case_name: Complete live-load result case name (活载结果工况全名)
+            case_name: Verified complete live-load result name, including the
+                family/extreme suffix used by the desktop; not just the model
+                case name or MV: prefix (含结果类别及极值后缀的原生完整名称)
             result_type: Result type (结果类型): 'force'(内力), 'stress'(应力), 'deformation'(变形)
             element_ids: Element IDs for force/stress, node IDs for deformation;
                 empty string queries all IDs (内力/应力用单元号，变形用节点号；空串查询全部)
@@ -403,6 +413,18 @@ def register_moving_load_tools(mcp: MCPServer, provider: BridgeProvider):
                 (单次查询的极值：1最大、2最小)
         """
         try:
+            expected_suffix = {1: "_最大", 2: "_最小"}[envelope_type]
+            if (
+                case_name.startswith("MV:")
+                and case_name.endswith(("_最大", "_最小", "_包络"))
+                and not case_name.endswith(expected_suffix)
+            ):
+                raise ToolInputError(
+                    "The native case name conflicts with the requested extreme. "
+                    f"Choose the verified {expected_suffix} result name for envelope_type={envelope_type}; "
+                    "the desktop selects by name and may ignore envelop_type "
+                    "(原生结果名称与极值选择冲突；请核对完整名称，不会自动改名)."
+                )
             result = provider.get_live_load_results(
                 case_name=case_name,
                 result_type=result_type,

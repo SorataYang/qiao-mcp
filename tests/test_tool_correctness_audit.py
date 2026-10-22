@@ -42,14 +42,40 @@ def test_live_results_request_the_selected_extreme(qtmodel_wire, result_type, ex
     provider, requests = qtmodel_wire
     provider._odb = qtmodel.odb
     functions = tool_fns(register_moving_load_tools, provider)
+    case_name = "MV:Verified_最大_in_name_合计_" + ("最大" if extreme == 1 else "最小")
     functions["get_live_load_results"](
-        case_name="Verified result name", result_type=result_type, element_ids=[7], envelope_type=extreme,
+        case_name=case_name, result_type=result_type, element_ids=[7], envelope_type=extreme,
     )
     assert len(requests) == 1
     payload = requests[0][1]
-    assert payload["case_name"] == "Verified result name"
+    assert payload["case_name"] == case_name
     assert payload["stage_id"] == -1
     assert payload["envelop_type"] == extreme
+
+
+@pytest.mark.parametrize("case_name, extreme", [
+    ("MV:Truck_合计_最大", 2), ("MV:Truck_汽车强度_最小", 1),
+    ("MV:Truck_合计_包络", 1), ("MV:Truck_合计_包络", 2),
+])
+@pytest.mark.parametrize("result_type", ["force", "stress", "deformation"])
+def test_conflicting_live_extreme_is_rejected_before_result_query(qtmodel_wire, case_name, extreme, result_type):
+    provider, requests = qtmodel_wire
+    functions = tool_fns(register_moving_load_tools, provider)
+    with pytest.raises(ToolInputError, match="native case name conflicts"):
+        functions["get_live_load_results"](
+            case_name=case_name, result_type=result_type, element_ids=[7], envelope_type=extreme,
+        )
+    assert requests == []
+
+
+@pytest.mark.parametrize("case_name", ["Verified result name", "MV:future-format", "Other:case_最大"])
+def test_other_native_live_result_names_are_not_rewritten(qtmodel_wire, case_name):
+    provider, requests = qtmodel_wire
+    tool_fns(register_moving_load_tools, provider)["get_live_load_results"](
+        case_name=case_name, result_type="force", element_ids=[7], envelope_type=2,
+    )
+    assert len(requests) == 1
+    assert requests[0][1]["case_name"] == case_name
 
 
 def node(nid, x):

@@ -6,8 +6,8 @@
 9 项不支持、3 项失败**，按独立逻辑改动提交代码、测试和文档。
 拒绝危险请求、离线测试通过或返回空结果，都不能代替原工具功能的实机验收。
 
-2026-10-22 本轮只关闭原清单中的 **1 项**，另有 **1 项从失败推进到部分通过**。
-当前总计 **136 通过 / 10 部分通过 / 9 不支持 / 1 失败**，目标尚未完成。
+截至 2026-10-22 最新续测，累计只关闭原清单中的 **1 项**，另有 **2 项从失败推进到部分通过**。
+当前总计 **136 通过 / 11 部分通过 / 9 不支持 / 0 失败**。仍有20项未完整验收，目标尚未完成。
 
 ## 已提交修复
 
@@ -33,6 +33,32 @@ qtmodel 2.9.3 的 `send_dict` 为请求增加 `version`，而当前桌面端的�
   探索性的编号回填补丁已撤回，未提交。
 - 修复前后均为 9 节点、8 梁单元、1 截面；独立副本的 SQLite 完整性检查为 `ok`。
 
+### 活载结果选择与数值对照
+
+实测发现，运营阶段原生结果名包含类别和极值后缀，例如
+`MV:AUDIT_GRID_POINT_合计_最大`。只传模型工况名或省略后缀会得到错误；
+更严重的是，**名称已选择最大值时，传 `envelope_type=2` 仍返回最大值**。
+`_包络` 返回混合极值，也不能冒充“只查最大/最小”的结果。
+
+MCP 现在对已知 `MV:` 极值后缀做一致性校验：不匹配或使用 `_包络` 时在结果查询前拒绝；
+一致的完整名称原样下发，不自动改名，也不猜测类别和前缀。未知格式保留原生处理。
+已覆盖 force/stress/deformation 的一致与冲突请求，并实机验证冲突拒绝和正确极值回读。
+本次全量回归为 **2244 passed, 1 skipped**，相关 Ruff 检查和 `git diff --check` 通过。
+
+数值对照使用独立的18节点、25梁单元双纵列梁格，保留单纵列旧用例作为反例：
+
+- 单纵列旧用例使用完整结果名后不再报查询错误，但显式启用计算后仍全零；不能验收。
+- 双纵列、非退化影响面及面内车道得到非零内力、应力和平移位移；最大弯矩约25000，
+  最小竖向位移约 `-8.7273811579e-5`，应力角点与弯矩/截面模量检查一致。
+- POINT/HALF 两工况的 force/stress/deformation、最大/最小共6组结果符合半载比例；
+  12组查询在文件重开后与重开前完全一致。
+- 与原生 `.mrd` 的 **208 个分量比较中，200个一致，8个 `rz` 不一致**。
+  节点3最大值查询中，HTTP 的 `rz=1.6103059581320625e-6`，原生 `Rz≈1.01e-35`；
+  HTTP 实际重复了 `ry`。两个节点、两工况、两侧极值均复现。
+- 因此 `get_live_load_results` 只推进到部分通过。原生数值对照脚本明确以非零退出码
+  报告未通过，不能拿半载比例或“成功返回”掩盖分量错误。
+  没有把 `rz` 置零、填空或用推测值替换；需要修复桌面 `GET-DEFORMATION` 的字段映射。
+
 ## 原始 21 项清单
 
 “历史待补测”表示沿用此前的实机证据，本轮没有把它重新计为已验证成功。
@@ -41,7 +67,7 @@ qtmodel 2.9.3 的 `send_dict` 为请求增加 `version`，而当前桌面端的�
 | --- | --- | --- |
 | `set_international_vehicle` | 失败 → 通过 | 本轮 EN1991 完整定义增改及保存重开通过；不代表所有规范组合均已实测 |
 | `set_international_live_load_case` | 失败 → 部分通过 | `version` 问题修复；显式编号及编号保持仍未满足 |
-| `get_live_load_results` | 失败 → 失败 | 历史待补测：原生查询空引用、结果分量全零；须以非零载荷验收力和位移 |
+| `get_live_load_results` | 失败 → 部分通过 | 完整结果名及双纵列模型得到非零结果；极值冲突已修复，但HTTP的rz与原生Rz不一致 |
 | `start_analysis_job` | 不支持 → 不支持 | 本轮复现：桌面未提供 `model_instance_id`，不能安全启动持久任务 |
 | `get_analysis_job` | 部分通过 → 部分通过 | 缺少可真实创建的持久任务，不能仅以未知 ID 拒绝用例算通过 |
 | `configure_live_load_system` | 不支持 → 不支持 | 本轮复现：桌面拒绝 `clear_existing`；不得删掉清理许可参数绕过 |
@@ -52,7 +78,7 @@ qtmodel 2.9.3 的 `send_dict` 为请求增加 `version`，而当前桌面端的�
 | `set_element_stirrups` | 不支持 → 不支持 | 本轮复现：`SET-ELEMENT-STIRRUPS` 未开放 |
 | `set_section_reinforcement` | 不支持 → 不支持 | 本轮复现：`SET-SECTION-REINFORCEMENT` 未开放 |
 | `remove_section_reinforcement` | 不支持 → 不支持 | 本轮复现：`REMOVE-SECTION-REINFORCEMENT-BY-NAME` 未开放 |
-| `add_influence_plane` | 部分通过 → 部分通过 | 历史待补测：显式 true 未保存为 true，需要验证真实划分选项 |
+| `add_influence_plane` | 部分通过 → 部分通过 | 本轮双纵列false定义及求解有效；历史显式true未保存为true的问题仍待修复 |
 | `run_concrete_check` | 部分通过 → 部分通过 | 历史待补测：求解成功但 stress 为空，缺少工程检算数值 |
 | `get_check_data` | 部分通过 → 部分通过 | 历史待补测：输入及箍筋筛选已验证，检算 stress 结果仍未验收 |
 | `configure_check_analysis` | 部分通过 → 部分通过 | 历史待补测：活动字段保持，裂缝相关字段发生变化，须按规范验证 |
@@ -85,6 +111,16 @@ qtmodel 2.9.3 的 `send_dict` 为请求增加 `version`，而当前桌面端的�
 - `91-unsupported-contracts-20261022-result.json`：9 项不支持的最新实机拒绝记录；
   持久任务列表前后为空，未启动求解。
 - `92-native-snapshot-20261022/inspection.json`：插件哈希、模型副本哈希、表计数和完整性检查。
+- `95-live-result-solve-20261022-result.json`、`96-live-result-extremes-20261022-result.json`：
+  单纵列反例；完整名称已可查询，数值仍全零。
+- `99-grid-live-solve-20261022-result.json`：梁格几何与影响面创建；桌面未开放
+  `UPDATE-LIVE-LOAD-CASE`，明确拒绝后没有重放，后续改为创建独立工况。
+- `100-grid-live-cases-20261022-result.json`、`101-grid-live-verification-20261022-result.json`：
+  独立工况的求解、极值查询、半载比例和文件重开证据。
+- `102-grid-native-evidence-20261022/files.json`：本轮输入、求解日志和原生结果文件哈希。
+- `103-live-extreme-contract-20261022-result.json`：修复前，名称覆盖极值参数的证据。
+- `104-verify-live-extreme-guard-20261022-result.json`：修复后，冲突拒绝及正确极值回读。
+- `105-grid-live-verification-20261022-result.json`：208个分量对照和8个rz错误；`complete=false`。
 
 模型快照 SHA-256：
 
@@ -96,7 +132,7 @@ after:  f5847086aa2673da147f5f053ca559ac95c1a113f048cc0f98feb3bb75f35940
 ## 后续验收条件
 
 1. 在桌面端定位工况编号重排，确认请求编号、内存对象、引用及持久化编号的契约；
-   同时验证影响面 true 参数、基本阶段切换及求解结果接口。
+   同时修复 `GET-DEFORMATION` 的rz映射，验证影响面 true 参数、基本阶段切换及求解结果接口。
 2. 对七个未开放命令，需要实际存在的桌面路由和载荷契约，不能删除 SDK 拒绝列表，
    也不能拿检算窗口的不同接口冒充基础模型快照写入。
 3. 持久任务需要桌面提供有效模型实例标识及相应写入守卫；清理活载需要桌面实现

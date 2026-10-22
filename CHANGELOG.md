@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reject moving-load result names whose native maximum/minimum/combined-envelope
+  suffix contradicts the requested extreme. The desktop otherwise selects by
+  name and silently ignores `envelop_type`; valid names remain unchanged.
 - Send international vehicle and live-load case definitions without the SDK-only
   `version` field rejected by strict desktop DTOs. Both dedicated tools and the
   API gateway retain native defaults, validation, model guards and single-commit

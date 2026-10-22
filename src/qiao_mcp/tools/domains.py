@@ -438,7 +438,8 @@ TOOL_DOMAINS = (
           and a positive value selects one construction stage.
         - get_special_results: use kind plus mode for modal output, or the
           documented node/link/element selector for concurrent and special results.
-        - get_live_load_results: request one maximum or minimum envelope extreme;
+        - get_live_load_results: request one maximum or minimum envelope extreme
+          with a matching complete native result name, including its extreme suffix;
           get_tendon_loss_results reads losses for a named, activated stage tendon.
         - get_tendon_position_result/get_tendon_length_result: discretized tendon
           geometry; pre-solve availability depends on the bridge.
