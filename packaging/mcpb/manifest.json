@@ -1,0 +1,64 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "qiao-mcp",
+  "display_name": "Qiao-MCP 桥梁工程",
+  "version": "0.6.0",
+  "description": "通过桥通（QiaoTong）完成桥梁建模、施工阶段、荷载、预应力、活载、规范验算与结果查询。",
+  "long_description": "Qiao-MCP 把桥通结构分析软件的 Python API 提供给 AI 助手使用，覆盖建模、施工阶段、荷载、预应力、活载、规范验算和结果查询。\n\n使用前请先在本机启动桥通。默认连接 `http://localhost:55125/pythonForQt/`，并会自动扫描桥通的动态端口；桥通在其他机器上时，在设置里填写转发后的地址。\n\nBridge structural analysis through QiaoTong: modeling, construction stages, loads, prestress, live load, code checks and result queries. Start QiaoTong before use.",
+  "author": {
+    "name": "Sorata",
+    "url": "https://github.com/SorataYang"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SorataYang/qiao-mcp"
+  },
+  "homepage": "https://github.com/SorataYang/qiao-mcp",
+  "documentation": "https://github.com/SorataYang/qiao-mcp/blob/main/README.zh-CN.md",
+  "support": "https://github.com/SorataYang/qiao-mcp/issues",
+  "license": "Apache-2.0",
+  "keywords": ["bridge", "structural-analysis", "qiaotong", "桥梁", "桥通", "finite-element"],
+  "server": {
+    "type": "uv",
+    "entry_point": "src/qiao_mcp/server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run", "--directory", "${__dirname}", "--frozen", "--no-dev", "qiao-mcp"],
+      "env": {
+        "QIAOTONG_HTTP_URL": "${user_config.qiaotong_url}"
+      }
+    }
+  },
+  "user_config": {
+    "qiaotong_url": {
+      "type": "string",
+      "title": "桥通 API 地址",
+      "description": "桥通 Python API 的 HTTP 地址。桥通在本机运行时保持默认值即可，地址不通时还会自动扫描本机端口；桥通在其他机器上时，填写转发后的地址。",
+      "default": "http://localhost:55125/pythonForQt/",
+      "required": false
+    }
+  },
+  "tools": [
+    {
+      "name": "search_operations",
+      "description": "按关键词或领域搜索可用的桥梁操作（共 156 项）。"
+    },
+    {
+      "name": "get_operation_schema",
+      "description": "读取某项操作的完整参数定义。"
+    },
+    {
+      "name": "execute_operation",
+      "description": "执行一项桥梁操作，如建模、加载、分析、验算或结果查询。"
+    }
+  ],
+  "tools_generated": false,
+  "prompts_generated": true,
+  "compatibility": {
+    "platforms": ["win32", "darwin", "linux"],
+    "runtimes": {
+      "python": ">=3.11"
+    }
+  }
+}
